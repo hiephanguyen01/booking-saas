@@ -1,12 +1,19 @@
 import { data, Link } from 'react-router';
-import { CalendarDays, FileText, Pencil } from 'lucide-react';
+import { CalendarDays, FileText, Pencil, Repeat } from 'lucide-react';
 import {
   availabilityExceptionInputSchema,
+  availabilityExceptionRangeInputSchema,
   pricingRuleInputSchema,
+  pricingRuleRangeInputSchema,
+  recurringPricingRuleInputSchema,
+  PRICING_RULE_PRIORITY,
   type AvailabilityExceptionResponse,
   type AvailabilityRuleResponse,
   type ListingResponse,
   type ListingTypeResponse,
+  type Paginated,
+  type PartnerCalendarBookingResponse,
+  type PricingRuleBulkResult,
   type PricingRuleResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -34,12 +41,55 @@ import { CANCELLATION_SOURCE_LABEL, CancellationTiers } from '~/components/cance
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { dashboardPaths } from '~/constants/paths';
 import { listingPriceFrom } from '~/lib/listing-price';
-import { todayString } from '~/lib/calendar-dates';
+import {
+  addDays,
+  monthBounds,
+  parseDay,
+  startOfDayUtc,
+  toDayString,
+  todayString,
+} from '~/lib/calendar-dates';
+import { holdsResource } from '~/features/partner/lib/listing-calendar';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
-import { ListingCalendarPricing } from '~/features/partner/components/listing-calendar-pricing';
+import { ListingCalendarPricing } from '~/features/partner/components/listing-calendar';
+import { EXCEPTION_WINDOW_FIELD } from '~/features/partner/components/listing-calendar/window-list-field';
+import { RecurringPricing } from '~/features/partner/components/recurring-pricing';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết tin đăng · Đối tác · BookingOS' }];
+}
+
+/** Vietnamese wording for the pricing-rule rejections the API can return. */
+const PRICING_ERROR_MESSAGE: Record<string, string> = {
+  PRICING_RULE_OVERLAP: 'Khung giờ này trùng với một khung giá đã lưu của cùng ngày.',
+  PRICING_RULE_SCOPE_TAKEN:
+    'Một thay đổi khác cho đúng phạm vi này vừa được lưu trước — tải lại trang rồi thử lại.',
+  RECURRING_PRICING_RULE_OVERLAP:
+    'Đã có một quy tắc lặp lại phủ lên các thứ (và khung giờ) này — sửa hoặc xoá quy tắc cũ trước.',
+  PRICING_WINDOW_OUTSIDE_OPEN_HOURS: 'Khung giá phải nằm trong giờ mở cửa của ngày này.',
+  PACKAGE_PRICING_FIXED:
+    'Tin đăng dùng gói cố định — giá được quản lý trong mục “Các gói dịch vụ”.',
+  MODE_NOT_ENABLED: 'Tin đăng chưa bật hình thức đặt này.',
+};
+
+function pricingErrorMessage(code: string | undefined, fallback: string | undefined): string {
+  return (code ? PRICING_ERROR_MESSAGE[code] : undefined) ?? fallback ?? 'Không lưu được giá.';
+}
+
+/**
+ * The `custom_hours` windows a dialog posted, as repeated `window=open|close`
+ * fields. Malformed rows are dropped so a half-typed time never reaches the API
+ * as `""` — zod would reject the whole save with a message about a field the
+ * partner cannot see.
+ */
+function submittedWindows(form: FormData): { openTime: string; closeTime: string }[] {
+  return form
+    .getAll(EXCEPTION_WINDOW_FIELD)
+    .map(String)
+    .flatMap((value) => {
+      const [openTime, closeTime] = value.split('|');
+      return openTime && closeTime ? [{ openTime, closeTime }] : [];
+    });
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
@@ -56,7 +106,9 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     (listingTypesRes.ok ? listingTypesRes.data : null)?.find(
       (type) => type.id === listing.listingTypeId,
     ) ?? null;
-  const tab = url.searchParams.get('tab') === 'calendar' ? 'calendar' : 'detail';
+  const requestedTab = url.searchParams.get('tab');
+  const tab: 'detail' | 'calendar' | 'pricing' =
+    requestedTab === 'calendar' || requestedTab === 'pricing' ? requestedTab : 'detail';
   const requestedMonth = url.searchParams.get('month');
   const month =
     requestedMonth && /^\d{4}-\d{2}$/.test(requestedMonth)
@@ -69,14 +121,22 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
         ? 'hourly'
         : 'daily';
   const canAvailability = can('partner.availability.manage');
-  const [pricingRes, exceptionsRes, weeklyRes] =
+  // Both calendar reads are windowed to the month on screen: their defaults
+  // start at today, so an unwindowed read of a past or far-future month comes
+  // back empty and every stored closure/price would render as "no override".
+  const { from, to } = monthBounds(month);
+  const calendarRange = { from, to };
+  const [pricingRes, exceptionsRes, weeklyRes, bookingsRes, siblingsRes] =
     tab === 'calendar'
       ? await Promise.all([
-          apiGet<PricingRuleResponse[]>(`/partner/listings/${listing.id}/pricing-rules`, auth),
+          apiGet<PricingRuleResponse[]>(`/partner/listings/${listing.id}/pricing-rules`, auth, {
+            query: calendarRange,
+          }),
           canAvailability
             ? apiGet<AvailabilityExceptionResponse[]>(
                 `/partner/resources/${listing.resourceId}/availability-exceptions`,
                 auth,
+                { query: calendarRange },
               )
             : Promise.resolve(null),
           canAvailability
@@ -85,8 +145,36 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
                 auth,
               )
             : Promise.resolve(null),
+          // The booking feed is timeslot-windowed on instants, and its `to` is
+          // exclusive — hence the day after the month's last date.
+          can('partner.bookings.read')
+            ? apiGet<PartnerCalendarBookingResponse[]>('/partner/bookings', auth, {
+                query: {
+                  from: startOfDayUtc(from),
+                  to: startOfDayUtc(toDayString(addDays(parseDay(to), 1))),
+                },
+              })
+            : Promise.resolve(null),
+          // Availability is stored per resource, so the partner needs to know
+          // how many other listings a closure here would also close.
+          apiGet<Paginated<ListingResponse>>('/partner/listings', auth, {
+            query: { resourceId: listing.resourceId, page: 1, pageSize: 1 },
+          }),
         ])
-      : [null, null, null];
+      : [null, null, null, null, null];
+  // Recurring rules belong to no month, so this read is deliberately unwindowed.
+  const recurringRes =
+    tab === 'pricing'
+      ? await apiGet<PricingRuleResponse[]>(
+          `/partner/listings/${listing.id}/pricing-rules`,
+          auth,
+        )
+      : null;
+  // Only bookings that still hold the resource matter: a cancelled one neither
+  // blocks the calendar nor deserves a warning.
+  const bookings = (bookingsRes?.ok ? (bookingsRes.data ?? []) : []).filter(
+    (booking) => booking.resourceId === listing.resourceId && holdsResource(booking),
+  );
   return {
     listing,
     listingType,
@@ -96,6 +184,15 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     pricingRules: pricingRes?.ok ? (pricingRes.data ?? []) : [],
     exceptions: exceptionsRes?.ok ? (exceptionsRes.data ?? []) : [],
     weeklyRules: weeklyRes?.ok ? (weeklyRes.data ?? []) : [],
+    bookings,
+    recurringRules: (recurringRes?.ok ? (recurringRes.data ?? []) : []).filter(
+      (rule) => rule.ruleType === 'day_of_week' || rule.ruleType === 'time_range',
+    ),
+    recurringError:
+      recurringRes && !recurringRes.ok
+        ? (recurringRes.error ?? 'Không tải được quy tắc giá lặp lại.')
+        : null,
+    siblingCount: Math.max(0, (siblingsRes?.ok ? (siblingsRes.data?.total ?? 1) : 1) - 1),
     calendarError:
       pricingRes && !pricingRes.ok ? (pricingRes.error ?? 'Không tải được lịch giá.') : null,
     canWrite: can('partner.listings.write'),
@@ -111,6 +208,152 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!listingRes.ok || !listingRes.data)
     return data({ ok: false, error: 'Không tìm thấy tin đăng.' }, { status: 404 });
   const listing = listingRes.data;
+
+  if (intent === 'save_recurring_price' || intent === 'delete_recurring_price') {
+    if (!can('partner.listings.write'))
+      return data({ ok: false, error: 'Không có quyền sửa giá.' }, { status: 403 });
+
+    if (intent === 'delete_recurring_price') {
+      const ruleId = String(form.get('ruleId') ?? '');
+      if (!ruleId) return data({ ok: false, error: 'Không tìm thấy quy tắc.' }, { status: 400 });
+      const result = await apiDelete(
+        `/partner/listings/${listing.id}/pricing-rules/${ruleId}`,
+        auth,
+      );
+      return result.ok
+        ? data({ ok: true, error: null })
+        : data(
+            { ok: false, error: result.error ?? 'Không xoá được quy tắc.' },
+            { status: 400 },
+          );
+    }
+
+    const kind = String(form.get('kind')) === 'time_range' ? 'time_range' : 'day_of_week';
+    const parsedForm = recurringPricingRuleInputSchema.safeParse({
+      bookingMode: String(form.get('mode')) === 'daily' ? 'daily' : 'hourly',
+      kind,
+      days: form.getAll('days').map((value) => Number(value)),
+      ...(kind === 'time_range'
+        ? {
+            window: {
+              from: String(form.get('windowFrom') ?? ''),
+              to: String(form.get('windowTo') ?? ''),
+            },
+          }
+        : {}),
+      price: String(form.get('price') ?? '').replace(/\D/g, ''),
+      ...(String(form.get('salePrice') ?? '').replace(/\D/g, '')
+        ? { salePrice: String(form.get('salePrice')).replace(/\D/g, '') }
+        : {}),
+    });
+    if (!parsedForm.success)
+      return data(
+        { ok: false, error: parsedForm.error.issues[0]?.message ?? 'Quy tắc không hợp lệ.' },
+        { status: 400 },
+      );
+    const recurring = parsedForm.data;
+    const result = await apiPost(
+      `/partner/listings/${listing.id}/pricing-rules`,
+      {
+        bookingMode: recurring.bookingMode,
+        ruleType: recurring.kind,
+        params:
+          recurring.kind === 'time_range'
+            ? { from: recurring.window!.from, to: recurring.window!.to, days: recurring.days }
+            : { days: recurring.days },
+        price: recurring.price,
+        ...(recurring.salePrice ? { salePrice: recurring.salePrice } : {}),
+        priority: PRICING_RULE_PRIORITY.recurring,
+      },
+      auth,
+    );
+    return result.ok
+      ? data({ ok: true, error: null })
+      : data(
+          { ok: false, error: pricingErrorMessage(result.code, result.error) },
+          { status: 400 },
+        );
+  }
+
+  if (intent === 'save_availability_range' || intent === 'save_price_range') {
+    const from = String(form.get('from') ?? '');
+    const to = String(form.get('to') ?? '');
+    if (from < todayString())
+      return data({ ok: false, error: 'Dải ngày không được bắt đầu trước hôm nay.' }, { status: 400 });
+
+    if (intent === 'save_availability_range') {
+      if (!can('partner.availability.manage'))
+        return data({ ok: false, error: 'Không có quyền quản lý lịch.' }, { status: 403 });
+      const setting = String(form.get('availabilitySetting') ?? 'closed');
+      const parsed = availabilityExceptionRangeInputSchema.safeParse({
+        from,
+        to,
+        type: setting === 'closed' ? 'closed' : 'custom_hours',
+        ...(setting === 'custom_hours' ? { windows: submittedWindows(form) } : {}),
+      });
+      if (!parsed.success)
+        return data({ ok: false, error: 'Dải ngày hoặc giờ mở cửa không hợp lệ.' }, { status: 400 });
+      const result = await apiPost(
+        `/partner/resources/${listing.resourceId}/availability-exceptions/bulk`,
+        parsed.data,
+        auth,
+      );
+      if (!result.ok)
+        return data(
+          { ok: false, error: result.error ?? 'Không lưu được lịch cho dải ngày.' },
+          { status: 400 },
+        );
+      return data({ ok: true, error: null });
+    }
+
+    if (!can('partner.listings.write'))
+      return data({ ok: false, error: 'Không có quyền sửa giá.' }, { status: 403 });
+    const mode = String(form.get('mode')) === 'daily' ? 'daily' : 'hourly';
+    const price = String(form.get('price') ?? '').replace(/\D/g, '');
+    const salePrice = String(form.get('salePrice') ?? '').replace(/\D/g, '');
+    const parsed = pricingRuleRangeInputSchema.safeParse({
+      bookingMode: mode,
+      dateFrom: from,
+      dateTo: to,
+      ...(mode === 'hourly'
+        ? {
+            window: {
+              from: String(form.get('windowFrom') ?? ''),
+              to: String(form.get('windowTo') ?? ''),
+            },
+          }
+        : {}),
+      price,
+      ...(salePrice ? { salePrice } : {}),
+      priority:
+        mode === 'hourly'
+          ? PRICING_RULE_PRIORITY.dateTimeRange
+          : PRICING_RULE_PRIORITY.dateRange,
+    });
+    if (!parsed.success)
+      return data(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Giá không hợp lệ.' },
+        { status: 400 },
+      );
+    const result = await apiPost<PricingRuleBulkResult>(
+      `/partner/listings/${listing.id}/pricing-rules/bulk`,
+      parsed.data,
+      auth,
+    );
+    if (!result.ok)
+      return data(
+        { ok: false, error: pricingErrorMessage(result.code, result.error) },
+        { status: 400 },
+      );
+    return data({
+      ok: true,
+      error: null,
+      summary: {
+        created: result.data?.created.length ?? 0,
+        skipped: result.data?.skipped ?? [],
+      },
+    });
+  }
 
   if (intent === 'save_availability' || intent === 'save_price' || intent === 'delete_price') {
     const date = String(form.get('date') ?? '');
@@ -139,10 +382,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           date,
           type: availabilitySetting === 'closed' ? ('closed' as const) : ('custom_hours' as const),
           ...(availabilitySetting === 'custom_hours'
-            ? {
-                openTime: String(form.get('openTime') ?? ''),
-                closeTime: String(form.get('closeTime') ?? ''),
-              }
+            ? { windows: submittedWindows(form) }
             : {}),
         };
         const parsed = availabilityExceptionInputSchema.safeParse(input);
@@ -213,7 +453,10 @@ export async function action({ request, params }: Route.ActionArgs) {
               : { from: date, to: date },
           price,
           ...(salePrice ? { salePrice } : {}),
-          priority: 1_000,
+          priority:
+            mode === 'hourly'
+              ? PRICING_RULE_PRIORITY.dateTimeRange
+              : PRICING_RULE_PRIORITY.dateRange,
         };
         const parsed = pricingRuleInputSchema.safeParse(input);
         if (!parsed.success)
@@ -227,77 +470,9 @@ export async function action({ request, params }: Route.ActionArgs) {
             },
             { status: 400 },
           );
-        if (mode === 'hourly') {
-          const pricingRes = await apiGet<PricingRuleResponse[]>(
-            `/partner/listings/${listing.id}/pricing-rules`,
-            auth,
-          );
-          if (!pricingRes.ok)
-            return data(
-              { ok: false, error: 'Không kiểm tra được các khung giá hiện tại.' },
-              { status: 400 },
-            );
-          const overlap = (pricingRes.data ?? []).find(
-            (rule) =>
-              rule.bookingMode === 'hourly' &&
-              rule.ruleType === 'date_time_range' &&
-              String(rule.params.date) === date &&
-              !(String(rule.params.from) === from && String(rule.params.to) === to) &&
-              from < String(rule.params.to) &&
-              to > String(rule.params.from),
-          );
-          if (overlap)
-            return data(
-              {
-                ok: false,
-                error: `Khung ${from}–${to} bị trùng với ${String(overlap.params.from)}–${String(overlap.params.to)}.`,
-              },
-              { status: 400 },
-            );
-
-          if (can('partner.availability.manage')) {
-            const [exceptionsRes, weeklyRes] = await Promise.all([
-              apiGet<AvailabilityExceptionResponse[]>(
-                `/partner/resources/${listing.resourceId}/availability-exceptions`,
-                auth,
-              ),
-              apiGet<AvailabilityRuleResponse[]>(
-                `/partner/listings/${listing.id}/availability-rules`,
-                auth,
-              ),
-            ]);
-            if (!exceptionsRes.ok || !weeklyRes.ok)
-              return data(
-                { ok: false, error: 'Không kiểm tra được giờ mở cửa của ngày này.' },
-                { status: 400 },
-              );
-            const exception = (exceptionsRes.data ?? []).find((item) => item.date === date);
-            const openWindows =
-              exception?.type === 'closed'
-                ? []
-                : exception?.type === 'custom_hours' &&
-                    exception.openTime &&
-                    exception.closeTime
-                  ? [{ from: exception.openTime, to: exception.closeTime }]
-                  : (weeklyRes.data ?? [])
-                      .filter(
-                        (rule) =>
-                          rule.dayOfWeek === new Date(`${date}T12:00:00Z`).getUTCDay(),
-                      )
-                      .map((rule) => ({ from: rule.openTime, to: rule.closeTime }));
-            if (!openWindows.some((window) => from >= window.from && to <= window.to))
-              return data(
-                {
-                  ok: false,
-                  error:
-                    openWindows.length === 0
-                      ? 'Ngày này đang đóng cửa nên không thể thêm khung giá.'
-                      : `Khung giá phải nằm trong giờ mở cửa: ${openWindows.map((window) => `${window.from}–${window.to}`).join(', ')}.`,
-                },
-                { status: 400 },
-              );
-          }
-        }
+        // Overlap and opening-hours checks live in the API use-case: they must
+        // hold for every partner, and reading the hours here would need
+        // `partner.availability.manage`, which not every partner has.
         const result = await apiPost(
           `/partner/listings/${listing.id}/pricing-rules`,
           parsed.data,
@@ -305,7 +480,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         );
         if (!result.ok)
           return data(
-            { ok: false, error: result.error ?? 'Không lưu được giá.' },
+            { ok: false, error: pricingErrorMessage(result.code, result.error) },
             { status: 400 },
           );
       }
@@ -354,12 +529,26 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
             <CalendarDays className="size-4" /> Lịch và giá
           </Link>
         </Button>
+        <Button asChild size="sm" variant={tab === 'pricing' ? 'secondary' : 'ghost'}>
+          <Link to={`${dashboardPaths.partner.listing(listing.id)}?tab=pricing`}>
+            <Repeat className="size-4" /> Giá lặp lại
+          </Link>
+        </Button>
       </div>
 
       <SuccessBanner message={actionData?.ok ? 'Đã lưu thay đổi.' : null} />
-      <ErrorBanner error={actionData?.error ?? loaderData.calendarError} />
+      <ErrorBanner
+        error={actionData?.error ?? loaderData.calendarError ?? loaderData.recurringError}
+      />
 
-      {tab === 'calendar' ? (
+      {tab === 'pricing' ? (
+        <RecurringPricing
+          listing={listing}
+          mode={loaderData.mode}
+          rules={loaderData.recurringRules}
+          canWrite={loaderData.canWrite}
+        />
+      ) : tab === 'calendar' ? (
         <ListingCalendarPricing
           listing={listing}
           month={loaderData.month}
@@ -367,6 +556,8 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
           rules={loaderData.pricingRules}
           exceptions={loaderData.exceptions}
           weeklyRules={loaderData.weeklyRules}
+          bookings={loaderData.bookings}
+          siblingCount={loaderData.siblingCount}
           canWrite={loaderData.canWrite}
           canAvailability={loaderData.canAvailability}
         />

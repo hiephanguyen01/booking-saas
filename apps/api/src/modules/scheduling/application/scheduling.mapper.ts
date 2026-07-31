@@ -12,6 +12,7 @@ export function toExceptionResponse(e: AvailabilityExceptionRecord): Availabilit
     resourceId: e.resourceId,
     date: e.date,
     type: e.type,
+    windows: e.windows,
     openTime: e.openTime,
     closeTime: e.closeTime,
     reason: e.reason,

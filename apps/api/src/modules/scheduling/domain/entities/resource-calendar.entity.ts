@@ -46,8 +46,26 @@ export class ResourceCalendar {
    */
   newException(input: AvailabilityExceptionInput): AvailabilityExceptionInput {
     if (input.type === 'custom_hours') {
+      if (input.windows && input.windows.length > 0) {
+        for (const window of input.windows) {
+          if (window.openTime >= window.closeTime) {
+            throw new InvalidAvailabilityException('closeTime must be after openTime');
+          }
+        }
+        // Two windows covering the same minute would double-generate that slot.
+        // Re-implemented rather than imported from the zod contract: this entity
+        // stays free of zod, and this whole method is a deliberate defensive
+        // mirror of `availabilityExceptionInputSchema`'s superRefine.
+        const sorted = [...input.windows].sort((a, b) => a.openTime.localeCompare(b.openTime));
+        for (let index = 1; index < sorted.length; index += 1) {
+          if (sorted[index]!.openTime < sorted[index - 1]!.closeTime) {
+            throw new InvalidAvailabilityException('Windows must not overlap');
+          }
+        }
+        return input;
+      }
       if (!input.openTime || !input.closeTime) {
-        throw new InvalidAvailabilityException('custom_hours requires openTime and closeTime');
+        throw new InvalidAvailabilityException('custom_hours requires at least one window');
       }
       if (input.openTime >= input.closeTime) {
         throw new InvalidAvailabilityException('closeTime must be after openTime');

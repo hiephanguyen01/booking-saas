@@ -131,6 +131,7 @@ function toWhere(filter: ListingFilter): Prisma.ListingWhereInput {
   if (filter.standaloneOnly) where.groupId = null;
   if (filter.partnerId) where.partnerId = filter.partnerId;
   if (filter.listingTypeId) where.listingTypeId = filter.listingTypeId;
+  if (filter.resourceId) where.resourceId = filter.resourceId;
   if (filter.q) where.title = { contains: filter.q, mode: 'insensitive' };
   return where;
 }

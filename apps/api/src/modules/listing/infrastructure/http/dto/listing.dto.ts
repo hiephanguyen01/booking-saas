@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import {
+  calendarRangeQuerySchema,
   cancellationPolicyResponseSchema,
   createCancellationPolicyInputSchema,
   createListingGroupInputSchema,
@@ -17,7 +18,9 @@ import {
   listPartnerListingsQuerySchema,
   listTenantListingsQuerySchema,
   moderationReasonInputSchema,
+  pricingRuleBulkResultSchema,
   pricingRuleInputSchema,
+  pricingRuleRangeInputSchema,
   pricingRuleResponseSchema,
   publicListingDetailWithTimezoneResponseSchema,
   publicListingGroupDetailResponseSchema,
@@ -40,6 +43,8 @@ export class CreateListingDto extends createZodDto(createListingInputSchema) {}
 export class UpdateListingDto extends createZodDto(updateListingInputSchema) {}
 export class CreateResourceDto extends createZodDto(createResourceInputSchema) {}
 export class PricingRuleDto extends createZodDto(pricingRuleInputSchema) {}
+export class PricingRuleRangeDto extends createZodDto(pricingRuleRangeInputSchema) {}
+export class CalendarRangeQueryDto extends createZodDto(calendarRangeQuerySchema) {}
 export class QuoteQueryDto extends createZodDto(quoteQuerySchema) {}
 export class ModerationReasonDto extends createZodDto(moderationReasonInputSchema) {}
 export class PublishListingDto extends createZodDto(publishListingInputSchema) {}
@@ -61,6 +66,7 @@ export class ListingGroupDetailResponseDto extends createZodDto(listingGroupDeta
 export class ListingResponseDto extends createZodDto(listingResponseSchema) {}
 export class ResourceResponseDto extends createZodDto(resourceResponseSchema) {}
 export class PricingRuleResponseDto extends createZodDto(pricingRuleResponseSchema) {}
+export class PricingRuleBulkResultDto extends createZodDto(pricingRuleBulkResultSchema) {}
 export class PublicListingDetailResponseDto extends createZodDto(
   publicListingDetailWithTimezoneResponseSchema,
 ) {}

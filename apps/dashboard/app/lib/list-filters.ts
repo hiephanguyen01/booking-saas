@@ -12,6 +12,8 @@ export type FilterField =
       options: readonly { value: string; label: string }[];
       /** Label for the "no filter" option (default "Tất cả"). */
       allLabel?: string;
+      /** Extra classes on the select — e.g. `sm:min-w-0` to drop the compact min width. */
+      className?: string;
     }
   | { kind: 'date-range'; fromKey: string; toKey: string; label: string };
 

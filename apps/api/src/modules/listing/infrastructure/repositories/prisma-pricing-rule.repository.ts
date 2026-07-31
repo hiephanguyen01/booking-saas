@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import { PricingRuleScopeTaken } from '../../domain/errors/pricing-rule-errors';
 import type { RuleType } from '../../../../shared/domain/pricing/quote-calculator';
 import type {
   IPricingRuleRepository,
+  PricingRuleDateWindow,
   PricingRuleRecord,
 } from '../../domain/ports/pricing-rule-repository.port';
 import type { NewPricingRule } from '../../domain/entities/pricing-rule.entity';
@@ -25,23 +27,57 @@ function toRecord(p: Row): PricingRuleRecord {
   };
 }
 
+/**
+ * `OR` branches selecting the rules that can price a date inside `window`.
+ *
+ * `params` is jsonb and the date fields are `YYYY-MM-DD`, whose lexicographic
+ * order is its chronological order — so Postgres' jsonb string comparison is a
+ * correct date comparison here, and only here. A `date_range` qualifies when it
+ * overlaps the window (starts on/before the end AND ends on/after the start),
+ * not when it is contained in it.
+ */
+function windowClauses(window: PricingRuleDateWindow): Prisma.PricingRuleWhereInput[] {
+  return [
+    { ruleType: { in: ['day_of_week', 'time_range'] } },
+    { ruleType: 'date_time_range', params: { path: ['date'], gte: window.from, lte: window.to } },
+    {
+      ruleType: 'date_range',
+      AND: [
+        { params: { path: ['from'], lte: window.to } },
+        { params: { path: ['to'], gte: window.from } },
+      ],
+    },
+  ];
+}
+
 @Injectable()
 export class PrismaPricingRuleRepository implements IPricingRuleRepository {
   async create(tx: PrismaTx, tenantId: string, data: NewPricingRule): Promise<PricingRuleRecord> {
-    return toRecord(
-      await tx.pricingRule.create({
-        data: {
-          tenantId,
-          listingId: data.listingId,
-          bookingMode: data.bookingMode as never,
-          ruleType: data.ruleType as never,
-          params: data.params as Prisma.InputJsonValue,
-          price: BigInt(data.price),
-          salePrice: data.salePrice ? BigInt(data.salePrice) : null,
-          priority: data.priority,
-        },
-      }),
-    );
+    try {
+      return toRecord(
+        await tx.pricingRule.create({
+          data: {
+            tenantId,
+            listingId: data.listingId,
+            bookingMode: data.bookingMode as never,
+            ruleType: data.ruleType as never,
+            params: data.params as Prisma.InputJsonValue,
+            price: BigInt(data.price),
+            salePrice: data.salePrice ? BigInt(data.salePrice) : null,
+            priority: data.priority,
+          },
+        }),
+      );
+    } catch (error) {
+      // `pricing_rules_scope_key` — a concurrent save took this scope between
+      // our read and our write. Surfaced as a named 409 rather than swallowed:
+      // the caller's price was NOT applied, and hiding that would recreate the
+      // silent-overwrite class of bug this index exists to end.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new PricingRuleScopeTaken();
+      }
+      throw error;
+    }
   }
 
   async findById(tx: PrismaTx, id: string): Promise<PricingRuleRecord | null> {
@@ -49,9 +85,13 @@ export class PrismaPricingRuleRepository implements IPricingRuleRepository {
     return p ? toRecord(p) : null;
   }
 
-  async listByListing(tx: PrismaTx, listingId: string): Promise<PricingRuleRecord[]> {
+  async listByListing(
+    tx: PrismaTx,
+    listingId: string,
+    window?: PricingRuleDateWindow,
+  ): Promise<PricingRuleRecord[]> {
     const items = await tx.pricingRule.findMany({
-      where: { listingId },
+      where: { listingId, ...(window ? { OR: windowClauses(window) } : {}) },
       orderBy: { priority: 'desc' },
     });
     return items.map(toRecord);

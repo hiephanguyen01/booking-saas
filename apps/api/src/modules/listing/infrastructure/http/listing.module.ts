@@ -17,6 +17,7 @@ import { LISTING_REPOSITORY } from '../../domain/ports/listing-repository.port';
 import { LISTING_REVISION_REPOSITORY } from '../../domain/ports/listing-revision-repository.port';
 import { RESOURCE_REPOSITORY } from '../../domain/ports/resource-repository.port';
 import { PRICING_RULE_REPOSITORY } from '../../domain/ports/pricing-rule-repository.port';
+import { OPEN_HOURS_READER } from '../../domain/ports/open-hours-reader.port';
 import { CANCELLATION_POLICY_REPOSITORY } from '../../domain/ports/cancellation-policy-repository.port';
 import { PrismaListingGroupRepository } from '../repositories/prisma-listing-group.repository';
 import { PrismaListingFeedRepository } from '../repositories/prisma-listing-feed.repository';
@@ -24,6 +25,7 @@ import { PrismaListingRepository } from '../repositories/prisma-listing.reposito
 import { PrismaListingRevisionRepository } from '../repositories/prisma-listing-revision.repository';
 import { PrismaResourceRepository } from '../repositories/prisma-resource.repository';
 import { PrismaPricingRuleRepository } from '../repositories/prisma-pricing-rule.repository';
+import { PrismaOpenHoursReader } from '../repositories/prisma-open-hours.reader';
 import { PrismaCancellationPolicyRepository } from '../repositories/prisma-cancellation-policy.repository';
 import { CreateListingGroupUseCase } from '../../application/use-cases/create-listing-group.use-case';
 import { ListListingGroupsUseCase } from '../../application/use-cases/list-listing-groups.use-case';
@@ -76,6 +78,7 @@ import { TenantResourceController } from './tenant-resource.controller';
 import { TenantPricingRuleController } from './tenant-pricing-rule.controller';
 import { PartnerPricingRuleController } from './partner-pricing-rule.controller';
 import { CreatePartnerPricingRuleUseCase } from '../../application/use-cases/create-partner-pricing-rule.use-case';
+import { CreatePartnerPricingRuleRangeUseCase } from '../../application/use-cases/create-partner-pricing-rule-range.use-case';
 import { DeletePartnerPricingRuleUseCase } from '../../application/use-cases/delete-partner-pricing-rule.use-case';
 import { ListPartnerPricingRulesUseCase } from '../../application/use-cases/list-partner-pricing-rules.use-case';
 import { PublicListingController } from './public-listing.controller';
@@ -129,6 +132,7 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     { provide: LISTING_REVISION_REPOSITORY, useClass: PrismaListingRevisionRepository },
     { provide: RESOURCE_REPOSITORY, useClass: PrismaResourceRepository },
     { provide: PRICING_RULE_REPOSITORY, useClass: PrismaPricingRuleRepository },
+    { provide: OPEN_HOURS_READER, useClass: PrismaOpenHoursReader },
     { provide: CANCELLATION_POLICY_REPOSITORY, useClass: PrismaCancellationPolicyRepository },
     { provide: COMMISSION_COVERAGE_READER, useClass: PrismaCommissionCoverageReader },
     { provide: REVIEW_AGGREGATE_PROJECTOR, useClass: PrismaReviewAggregateProjector },
@@ -163,6 +167,7 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     ListPricingRulesUseCase,
     DeletePricingRuleUseCase,
     CreatePartnerPricingRuleUseCase,
+    CreatePartnerPricingRuleRangeUseCase,
     DeletePartnerPricingRuleUseCase,
     ListPartnerPricingRulesUseCase,
     GetPublicListingUseCase,

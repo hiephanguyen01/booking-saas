@@ -12,6 +12,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -28,14 +29,17 @@ import { RequirePermissions } from '../../../identity-access/infrastructure/http
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { toExceptionResponse, toRuleResponse } from '../../application/scheduling.mapper';
 import { AddAvailabilityExceptionUseCase } from '../../application/use-cases/add-availability-exception.use-case';
+import { AddAvailabilityExceptionRangeUseCase } from '../../application/use-cases/add-availability-exception-range.use-case';
 import { DeleteAvailabilityExceptionUseCase } from '../../application/use-cases/delete-availability-exception.use-case';
 import { ListAvailabilityExceptionsUseCase } from '../../application/use-cases/list-availability-exceptions.use-case';
 import { ListAvailabilityRulesUseCase } from '../../application/use-cases/list-availability-rules.use-case';
 import { SetAvailabilityRulesUseCase } from '../../application/use-cases/set-availability-rules.use-case';
 import {
   AvailabilityExceptionDto,
+  AvailabilityExceptionRangeDto,
   AvailabilityExceptionResponseDto,
   AvailabilityRuleResponseDto,
+  CalendarRangeQueryDto,
   SetAvailabilityRulesDto,
 } from './dto/scheduling.dto';
 
@@ -48,6 +52,7 @@ export class PartnerAvailabilityController {
     private readonly setRulesUseCase: SetAvailabilityRulesUseCase,
     private readonly listExceptionsUseCase: ListAvailabilityExceptionsUseCase,
     private readonly addExceptionUseCase: AddAvailabilityExceptionUseCase,
+    private readonly addExceptionRangeUseCase: AddAvailabilityExceptionRangeUseCase,
     private readonly deleteExceptionUseCase: DeleteAvailabilityExceptionUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -85,13 +90,20 @@ export class PartnerAvailabilityController {
 
   @RequirePermissions('partner.availability.manage')
   @Get('resources/:id/availability-exceptions')
-  @ApiOperation({ summary: 'List a resource date-specific availability exceptions' })
+  @ApiOperation({
+    summary: 'List a resource date-specific availability exceptions',
+    description:
+      'Pass `from`/`to` (together) to window the result — required when rendering a month outside the default near-term window.',
+  })
   @UuidParam()
   @ApiOkResponse({ type: [AvailabilityExceptionResponseDto] })
   async listExceptions(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Query() range: CalendarRangeQueryDto,
   ): Promise<AvailabilityExceptionResponse[]> {
-    return (await this.listExceptionsUseCase.execute(this.ctx(), id)).map(toExceptionResponse);
+    return (await this.listExceptionsUseCase.execute(this.ctx(), id, range)).map(
+      toExceptionResponse,
+    );
   }
 
   @RequirePermissions('partner.availability.manage')
@@ -105,6 +117,27 @@ export class PartnerAvailabilityController {
     @Body() body: AvailabilityExceptionDto,
   ): Promise<AvailabilityExceptionResponse> {
     return toExceptionResponse(await this.addExceptionUseCase.execute(this.ctx(), id, body));
+  }
+
+  /**
+   * Apply one exception to every date in a span, in a single transaction — the
+   * calendar's range action. Per-date upsert, so re-applying is idempotent.
+   * Declared before the `:exceptionId` delete route for readability only; the
+   * paths do not collide.
+   */
+  @RequirePermissions('partner.availability.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Post('resources/:id/availability-exceptions/bulk')
+  @ApiOperation({ summary: 'Apply one availability exception across a range of dates' })
+  @UuidParam()
+  @ApiCreatedResponse({ type: [AvailabilityExceptionResponseDto] })
+  async addExceptionRange(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() body: AvailabilityExceptionRangeDto,
+  ): Promise<AvailabilityExceptionResponse[]> {
+    return (await this.addExceptionRangeUseCase.execute(this.ctx(), id, body)).map(
+      toExceptionResponse,
+    );
   }
 
   @RequirePermissions('partner.availability.manage')

@@ -12,8 +12,63 @@ export interface WeeklyRule {
 /** A date-specific exception (§7.4). `closed` shuts the day; `custom_hours` overrides. */
 export interface DateException {
   type: 'closed' | 'custom_hours';
+  /**
+   * The day's opening windows — the source of truth. A special day may break
+   * for lunch, exactly as a weekday can.
+   */
+  windows?: { openTime: string; closeTime: string }[] | null;
+  /** Legacy single-window pair, read only when `windows` is absent. */
   openTime?: string | null;
   closeTime?: string | null;
+}
+
+/** An open window as resource-local wall-clock `HH:MM`, before any UTC mapping. */
+export interface LocalWindow {
+  openTime: string;
+  closeTime: string;
+}
+
+/**
+ * Resolve a calendar date's open windows as resource-local `HH:MM` — the
+ * wall-clock half of {@link openWindowsForDate}, shared so the availability
+ * engine and the pricing-rule guard can never disagree about which hours a date
+ * is open. `closed` yields none; `custom_hours` replaces the weekday's rules.
+ */
+export function localOpenWindowsForDate(
+  date: string,
+  rules: readonly WeeklyRule[],
+  exception?: DateException | null,
+): LocalWindow[] {
+  if (exception?.type === 'closed') return [];
+  if (exception?.type === 'custom_hours') {
+    // `windows` is authoritative; the pair is the pre-multi-window shape and is
+    // only consulted for rows written before that column existed.
+    if (exception.windows && exception.windows.length > 0) {
+      return exception.windows
+        .map((w) => ({ openTime: w.openTime, closeTime: w.closeTime }))
+        .sort((a, b) => a.openTime.localeCompare(b.openTime));
+    }
+    if (exception.openTime && exception.closeTime) {
+      return [{ openTime: exception.openTime, closeTime: exception.closeTime }];
+    }
+  }
+  const weekday = weekdayOf(date);
+  return rules
+    .filter((r) => r.dayOfWeek === weekday)
+    .map((r) => ({ openTime: r.openTime, closeTime: r.closeTime }));
+}
+
+/**
+ * Does `[from,to]` (resource-local `HH:MM`) sit wholly inside one open window?
+ * A span straddling two windows separated by a break is NOT contained — the
+ * break is closed time.
+ */
+export function windowFitsOpenHours(
+  windows: readonly LocalWindow[],
+  from: string,
+  to: string,
+): boolean {
+  return windows.some((w) => from >= w.openTime && to <= w.closeTime);
 }
 
 /**
@@ -28,18 +83,7 @@ export function openWindowsForDate(
   rules: readonly WeeklyRule[],
   exception?: DateException | null,
 ): Interval[] {
-  if (exception?.type === 'closed') return [];
-
-  let windows: { openTime: string; closeTime: string }[];
-  if (exception?.type === 'custom_hours' && exception.openTime && exception.closeTime) {
-    windows = [{ openTime: exception.openTime, closeTime: exception.closeTime }];
-  } else {
-    const weekday = weekdayOf(date);
-    windows = rules
-      .filter((r) => r.dayOfWeek === weekday)
-      .map((r) => ({ openTime: r.openTime, closeTime: r.closeTime }));
-  }
-
+  const windows = localOpenWindowsForDate(date, rules, exception);
   const { year, month, day } = parseDate(date);
   return windows
     .map((w) => {

@@ -20,9 +20,25 @@ export interface PricingRuleRecord {
   createdAt: Date;
 }
 
+/** Inclusive `YYYY-MM-DD` calendar window used to narrow date-scoped rules. */
+export interface PricingRuleDateWindow {
+  from: string;
+  to: string;
+}
+
 export interface IPricingRuleRepository {
   create(tx: PrismaTx, tenantId: string, data: NewPricingRule): Promise<PricingRuleRecord>;
   findById(tx: PrismaTx, id: string): Promise<PricingRuleRecord | null>;
-  listByListing(tx: PrismaTx, listingId: string): Promise<PricingRuleRecord[]>;
+  /**
+   * Every rule of a listing, or — with `window` — only those that can affect a
+   * date inside it. Recurring rules (`day_of_week`, `time_range`) match any
+   * date and are therefore always returned, so a windowed read stays a correct
+   * pricing picture for that window rather than a partial one.
+   */
+  listByListing(
+    tx: PrismaTx,
+    listingId: string,
+    window?: PricingRuleDateWindow,
+  ): Promise<PricingRuleRecord[]>;
   delete(tx: PrismaTx, id: string): Promise<void>;
 }

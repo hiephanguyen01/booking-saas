@@ -138,7 +138,7 @@ export class GetAvailabilityUseCase {
       const excByDate = new Map<string, DateException>(
         excRows.map((e) => [
           e.date,
-          { type: e.type, openTime: e.openTime, closeTime: e.closeTime },
+          { type: e.type, windows: e.windows, openTime: e.openTime, closeTime: e.closeTime },
         ]),
       );
 

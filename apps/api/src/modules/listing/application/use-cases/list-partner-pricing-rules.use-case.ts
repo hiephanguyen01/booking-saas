@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { CalendarRangeQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   LISTING_REPOSITORY,
@@ -22,14 +23,22 @@ export class ListPartnerPricingRulesUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, partnerId: string, listingId: string): Promise<PricingRuleRecord[]> {
+  /** `range` narrows date-scoped rules to a calendar window; recurring rules always come back. */
+  execute(
+    tenantId: string,
+    partnerId: string,
+    listingId: string,
+    range?: CalendarRangeQuery,
+  ): Promise<PricingRuleRecord[]> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const listing = await this.listings.findById(tx, listingId);
       if (!listing) throw new LegacyListingNotFound();
       if (listing.partnerId !== partnerId) {
         throw new LegacyListingNotOwned();
       }
-      return this.rules.listByListing(tx, listingId);
+      const window =
+        range?.from && range.to ? { from: range.from, to: range.to } : undefined;
+      return this.rules.listByListing(tx, listingId, window);
     });
   }
 }

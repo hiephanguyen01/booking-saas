@@ -53,7 +53,13 @@ export class PrismaListingReadRepository implements IListingReadRepository {
                   ? { date: { gte: filter.exceptionFrom, lte: filter.exceptionTo } }
                   : undefined,
               take: filter.exceptionFrom || filter.exceptionTo ? undefined : 0,
-              select: { date: true, type: true, openTime: true, closeTime: true },
+              select: {
+                date: true,
+                type: true,
+                windows: true,
+                openTime: true,
+                closeTime: true,
+              },
             },
           },
         },
@@ -134,6 +140,16 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       availabilityExceptions: l.resource.availabilityExceptions.map((e) => ({
         date: e.date.toISOString().slice(0, 10),
         type: e.type,
+        // A `custom_hours` day can have several windows (a lunch break); the
+        // search's open-hours check reads them through the shared kernel.
+        windows: Array.isArray(e.windows)
+          ? (e.windows as unknown[]).flatMap((value) => {
+              const window = value as { openTime?: unknown; closeTime?: unknown };
+              return typeof window.openTime === 'string' && typeof window.closeTime === 'string'
+                ? [{ openTime: window.openTime, closeTime: window.closeTime }]
+                : [];
+            })
+          : null,
         openTime: e.openTime,
         closeTime: e.closeTime,
       })),
