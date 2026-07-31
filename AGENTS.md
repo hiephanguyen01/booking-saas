@@ -42,9 +42,9 @@ packages/auth     @booking/auth       permission helpers (hasScope/hasPermission
 packages/i18n     @booking/i18n        i18next locales (storefront only; dashboard is Vietnamese-hardcoded)
 ```
 
-The API's internals: 17 bounded contexts under `apps/api/src/modules/*` (identity-access, tenancy,
+The API's internals: 18 bounded contexts under `apps/api/src/modules/*` (identity-access, tenancy,
 partner, catalog, listing, scheduling, booking, payments, promotions, finance, affiliate, notification,
-administrative-division, reviews, content-reports, favorites, storage) + 13 cross-cutting concerns
+administrative-division, reviews, content-reports, favorites, storage, legal) + 13 cross-cutting concerns
 under `apps/api/src/shared/*` (audit, domain, health, http, money, openapi, outbox, pagination,
 prisma, redis, tenant-context, time, validation). Details in
 [`docs/architecture.md`](./docs/architecture.md); each app/package has its own `CLAUDE.md` with local rules.
@@ -187,6 +187,7 @@ never drift between what production configures and what the demo fills in.
 - [`docs/glossary.md`](./docs/glossary.md) — domain terminology
 - [`docs/deployment.md`](./docs/deployment.md) — staging & production containers, migrations, releases, scaling
 - [`docs/deployment-runbook.md`](./docs/deployment-runbook.md) — step-by-step first deploy (AWS + Cloudflare R2 + Resend)
-- [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services, listing edit revisions)
+- [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services, listing edit revisions, legal documents)
+- [`docs/features/`](./docs/features/) — per-feature deep dives ([favorites](./docs/features/favorites.md), [legal documents & consent](./docs/features/legal-documents.md))
 - [`docs/deprecated-artifacts.md`](./docs/deprecated-artifacts.md) — dead code slated for deletion (don't extend it)
 - Per-subtree `CLAUDE.md`: [`apps/api`](./apps/api/CLAUDE.md) · [`apps/storefront`](./apps/storefront/CLAUDE.md) · [`apps/dashboard`](./apps/dashboard/CLAUDE.md) · [`packages/ui`](./packages/ui/CLAUDE.md) · [`packages/contracts`](./packages/contracts/CLAUDE.md)

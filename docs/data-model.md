@@ -27,6 +27,16 @@ read it before touching money, migrations, or tenant tables. Domain term definit
   target so the partner/tenant dashboard can scope + count without a join). See
   [`features/favorites.md`](./features/favorites.md), and `ContentReport` (customer moderation reports
   with immutable target/reporter/partner display snapshots and a tenant-owned resolution workflow).
+- **Legal & consent** — `LegalDocument` (one per `(tenant, doc_type)`; `current_version_id` is what the
+  storefront serves, null = never published or withdrawn), `LegalDocumentVersion` (immutable once
+  published; `published_at IS NULL` is the single draft, enforced by a **partial unique** index),
+  `LegalDocumentTranslation` (`(version_id, locale)` — text hangs *below* the version because a version
+  IS the agreement and `vi`/`en` are two renderings of it). `AgreementAcceptance` gains
+  `document_version_id` (FK `ON DELETE RESTRICT` — evidence is never deleted out from under itself) and
+  `accepted_locale` (the language actually rendered, fallback included). `tenants` gains
+  `legal_ready_at` / `legal_documents_ready` / `legal_readiness_applied_at`, which drive the storefront
+  hard gate. See [`features/legal-documents.md`](./features/legal-documents.md) and
+  [ADR 0008](./decisions/0008-legal-documents-and-consent.md).
 - **Reference** — administrative divisions (Vietnamese provinces/wards), audit logs, outbox events,
   notifications.
 

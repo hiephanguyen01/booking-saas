@@ -57,7 +57,7 @@ seeded — 3 tiers: **platform / tenant / partner**.
 
 ## Inter-module communication — the outbox
 
-The 13 bounded contexts never import each other. A producer writes an event **in the same transaction**
+The 18 bounded contexts never import each other for write-path side effects. A producer writes an event **in the same transaction**
 as its state change (`OutboxService.emit(tx, {eventType, payload})` → `outbox_events`); a consumer
 registers `OutboxHandlerRegistry.register(eventType, handler)`. The BullMQ relay
 (`shared/outbox/outbox-relay.worker.ts`) polls every 2s, claims a batch of 20 with

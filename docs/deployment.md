@@ -109,6 +109,18 @@ docker compose --env-file .env.stg \
 See [`AGENTS.md` → Seed scopes](../AGENTS.md). Staging may instead seed the full demo data by omitting
 `SEED_SCOPE`; production never should.
 
+**The seed is not optional on an upgrade, not just a first install.** Permission keys live in a code
+catalog and only reach the database through it, so a release that adds one leaves every route guarded
+by that key returning 403 until the seed runs. `tenant.legal.manage` (shipped with the legal-documents
+feature) is the current example. Seeding also does not invalidate the Redis permission cache, so
+holders keep getting 403 until their cached entry expires — flush it if a release must take effect
+immediately.
+
+In `SEED_SCOPE=tenants` the legal-documents seeder creates the four required documents as **drafts**.
+A tenant's storefront stays dark until its owner reads and publishes them — that is the intended
+behaviour of the hard gate, not a failed deploy. See
+[`features/legal-documents.md`](./features/legal-documents.md).
+
 Finally bootstrap the storage bucket and default assets once:
 
 ```bash
