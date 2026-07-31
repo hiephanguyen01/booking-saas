@@ -1,6 +1,6 @@
 import type { AcceptanceRecord, LegalDocumentType } from '@booking/contracts';
-import type { Locale } from '@booking/i18n';
-import { formatDate } from '@booking/i18n';
+import type { Locale, ScopedI18n } from '@booking/i18n';
+import { formatDate, NsI18n, useTranslation } from '@booking/i18n';
 import { FileText, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
@@ -9,7 +9,6 @@ import {
   AccountPanel,
 } from '~/features/account/components/shared/account-primitives';
 import type { loadAccountTermsRoute } from '~/features/account/server/account-terms-route.server';
-import { agreementTypeLabel, LEGAL_COPY } from '~/features/legal/lib/legal-copy';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 
 const DOCUMENT_AGREEMENT_TYPES = new Set<string>([
@@ -23,6 +22,16 @@ function isDocumentBacked(agreementType: string): agreementType is LegalDocument
   return DOCUMENT_AGREEMENT_TYPES.has(agreementType);
 }
 
+/** `commission_schedule`/`promo_funding` have no public document page but still need a label here. */
+function agreementTypeLabel(
+  agreementType: AcceptanceRecord['agreementType'],
+  t: ScopedI18n<[NsI18n.Legal]>['t'],
+): string {
+  return isDocumentBacked(agreementType)
+    ? t(`documentLabels.${agreementType}`)
+    : t(`otherAgreementLabels.${agreementType}`);
+}
+
 /** `/account/terms` — "the terms I accepted": every acceptance row this user has, newest first. */
 export function MyAcceptancesPage({
   loaderData,
@@ -30,21 +39,21 @@ export function MyAcceptancesPage({
   loaderData: ServerDataFrom<typeof loadAccountTermsRoute>;
 }) {
   const { acceptances, loadFailed, locale } = loaderData;
-  const copy = LEGAL_COPY[locale];
+  const { t } = useTranslation(NsI18n.Legal);
 
   return (
     <div className="flex flex-col gap-4 py-2 font-studio">
       <div>
         <h1 className="text-base font-semibold leading-6 text-foreground">
-          {copy.myAcceptancesTitle}
+          {t('myAcceptancesTitle')}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{copy.myAcceptancesSubtitle}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('myAcceptancesSubtitle')}</p>
       </div>
 
       {loadFailed ? (
-        <AccountListState icon={ShieldAlert} tone="destructive" message={copy.myAcceptancesLoadError} />
+        <AccountListState icon={ShieldAlert} tone="destructive" message={t('myAcceptancesLoadError')} />
       ) : acceptances.length === 0 ? (
-        <AccountListState icon={FileText} message={copy.myAcceptancesEmpty} />
+        <AccountListState icon={FileText} message={t('myAcceptancesEmpty')} />
       ) : (
         <AccountPanel className="divide-y divide-border">
           {acceptances.map((acceptance, index) => (
@@ -67,25 +76,25 @@ function AcceptanceRow({
   acceptance: AcceptanceRecord;
   locale: Locale;
 }) {
-  const copy = LEGAL_COPY[locale];
+  const { t } = useTranslation(NsI18n.Legal);
   const documentBacked = isDocumentBacked(acceptance.agreementType);
   const versionNo = Number(acceptance.version);
   const canRead = documentBacked && acceptance.documentVersionId !== null && Number.isInteger(versionNo);
   const languageLabel =
     acceptance.acceptedLocale === 'vi'
-      ? copy.languageVi
+      ? t('languageVi')
       : acceptance.acceptedLocale === 'en'
-        ? copy.languageEn
-        : copy.languageUnknown;
+        ? t('languageEn')
+        : t('languageUnknown');
 
   return (
     <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="text-sm font-semibold text-foreground">
-          {agreementTypeLabel(acceptance.agreementType, locale)}
+          {agreementTypeLabel(acceptance.agreementType, t)}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {Number.isNaN(versionNo) ? acceptance.version : copy.versionLabel(versionNo)}
+          {Number.isNaN(versionNo) ? acceptance.version : t('versionLabel', { versionNo })}
           {' · '}
           {formatDate(acceptance.acceptedAt, locale)}
           {' · '}
@@ -103,7 +112,7 @@ function AcceptanceRow({
           rel="noopener noreferrer"
           className="shrink-0 text-sm font-medium text-primary underline underline-offset-2"
         >
-          {copy.viewText}
+          {t('viewText')}
         </Link>
       ) : null}
     </div>

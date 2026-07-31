@@ -18,6 +18,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return data(result, { headers: { 'Content-Language': result.document.servedLocale } });
 }
 
+/**
+ * Without a `headers` export, React Router's document-header merge only
+ * copies `Set-Cookie` from the loader response (`prependCookies` in
+ * `server-runtime/headers.js`) — every other loader header, including the
+ * `Content-Language` set above, is silently dropped from the final response.
+ * `Set-Cookie` itself is unaffected: RR prepends it from `loaderHeaders` after
+ * calling this function regardless of what it returns.
+ */
+export function headers({ loaderHeaders }: Route.HeadersArgs) {
+  return { 'Content-Language': loaderHeaders.get('Content-Language') ?? 'vi' };
+}
+
 export function meta({ loaderData }: Route.MetaArgs) {
   return loaderData
     ? [{ title: loaderData.document.title }, { name: 'robots', content: 'noindex' }]

@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 import { useRouteLoaderData } from 'react-router';
 import { NsI18n, useTranslation, type ScopedI18n, type ScopedTranslationKey } from '@booking/i18n';
 import type { loader as rootLoader } from '~/root';
-import { LEGAL_COPY } from '~/features/legal/lib/legal-copy';
 import type { LegalConsentBundle } from '~/features/legal/server/legal.server';
 
 const APPLY_ERRORS = {
@@ -14,9 +13,8 @@ const APPLY_ERRORS = {
 } as const satisfies Record<string, ScopedTranslationKey<[NsI18n.Auth, NsI18n.Common]>>;
 
 function createFields(
-  t: ScopedI18n<[NsI18n.Auth, NsI18n.Common]>['t'],
+  t: ScopedI18n<[NsI18n.Auth, NsI18n.Common, NsI18n.Legal]>['t'],
   tenantName: string,
-  locale: LegalConsentBundle['locale'],
 ): FieldConfig<AffiliateRegistrationInput>[] {
   return [
     {
@@ -46,7 +44,7 @@ function createFields(
     {
       name: 'acceptedTerms',
       type: 'checkbox',
-      label: LEGAL_COPY[locale].affiliateConsent(tenantName),
+      label: t('legal:affiliateConsent', { tenant: tenantName }),
       required: true,
       colSpan: 2,
     },
@@ -70,12 +68,9 @@ export function useAffiliateApplicationPageController({
   };
 }) {
   const rootData = useRouteLoaderData<typeof rootLoader>('root');
-  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common, NsI18n.Legal]);
   const { legalConsent, tenantName } = loaderData;
-  const formFields = useMemo(
-    () => createFields(t, tenantName, legalConsent.locale),
-    [t, tenantName, legalConsent.locale],
-  );
+  const formFields = useMemo(() => createFields(t, tenantName), [t, tenantName]);
   const defaultValues: DefaultValues<AffiliateRegistrationInput> = useMemo(
     () => ({
       fullName: '',
@@ -87,9 +82,9 @@ export function useAffiliateApplicationPageController({
       accountHolder: '',
       acceptedTerms: false,
       acceptedVersionIds: legalConsent.versionIds,
-      acceptedLocale: legalConsent.locale,
+      acceptedLocale: legalConsent.acceptedLocale,
     }),
-    [legalConsent.locale, legalConsent.versionIds],
+    [legalConsent.acceptedLocale, legalConsent.versionIds],
   );
   // Belt-and-suspenders alongside `defaultValues`: force the two non-editable
   // consent fields to the loader's values right before submit, regardless of
@@ -98,9 +93,9 @@ export function useAffiliateApplicationPageController({
     () => (values: AffiliateRegistrationInput): Record<string, unknown> => ({
       ...values,
       acceptedVersionIds: legalConsent.versionIds,
-      acceptedLocale: legalConsent.locale,
+      acceptedLocale: legalConsent.acceptedLocale,
     }),
-    [legalConsent.locale, legalConsent.versionIds],
+    [legalConsent.acceptedLocale, legalConsent.versionIds],
   );
   const errorCode = actionData?.error;
 

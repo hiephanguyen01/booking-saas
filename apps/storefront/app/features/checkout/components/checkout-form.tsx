@@ -15,7 +15,6 @@ import { Form, Link } from 'react-router';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
-import { LEGAL_COPY } from '~/features/legal/lib/legal-copy';
 import type { LegalConsentBundle } from '~/features/legal/server/legal.server';
 import { formatVnd } from '~/lib/ui';
 import {
@@ -59,8 +58,7 @@ export function CheckoutForm({
   checkoutAttemptId: string;
   legalConsent: LegalConsentBundle;
 }) {
-  const { t } = useTranslation(NsI18n.Checkout);
-  const copy = LEGAL_COPY[legalConsent.locale];
+  const { t } = useTranslation([NsI18n.Checkout, NsI18n.Legal]);
   const {
     contactFields,
     defaultPaymentMethod,
@@ -98,7 +96,7 @@ export function CheckoutForm({
       {legalConsent.versionIds[0] ? (
         <input type="hidden" name="acceptedVersionIds" value={legalConsent.versionIds[0]} />
       ) : null}
-      <input type="hidden" name="acceptedLocale" value={legalConsent.locale} />
+      <input type="hidden" name="acceptedLocale" value={legalConsent.acceptedLocale} />
 
       <SectionCard aria-labelledby="checkout-contact-heading">
         <h2
@@ -148,7 +146,7 @@ export function CheckoutForm({
 
       {legalConsent.documents.length ? (
         <p className="text-xs leading-5 text-muted-foreground lg:text-right">
-          {copy.checkoutNoticePrefix}{' '}
+          {t('legal:checkoutNoticePrefix')}{' '}
           <LegalDocumentLinks
             documents={legalConsent.documents}
             locale={legalConsent.locale}

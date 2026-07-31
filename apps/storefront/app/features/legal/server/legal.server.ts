@@ -61,7 +61,31 @@ export interface LegalConsentBundle {
   documents: LegalDocumentSummary[];
   /** `documents[].versionId` — exactly what a consenting submission sends as `acceptedVersionIds`. */
   versionIds: string[];
+  /**
+   * The visitor's requested UI locale (the route's `:locale`). Use this for
+   * chrome copy and for building `/:locale/legal/...` links — never for what a
+   * consent gate records as `acceptedLocale`, which must name the language
+   * actually rendered, fallback included (see `acceptedLocale` below).
+   */
   locale: Locale;
+  /**
+   * The locale to submit as `acceptedLocale`: the resolved `servedLocale` of
+   * the bundle's lead document (`documents[0]`, the docType the calling gate
+   * listed first), not the requested `locale`. Every consent submission
+   * schema (`acceptLegalInputSchema`, `legalConsentInputSchema`,
+   * `registrationStartInputSchema`) carries exactly one `acceptedLocale` for
+   * a multi-document submission, so this cannot vary per document within one
+   * gate — it mirrors the "lead document" convention the dashboard's
+   * re-acceptance screen already uses (`pending[0]?.servedLocale`, see
+   * `legal-reaccept-screen.tsx`). A tenant whose translation coverage differs
+   * across the documents in one gate (e.g. an English `customer_terms` but no
+   * English `privacy_policy`) cannot be represented faithfully by a single
+   * field; recording a locale per document would need a contract change this
+   * fix does not make. Falls back to the requested `locale` only when no
+   * documents loaded (the degraded/unreachable-legal-service path, where
+   * `versionIds` is empty and callers skip submitting consent entirely).
+   */
+  acceptedLocale: Locale;
 }
 
 /**
@@ -88,6 +112,7 @@ export async function loadLegalConsentBundle(
     documents,
     versionIds: documents.map((document) => document.versionId),
     locale,
+    acceptedLocale: documents[0]?.servedLocale ?? locale,
   };
 }
 

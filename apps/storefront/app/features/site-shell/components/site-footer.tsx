@@ -11,7 +11,6 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { useLocale } from '~/hooks/use-locale';
-import { LEGAL_DOCUMENT_LABELS } from '~/features/legal/lib/legal-copy';
 import { SOCIAL_PROFILES, type SocialKey } from '~/features/site-shell/lib/site-footer-fallback';
 import { TenantBrand } from './tenant-brand';
 
@@ -22,7 +21,7 @@ export function SiteFooter({
   tenant: StorefrontTenant;
   className?: string;
 }) {
-  const { t } = useTranslation([NsI18n.Common, NsI18n.Navigation]);
+  const { t } = useTranslation([NsI18n.Common, NsI18n.Navigation, NsI18n.Legal]);
   const locale = useLocale();
   const config = tenant.themeConfig;
   const contact = config.contact;
@@ -114,11 +113,11 @@ export function SiteFooter({
               { label: t('footer.supportLinks.rules') },
               ...(!contact?.phone && !contact?.email ? [{ label: t('footer.supportLinks.contact') }] : []),
               {
-                label: LEGAL_DOCUMENT_LABELS.partner_terms[locale],
+                label: t('legal:documentLabels.partner_terms'),
                 href: storefrontPaths.legal(locale, 'partner_terms'),
               },
               {
-                label: LEGAL_DOCUMENT_LABELS.affiliate_terms[locale],
+                label: t('legal:documentLabels.affiliate_terms'),
                 href: storefrontPaths.legal(locale, 'affiliate_terms'),
               },
             ]}

@@ -10,7 +10,11 @@ import { cn } from '@booking/ui/lib/utils';
  * links are only ever emitted for `http`/`https` URLs.
  *
  * Supported syntax, exactly this and nothing more:
- * - ATX headings `#`, `##`, `###`
+ * - ATX headings `#`, `##`, `###` — rendered as `<h2>`/`<h3>`/`<h4>`, one level
+ *   below their `#` count. Every page that embeds this renderer already owns
+ *   its own `<h1>` for the document/entity title (see
+ *   `legal-document-page.tsx`), so an authored body must not introduce a
+ *   second one.
  * - paragraphs, separated by blank lines
  * - unordered lists (`- item`)
  * - ordered lists (`1. item`)
@@ -183,26 +187,29 @@ function parseInline(text: string, keyPrefix: string): React.ReactNode[] {
 function renderBlock(block: RestrictedMarkdownBlock, index: number): React.ReactNode {
   switch (block.kind) {
     case 'heading': {
+      // Shifted one level below the `#` count (h1 is never emitted here): the
+      // pages that embed this renderer already carry their own `<h1>` title,
+      // so a `#` in the authored body must not collide with it.
       const key = `heading-${index}`;
       const content = parseInline(block.text, key);
       if (block.level === 1) {
         return (
-          <h1 key={key} className="text-2xl font-semibold tracking-tight">
-            {content}
-          </h1>
-        );
-      }
-      if (block.level === 2) {
-        return (
-          <h2 key={key} className="text-xl font-semibold tracking-tight">
+          <h2 key={key} className="text-2xl font-semibold tracking-tight">
             {content}
           </h2>
         );
       }
+      if (block.level === 2) {
+        return (
+          <h3 key={key} className="text-xl font-semibold tracking-tight">
+            {content}
+          </h3>
+        );
+      }
       return (
-        <h3 key={key} className="text-lg font-semibold tracking-tight">
+        <h4 key={key} className="text-lg font-semibold tracking-tight">
           {content}
-        </h3>
+        </h4>
       );
     }
     case 'paragraph': {

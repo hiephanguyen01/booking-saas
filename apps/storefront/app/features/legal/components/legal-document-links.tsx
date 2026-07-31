@@ -1,12 +1,9 @@
 import type { LegalDocumentType } from '@booking/contracts';
-import type { Locale } from '@booking/i18n';
+import { NsI18n, useTranslation, type Locale } from '@booking/i18n';
 import { Fragment } from 'react';
 import { Link } from 'react-router';
 import { cn } from '@booking/ui/lib/utils';
 import { storefrontPaths } from '~/constants/paths';
-import { LEGAL_DOCUMENT_LABELS } from '~/features/legal/lib/legal-copy';
-
-const JOINER = { vi: ' và ', en: ' and ' } as const satisfies Record<Locale, string>;
 
 /**
  * A comma-and-joined inline list of links to each of `documents`' public legal
@@ -25,24 +22,21 @@ export function LegalDocumentLinks({
   className?: string;
   linkClassName?: string;
 }) {
+  const { t } = useTranslation(NsI18n.Legal);
   if (documents.length === 0) return null;
 
   return (
     <span className={cn('text-sm', className)}>
       {documents.map((document, index) => (
         <Fragment key={document.docType}>
-          {index > 0
-            ? index === documents.length - 1
-              ? JOINER[locale]
-              : ', '
-            : null}
+          {index > 0 ? (index === documents.length - 1 ? t('linksJoiner') : ', ') : null}
           <Link
             to={storefrontPaths.legal(locale, document.docType)}
             target="_blank"
             rel="noopener noreferrer"
             className={cn('font-medium text-primary underline underline-offset-2', linkClassName)}
           >
-            {LEGAL_DOCUMENT_LABELS[document.docType][locale]}
+            {t(`documentLabels.${document.docType}`)}
           </Link>
         </Fragment>
       ))}

@@ -32,7 +32,7 @@ export function usePartnerProfilePageController({
   const navigation = useNavigation();
   const submit = useSubmit();
   const { busy: submitting, run } = useSubmissionGuard(navigation.state);
-  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common, NsI18n.Legal]);
   const wardsFetcher = useFetcher<{
     provinceCode: string;
     wards: AdministrativeWard[];
@@ -42,7 +42,7 @@ export function usePartnerProfilePageController({
     defaultValues: {
       ...PARTNER_PROFILE_DEFAULTS,
       acceptedVersionIds: loaderData.legalConsent.versionIds,
-      acceptedLocale: loaderData.legalConsent.locale,
+      acceptedLocale: loaderData.legalConsent.acceptedLocale,
     },
     mode: 'onSubmit',
     reValidateMode: 'onBlur',
@@ -124,7 +124,7 @@ export function usePartnerProfilePageController({
     const payload: PartnerOnboardingProfileInput = {
       ...values,
       acceptedVersionIds: loaderData.legalConsent.versionIds,
-      acceptedLocale: loaderData.legalConsent.locale,
+      acceptedLocale: loaderData.legalConsent.acceptedLocale,
     };
     run(() => submit(payload as never, { method: 'post', encType: 'application/json' }));
   });

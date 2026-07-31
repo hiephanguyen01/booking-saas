@@ -15,7 +15,8 @@ export type AuthStartMode = 'register' | 'login' | 'reset';
 /** The two documents `mode === 'register'` requires a tick for (§ Consent capture). */
 export interface AuthStartLegalConsent {
   versionIds: string[];
-  locale: Locale;
+  /** The resolved `servedLocale` to submit — see `LegalConsentBundle.acceptedLocale`. */
+  acceptedLocale: Locale;
 }
 
 function createAuthStartSchema(mode: AuthStartMode) {
@@ -69,7 +70,7 @@ export function useAuthStartFormController(
       ? {
           ...values,
           acceptedVersionIds: legalConsent!.versionIds,
-          acceptedLocale: legalConsent!.locale,
+          acceptedLocale: legalConsent!.acceptedLocale,
         }
       : values;
     run(() => submit(payload, { method: 'post' }));

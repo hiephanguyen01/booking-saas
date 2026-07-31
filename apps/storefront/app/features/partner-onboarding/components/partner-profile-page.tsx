@@ -4,7 +4,6 @@ import { Field, FieldLabel } from '@booking/ui/components/ui/field';
 import { Form } from '@booking/ui/components/ui/form';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
-import { LEGAL_COPY } from '~/features/legal/lib/legal-copy';
 import { FormAlert } from './partner-form-controls';
 import {
   PARTNER_PROFILE_BANKS,
@@ -132,9 +131,7 @@ export function PartnerProfilePage({ loaderData, actionData }: PartnerProfilePag
                       field={{
                         name: 'acceptedTerms',
                         type: 'checkbox',
-                        label: LEGAL_COPY[loaderData.legalConsent.locale].partnerConsent(
-                          loaderData.tenantName,
-                        ),
+                        label: t('legal:partnerConsent', { tenant: loaderData.tenantName }),
                         required: true,
                       }}
                     />

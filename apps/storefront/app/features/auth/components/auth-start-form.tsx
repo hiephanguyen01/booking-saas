@@ -8,7 +8,6 @@ import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
-import { LEGAL_COPY } from '~/features/legal/lib/legal-copy';
 import type { LegalConsentBundle } from '~/features/legal/server/legal.server';
 import { AuthFormError, AuthPasswordInput, AuthSubmitButton } from './auth-form-controls';
 import {
@@ -28,12 +27,11 @@ export function StartForm({
   /** Registration only — the current customer_terms + privacy_policy versions to accept. */
   legalConsent?: LegalConsentBundle;
 }) {
-  const { t } = useTranslation(NsI18n.Auth);
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Legal]);
   const { control, errors, register, submitForm, submitting } = useAuthStartFormController(
     mode,
     legalConsent,
   );
-  const copy = LEGAL_COPY[locale];
 
   return (
     <form onSubmit={submitForm} noValidate aria-busy={submitting}>
@@ -115,7 +113,7 @@ export function StartForm({
                 )}
               />
               <FieldLabel htmlFor="acceptedTerms" className="text-sm font-normal">
-                {copy.registerConsent}
+                {t('legal:registerConsent')}
               </FieldLabel>
             </div>
             {legalConsent.documents.length ? (
