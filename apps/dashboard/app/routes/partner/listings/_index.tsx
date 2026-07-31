@@ -1,4 +1,3 @@
-import { data, redirect, useSearchParams } from 'react-router';
 import {
   submitListingResponseSchema,
   uuidSchema,
@@ -12,19 +11,20 @@ import {
   type PublishStatus,
   type SubmitListingResponse,
 } from '@booking/contracts';
-import type { Route } from './+types/_index';
-import { apiDelete, apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner } from '~/features/partner/server/partner.server';
-import { buildListingFeedColumns } from '~/features/partner/components/listings/listing-feed-table-columns';
-import { buildListingColumns } from '~/features/partner/components/listings/listing-table-columns';
-import { buildListingGroupColumns } from '~/features/partner/components/listings/listing-group-table-columns';
-import { CreateListingDialog } from '~/features/partner/components/listings/create-listing-dialog';
-import type { ListingsActionResult } from '~/features/partner/components/listings/types';
+import { data, redirect, useSearchParams } from 'react-router';
 import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
+import { dashboardPaths } from '~/constants/paths';
+import { CreateListingDialog } from '~/features/partner/components/listings/create-listing-dialog';
+import { buildListingFeedColumns } from '~/features/partner/components/listings/listing-feed-table-columns';
+import { buildListingGroupColumns } from '~/features/partner/components/listings/listing-group-table-columns';
+import { buildListingColumns } from '~/features/partner/components/listings/listing-table-columns';
+import type { ListingsActionResult } from '~/features/partner/components/listings/types';
+import { requirePartner } from '~/features/partner/server/partner.server';
+import { apiDelete, apiGet, apiPost } from '~/lib/api.server';
 import { hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { readListParams } from '~/lib/pagination';
-import { dashboardPaths } from '~/constants/paths';
+import type { Route } from './+types/_index';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Quản lý bài đăng · Đối tác · BookingOS' }];
@@ -52,6 +52,19 @@ function buildFilterSpec(listingTypes: ListingTypeResponse[]): FilterSpec {
   return [
     {
       kind: 'enum',
+      key: 'view',
+      label: 'Loại tin đăng',
+      // The empty option is the "all" view — readFilters falls back to 'all'.
+      allLabel: 'Tất cả loại',
+      // Only two short options — let it hug its content instead of the 160px floor.
+      className: 'sm:min-w-0',
+      options: [
+        { value: 'single', label: 'Đơn' },
+        { value: 'grouped', label: 'Nhóm' },
+      ],
+    },
+    {
+      kind: 'enum',
       key: 'status',
       label: 'Hiển thị',
       allLabel: 'Tất cả trạng thái',
@@ -72,18 +85,8 @@ function buildFilterSpec(listingTypes: ListingTypeResponse[]): FilterSpec {
   ];
 }
 
-function listingsHref(searchParams: URLSearchParams, view: ListingsView): string {
-  const next = new URLSearchParams();
-  for (const key of ['q', 'status', 'listingTypeId', 'pageSize']) {
-    const value = searchParams.get(key);
-    if (value) next.set(key, value);
-  }
-  next.set('view', view);
-  return `${dashboardPaths.partner.listings}?${next}`;
-}
-
-function resetListingsHref(view: ListingsView, pageSize: number): string {
-  const next = new URLSearchParams({ view, pageSize: String(pageSize) });
+function resetListingsHref(pageSize: number): string {
+  const next = new URLSearchParams({ pageSize: String(pageSize) });
   return `${dashboardPaths.partner.listings}?${next}`;
 }
 
@@ -163,7 +166,10 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === 'delete') {
     if (!can('partner.listings.write')) {
-      return data<ListingsActionResult>({ ok: false, error: 'Không có quyền xóa.' }, { status: 403 });
+      return data<ListingsActionResult>(
+        { ok: false, error: 'Không có quyền xóa.' },
+        { status: 403 },
+      );
     }
     const res = await apiDelete(`${endpoint}/${id}`, auth);
     return res.ok
@@ -211,7 +217,10 @@ export async function action({ request }: Route.ActionArgs) {
         );
   }
 
-  return data<ListingsActionResult>({ ok: false, error: 'Hành động không hợp lệ.' }, { status: 400 });
+  return data<ListingsActionResult>(
+    { ok: false, error: 'Hành động không hợp lệ.' },
+    { status: 400 },
+  );
 }
 
 export default function PartnerListingsPage({ loaderData, actionData }: Route.ComponentProps) {
@@ -234,21 +243,12 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
   const filterSpec = buildFilterSpec(listingTypes);
   const hasFilters = hasActiveFilters(filters);
   const actionError = actionData?.error ?? null;
-  const tabs = {
-    activeValue: view,
-    ariaLabel: 'Kiểu bài đăng',
-    items: [
-      { value: 'all', label: 'Tất cả', href: listingsHref(searchParams, 'all') },
-      { value: 'single', label: 'Tin đăng đơn', href: listingsHref(searchParams, 'single') },
-      { value: 'grouped', label: 'Tin đăng nhiều hạng mục', href: listingsHref(searchParams, 'grouped') },
-    ],
-  };
-  const resetHref = resetListingsHref(view, pageSize);
+  const resetHref = resetListingsHref(pageSize);
   const tableProps = {
-    tabs,
     search: { placeholder: 'Tìm tên bài đăng…' },
     filters: filterSpec,
-    filterValues: filters,
+    // 'all' is the default view, so it maps back to the select's empty option.
+    filterValues: { ...filters, view: view === 'all' ? '' : view },
     resetHref,
     pageSize,
     enableColumnVisibility: true,
@@ -262,7 +262,9 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
         title="Quản lý bài đăng"
         description="Tạo, gửi duyệt và quản lý khả năng hiển thị của bài đăng."
         actions={
-          canWrite && listingTypesAvailable ? <CreateListingDialog listingTypes={listingTypes} /> : null
+          canWrite && listingTypesAvailable ? (
+            <CreateListingDialog listingTypes={listingTypes} />
+          ) : null
         }
       />
       {view === 'all' ? (
@@ -293,7 +295,9 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
           })}
           data={items as ListingResponse[]}
           getRowKey={(listing) => listing.id}
-          emptyMessage={hasFilters ? 'Không có bài đăng đơn khớp bộ lọc.' : 'Chưa có bài đăng đơn nào.'}
+          emptyMessage={
+            hasFilters ? 'Không có bài đăng đơn khớp bộ lọc.' : 'Chưa có bài đăng đơn nào.'
+          }
         />
       ) : (
         <DashboardDataTable
@@ -307,7 +311,9 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
           })}
           data={items as ListingGroupResponse[]}
           getRowKey={(group) => group.id}
-          emptyMessage={hasFilters ? 'Không có bài đăng nhóm khớp bộ lọc.' : 'Chưa có bài đăng nhóm nào.'}
+          emptyMessage={
+            hasFilters ? 'Không có bài đăng nhóm khớp bộ lọc.' : 'Chưa có bài đăng nhóm nào.'
+          }
         />
       )}
     </div>

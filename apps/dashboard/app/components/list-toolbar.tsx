@@ -353,7 +353,7 @@ function ToolbarField({
           name={field.key}
           defaultValue={filters[field.key] ?? ''}
           onChange={onControlChange}
-          className={cn(compact && 'min-w-40', split && 'w-full sm:w-auto')}
+          className={cn(compact && 'min-w-40', split && 'w-full sm:w-auto', field.className)}
         >
           <option value="">{field.allLabel ?? 'Tất cả'}</option>
           {field.options.map((o) => (
