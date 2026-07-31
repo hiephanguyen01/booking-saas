@@ -7,6 +7,7 @@ import type {
   loadAffiliateApplicationRoute,
   submitAffiliateApplication,
 } from '~/features/affiliate/server/affiliate-application-route.server';
+import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 
 function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantName: string }) {
@@ -37,13 +38,17 @@ export function AffiliateApplicationPage({
 }: AffiliateApplicationPageProps) {
   const {
     dashboardLoginHref,
+    defaultValues,
     fieldErrors,
     formFields,
+    legalDocuments,
+    locale,
     logoUrl,
     serverError,
     success,
     t,
     tenantName,
+    transform,
   } = useAffiliateApplicationPageController({ loaderData, actionData });
 
   if (success) {
@@ -92,11 +97,22 @@ export function AffiliateApplicationPage({
             <GenericForm
               schema={affiliateRegistrationSchema}
               fields={formFields}
+              defaultValues={defaultValues}
+              transform={transform}
               columns={2}
               submitLabel={t('auth:affiliate.submit')}
               submitFullWidth
               serverError={serverError}
               fieldErrors={fieldErrors}
+              extraFields={() =>
+                legalDocuments.length ? (
+                  <LegalDocumentLinks
+                    documents={legalDocuments}
+                    locale={locale}
+                    className="-mt-2 text-muted-foreground"
+                  />
+                ) : null
+              }
             />
           </div>
         </div>

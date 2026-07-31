@@ -24,6 +24,7 @@ import { toPaginated } from '../../../../shared/pagination/pagination';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { CreateListingGroupUseCase } from '../../application/use-cases/create-listing-group.use-case';
 import { DeleteListingGroupUseCase } from '../../application/use-cases/delete-listing-group.use-case';
@@ -69,7 +70,7 @@ export class PartnerListingGroupController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post()
   @ApiCreatedResponse({ type: ListingGroupResponseDto })
   async create(@Body() input: CreateListingGroupDto): Promise<ListingGroupResponse> {
@@ -102,7 +103,7 @@ export class PartnerListingGroupController {
    * `GET :id/pending-changes`.
    */
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Patch(':id')
   @UuidParam()
   @ApiOkResponse({ type: ListingGroupResponseDto })
@@ -124,7 +125,7 @@ export class PartnerListingGroupController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Delete(':id')
   @UuidParam()
   @HttpCode(204)

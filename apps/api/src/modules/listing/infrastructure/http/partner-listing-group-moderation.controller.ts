@@ -6,6 +6,7 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { SubmitListingGroupUseCase } from '../../application/use-cases/moderation/submit-listing-group.use-case';
 import { HideListingGroupUseCase } from '../../application/use-cases/moderation/hide-listing-group.use-case';
@@ -35,7 +36,7 @@ export class PartnerListingGroupModerationController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/submit')
   @HttpCode(200)
   @ApiOperation({ summary: 'Submit a listing group for review' })
@@ -50,7 +51,7 @@ export class PartnerListingGroupModerationController {
   }
 
   @RequirePermissions('partner.listings.publish')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/hide')
   @HttpCode(200)
   @ApiOperation({ summary: "Hide the partner's own listing group" })
@@ -68,7 +69,7 @@ export class PartnerListingGroupModerationController {
   }
 
   @RequirePermissions('partner.listings.publish')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/republish')
   @HttpCode(200)
   @ApiOperation({ summary: "Republish the partner's own listing group" })

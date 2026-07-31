@@ -3,6 +3,7 @@ import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
+import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { AFFILIATE_ATTRIBUTION_READER } from '../../domain/ports/affiliate-attribution-reader.port';
 import { AFFILIATE_READER } from '../../domain/ports/affiliate-reader.port';
 import { AFFILIATE_REPOSITORY } from '../../domain/ports/affiliate-repository.port';
@@ -41,9 +42,10 @@ import { UpdateAffiliateRateUseCase } from '../../application/use-cases/update-a
 import { PublicReferralController } from './public-referral.controller';
 import { AffiliateController } from './affiliate.controller';
 import { TenantAffiliateController } from './tenant-affiliate.controller';
+import { ResolveAffiliateTenantContextGuard } from './guards/resolve-affiliate-tenant-context.guard';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule],
+  imports: [PrismaModule, TenantContextModule, TenancyModule, LegalModule],
   controllers: [PublicReferralController, AffiliateController, TenantAffiliateController],
   providers: [
     PrismaAffiliateRepository,
@@ -88,6 +90,7 @@ import { TenantAffiliateController } from './tenant-affiliate.controller';
     GetTenantAffiliateUseCase,
     SetAffiliateStatusUseCase,
     UpdateAffiliateRateUseCase,
+    ResolveAffiliateTenantContextGuard,
   ],
   // Exported so the booking module can resolve attribution in-tx at booking creation.
   exports: [ResolveAttributionUseCase],

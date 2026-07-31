@@ -26,6 +26,8 @@ function toRecord(t: PrismaTenant): TenantRecord {
     themeConfig: (t.themeConfig ?? {}) as Record<string, unknown>,
     settings: (t.settings ?? {}) as Record<string, unknown>,
     defaultCancellationPolicyId: t.defaultCancellationPolicyId,
+    legalReadyAt: t.legalReadyAt,
+    legalDocumentsReady: t.legalDocumentsReady,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
   };
@@ -99,6 +101,32 @@ export class PrismaTenantRepository implements ITenantRepository {
         },
       }),
     );
+  }
+
+  /**
+   * Stamps or clears the legal-readiness marker. Only called by the
+   * legal-readiness outbox handler — never by the platform-admin tenant form.
+   *
+   * Guarded update, not a blind one: the payload is an absolute snapshot taken
+   * when the event was emitted, and the relay redelivers out of order, so the
+   * write only lands when `emittedAt` is at least as new as the last applied
+   * event. `legal_readiness_at IS NULL` means nothing has been applied yet
+   * (fresh tenant, or a row stamped by the seed).
+   */
+  async setLegalReadiness(
+    tenantId: string,
+    at: Date | null,
+    publishedCount: number,
+    emittedAt: Date,
+  ): Promise<boolean> {
+    const { count } = await this.prisma.admin.tenant.updateMany({
+      where: {
+        id: tenantId,
+        OR: [{ legalReadinessAt: null }, { legalReadinessAt: { lte: emittedAt } }],
+      },
+      data: { legalReadyAt: at, legalDocumentsReady: publishedCount, legalReadinessAt: emittedAt },
+    });
+    return count > 0;
   }
 
   /** True when `policyId` is a tenant-level (partner_id null) policy of this tenant. */

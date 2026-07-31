@@ -15,6 +15,7 @@ import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { CreateCancellationPolicyUseCase } from '../../application/use-cases/create-cancellation-policy.use-case';
 import { DeleteCancellationPolicyUseCase } from '../../application/use-cases/delete-cancellation-policy.use-case';
@@ -65,7 +66,7 @@ export class PartnerCancellationPolicyController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post()
   @ApiCreatedResponse({ type: CancellationPolicyResponseDto })
   create(@Body() input: CreateCancellationPolicyDto): Promise<CancellationPolicyResponse> {
@@ -77,7 +78,7 @@ export class PartnerCancellationPolicyController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Patch(':id')
   @UuidParam()
   @ApiOkResponse({ type: CancellationPolicyResponseDto })
@@ -94,7 +95,7 @@ export class PartnerCancellationPolicyController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Delete(':id')
   @HttpCode(204)
   @UuidParam()

@@ -71,6 +71,19 @@ export interface INotificationReader {
   loadBookingContext(tx: PrismaTx, bookingId: string): Promise<BookingNotificationContext | null>;
   loadListingContext(tx: PrismaTx, listingId: string): Promise<ListingNotificationContext | null>;
   loadPartnerContext(tx: PrismaTx, partnerId: string): Promise<PartnerNotificationContext | null>;
+  /**
+   * Every member of every `approved` partner in the tenant — `legal.document_published`
+   * → `partner_terms` (Task 20). Queried directly against `partners`/`partner_members`
+   * (same style as `loadPartnerMembers`), not through the partner module, so this module
+   * never imports it.
+   */
+  loadActivePartnerRecipients(tx: PrismaTx, tenantId: string): Promise<NotificationRecipient[]>;
+  /**
+   * Every `approved` affiliate in the tenant — `legal.document_published` →
+   * `affiliate_terms` (Task 20). Queried directly against `affiliates`, not through the
+   * affiliate module.
+   */
+  loadActiveAffiliateRecipients(tx: PrismaTx, tenantId: string): Promise<NotificationRecipient[]>;
   /** Confirmed bookings whose start falls in [from, to) — the reminder job (cross-tenant, admin pool). */
   findUpcomingConfirmed(from: Date, to: Date): Promise<Array<{ tenantId: string; bookingId: string }>>;
 }

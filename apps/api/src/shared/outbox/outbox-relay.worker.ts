@@ -66,9 +66,16 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
     // claim = push available_at forward so a concurrent poller skips these rows
     return this.prisma.admin.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<
-        { id: string; tenant_id: string | null; event_type: string; payload: unknown; attempts: number }[]
+        {
+          id: string;
+          tenant_id: string | null;
+          event_type: string;
+          payload: unknown;
+          attempts: number;
+          created_at: Date;
+        }[]
       >`
-        SELECT id, tenant_id, event_type, payload, attempts
+        SELECT id, tenant_id, event_type, payload, attempts, created_at
         FROM outbox_events
         WHERE processed_at IS NULL
           AND dead_lettered_at IS NULL
@@ -96,6 +103,7 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
     event_type: string;
     payload: unknown;
     attempts: number;
+    created_at: Date;
   }): Promise<void> {
     const event = {
       id: row.id,
@@ -103,6 +111,7 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
       eventType: row.event_type,
       payload: row.payload,
       attempts: row.attempts,
+      createdAt: row.created_at,
     };
     try {
       const handlers = this.registry.handlersFor(event.eventType);

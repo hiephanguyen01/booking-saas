@@ -1,17 +1,38 @@
-import { NavLink, Outlet, useSearchParams } from 'react-router';
+import { NavLink, Outlet, redirect, useSearchParams } from 'react-router';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { cn } from '@booking/ui/lib/utils';
 import { Share2 } from 'lucide-react';
 import type { Route } from './+types/_layout';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
+import { fetchPendingLegalAcceptances } from '~/features/legal/server/legal.server';
+import { dashboardPaths } from '~/constants/paths';
 import { affiliateTabs } from './nav';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · BookingOS' }];
 }
 
+/**
+ * Every affiliate screen shares this loader, so it is the one place that
+ * redirects to the legal re-acceptance interstitial (Task 16) whenever
+ * `/me/legal/pending` is non-empty for the active membership. Skipped when
+ * there is no approved `active` membership (nothing to accept terms for) and
+ * on the interstitial path itself — that route re-checks in its own loader
+ * and redirects away once nothing is pending, so checking here too would
+ * bounce the user back to this exact page forever.
+ */
 export async function loader({ request }: Route.LoaderArgs) {
-  const { memberships, active } = await requireAffiliate(request);
+  const { memberships, active, auth } = await requireAffiliate(request);
+
+  const { pathname } = new URL(request.url);
+  if (active && pathname !== dashboardPaths.affiliate.legalUpdate) {
+    const pending = await fetchPendingLegalAcceptances(auth);
+    // Fail open on a transient error reading the pending list.
+    if (pending.ok && (pending.data?.length ?? 0) > 0) {
+      throw redirect(dashboardPaths.affiliate.legalUpdate);
+    }
+  }
+
   return {
     memberships: memberships.map((m) => ({ tenantId: m.tenantId, tenantName: m.tenantName, status: m.status })),
     active: active ? { tenantId: active.tenantId, tenantName: active.tenantName } : null,

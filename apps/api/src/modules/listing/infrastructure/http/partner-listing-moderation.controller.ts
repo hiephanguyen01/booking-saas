@@ -38,6 +38,7 @@ import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/d
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { EnforcePlanLimit } from '../../../tenancy/infrastructure/http/decorators/enforce-plan-limit.decorator';
 import { PlanLimitGuard } from '../../../tenancy/infrastructure/http/guards/plan-limit.guard';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import {
   toListingResponse,
@@ -198,7 +199,7 @@ export class PartnerListingModerationController {
    * then submits for review via `POST :id/submit`.
    */
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard, PlanLimitGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard, PlanLimitGuard)
   @EnforcePlanLimit('listing')
   @Post()
   @ApiOperation({ summary: 'Create a listing for the calling partner' })
@@ -232,7 +233,7 @@ export class PartnerListingModerationController {
    * and the pending change is read from `GET :id/revision`.
    */
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Patch(':id')
   @ApiOperation({ summary: "Update one of the partner's own listings" })
   @UuidParam()
@@ -252,7 +253,7 @@ export class PartnerListingModerationController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({ summary: "Delete the partner's own draft listing" })
@@ -273,7 +274,7 @@ export class PartnerListingModerationController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/submit')
   @HttpCode(200)
   @ApiOperation({ summary: 'Submit a listing for review' })
@@ -289,7 +290,7 @@ export class PartnerListingModerationController {
   }
 
   @RequirePermissions('partner.listings.publish')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/hide')
   @HttpCode(200)
   @ApiOperation({ summary: "Hide the partner's own published listing" })
@@ -307,7 +308,7 @@ export class PartnerListingModerationController {
   }
 
   @RequirePermissions('partner.listings.publish')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/republish')
   @HttpCode(200)
   @ApiOperation({ summary: "Republish the partner's own hidden listing" })

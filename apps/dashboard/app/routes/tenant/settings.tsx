@@ -15,6 +15,7 @@ import {
   Globe2,
   LayoutDashboard,
   Palette,
+  Scale,
   SlidersHorizontal,
   WalletCards,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ import type { Route } from './+types/settings';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { handleSettingsAction } from '~/features/tenant/server/settings-actions.server';
+import { fetchTenantLegalOverview } from '~/features/legal/server/legal.server';
 import {
   TENANT_FLAGS_PATH,
   toPartnerPromotionsState,
@@ -30,6 +32,7 @@ import {
 } from '~/features/tenant/lib/flags';
 import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { PageHeader } from '~/components/page-header';
+import { LegalDocumentsCard } from '~/features/tenant/components/settings/legal-documents-card';
 import { PartnerPromotionsCard } from '~/features/tenant/components/settings/partner-promotions-card';
 import { TenantDefaultCancellationPolicyCard } from '~/features/tenant/components/settings/tenant-default-cancellation-policy-card';
 import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-domains-card';
@@ -56,6 +59,9 @@ const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   'gateway-off': 'payments',
   'payment-settings': 'payments',
   'payout-policy': 'payouts',
+  'legal-draft': 'legal',
+  'legal-publish': 'legal',
+  'legal-withdraw': 'legal',
 };
 
 export function meta(): Route.MetaDescriptors {
@@ -67,8 +73,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const canTheme = can('tenant.theme.manage');
   const canSettings = can('tenant.settings.manage');
   const canFinance = can('tenant.finance.read');
+  const canLegal = can('tenant.legal.manage');
 
-  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes] =
+  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes, legalRes] =
     await Promise.all([
       canTheme ? apiGet<TenantThemeResponse>('/tenant/theme', auth) : Promise.resolve(null),
       canSettings ? apiGet<DomainResponse[]>('/tenant/domains', auth) : Promise.resolve(null),
@@ -82,6 +89,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       canFinance
         ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
         : Promise.resolve(null),
+      canLegal ? fetchTenantLegalOverview(auth) : Promise.resolve(null),
     ]);
 
   return {
@@ -92,6 +100,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     canTheme,
     canSettings,
     canFinance,
+    canLegal,
     partnerPromotions: toPartnerPromotionsState(flagsRes),
     cancellationPolicies: policiesRes?.ok ? (policiesRes.data ?? []) : null,
     cancellationPoliciesError: apiError(policiesRes, 'Không tải được chính sách huỷ.'),
@@ -100,6 +109,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     payoutPolicy: payoutPolicyRes?.ok ? (payoutPolicyRes.data ?? null) : null,
     payoutPolicyError: apiError(payoutPolicyRes, 'Không tải được chính sách chi trả.'),
     canManagePayoutPolicy: can('tenant.payouts.manage'),
+    legal: legalRes?.ok ? legalRes.data : null,
+    legalError: apiError(legalRes, 'Không tải được dữ liệu pháp lý.'),
   };
 }
 
@@ -117,6 +128,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     canTheme,
     canSettings,
     canFinance,
+    canLegal,
     partnerPromotions,
     cancellationPolicies,
     cancellationPoliciesError,
@@ -125,6 +137,8 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     payoutPolicy,
     payoutPolicyError,
     canManagePayoutPolicy,
+    legal,
+    legalError,
   } = loaderData;
   const baseGatewayConfig =
     gatewayConfigs?.find((c) => c.gateway !== 'momo' && c.gateway !== 'zalopay') ?? null;
@@ -177,6 +191,13 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
           value: 'payouts',
           label: 'Chi trả đối tác',
           icon: WalletCards,
+        }
+      : null,
+    canLegal
+      ? {
+          value: 'legal',
+          label: 'Pháp lý',
+          icon: Scale,
         }
       : null,
   ].filter((tab) => tab !== null);
@@ -394,6 +415,23 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               ) : (
                 <SettingsLoadError message={payoutPolicyError ?? 'Không có dữ liệu chi trả.'} />
               )}
+            </TabsContent>
+          ) : null}
+
+          {canLegal ? (
+            <TabsContent value="legal" forceMount className="w-full data-[state=inactive]:hidden">
+              <LegalDocumentsCard
+                overview={legal}
+                loadError={legalError}
+                readOnly={readOnly}
+                draftError={errFor('legal-draft')}
+                draftFieldErrors={fieldErrorsFor('legal-draft')}
+                draftSaved={okFor('legal-draft')}
+                publishError={errFor('legal-publish')}
+                publishSaved={okFor('legal-publish')}
+                withdrawError={errFor('legal-withdraw')}
+                withdrawSaved={okFor('legal-withdraw')}
+              />
             </TabsContent>
           ) : null}
         </div>

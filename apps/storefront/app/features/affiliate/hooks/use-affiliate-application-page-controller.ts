@@ -1,9 +1,11 @@
 import { type AffiliateRegistrationInput } from '@booking/contracts';
+import type { DefaultValues } from 'react-hook-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { useMemo } from 'react';
 import { useRouteLoaderData } from 'react-router';
 import { NsI18n, useTranslation, type ScopedI18n, type ScopedTranslationKey } from '@booking/i18n';
 import type { loader as rootLoader } from '~/root';
+import type { LegalConsentBundle } from '~/features/legal/server/legal.server';
 
 const APPLY_ERRORS = {
   emailTakenWrongPassword: 'common:becomePartner.errors.emailTakenWrongPassword',
@@ -11,7 +13,8 @@ const APPLY_ERRORS = {
 } as const satisfies Record<string, ScopedTranslationKey<[NsI18n.Auth, NsI18n.Common]>>;
 
 function createFields(
-  t: ScopedI18n<[NsI18n.Auth, NsI18n.Common]>['t'],
+  t: ScopedI18n<[NsI18n.Auth, NsI18n.Common, NsI18n.Legal]>['t'],
+  tenantName: string,
 ): FieldConfig<AffiliateRegistrationInput>[] {
   return [
     {
@@ -38,6 +41,13 @@ function createFields(
       label: t('auth:affiliate.accountHolderOptional'),
       colSpan: 2,
     },
+    {
+      name: 'acceptedTerms',
+      type: 'checkbox',
+      label: t('legal:affiliateConsent', { tenant: tenantName }),
+      required: true,
+      colSpan: 2,
+    },
   ];
 }
 
@@ -49,6 +59,7 @@ export function useAffiliateApplicationPageController({
     tenantName: string;
     dashboardUrl: string;
     tenantLogoUrl: string | null;
+    legalConsent: LegalConsentBundle;
   };
   actionData?: {
     ok?: boolean;
@@ -57,14 +68,44 @@ export function useAffiliateApplicationPageController({
   };
 }) {
   const rootData = useRouteLoaderData<typeof rootLoader>('root');
-  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
-  const formFields = useMemo(() => createFields(t), [t]);
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common, NsI18n.Legal]);
+  const { legalConsent, tenantName } = loaderData;
+  const formFields = useMemo(() => createFields(t, tenantName), [t, tenantName]);
+  const defaultValues: DefaultValues<AffiliateRegistrationInput> = useMemo(
+    () => ({
+      fullName: '',
+      email: '',
+      phone: '',
+      password: '',
+      bankName: '',
+      accountNo: '',
+      accountHolder: '',
+      acceptedTerms: false,
+      acceptedVersionIds: legalConsent.versionIds,
+      acceptedLocale: legalConsent.acceptedLocale,
+    }),
+    [legalConsent.acceptedLocale, legalConsent.versionIds],
+  );
+  // Belt-and-suspenders alongside `defaultValues`: force the two non-editable
+  // consent fields to the loader's values right before submit, regardless of
+  // react-hook-form's internal bookkeeping for a field with no rendered control.
+  const transform = useMemo(
+    () => (values: AffiliateRegistrationInput): Record<string, unknown> => ({
+      ...values,
+      acceptedVersionIds: legalConsent.versionIds,
+      acceptedLocale: legalConsent.acceptedLocale,
+    }),
+    [legalConsent.acceptedLocale, legalConsent.versionIds],
+  );
   const errorCode = actionData?.error;
 
   return {
     dashboardLoginHref: `${loaderData.dashboardUrl}/auth/login`,
+    defaultValues,
     fieldErrors: actionData?.fieldErrors ?? null,
     formFields,
+    legalDocuments: legalConsent.documents,
+    locale: legalConsent.locale,
     logoUrl:
       loaderData.tenantLogoUrl ??
       (rootData?.kind === 'tenant' ? rootData.tenant.themeConfig.logoUrl : null) ??
@@ -78,5 +119,6 @@ export function useAffiliateApplicationPageController({
     success: Boolean(actionData?.ok),
     t,
     tenantName: loaderData.tenantName,
+    transform,
   };
 }

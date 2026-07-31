@@ -1,4 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
+import { z } from 'zod';
+import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { TENANT_REPOSITORY } from '../../domain/ports/tenant-repository.port';
@@ -49,6 +51,7 @@ import { AssertCanAddPartnerUseCase } from '../../application/use-cases/assert-c
 import { AssertCanAddListingUseCase } from '../../application/use-cases/assert-can-add-listing.use-case';
 import { AssertCustomDomainAllowedUseCase } from '../../application/use-cases/assert-custom-domain-allowed.use-case';
 import { CheckBookingQuotaUseCase } from '../../application/use-cases/check-booking-quota.use-case';
+import { ApplyLegalReadinessUseCase } from '../../application/use-cases/apply-legal-readiness.use-case';
 import { PlanLimitGuard } from './guards/plan-limit.guard';
 import { RequireActiveSubscriptionGuard } from './guards/require-active-subscription.guard';
 import { AdminTenantController } from './admin-tenant.controller';
@@ -56,6 +59,12 @@ import { AdminPlanController } from './admin-plan.controller';
 import { PlatformHealthController } from './platform-health.controller';
 import { PublicTenantController } from './public-tenant.controller';
 import { TenantSettingsController } from './tenant-settings.controller';
+
+/** Wire shape of `legal.readiness_changed` — four required documents, so 0..4. */
+const LEGAL_READINESS_PAYLOAD = z.object({
+  legalReady: z.boolean(),
+  publishedCount: z.number().int().min(0).max(4),
+});
 
 @Module({
   imports: [PrismaModule, TenantContextModule],
@@ -110,6 +119,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     AssertCanAddListingUseCase,
     AssertCustomDomainAllowedUseCase,
     CheckBookingQuotaUseCase,
+    ApplyLegalReadinessUseCase,
     PlanLimitGuard,
     RequireActiveSubscriptionGuard,
   ],
@@ -131,4 +141,35 @@ import { TenantSettingsController } from './tenant-settings.controller';
     ResolveTenantByHostUseCase,
   ],
 })
-export class TenancyModule {}
+export class TenancyModule implements OnModuleInit {
+  private readonly logger = new Logger(TenancyModule.name);
+
+  constructor(
+    private readonly registry: OutboxHandlerRegistry,
+    private readonly applyLegalReadiness: ApplyLegalReadinessUseCase,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register('legal.readiness_changed', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      // Parsed, not cast: this is the one event that decides whether a
+      // storefront serves traffic at all. A shape drift used to compile fine and
+      // then write `publishedCount: undefined`, which Prisma reads as "leave the
+      // column alone" — freezing the dashboard's readiness card at a count that
+      // contradicted the dark storefront, silently. Throwing instead lets the
+      // relay retry and finally dead-letter it visibly.
+      const payload = LEGAL_READINESS_PAYLOAD.parse(event.payload);
+      return this.applyLegalReadiness.execute(tenantId, {
+        ...payload,
+        emittedAt: event.createdAt,
+      });
+    });
+  }
+
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
+  }
+}

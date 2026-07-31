@@ -4,6 +4,7 @@ import { index, route, type RouteConfigEntry } from '@react-router/dev/routes';
 // the parent `_layout.tsx` (requireAffiliate) — wired in app/routes.ts.
 export const affiliateChildren: RouteConfigEntry[] = [
   index('routes/affiliate/_index.tsx'),
+  route('legal-update', 'routes/affiliate/legal-update.tsx'),
   route('links', 'routes/affiliate/links.tsx'),
   route('commissions', 'routes/affiliate/commissions.tsx'),
 ];

@@ -29,6 +29,10 @@ export class StartRegistrationUseCase {
       fullName: input.fullName,
       locale: input.locale,
       ...(input.tenantId ? { tenantId: input.tenantId } : {}),
+      ...(input.acceptedVersionIds?.length
+        ? { acceptedVersionIds: input.acceptedVersionIds }
+        : {}),
+      ...(input.acceptedLocale ? { acceptedLocale: input.acceptedLocale } : {}),
     });
     await this.email.sendOtp({
       purpose: 'registration',

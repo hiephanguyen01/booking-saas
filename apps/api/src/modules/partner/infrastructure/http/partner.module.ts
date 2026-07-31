@@ -4,12 +4,11 @@ import { TenantContextModule } from '../../../../shared/tenant-context/tenant-co
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { AdministrativeDivisionModule } from '../../../administrative-division/infrastructure/http/administrative-division.module';
+import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { PARTNER_READER } from '../../domain/ports/partner-reader.port';
 import { PARTNER_REPOSITORY } from '../../domain/ports/partner-repository.port';
-import { AGREEMENT_REPOSITORY } from '../../domain/ports/agreement-repository.port';
 import { PARTNER_ROLES } from '../../domain/ports/partner-roles.port';
 import { PrismaPartnerRepository } from '../repositories/prisma-partner.repository';
-import { PrismaAgreementRepository } from '../repositories/prisma-agreement.repository';
 import { PrismaPartnerRoles } from '../services/prisma-partner-roles';
 import { ApplyAsPartnerUseCase } from '../../application/use-cases/apply-as-partner.use-case';
 import { CreateHousePartnerUseCase } from '../../application/use-cases/create-house-partner.use-case';
@@ -22,7 +21,6 @@ import { SuspendPartnerUseCase } from '../../application/use-cases/suspend-partn
 import { ListPartnersUseCase } from '../../application/use-cases/list-partners.use-case';
 import { GetPartnerUseCase } from '../../application/use-cases/get-partner.use-case';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
-import { ListPartnerAgreementsUseCase } from '../../application/use-cases/list-partner-agreements.use-case';
 import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-partner-default-cancellation-policy.use-case';
 import { PartnerApplicationController } from './partner-application.controller';
 import { TenantPartnerController } from './tenant-partner.controller';
@@ -39,6 +37,7 @@ import { PublicPartnerController } from './public-partner.controller';
     IdentityAccessModule,
     TenancyModule,
     AdministrativeDivisionModule,
+    LegalModule,
   ],
   controllers: [
     PartnerApplicationController,
@@ -50,7 +49,6 @@ import { PublicPartnerController } from './public-partner.controller';
     PrismaPartnerRepository,
     { provide: PARTNER_REPOSITORY, useExisting: PrismaPartnerRepository },
     { provide: PARTNER_READER, useExisting: PrismaPartnerRepository },
-    { provide: AGREEMENT_REPOSITORY, useClass: PrismaAgreementRepository },
     { provide: PARTNER_ROLES, useClass: PrismaPartnerRoles },
     { provide: PUBLIC_PARTNER_REPOSITORY, useClass: PrismaPublicPartnerRepository },
     ApplyAsPartnerUseCase,
@@ -64,7 +62,6 @@ import { PublicPartnerController } from './public-partner.controller';
     ListPartnersUseCase,
     GetPartnerUseCase,
     GetPartnerProfileUseCase,
-    ListPartnerAgreementsUseCase,
     SetPartnerDefaultCancellationPolicyUseCase,
     GetPublicPartnerProfileUseCase,
   ],

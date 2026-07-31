@@ -9,6 +9,10 @@ export interface AuthChallengePayload {
   fullName?: string;
   userId?: string;
   tenantId?: string;
+  /** Legal document version ids the customer ticked at registration (D5). */
+  acceptedVersionIds?: string[];
+  /** Locale the accepted documents were shown in; defaults to 'vi' if absent. */
+  acceptedLocale?: 'vi' | 'en';
 }
 
 export interface IssuedAuthChallenge {

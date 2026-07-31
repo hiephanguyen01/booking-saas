@@ -12,6 +12,20 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const DOCUMENT_METHODS = new Set(['GET', 'HEAD']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
 const PLATFORM_DOCUMENT_PATHS = new Set(['/vi', '/en', '/robots.txt', '/sitemap.xml']);
+/**
+ * `/:locale/legal/:docSlug` (and its `/v/:versionNo` historical form) — the
+ * one document-serving path exempt from the `tenant.live` hard gate below.
+ * A tenant that withdraws one required document goes dark (§7), but the three
+ * documents people already read and agreed to — and the one just withdrawn —
+ * must stay readable; the gate would otherwise 423 every request before the
+ * `routes/legal.tsx` route ever runs. Dynamic segments (`:docSlug`), so this
+ * is a pattern rather than a literal-path `Set` like its siblings above.
+ */
+const LEGAL_DOCUMENT_PATH_PATTERN = /^\/(?:vi|en)\/legal(?:\/|$)/;
+
+function isLegalDocumentPath(pathname: string): boolean {
+  return LEGAL_DOCUMENT_PATH_PATTERN.test(pathname);
+}
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
 const PUBLIC_METADATA_CACHE_CONTROL =
   'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400';
@@ -257,7 +271,9 @@ export async function storefrontRequestMiddleware(
   }
 
   const tenant = resolution.tenant;
-  const unavailable = tenantUnavailableResponse(request, tenant);
+  const unavailable = isLegalDocumentPath(pathname)
+    ? null
+    : tenantUnavailableResponse(request, tenant);
   if (unavailable) {
     throw secure(unavailable);
   }

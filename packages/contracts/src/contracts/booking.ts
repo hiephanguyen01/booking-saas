@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { cancellationTierSchema, paginationQuerySchema, uuidSchema } from './common';
+import { cancellationTierSchema, localeSchema, paginationQuerySchema, uuidSchema } from './common';
 import { passwordSchema } from './auth';
 import { attributeFieldSchema } from './listing-type';
 
@@ -61,6 +61,8 @@ export const createBookingInputSchema = z.object({
    * abusive code never blocks the booking.
    */
   refCode: z.string().min(1).max(50).optional(),
+  acceptedVersionIds: z.array(uuidSchema).max(1).optional(),
+  acceptedLocale: localeSchema.optional(),
 });
 export type CreateBookingInput = z.infer<typeof createBookingInputSchema>;
 

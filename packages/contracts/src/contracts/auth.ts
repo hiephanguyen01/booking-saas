@@ -13,13 +13,43 @@ const challengeIdSchema = z.string().min(32).max(128);
 const completionTokenSchema = z.string().min(32).max(256);
 const otpCodeSchema = z.string().regex(/^\d{6}$/, 'Code must contain 6 digits');
 
+/**
+ * Field shape only. Kept as a plain object so form controllers can reach
+ * `.shape.<field>`; the rule that consent must be present lives in
+ * {@link registrationStartRequestSchema}, which is what the API validates.
+ */
 export const registrationStartInputSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
   email: z.string().email().toLowerCase(),
   locale: localeSchema.default('vi'),
   tenantId: uuidSchema.optional(),
+  acceptedVersionIds: z.array(uuidSchema).min(1).max(4).optional(),
+  acceptedLocale: localeSchema.optional(),
 });
 export type RegistrationStartInput = z.infer<typeof registrationStartInputSchema>;
+
+/**
+ * What `POST /auth/registration/start` accepts. Consent is **required when the
+ * registration is tenant-scoped** and impossible otherwise: a storefront signup
+ * names its tenant and must carry the document versions the visitor ticked —
+ * that tick is the evidence the whole legal feature exists to produce, and
+ * leaving it optional made it a browser-only gate any scripted POST walked past
+ * (the account was created with zero `agreement_acceptances` rows and no error).
+ * The tenant-less caller — partner onboarding's "create an account first" step,
+ * which registers a platform user before a tenant is chosen — has no documents
+ * to name, which is why this is a refinement and not a plain required field.
+ */
+export const registrationStartRequestSchema = registrationStartInputSchema.superRefine(
+  (value, ctx) => {
+    if (value.tenantId && !value.acceptedVersionIds?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['acceptedVersionIds'],
+        message: 'Consent to the tenant legal documents is required',
+      });
+    }
+  },
+);
 
 export const passwordResetStartInputSchema = z.object({
   email: z.string().email().toLowerCase(),

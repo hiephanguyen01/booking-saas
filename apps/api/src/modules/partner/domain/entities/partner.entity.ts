@@ -4,10 +4,7 @@ import type {
   PartnerType,
   PartnerVerificationStatus,
 } from '@booking/contracts';
-import {
-  CURRENT_COMMISSION_SCHEDULE_VERSION,
-  CURRENT_PARTNER_TERMS_VERSION,
-} from '../agreement-versions';
+import { CURRENT_COMMISSION_SCHEDULE_VERSION } from '../agreement-versions';
 import {
   CancellationPolicyNotFound,
   InvalidPartnerState,
@@ -60,7 +57,7 @@ export interface PartnerStatusIntent {
 }
 
 export interface PartnerAgreementIntent {
-  agreementType: 'partner_terms' | 'commission_schedule';
+  agreementType: 'commission_schedule';
   version: string;
 }
 
@@ -69,7 +66,7 @@ export type PartnerApprovalOutcome =
   | {
       kind: 'approved';
       statusIntent: PartnerStatusIntent;
-      agreements: [PartnerAgreementIntent, PartnerAgreementIntent];
+      agreements: [PartnerAgreementIntent];
     };
 
 export interface PartnerIdentitySubmissionIntent {
@@ -252,10 +249,6 @@ export class Partner {
       kind: 'approved',
       statusIntent,
       agreements: [
-        {
-          agreementType: 'partner_terms',
-          version: agreementVersion ?? CURRENT_PARTNER_TERMS_VERSION,
-        },
         {
           agreementType: 'commission_schedule',
           version: agreementVersion ?? CURRENT_COMMISSION_SCHEDULE_VERSION,

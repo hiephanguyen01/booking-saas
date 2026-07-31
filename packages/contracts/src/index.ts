@@ -10,6 +10,7 @@ export * from './contracts/public-listing';
 export * from './contracts/availability';
 export * from './contracts/booking';
 export * from './contracts/booking-access';
+export * from './contracts/legal';
 export * from './contracts/payment';
 export * from './contracts/promotion';
 export * from './contracts/finance';

@@ -17,6 +17,7 @@ import { computeCommissionSplit } from '../../../../shared/domain/commission/com
 import { snapshotToRates } from '../../../../shared/domain/commission/commission-snapshot';
 import { ResolveAttributionUseCase } from '../../../affiliate/application/use-cases/resolve-attribution.use-case';
 import { applyCustomRate } from '../../../affiliate/domain/affiliate-rate';
+import { RecordLegalAcceptanceUseCase } from '../../../legal/application/use-cases/record-legal-acceptance.use-case';
 import {
   LISTING_REPOSITORY,
   type IListingRepository,
@@ -67,6 +68,8 @@ export interface CreateBookingContext {
   /** Logged-in customer's user id, if any (else `input.guest` is required). */
   customerUserId?: string;
   idempotencyKey: string;
+  /** Client IP for the checkout legal-acceptance row (§ legal). Not always available. */
+  ip?: string | null;
 }
 
 /**
@@ -91,6 +94,7 @@ export class CreateBookingUseCase {
     private readonly reservePromotion: ReservePromotionUseCase, // Task 1.11 — in-tx promo reservation
     private readonly commissions: ResolveCommissionUseCase, // Task 1.10 — in-tx commission snapshot
     private readonly attribution: ResolveAttributionUseCase, // Task 2.1 — in-tx affiliate attribution
+    private readonly recordLegalAcceptance: RecordLegalAcceptanceUseCase, // Task 10 — checkout consent
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -178,6 +182,7 @@ export class CreateBookingUseCase {
       timeslot,
       blocked,
       idempotencyKey: ctx.idempotencyKey,
+      ip: ctx.ip ?? null,
     };
 
     // Inventory (§9.4): multi-unit, so no exclusion constraint. An advisory lock
@@ -272,6 +277,7 @@ export class CreateBookingUseCase {
       idempotencyKey: string;
       quantity: number;
       securityDeposit: bigint;
+      ip: string | null;
     },
   ): Promise<BookingRecord> {
     // ── Task 1.11 + 2.2 (Promotions) ─────────────────────────────────────────
@@ -404,6 +410,28 @@ export class CreateBookingUseCase {
       actorId: args.customerId,
       expiresAt,
     });
+
+    // ── Task 10 (Legal — checkout consent) ────────────────────────────────────
+    // No tick here by design (see ADR/legal spec): the storefront just shows a
+    // notice + links at checkout and this write is unconditional and silent —
+    // never gates the booking. A channel that never rendered the notice (or an
+    // older client) sends neither field, and this is a no-op: no ids, no row.
+    const acceptedVersionIds = args.input.acceptedVersionIds;
+    if (acceptedVersionIds && acceptedVersionIds.length > 0) {
+      await this.recordLegalAcceptance.execute(tx, {
+        tenantId,
+        userId: args.customerId,
+        partnerId: null,
+        acceptedVersionIds,
+        // Requested, not recorded: legal resolves and stores the locale each
+        // version was actually rendered in. No `requiredDocTypes` — checkout
+        // consent is optional by design (spec §Consent capture: notice line
+        // only) and must never fail a booking.
+        requestedLocale: args.input.acceptedLocale ?? 'vi',
+        ip: args.ip,
+      });
+    }
+
     await this.outbox.emit(tx, {
       tenantId,
       eventType: 'booking.created',

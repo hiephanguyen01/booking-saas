@@ -11,6 +11,7 @@ import {
   Get,
   Headers,
   HttpCode,
+  Ip,
   Param,
   Post,
   Query,
@@ -79,12 +80,14 @@ export class PublicBookingController {
   async create(
     @Body() input: CreateBookingDto,
     @Req() req: Request,
+    @Ip() ip: string,
     @OptionalPrincipal() principal?: SessionPrincipal,
     @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<CreateBookingResponse> {
     const booking = await this.createBooking.execute(hostOf(req), input, {
       customerUserId: principal?.userId,
       idempotencyKey: idempotencyKey ?? randomUUID(),
+      ip,
     });
     const response = toCustomerBookingResponse(booking);
 

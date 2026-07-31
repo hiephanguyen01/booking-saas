@@ -52,6 +52,8 @@ export const dashboardPaths = {
     affiliates: tenantPath('/affiliates'),
     affiliate: (affiliateId: string) => tenantPath(`/affiliates/${segment(affiliateId)}`),
     settings: tenantPath('/settings'),
+    /** Deep-link into a settings tab, e.g. `dashboardPaths.tenant.settingsSection('legal')`. */
+    settingsSection: (section: string) => `${tenantPath('/settings')}?section=${segment(section)}`,
   },
   partner: {
     home: partnerPath(),
@@ -77,10 +79,14 @@ export const dashboardPaths = {
     favorites: partnerPath('/favorites'),
     disputes: partnerPath('/disputes'),
     profile: partnerPath('/profile'),
+    /** Re-acceptance interstitial (Task 16) — reached only via the layout's redirect. */
+    legalUpdate: partnerPath('/legal-update'),
   },
   affiliate: {
     home: '/affiliate',
     links: '/affiliate/links',
     commissions: '/affiliate/commissions',
+    /** Re-acceptance interstitial (Task 16) — reached only via the layout's redirect. */
+    legalUpdate: '/affiliate/legal-update',
   },
 } as const;

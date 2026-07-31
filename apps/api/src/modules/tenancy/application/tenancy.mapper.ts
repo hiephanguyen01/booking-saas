@@ -133,6 +133,8 @@ export function toSubscriptionStatusResponse(
     daysUntilExpiry: v.evaluation.daysUntilExpiry,
     expiresAt: v.expiresAt ? v.expiresAt.toISOString() : null,
     bookingQuota: v.bookingQuota,
+    legalReady: v.legalReady,
+    legalDocumentsReady: v.legalDocumentsReady,
   };
 }
 

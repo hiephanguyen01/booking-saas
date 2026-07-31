@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
+import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { ADMIN_REVIEW_READER } from '../../domain/ports/admin-review-reader.port';
 import { REVIEW_REPOSITORY } from '../../domain/ports/review-repository.port';
 import { REVIEW_TENANT_READER } from '../../domain/ports/review-tenant-reader.port';
@@ -22,7 +23,7 @@ import { PublicReviewController } from './public-review.controller';
 import { TenantReviewController } from './tenant-review.controller';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule],
+  imports: [PrismaModule, TenantContextModule, LegalModule],
   controllers: [
     PublicReviewController,
     CustomerReviewController,

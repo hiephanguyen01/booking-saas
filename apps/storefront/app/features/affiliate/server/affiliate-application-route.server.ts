@@ -4,15 +4,23 @@ import { data } from 'react-router';
 import { applyAsAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { storefrontEnv } from '~/lib/server/env.server';
 import { errorStatus } from '~/lib/http-status';
+import { requireLocale } from '~/lib/server/i18n.server';
+import { loadLegalConsentBundle } from '~/features/legal/server/legal.server';
 import { registerOrLogin } from '~/features/partner-onboarding/server/partner.server';
 import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 
-export function loadAffiliateApplicationRoute() {
+/** Per D6, an affiliate application's one consent tick covers all three documents. */
+const AFFILIATE_APPLICATION_LEGAL_TYPES = ['affiliate_terms', 'customer_terms', 'privacy_policy'] as const;
+
+export async function loadAffiliateApplicationRoute(request: Request, localeParam?: string) {
+  const locale = requireLocale(localeParam);
   const tenant = getCurrentStorefrontTenant();
+  const legalConsent = await loadLegalConsentBundle(request, locale, AFFILIATE_APPLICATION_LEGAL_TYPES);
   return {
     tenantName: tenant.name,
     tenantLogoUrl: tenant.themeConfig.logoUrl || null,
     dashboardUrl: storefrontEnv.dashboardUrl,
+    legalConsent,
   };
 }
 
@@ -53,6 +61,10 @@ export async function submitAffiliateApplication(request: Request) {
   const applied = await applyAsAffiliate(request, auth.token, {
     tenantId: tenant.id,
     payoutInfo,
+    legalConsent: {
+      acceptedVersionIds: values.acceptedVersionIds,
+      acceptedLocale: values.acceptedLocale,
+    },
   });
 
   if (!applied.ok) {

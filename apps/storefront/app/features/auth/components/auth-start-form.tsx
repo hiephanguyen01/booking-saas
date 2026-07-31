@@ -1,10 +1,14 @@
+import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@booking/ui/components/ui/field';
 import { Input } from '@booking/ui/components/ui/input';
 import { Mail, UserRound } from 'lucide-react';
+import { Controller } from 'react-hook-form';
 import { Link } from 'react-router';
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
+import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
+import type { LegalConsentBundle } from '~/features/legal/server/legal.server';
 import { AuthFormError, AuthPasswordInput, AuthSubmitButton } from './auth-form-controls';
 import {
   useAuthStartFormController,
@@ -15,13 +19,19 @@ export function StartForm({
   mode,
   locale,
   actionData,
+  legalConsent,
 }: {
   mode: AuthStartMode;
   locale: 'vi' | 'en';
   actionData?: AuthActionData;
+  /** Registration only — the current customer_terms + privacy_policy versions to accept. */
+  legalConsent?: LegalConsentBundle;
 }) {
-  const { t } = useTranslation(NsI18n.Auth);
-  const { errors, register, submitForm, submitting } = useAuthStartFormController(mode);
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Legal]);
+  const { control, errors, register, submitForm, submitting } = useAuthStartFormController(
+    mode,
+    legalConsent,
+  );
 
   return (
     <form onSubmit={submitForm} noValidate aria-busy={submitting}>
@@ -83,6 +93,37 @@ export function StartForm({
             <FieldError errors={[errors.password]}>
               {actionData?.fieldErrors?.password?.[0]}
             </FieldError>
+          </Field>
+        ) : null}
+        {mode === 'register' && legalConsent ? (
+          <Field data-invalid={Boolean(errors.acceptedTerms)}>
+            <div className="flex items-start gap-2.5">
+              <Controller
+                control={control}
+                name="acceptedTerms"
+                render={({ field }) => (
+                  <Checkbox
+                    id="acceptedTerms"
+                    checked={field.value ?? false}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                    disabled={submitting}
+                    className="mt-0.5"
+                    aria-invalid={Boolean(errors.acceptedTerms)}
+                  />
+                )}
+              />
+              <FieldLabel htmlFor="acceptedTerms" className="text-sm font-normal">
+                {t('legal:registerConsent')}
+              </FieldLabel>
+            </div>
+            {legalConsent.documents.length ? (
+              <LegalDocumentLinks
+                documents={legalConsent.documents}
+                locale={locale}
+                className="pl-6.5 text-muted-foreground"
+              />
+            ) : null}
+            <FieldError errors={[errors.acceptedTerms]} />
           </Field>
         ) : null}
         <AuthSubmitButton disabled={submitting}>

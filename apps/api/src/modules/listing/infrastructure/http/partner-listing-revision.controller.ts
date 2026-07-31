@@ -11,6 +11,7 @@ import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { DiscardListingRevisionUseCase } from '../../application/use-cases/revisions/discard-listing-revision.use-case';
 import { GetListingGroupPendingChangesUseCase } from '../../application/use-cases/revisions/get-listing-group-pending-changes.use-case';
@@ -64,7 +65,7 @@ export class PartnerListingRevisionController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Delete('listings/:id/revision')
   @HttpCode(204)
   @ApiOperation({ summary: 'Drop the edit awaiting review for one listing' })
@@ -95,7 +96,7 @@ export class PartnerListingRevisionController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Delete('listing-groups/:id/revision')
   @HttpCode(204)
   @ApiOperation({ summary: "Drop the edit awaiting review for one post's own fields" })

@@ -9,4 +9,5 @@ export enum NsI18n {
   Auth = 'auth',
   Account = 'account',
   Platform = 'platform',
+  Legal = 'legal',
 }

@@ -1,7 +1,7 @@
 import {
   type PartnerResponse
 } from '@booking/contracts';
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Ip, Post } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
@@ -23,7 +23,10 @@ export class PartnerApplicationController {
   async apply(
     @CurrentPrincipal() principal: SessionPrincipal,
     @Body() input: PartnerApplyDto,
+    @Ip() ip: string,
   ): Promise<PartnerResponse> {
-    return toPartnerResponse(await this.applyAsPartner.execute(principal.userId, input));
+    return toPartnerResponse(
+      await this.applyAsPartner.execute(principal.userId, input, { ip }),
+    );
   }
 }

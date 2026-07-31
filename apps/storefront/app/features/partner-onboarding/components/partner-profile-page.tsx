@@ -3,6 +3,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Field, FieldLabel } from '@booking/ui/components/ui/field';
 import { Form } from '@booking/ui/components/ui/form';
 import { Spinner } from '@booking/ui/components/ui/spinner';
+import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
 import { FormAlert } from './partner-form-controls';
 import {
   PARTNER_PROFILE_BANKS,
@@ -130,10 +131,17 @@ export function PartnerProfilePage({ loaderData, actionData }: PartnerProfilePag
                       field={{
                         name: 'acceptedTerms',
                         type: 'checkbox',
-                        label: t('auth:partner.acceptTerms', { tenant: loaderData.tenantName }),
+                        label: t('legal:partnerConsent', { tenant: loaderData.tenantName }),
                         required: true,
                       }}
                     />
+                    {loaderData.legalConsent.documents.length ? (
+                      <LegalDocumentLinks
+                        documents={loaderData.legalConsent.documents}
+                        locale={loaderData.legalConsent.locale}
+                        className="-mt-2 block pl-6.5 text-sm text-muted-foreground"
+                      />
+                    ) : null}
                   </div>
                 </div>
                 <div className="space-y-4">

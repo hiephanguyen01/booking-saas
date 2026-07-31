@@ -17,6 +17,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'platform.disputes.read', scopeLevel: 'platform' },
   // Tenant
   { key: 'tenant.settings.manage', scopeLevel: 'tenant' },
+  { key: 'tenant.legal.manage', scopeLevel: 'tenant' },
   { key: 'tenant.theme.manage', scopeLevel: 'tenant' },
   { key: 'tenant.partners.read', scopeLevel: 'tenant' },
   { key: 'tenant.partners.manage', scopeLevel: 'tenant' },
@@ -85,7 +86,10 @@ export const SYSTEM_ROLES: ReadonlyArray<{
     name: 'Manager',
     scopeLevel: 'tenant',
     permissions: keysOf('tenant').filter(
-      (k) => k !== 'tenant.roles.manage' && k !== 'tenant.settings.manage',
+      (k) =>
+        k !== 'tenant.roles.manage' &&
+        k !== 'tenant.settings.manage' &&
+        k !== 'tenant.legal.manage',
     ),
   },
   {

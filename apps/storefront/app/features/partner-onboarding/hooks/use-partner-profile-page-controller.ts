@@ -32,14 +32,18 @@ export function usePartnerProfilePageController({
   const navigation = useNavigation();
   const submit = useSubmit();
   const { busy: submitting, run } = useSubmissionGuard(navigation.state);
-  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common, NsI18n.Legal]);
   const wardsFetcher = useFetcher<{
     provinceCode: string;
     wards: AdministrativeWard[];
   }>();
   const form = useForm<PartnerOnboardingProfileInput>({
     resolver: zodResolver(partnerOnboardingProfileSchema),
-    defaultValues: PARTNER_PROFILE_DEFAULTS,
+    defaultValues: {
+      ...PARTNER_PROFILE_DEFAULTS,
+      acceptedVersionIds: loaderData.legalConsent.versionIds,
+      acceptedLocale: loaderData.legalConsent.acceptedLocale,
+    },
     mode: 'onSubmit',
     reValidateMode: 'onBlur',
     shouldUnregister: true,
@@ -113,7 +117,16 @@ export function usePartnerProfilePageController({
   const wardOptions = wards.map((ward) => ({ label: ward.name, value: ward.code }));
   const wardsLoading = wardsFetcher.state !== 'idle';
   const onSubmit = form.handleSubmit((values) => {
-    run(() => submit(values as never, { method: 'post', encType: 'application/json' }));
+    // `acceptedVersionIds`/`acceptedLocale` have no rendered control (they are
+    // not user-editable), so — regardless of react-hook-form's `shouldUnregister`
+    // bookkeeping for fields nobody registered — merge them from the loader in
+    // directly rather than trust they survive in `values`.
+    const payload: PartnerOnboardingProfileInput = {
+      ...values,
+      acceptedVersionIds: loaderData.legalConsent.versionIds,
+      acceptedLocale: loaderData.legalConsent.acceptedLocale,
+    };
+    run(() => submit(payload as never, { method: 'post', encType: 'application/json' }));
   });
 
   return {

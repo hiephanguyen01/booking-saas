@@ -12,7 +12,7 @@ import {
   passwordResetStartInputSchema,
   refreshResponseSchema,
   registerInputSchema,
-  registrationStartInputSchema,
+  registrationStartRequestSchema,
   sessionInfoResponseSchema,
   upgradeGuestInputSchema,
 } from '@booking/contracts';
@@ -21,7 +21,7 @@ import {
 export class RegisterDto extends createZodDto(registerInputSchema) {}
 export class LoginDto extends createZodDto(loginInputSchema) {}
 export class UpgradeGuestDto extends createZodDto(upgradeGuestInputSchema) {}
-export class RegistrationStartDto extends createZodDto(registrationStartInputSchema) {}
+export class RegistrationStartDto extends createZodDto(registrationStartRequestSchema) {}
 export class PasswordResetStartDto extends createZodDto(passwordResetStartInputSchema) {}
 export class AuthChallengeDto extends createZodDto(authChallengeInputSchema) {}
 export class AuthOtpVerifyDto extends createZodDto(authOtpVerifyInputSchema) {}

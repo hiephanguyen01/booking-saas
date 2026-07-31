@@ -21,7 +21,7 @@ export function SiteFooter({
   tenant: StorefrontTenant;
   className?: string;
 }) {
-  const { t } = useTranslation([NsI18n.Common, NsI18n.Navigation]);
+  const { t } = useTranslation([NsI18n.Common, NsI18n.Navigation, NsI18n.Legal]);
   const locale = useLocale();
   const config = tenant.themeConfig;
   const contact = config.contact;
@@ -101,17 +101,25 @@ export function SiteFooter({
           <FooterList
             title={t('footer.aboutUs')}
             items={[
-              t('footer.aboutLinks.intro', { tenant: tenant.name }),
-              t('footer.aboutLinks.privacy'),
-              t('footer.aboutLinks.terms'),
+              { label: t('footer.aboutLinks.intro', { tenant: tenant.name }) },
+              { label: t('footer.aboutLinks.privacy'), href: storefrontPaths.legal(locale, 'privacy_policy') },
+              { label: t('footer.aboutLinks.terms'), href: storefrontPaths.legal(locale, 'customer_terms') },
             ]}
           />
           <FooterList
             title={t('footer.support')}
             items={[
-              t('footer.supportLinks.help'),
-              t('footer.supportLinks.rules'),
-              ...(!contact?.phone && !contact?.email ? [t('footer.supportLinks.contact')] : []),
+              { label: t('footer.supportLinks.help') },
+              { label: t('footer.supportLinks.rules') },
+              ...(!contact?.phone && !contact?.email ? [{ label: t('footer.supportLinks.contact') }] : []),
+              {
+                label: t('legal:documentLabels.partner_terms'),
+                href: storefrontPaths.legal(locale, 'partner_terms'),
+              },
+              {
+                label: t('legal:documentLabels.affiliate_terms'),
+                href: storefrontPaths.legal(locale, 'affiliate_terms'),
+              },
             ]}
           />
         </div>
@@ -148,15 +156,31 @@ function SocialIcon({ network }: { network: SocialKey }) {
   );
 }
 
-function FooterList({ title, items }: { title: string; items: string[] }) {
+function FooterList({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ label: string; href?: string }>;
+}) {
   return (
     <section className="flex flex-col items-start gap-3">
       <h2 className="text-base font-semibold uppercase leading-6">{title}</h2>
-      {items.map((item) => (
-        <span key={item} className="text-sm font-medium leading-5 text-muted-foreground">
-          {item}
-        </span>
-      ))}
+      {items.map((item) =>
+        item.href ? (
+          <Link
+            key={item.label}
+            to={item.href}
+            className="text-sm font-medium leading-5 text-muted-foreground hover:text-primary"
+          >
+            {item.label}
+          </Link>
+        ) : (
+          <span key={item.label} className="text-sm font-medium leading-5 text-muted-foreground">
+            {item.label}
+          </span>
+        ),
+      )}
     </section>
   );
 }

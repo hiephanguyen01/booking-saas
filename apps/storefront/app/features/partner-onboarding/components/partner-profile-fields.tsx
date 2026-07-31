@@ -35,6 +35,11 @@ export const PARTNER_PROFILE_DEFAULTS: PartnerOnboardingProfileInput = {
   identityCardFrontUrl: '',
   identityCardBackUrl: '',
   acceptedTerms: false,
+  // Placeholders — `usePartnerProfilePageController` overrides both from the
+  // loader's `legalConsent` (the tenant's current document versions) before
+  // this constant ever reaches `useForm`.
+  acceptedVersionIds: [],
+  acceptedLocale: 'vi',
 };
 
 /** Backend application codes → the message shown above the form. */

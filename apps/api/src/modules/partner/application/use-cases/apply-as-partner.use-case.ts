@@ -16,13 +16,22 @@ import {
 } from '../../domain/ports/partner-repository.port';
 import { PARTNER_ROLES, type IPartnerRoles } from '../../domain/ports/partner-roles.port';
 import { Partner } from '../../domain/entities/partner.entity';
+import { RecordLegalAcceptanceUseCase } from '../../../legal/application/use-cases/record-legal-acceptance.use-case';
+
+export interface ApplyContext {
+  ip?: string | null;
+}
 
 /**
  * A logged-in user applies to become a partner under a tenant (self-signup,
  * §7.3). The partner starts `pending` for tenant approval; the applicant becomes
  * a member with the Partner Owner role so they can complete their profile and
- * submit identity while waiting. Partner + member + role assignment + event
- * commit atomically inside one tenant transaction.
+ * submit identity while waiting. The applicant's real consent (partner terms +
+ * customer terms + privacy policy, per D6) is recorded via `legal`'s
+ * `RecordLegalAcceptanceUseCase` in the same transaction — there is no state
+ * where a partner exists without their own signature. Partner + member + role
+ * assignment + legal acceptance + event commit atomically inside one tenant
+ * transaction.
  */
 @Injectable()
 export class ApplyAsPartnerUseCase {
@@ -34,9 +43,14 @@ export class ApplyAsPartnerUseCase {
     private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
+    private readonly recordLegalAcceptance: RecordLegalAcceptanceUseCase,
   ) {}
 
-  async execute(userId: string, input: PartnerApplyInput): Promise<PartnerRecord> {
+  async execute(
+    userId: string,
+    input: PartnerApplyInput,
+    ctx: ApplyContext,
+  ): Promise<PartnerRecord> {
     const tenant = await this.tenants.findById(input.tenantId);
     if (!tenant) throw new TenantNotFound();
     Partner.assertTenantAcceptingApplications(tenant.status);
@@ -76,6 +90,20 @@ export class ApplyAsPartnerUseCase {
         payoutInfo: input.payoutInfo,
       });
       const created = await this.partners.create(tx, newPartner);
+      await this.recordLegalAcceptance.execute(tx, {
+        tenantId: input.tenantId,
+        userId,
+        partnerId: created.id,
+        acceptedVersionIds: input.legalConsent.acceptedVersionIds,
+        requestedLocale: input.legalConsent.acceptedLocale,
+        // Server-side enforcement of the form's required tick: a submission
+        // that names no partner_terms version is rejected (LEGAL_CONSENT_REQUIRED)
+        // and rolls this whole transaction back, so the docblock's "no state
+        // where a partner exists without their own signature" is true of the
+        // API and not only of the browser.
+        requiredDocTypes: ['partner_terms'],
+        ip: ctx.ip,
+      });
       await this.partners.addMember(tx, {
         tenantId: input.tenantId,
         partnerId: created.id,
