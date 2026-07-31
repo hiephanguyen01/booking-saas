@@ -3,7 +3,9 @@ import type {
   ListingGroupResponse,
   ListingResponse,
   PartnerListingFeedItemResponse,
+  PricingRuleBulkResult,
   PricingRuleResponse,
+  PricingRuleSkipReason,
   PublicListingDetailWithTimezoneResponse,
   PublicListingGroupDetailResponse,
   ResourceResponse,
@@ -153,6 +155,16 @@ export function toPricingRuleResponse(p: PricingRuleRecord): PricingRuleResponse
     salePrice: p.salePrice,
     priority: p.priority,
     createdAt: p.createdAt.toISOString(),
+  };
+}
+
+export function toPricingRuleBulkResult(result: {
+  created: PricingRuleRecord[];
+  skipped: { date: string; reason: PricingRuleSkipReason }[];
+}): PricingRuleBulkResult {
+  return {
+    created: result.created.map(toPricingRuleResponse),
+    skipped: result.skipped.map((s) => ({ date: s.date, reason: s.reason })),
   };
 }
 

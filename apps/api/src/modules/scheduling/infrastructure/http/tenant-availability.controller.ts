@@ -12,6 +12,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -36,6 +37,7 @@ import {
   AvailabilityExceptionDto,
   AvailabilityExceptionResponseDto,
   AvailabilityRuleResponseDto,
+  CalendarRangeQueryDto,
   SetAvailabilityRulesDto,
 } from './dto/scheduling.dto';
 
@@ -82,13 +84,20 @@ export class TenantAvailabilityController {
 
   @RequirePermissions('tenant.listings.read')
   @Get('resources/:id/availability-exceptions')
-  @ApiOperation({ summary: 'List a resource date-specific availability exceptions' })
+  @ApiOperation({
+    summary: 'List a resource date-specific availability exceptions',
+    description:
+      'Pass `from`/`to` (together) to window the result — required when rendering a month outside the default near-term window.',
+  })
   @UuidParam()
   @ApiOkResponse({ type: [AvailabilityExceptionResponseDto] })
   async listExceptions(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Query() range: CalendarRangeQueryDto,
   ): Promise<AvailabilityExceptionResponse[]> {
-    return (await this.listExceptionsUseCase.execute(this.ctx(), id)).map(toExceptionResponse);
+    return (await this.listExceptionsUseCase.execute(this.ctx(), id, range)).map(
+      toExceptionResponse,
+    );
   }
 
   @RequirePermissions('tenant.listings.write')

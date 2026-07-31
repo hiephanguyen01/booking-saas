@@ -110,6 +110,8 @@ export interface ListingFilter {
   partnerId?: string;
   listingTypeId?: string;
   status?: PublishStatus;
+  /** Every listing sharing one resource's calendar (availability is resource-scoped). */
+  resourceId?: string;
   /** Case-insensitive search over the listing title. Applied to items + counts. */
   q?: string;
 }

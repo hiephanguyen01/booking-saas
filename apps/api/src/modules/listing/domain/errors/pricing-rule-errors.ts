@@ -31,6 +31,26 @@ export class PricingRuleOverlap extends DomainError {
   }
 }
 
+/**
+ * An hourly pricing window must sit inside the date's opening hours — a price
+ * on an hour the listing never sells is unreachable, and a partner who sees it
+ * saved reasonably assumes those hours became bookable.
+ */
+export class PricingWindowOutsideOpenHours extends DomainError {
+  constructor(openWindows: readonly { openTime: string; closeTime: string }[]) {
+    super(
+      'PRICING_WINDOW_OUTSIDE_OPEN_HOURS',
+      400,
+      openWindows.length === 0
+        ? 'That date is closed, so it cannot carry a pricing window'
+        : `Pricing window must fall inside the opening hours: ${openWindows
+            .map((w) => `${w.openTime}-${w.closeTime}`)
+            .join(', ')}`,
+      { openWindows },
+    );
+  }
+}
+
 /** Maps the framework-free pricing/config calculators' typed rejection. */
 export class ListingPricingRejected extends DomainError {
   constructor(code: string, message: string) {

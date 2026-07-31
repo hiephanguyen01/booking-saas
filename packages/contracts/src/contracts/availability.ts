@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   MAX_BOOKING_RANGE_DAYS,
+  MAX_BULK_CALENDAR_DAYS,
   dateOnlyDistanceDays,
   dateOnlySchema,
   moneyStringSchema,
@@ -61,6 +62,55 @@ export const availabilityExceptionInputSchema = z
     }
   });
 export type AvailabilityExceptionInput = z.infer<typeof availabilityExceptionInputSchema>;
+
+/**
+ * Apply one exception across a span of dates in a single write — the calendar's
+ * "select a range" action. Same `custom_hours` rules as the single-date form;
+ * each date in the span is upserted, so re-applying a range is idempotent.
+ */
+export const availabilityExceptionRangeInputSchema = z
+  .object({
+    from: dateOnlySchema,
+    to: dateOnlySchema,
+    type: availabilityExceptionTypeSchema,
+    openTime: timeOfDaySchema.optional(),
+    closeTime: timeOfDaySchema.optional(),
+    reason: z.string().max(200).optional(),
+  })
+  .superRefine((input, ctx) => {
+    const days = dateOnlyDistanceDays(input.from, input.to);
+    if (days === null || days < 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['to'],
+        message: 'to must be on/after from',
+      });
+    } else if (days + 1 > MAX_BULK_CALENDAR_DAYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['to'],
+        message: `Range must be at most ${MAX_BULK_CALENDAR_DAYS} days`,
+      });
+    }
+    if (input.type === 'custom_hours') {
+      if (!input.openTime || !input.closeTime) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['openTime'],
+          message: 'custom_hours requires openTime and closeTime',
+        });
+      } else if (input.openTime >= input.closeTime) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['closeTime'],
+          message: 'closeTime must be after openTime',
+        });
+      }
+    }
+  });
+export type AvailabilityExceptionRangeInput = z.infer<
+  typeof availabilityExceptionRangeInputSchema
+>;
 
 /**
  * Quick calendar block (§14) — the dashboard `QuickBlockDialog` GenericForm body.

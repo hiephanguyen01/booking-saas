@@ -16,6 +16,46 @@ export interface DateException {
   closeTime?: string | null;
 }
 
+/** An open window as resource-local wall-clock `HH:MM`, before any UTC mapping. */
+export interface LocalWindow {
+  openTime: string;
+  closeTime: string;
+}
+
+/**
+ * Resolve a calendar date's open windows as resource-local `HH:MM` — the
+ * wall-clock half of {@link openWindowsForDate}, shared so the availability
+ * engine and the pricing-rule guard can never disagree about which hours a date
+ * is open. `closed` yields none; `custom_hours` replaces the weekday's rules.
+ */
+export function localOpenWindowsForDate(
+  date: string,
+  rules: readonly WeeklyRule[],
+  exception?: DateException | null,
+): LocalWindow[] {
+  if (exception?.type === 'closed') return [];
+  if (exception?.type === 'custom_hours' && exception.openTime && exception.closeTime) {
+    return [{ openTime: exception.openTime, closeTime: exception.closeTime }];
+  }
+  const weekday = weekdayOf(date);
+  return rules
+    .filter((r) => r.dayOfWeek === weekday)
+    .map((r) => ({ openTime: r.openTime, closeTime: r.closeTime }));
+}
+
+/**
+ * Does `[from,to]` (resource-local `HH:MM`) sit wholly inside one open window?
+ * A span straddling two windows separated by a break is NOT contained — the
+ * break is closed time.
+ */
+export function windowFitsOpenHours(
+  windows: readonly LocalWindow[],
+  from: string,
+  to: string,
+): boolean {
+  return windows.some((w) => from >= w.openTime && to <= w.closeTime);
+}
+
 /**
  * Resolve a calendar date's open intervals as UTC `[start,end)`, in the
  * resource timezone (§9.1). Weekly rules for the date's weekday are used unless
@@ -28,18 +68,7 @@ export function openWindowsForDate(
   rules: readonly WeeklyRule[],
   exception?: DateException | null,
 ): Interval[] {
-  if (exception?.type === 'closed') return [];
-
-  let windows: { openTime: string; closeTime: string }[];
-  if (exception?.type === 'custom_hours' && exception.openTime && exception.closeTime) {
-    windows = [{ openTime: exception.openTime, closeTime: exception.closeTime }];
-  } else {
-    const weekday = weekdayOf(date);
-    windows = rules
-      .filter((r) => r.dayOfWeek === weekday)
-      .map((r) => ({ openTime: r.openTime, closeTime: r.closeTime }));
-  }
-
+  const windows = localOpenWindowsForDate(date, rules, exception);
   const { year, month, day } = parseDate(date);
   return windows
     .map((w) => {

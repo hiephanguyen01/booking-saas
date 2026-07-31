@@ -48,6 +48,13 @@ export function todayString(value: Date = new Date()): string {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+/** First and last calendar day of a "YYYY-MM" month, as inclusive "YYYY-MM-DD" bounds. */
+export function monthBounds(month: string): { from: string; to: string } {
+  const [year, value] = month.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(year, value, 0)).getUTCDate();
+  return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, '0')}` };
+}
+
 /** UTC ISO instant (…Z) for the start of a calendar day in TZ - feed query bound. */
 export function startOfDayUtc(dayString: string): string {
   return new Date(`${dayString}T00:00:00${OFFSET}`).toISOString();

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PricingRuleInput } from '@booking/contracts';
-import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
   LISTING_REPOSITORY,
@@ -12,18 +12,30 @@ import {
   type PricingRuleRecord,
 } from '../../domain/ports/pricing-rule-repository.port';
 import {
+  OPEN_HOURS_READER,
+  type IOpenHoursReader,
+} from '../../domain/ports/open-hours-reader.port';
+import {
+  localOpenWindowsForDate,
+  windowFitsOpenHours,
+} from '../../../../shared/domain/availability/open-windows';
+import {
   PricingRule,
   findOverlappingWindow,
   sameWindowKey,
 } from '../../domain/entities/pricing-rule.entity';
 import { ListingNotFound, ListingNotOwned } from '../../domain/errors/listing-errors';
-import { PricingRuleOverlap } from '../../domain/errors/pricing-rule-errors';
+import {
+  PricingRuleOverlap,
+  PricingWindowOutsideOpenHours,
+} from '../../domain/errors/pricing-rule-errors';
 
 @Injectable()
 export class CreatePartnerPricingRuleUseCase {
   constructor(
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
     @Inject(PRICING_RULE_REPOSITORY) private readonly rules: IPricingRuleRepository,
+    @Inject(OPEN_HOURS_READER) private readonly openHours: IOpenHoursReader,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -62,6 +74,7 @@ export class CreatePartnerPricingRuleUseCase {
           if (overlap) {
             throw new PricingRuleOverlap(String(overlap.params.from), String(overlap.params.to));
           }
+          await this.assertInsideOpenHours(tx, listingId, listing.resourceId, candidate.params);
         }
         for (const rule of existing) {
           if (sameWindowKey(rule, candidate)) await this.rules.delete(tx, rule.id);
@@ -75,5 +88,29 @@ export class CreatePartnerPricingRuleUseCase {
       });
       return created;
     });
+  }
+
+  /**
+   * A `date_time_range` window must fall inside the date's opening hours.
+   * Enforced here rather than in the dashboard so it holds for every partner —
+   * the dashboard could only check it for partners who also hold
+   * `partner.availability.manage`, since reading the hours needs that scope.
+   */
+  private async assertInsideOpenHours(
+    tx: PrismaTx,
+    listingId: string,
+    resourceId: string,
+    params: Record<string, unknown>,
+  ): Promise<void> {
+    const { rules, exception } = await this.openHours.forDate(
+      tx,
+      listingId,
+      resourceId,
+      String(params.date),
+    );
+    const windows = localOpenWindowsForDate(String(params.date), rules, exception);
+    if (!windowFitsOpenHours(windows, String(params.from), String(params.to))) {
+      throw new PricingWindowOutsideOpenHours(windows);
+    }
   }
 }

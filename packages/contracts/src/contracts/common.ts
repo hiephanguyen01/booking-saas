@@ -61,6 +61,55 @@ export const bookingDateRangeSchema = z
   });
 export type BookingDateRange = z.infer<typeof bookingDateRangeSchema>;
 
+/** How far ahead a management calendar may be queried in one request. */
+export const MAX_CALENDAR_RANGE_DAYS = 366;
+
+/**
+ * Longest date span one bulk calendar write may cover. Bounded well below
+ * {@link MAX_CALENDAR_RANGE_DAYS} because a bulk write runs a row per date
+ * inside a single interactive transaction — a read may span a year, a write
+ * holding a transaction open must not.
+ */
+export const MAX_BULK_CALENDAR_DAYS = 92;
+
+/**
+ * Inclusive calendar window for the partner/tenant management calendars
+ * (availability exceptions, pricing rules). Both bounds are optional so an
+ * omitted query keeps each endpoint's own default window; supplying one bound
+ * requires the other, because a half-open window silently truncates the result
+ * and the calendar would then render stored overrides as "no override".
+ */
+export const calendarRangeQuerySchema = z
+  .object({ from: dateOnlySchema.optional(), to: dateOnlySchema.optional() })
+  .superRefine((range, ctx) => {
+    if (range.from === undefined && range.to === undefined) return;
+    if (range.from === undefined || range.to === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [range.from === undefined ? 'from' : 'to'],
+        message: 'from and to must be supplied together',
+      });
+      return;
+    }
+    const days = dateOnlyDistanceDays(range.from, range.to);
+    if (days === null || days < 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['to'],
+        message: 'to must be on/after from',
+      });
+      return;
+    }
+    if (days > MAX_CALENDAR_RANGE_DAYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['to'],
+        message: `Range must be at most ${MAX_CALENDAR_RANGE_DAYS} days`,
+      });
+    }
+  });
+export type CalendarRangeQuery = z.infer<typeof calendarRangeQuerySchema>;
+
 /** Default page size for every list endpoint / list screen — one source of truth. */
 export const DEFAULT_PAGE_SIZE = 20;
 /** Hard upper bound the API accepts for `pageSize` (guards against unbounded scans). */

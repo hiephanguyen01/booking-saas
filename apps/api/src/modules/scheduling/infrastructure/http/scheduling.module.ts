@@ -22,6 +22,7 @@ import { ListAvailabilityRulesUseCase } from '../../application/use-cases/list-a
 import { SetAvailabilityRulesUseCase } from '../../application/use-cases/set-availability-rules.use-case';
 import { ListAvailabilityExceptionsUseCase } from '../../application/use-cases/list-availability-exceptions.use-case';
 import { AddAvailabilityExceptionUseCase } from '../../application/use-cases/add-availability-exception.use-case';
+import { AddAvailabilityExceptionRangeUseCase } from '../../application/use-cases/add-availability-exception-range.use-case';
 import { DeleteAvailabilityExceptionUseCase } from '../../application/use-cases/delete-availability-exception.use-case';
 import { PublicAvailabilityController } from './public-availability.controller';
 import { TenantAvailabilityController } from './tenant-availability.controller';
@@ -57,6 +58,7 @@ const BOOKING_BUSY_EVENTS = [
     SetAvailabilityRulesUseCase,
     ListAvailabilityExceptionsUseCase,
     AddAvailabilityExceptionUseCase,
+    AddAvailabilityExceptionRangeUseCase,
     DeleteAvailabilityExceptionUseCase,
   ],
 })
@@ -83,7 +85,13 @@ export class SchedulingModule implements OnModuleInit {
         return this.cache.invalidateByBooking(tenantId, bookingId);
       });
     }
-    for (const eventType of ['pricing_rule.created', 'pricing_rule.deleted']) {
+    // `bulk_created` carries one event for a whole date span — the handler is
+    // listing-scoped, so a span needs exactly the same single invalidation.
+    for (const eventType of [
+      'pricing_rule.created',
+      'pricing_rule.bulk_created',
+      'pricing_rule.deleted',
+    ]) {
       this.registry.register(eventType, (event) => {
         const { listingId } = event.payload as { listingId: string };
         return this.cache.invalidateListing(listingId);

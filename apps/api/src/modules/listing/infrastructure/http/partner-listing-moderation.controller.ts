@@ -125,6 +125,7 @@ export class PartnerListingModerationController {
         standaloneOnly: query.standaloneOnly,
         listingTypeId: query.listingTypeId,
         status: query.status,
+        resourceId: query.resourceId,
         q: query.q,
       },
       { page: query.page, pageSize: query.pageSize },

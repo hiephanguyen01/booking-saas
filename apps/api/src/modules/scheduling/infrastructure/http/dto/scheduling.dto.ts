@@ -1,17 +1,23 @@
 import { createZodDto } from 'nestjs-zod';
 import {
   availabilityExceptionInputSchema,
+  availabilityExceptionRangeInputSchema,
   availabilityExceptionResponseSchema,
   availabilityQuerySchema,
   availabilityResponseSchema,
   availabilityRuleResponseSchema,
+  calendarRangeQuerySchema,
   setAvailabilityRulesInputSchema,
 } from '@booking/contracts';
 
 // Request bodies / queries
 export class SetAvailabilityRulesDto extends createZodDto(setAvailabilityRulesInputSchema) {}
 export class AvailabilityExceptionDto extends createZodDto(availabilityExceptionInputSchema) {}
+export class AvailabilityExceptionRangeDto extends createZodDto(
+  availabilityExceptionRangeInputSchema,
+) {}
 export class AvailabilityQueryDto extends createZodDto(availabilityQuerySchema) {}
+export class CalendarRangeQueryDto extends createZodDto(calendarRangeQuerySchema) {}
 
 // Responses
 export class AvailabilityRuleResponseDto extends createZodDto(availabilityRuleResponseSchema) {}

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { cancellationTierSchema, paginationQuerySchema, uuidSchema } from './common';
+import {
+  cancellationTierSchema,
+  paginationQuerySchema,
+  uuidSchema,
+  MAX_BULK_CALENDAR_DAYS,
+} from './common';
 import { slugSchema } from './tenancy';
 import {
   attributeFieldSchema,
@@ -329,6 +334,75 @@ export const pricingRuleInputSchema = z
   });
 export type PricingRuleInput = z.infer<typeof pricingRuleInputSchema>;
 
+/**
+ * Apply one price across a span of calendar dates in a single write — the
+ * calendar's "select a range" action (§7.3).
+ *
+ * `daily` collapses to ONE `date_range` rule covering the whole span, because
+ * the quote calculator already matches a date against `[from, to]`. `hourly`
+ * needs `window` and expands to one `date_time_range` rule per date, since an
+ * hourly rule is scoped to a single date's clock window.
+ */
+export const pricingRuleRangeInputSchema = z
+  .object({
+    bookingMode: bookingModeSchema,
+    dateFrom: dateStringSchema,
+    dateTo: dateStringSchema,
+    /** Clock window inside each date. Required for `hourly`, ignored for `daily`. */
+    window: z.object({ from: timeStringSchema, to: timeStringSchema }).optional(),
+    price: vndAmountSchema,
+    salePrice: vndAmountSchema.optional(),
+    priority: z.number().int().default(0),
+  })
+  .superRefine((rule, ctx) => {
+    if (rule.dateTo < rule.dateFrom) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dateTo'],
+        message: 'dateTo must be on/after dateFrom',
+      });
+    } else {
+      const days =
+        (Date.parse(`${rule.dateTo}T00:00:00Z`) - Date.parse(`${rule.dateFrom}T00:00:00Z`)) /
+          86_400_000 +
+        1;
+      if (days > MAX_BULK_CALENDAR_DAYS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['dateTo'],
+          message: `Range must be at most ${MAX_BULK_CALENDAR_DAYS} days`,
+        });
+      }
+    }
+    if (rule.bookingMode === 'hourly') {
+      if (!rule.window) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['window'],
+          message: 'window is required for hourly pricing',
+        });
+      } else if (rule.window.from >= rule.window.to) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['window', 'to'],
+          message: 'to must be after from',
+        });
+      }
+    }
+    if (rule.salePrice !== undefined && BigInt(rule.salePrice) >= BigInt(rule.price)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['salePrice'],
+        message: 'Sale price must be lower than regular price',
+      });
+    }
+  });
+export type PricingRuleRangeInput = z.infer<typeof pricingRuleRangeInputSchema>;
+
+/** Why a date in a bulk range received no rule. */
+export const pricingRuleSkipReasonSchema = z.enum(['closed', 'outside_open_hours', 'overlap']);
+export type PricingRuleSkipReason = z.infer<typeof pricingRuleSkipReasonSchema>;
+
 export const quoteQuerySchema = z.object({
   mode: bookingModeSchema,
   from: z.string().datetime(),
@@ -358,6 +432,12 @@ export const listPartnerListingsQuerySchema = paginationQuerySchema
       .optional(),
     listingTypeId: uuidSchema.optional(),
     status: publishStatusSchema.optional(),
+    /**
+     * Every listing sharing one resource's calendar. Availability is
+     * resource-scoped, so a screen changing opening hours uses this to tell the
+     * partner which other listings the change reaches.
+     */
+    resourceId: uuidSchema.optional(),
     /** Case-insensitive search over the listing title. Applied to items + counts. */
     q: z.string().trim().max(200).optional(),
   })
@@ -583,6 +663,17 @@ export const pricingRuleResponseSchema = z.object({
   createdAt: z.string(),
 });
 export type PricingRuleResponse = z.infer<typeof pricingRuleResponseSchema>;
+
+/**
+ * Outcome of a bulk range write. A range almost always straddles days the
+ * listing does not sell, so unsellable dates are reported as `skipped` rather
+ * than failing the whole write — the caller shows "applied to 22 of 30 days".
+ */
+export const pricingRuleBulkResultSchema = z.object({
+  created: z.array(pricingRuleResponseSchema),
+  skipped: z.array(z.object({ date: dateStringSchema, reason: pricingRuleSkipReasonSchema })),
+});
+export type PricingRuleBulkResult = z.infer<typeof pricingRuleBulkResultSchema>;
 
 /**
  * Trust signals shown on the storefront before ratings exist (§16.1) — all
