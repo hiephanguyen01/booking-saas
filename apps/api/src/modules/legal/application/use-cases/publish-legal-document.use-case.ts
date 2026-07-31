@@ -61,7 +61,9 @@ export class PublishLegalDocumentUseCase {
           })),
       );
 
-      await this.documents.publish(tx, {
+      // CAS: a second concurrent publish of the same draft loses here rather
+      // than rewriting an already-published version's classification.
+      const published = await this.documents.publish(tx, {
         tenantId,
         documentId: doc.id,
         draftVersionId: draft.id,
@@ -69,6 +71,7 @@ export class PublishLegalDocumentUseCase {
         isMaterialChange: input.material,
         publishedByUserId: ctx.userId,
       });
+      if (!published) throw new LegalDraftMissing();
 
       // A material change moves the re-acceptance bar for every partner/
       // affiliate — notification mails them (Task 20). A cosmetic fix (typo,

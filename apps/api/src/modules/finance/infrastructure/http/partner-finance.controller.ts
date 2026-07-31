@@ -7,7 +7,7 @@ import type {
   PayoutResponse,
   SettlementSummaryResponse,
 } from '@booking/contracts';
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -16,6 +16,7 @@ import { toPaginated } from '../../../../shared/pagination/pagination';
 import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { SettlementNotFound } from '../../domain/errors/finance-domain-errors';
 import {
   toPartnerBookingSettlementResponse,
@@ -91,6 +92,7 @@ export class PartnerFinanceController {
   }
 
   @RequirePermissions('partner.disputes.respond')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Post('disputes/:id/respond')
   @UuidParam('id')
   @ApiOperation({ summary: 'Respond once to an open dispute affecting an owned booking' })

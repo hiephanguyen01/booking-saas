@@ -2,6 +2,7 @@ import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
+import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { CatalogModule } from '../../../catalog/infrastructure/http/catalog.module';
 import { PartnerModule } from '../../../partner/infrastructure/http/partner.module';
@@ -107,6 +108,7 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     CatalogModule,
     PartnerModule,
     AdministrativeDivisionModule,
+    LegalModule,
   ],
   controllers: [
     TenantListingGroupController,

@@ -118,7 +118,9 @@ export class ApplyAffiliateUseCase {
       userId: application.userId,
       partnerId: null,
       acceptedVersionIds: legalConsent.acceptedVersionIds,
-      acceptedLocale: legalConsent.acceptedLocale,
+      requestedLocale: legalConsent.acceptedLocale,
+      // Enforced server-side, not only by the form's required tick.
+      requiredDocTypes: ['affiliate_terms'],
       ip: ctx.ip ?? null,
     });
     return created.id;

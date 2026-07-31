@@ -26,6 +26,7 @@ import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { toExceptionResponse, toRuleResponse } from '../../application/scheduling.mapper';
 import { AddAvailabilityExceptionUseCase } from '../../application/use-cases/add-availability-exception.use-case';
@@ -76,7 +77,7 @@ export class PartnerAvailabilityController {
   }
 
   @RequirePermissions('partner.availability.manage')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Put('listings/:id/availability-rules')
   @ApiOperation({ summary: 'Replace a listing whole weekly availability rule set' })
   @UuidParam()
@@ -107,7 +108,7 @@ export class PartnerAvailabilityController {
   }
 
   @RequirePermissions('partner.availability.manage')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post('resources/:id/availability-exceptions')
   @ApiOperation({ summary: 'Add a date-specific availability exception to a resource' })
   @UuidParam()
@@ -126,7 +127,7 @@ export class PartnerAvailabilityController {
    * paths do not collide.
    */
   @RequirePermissions('partner.availability.manage')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post('resources/:id/availability-exceptions/bulk')
   @ApiOperation({ summary: 'Apply one availability exception across a range of dates' })
   @UuidParam()
@@ -141,7 +142,7 @@ export class PartnerAvailabilityController {
   }
 
   @RequirePermissions('partner.availability.manage')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Delete('resources/:id/availability-exceptions/:exceptionId')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a resource availability exception' })

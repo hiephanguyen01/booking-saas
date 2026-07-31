@@ -95,7 +95,13 @@ export class ApplyAsPartnerUseCase {
         userId,
         partnerId: created.id,
         acceptedVersionIds: input.legalConsent.acceptedVersionIds,
-        acceptedLocale: input.legalConsent.acceptedLocale,
+        requestedLocale: input.legalConsent.acceptedLocale,
+        // Server-side enforcement of the form's required tick: a submission
+        // that names no partner_terms version is rejected (LEGAL_CONSENT_REQUIRED)
+        // and rolls this whole transaction back, so the docblock's "no state
+        // where a partner exists without their own signature" is true of the
+        // API and not only of the browser.
+        requiredDocTypes: ['partner_terms'],
         ip: ctx.ip,
       });
       await this.partners.addMember(tx, {

@@ -2,6 +2,7 @@ import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
+import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { releasesUsageOnCancel } from '../../domain/entities/promo-redemption.entity';
 import { PROMO_AGREEMENT_RECORDER } from '../../domain/ports/promo-agreement-recorder.port';
@@ -39,7 +40,7 @@ import { PartnerPromotionController } from './partner-promotion.controller';
 import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabled.guard';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule],
+  imports: [PrismaModule, TenantContextModule, TenancyModule, LegalModule],
   controllers: [PublicPromoController, TenantPromotionController, PartnerPromotionController],
   providers: [
     { provide: PROMOTION_REPOSITORY, useClass: PrismaPromotionRepository },

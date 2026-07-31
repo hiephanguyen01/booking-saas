@@ -684,6 +684,13 @@ model Tenant {
   legalReadyAt                DateTime?    @map("legal_ready_at") @db.Timestamptz(6)
   /// How many of the four required documents are published in defaultLocale (0-4).
   legalDocumentsReady         Int          @default(0) @map("legal_documents_ready") @db.SmallInt
+  /// Emit time (DB clock) of the newest `legal.readiness_changed` event already
+  /// applied to the two columns above. Outbox delivery is at-least-once and out
+  /// of order — a failed event backs off while newer ones drain — so the two
+  /// columns are only overwritten by an event at least this new. Without it a
+  /// retried stale snapshot could reopen the storefront gate on a withdrawn
+  /// document and nothing would ever correct it.
+  legalReadinessAt            DateTime?    @map("legal_readiness_at") @db.Timestamptz(6)
   createdAt                   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -788,6 +795,12 @@ model LegalDocument {
 
 /// An immutable published version, or the single draft (published_at null).
 /// Every publish creates a new row; `isMaterialChange` decides who re-accepts.
+/// INVARIANT NOT EXPRESSIBLE HERE: at most one draft per document is enforced by
+/// the partial unique index `legal_document_versions_draft_key`
+/// (UNIQUE (document_id) WHERE published_at IS NULL), created by hand in
+/// migrations/20260731140000_tenant_legal_documents/migration.sql. Prisma cannot
+/// express partial unique indexes, so `prisma migrate dev` / `db push` against
+/// this schema would silently drop it — both are forbidden by ADR 0004.
 model LegalDocumentVersion {
   id                String    @id @default(uuid(7)) @db.Uuid
   tenantId          String    @map("tenant_id") @db.Uuid

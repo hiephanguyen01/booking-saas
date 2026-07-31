@@ -1,4 +1,5 @@
 import { Logger, Module, type OnModuleInit } from '@nestjs/common';
+import { z } from 'zod';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
@@ -58,6 +59,12 @@ import { AdminPlanController } from './admin-plan.controller';
 import { PlatformHealthController } from './platform-health.controller';
 import { PublicTenantController } from './public-tenant.controller';
 import { TenantSettingsController } from './tenant-settings.controller';
+
+/** Wire shape of `legal.readiness_changed` — four required documents, so 0..4. */
+const LEGAL_READINESS_PAYLOAD = z.object({
+  legalReady: z.boolean(),
+  publishedCount: z.number().int().min(0).max(4),
+});
 
 @Module({
   imports: [PrismaModule, TenantContextModule],
@@ -146,10 +153,17 @@ export class TenancyModule implements OnModuleInit {
     this.registry.register('legal.readiness_changed', (event) => {
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);
       if (!tenantId) return Promise.resolve();
-      return this.applyLegalReadiness.execute(
-        tenantId,
-        (event.payload ?? {}) as { legalReady: boolean; publishedCount: number },
-      );
+      // Parsed, not cast: this is the one event that decides whether a
+      // storefront serves traffic at all. A shape drift used to compile fine and
+      // then write `publishedCount: undefined`, which Prisma reads as "leave the
+      // column alone" — freezing the dashboard's readiness card at a count that
+      // contradicted the dark storefront, silently. Throwing instead lets the
+      // relay retry and finally dead-letter it visibly.
+      const payload = LEGAL_READINESS_PAYLOAD.parse(event.payload);
+      return this.applyLegalReadiness.execute(tenantId, {
+        ...payload,
+        emittedAt: event.createdAt,
+      });
     });
   }
 

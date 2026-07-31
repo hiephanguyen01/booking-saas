@@ -423,7 +423,11 @@ export class CreateBookingUseCase {
         userId: args.customerId,
         partnerId: null,
         acceptedVersionIds,
-        acceptedLocale: args.input.acceptedLocale ?? 'vi',
+        // Requested, not recorded: legal resolves and stores the locale each
+        // version was actually rendered in. No `requiredDocTypes` — checkout
+        // consent is optional by design (spec §Consent capture: notice line
+        // only) and must never fail a booking.
+        requestedLocale: args.input.acceptedLocale ?? 'vi',
         ip: args.ip,
       });
     }

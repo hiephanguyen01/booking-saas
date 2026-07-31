@@ -11,6 +11,7 @@ import { MissingTenantHost } from '../../../../shared/http/request-boundary-erro
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
+import { LegalDocumentNotFound } from '../../domain/errors/legal-errors';
 import { GetPublicLegalDocumentUseCase } from '../../application/use-cases/get-public-legal-document.use-case';
 import { ListPublicLegalDocumentsUseCase } from '../../application/use-cases/list-public-legal-documents.use-case';
 import { LegalDocumentResponseDto, LegalDocumentSummaryDto } from './dto/legal.dto';
@@ -74,9 +75,12 @@ export class PublicLegalController {
     @Query('locale') locale?: string,
   ): Promise<LegalDocumentResponse> {
     const tenant = await this.resolveTenant.execute(this.hostOf(forwardedHost, host));
-    // An unparsable versionNo simply matches no version — the use case's
-    // `LegalDocumentNotFound` (404) is the right outcome, not a 400.
+    // `Number('abc')` is NaN and `Number('0')` is 0 — both falsy, which used to
+    // fall through to the current-version branch and answer 200 with today's
+    // text for a URL that named a specific historical version. 404 is the right
+    // outcome, and now it is also the actual one.
     const versionNo = Number(versionNoRaw);
+    if (!Number.isInteger(versionNo) || versionNo < 1) throw new LegalDocumentNotFound();
     return this.getPublicDocument.execute(
       tenant.id,
       docType,

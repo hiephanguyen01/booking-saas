@@ -23,6 +23,7 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { ApproveBookingUseCase } from '../../application/use-cases/approve-booking.use-case';
 import { RejectBookingUseCase } from '../../application/use-cases/reject-booking.use-case';
@@ -117,7 +118,7 @@ export class PartnerBookingController {
 
   /** Set/clear the partner's private note on one of their bookings (§8.2). */
   @RequirePermissions('partner.bookings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Patch(':id/note')
   @ApiOperation({ summary: "Set or clear the partner's private note on a booking" })
   @UuidParam()
@@ -171,7 +172,7 @@ export class PartnerBookingController {
   }
 
   @RequirePermissions('partner.bookings.approve')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/approve')
   @HttpCode(200)
   @ApiOperation({ summary: 'Approve a pending booking' })
@@ -185,7 +186,7 @@ export class PartnerBookingController {
   }
 
   @RequirePermissions('partner.bookings.approve')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/reject')
   @HttpCode(200)
   @ApiOperation({ summary: 'Reject a pending booking' })
@@ -202,7 +203,7 @@ export class PartnerBookingController {
   }
 
   @RequirePermissions('partner.bookings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/no-show')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mark a confirmed booking as a no-show' })
@@ -219,7 +220,7 @@ export class PartnerBookingController {
   }
 
   @RequirePermissions('partner.bookings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/complete')
   @HttpCode(200)
   @ApiOperation({ summary: 'Complete a service and confirm the amount collected on site' })
@@ -241,7 +242,7 @@ export class PartnerBookingController {
   }
 
   @RequirePermissions('partner.bookings.cancel')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/cancel')
   @HttpCode(200)
   @ApiOperation({ summary: 'Partner cancels a booking (computes the refund)' })
@@ -261,7 +262,7 @@ export class PartnerBookingController {
   }
 
   @RequirePermissions('partner.bookings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/pick-up')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mark an inventory rental as picked up' })
@@ -275,7 +276,7 @@ export class PartnerBookingController {
   }
 
   @RequirePermissions('partner.bookings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post(':id/return')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mark an inventory rental returned + inspected' })

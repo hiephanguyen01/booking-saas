@@ -25,6 +25,7 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { CreatePartnerPricingRuleUseCase } from '../../application/use-cases/create-partner-pricing-rule.use-case';
 import { CreatePartnerPricingRuleRangeUseCase } from '../../application/use-cases/create-partner-pricing-rule-range.use-case';
@@ -73,7 +74,7 @@ export class PartnerPricingRuleController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post()
   @ApiOperation({ summary: 'Create an owned listing pricing rule' })
   @UuidParam('listingId')
@@ -101,7 +102,7 @@ export class PartnerPricingRuleController {
    * stays next to `create` because it is the same operation at range scale.
    */
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Post('bulk')
   @ApiOperation({ summary: 'Apply one pricing rule across a range of dates' })
   @UuidParam('listingId')
@@ -121,7 +122,7 @@ export class PartnerPricingRuleController {
   }
 
   @RequirePermissions('partner.listings.write')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Delete(':ruleId')
   @HttpCode(204)
   @UuidParam('listingId')

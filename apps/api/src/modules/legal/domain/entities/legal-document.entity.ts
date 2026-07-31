@@ -8,6 +8,15 @@ export interface VersionSnapshot {
   locales: readonly string[];
 }
 
+/**
+ * NOTE: the re-acceptance rule ("pending until the accepted version_no reaches
+ * the newest MATERIAL version_no") is NOT expressed here. Its single
+ * authoritative implementation is the `material` CTE in
+ * `PrismaAgreementAcceptanceRepository.pendingTypes` — it is a max-vs-max
+ * comparison across a join that has to run in one round trip. A duplicate here
+ * (there used to be one, `materialWatermark`, with no caller) can only drift.
+ */
+
 export class LegalDocument {
   /** Every publish creates a new row — cosmetic or material alike. */
   static nextVersionNo(versions: readonly VersionSnapshot[]): number {
@@ -31,12 +40,5 @@ export class LegalDocument {
     locale: Locale,
   ): void {
     if (publishedAt && existingLocales.includes(locale)) throw new LegalTranslationImmutable();
-  }
-
-  /** Re-acceptance bar: the newest MATERIAL version, not the newest version. */
-  static materialWatermark(versions: readonly VersionSnapshot[]): number {
-    return versions
-      .filter((v) => v.publishedAt !== null && v.isMaterialChange)
-      .reduce((max, v) => Math.max(max, v.versionNo), 0);
   }
 }

@@ -26,13 +26,11 @@ import {
  * organisation (`ListPendingAcceptancesUseCase`'s optional 4th argument);
  * absent, it checks the affiliate scope for the tenant in context.
  *
- * KNOWN GAP (flag for whoever attaches this to affiliate write routes):
- * `affiliate.controller.ts`'s routes are today all `@AuthenticatedOnly()`
- * (membership-gated, not RBAC — see its own docblock), so `PermissionsGuard`
- * never seeds tenant context for them and `tenantIdOrThrow()` would 500
- * instead of 403 there. That module needs its own fix (populate tenant
- * context, or move to RBAC) before this guard can be attached to an affiliate
- * write route — out of `legal`'s scope to make that change.
+ * Affiliate write routes ARE covered: `affiliate.controller.ts` is entirely
+ * `@AuthenticatedOnly()` (membership-gated, not RBAC), so `PermissionsGuard`
+ * never seeds tenant context there — `ResolveAffiliateTenantContextGuard` runs
+ * immediately ahead of this one and seeds it from the caller's own affiliate
+ * membership. Attach the pair, in that order.
  */
 @Injectable()
 export class RequireCurrentAgreementGuard implements CanActivate {

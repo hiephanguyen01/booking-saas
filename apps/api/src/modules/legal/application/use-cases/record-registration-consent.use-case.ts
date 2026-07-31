@@ -35,7 +35,19 @@ export class RecordRegistrationConsentUseCase {
         userId: payload.userId,
         partnerId: null,
         acceptedVersionIds: payload.acceptedVersionIds,
-        acceptedLocale: payload.acceptedLocale,
+        // Requested locale; legal stores whichever rendering each version
+        // actually resolved to. No `requiredDocTypes`: coverage is enforced at
+        // the synchronous edge (the registration contract requires the tick when
+        // a tenantId is present) because a throw here is a permanent handler
+        // failure that only dead-letters the row.
+        requestedLocale: payload.acceptedLocale,
+        // The versions were current when the visitor ticked; this handler can
+        // run up to ~40 minutes later (OTP + completion TTL) and is retried by
+        // the relay. Re-applying the stale-tab check here could only throw
+        // forever, burn 20 attempts and dead-letter the row — leaving a
+        // registered user with no proof of consent to anything, silently. Record
+        // what they actually read instead.
+        acceptSupersededVersions: true,
         ip: payload.ip ?? null,
       }),
     );

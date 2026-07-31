@@ -40,13 +40,17 @@ export class ListPendingAcceptancesUseCase {
   ) {}
 
   /**
-   * `partnerId` narrows a `'partner'`-scope check to one partner organisation
-   * (D-Task6-1) — without it, a user who belongs to more than one partner org
-   * would have their pending check answered against *any* of their partner
-   * acceptances, not the one they are currently acting as. Pass it whenever the
-   * caller has a verified partner scope (e.g. `RequireCurrentAgreementGuard`);
-   * omit it for a user-wide check (e.g. `GET /me/legal/pending`, which has no
-   * single verified partner scope to narrow to).
+   * `partnerId` narrows a `'partner'`-scope check to one partner organisation —
+   * without it, a user who belongs to more than one partner org would have
+   * their pending check answered against *any* of their partner acceptances,
+   * not the one they are currently acting as. It narrows to
+   * `partner_id = <id> OR partner_id IS NULL`: a user-scoped signature (what
+   * `POST /me/legal/accept` writes when the caller has no verified partner
+   * scope) counts everywhere, because the person is who signed. The read here
+   * and the write in `RecordLegalAcceptanceUseCase` must never disagree about
+   * that — when they did, accepting on the interstitial wrote `partner_id NULL`
+   * while the guard only looked for the partner-keyed row, and every partner
+   * write stayed 403 forever.
    */
   async execute(
     tenantId: string,

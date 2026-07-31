@@ -46,8 +46,14 @@ export interface ILegalDocumentRepository {
   findVersionById(tx: PrismaTx, versionId: string): Promise<(VersionRow & { docType: LegalDocumentType }) | null>;
   /** Creates the document row if missing; replaces the single draft. */
   upsertDraft(tx: PrismaTx, data: UpsertDraftData): Promise<string>;
-  /** Stamps published_at and repoints current_version_id. */
-  publish(tx: PrismaTx, data: PublishData): Promise<void>;
+  /**
+   * Stamps published_at and repoints current_version_id. Guarded on the version
+   * still being a draft, so two concurrent publishes cannot both stamp the same
+   * row (the second would rewrite `published_at` and `is_material_change` on an
+   * already-published version — silently retracting or imposing a re-acceptance
+   * requirement). Returns false when the draft was already published.
+   */
+  publish(tx: PrismaTx, data: PublishData): Promise<boolean>;
   /** Clears current_version_id — the document stops counting for readiness. */
   withdraw(tx: PrismaTx, tenantId: string, documentId: string): Promise<void>;
   /** Adds a locale a published version never had (never edits an existing one). */

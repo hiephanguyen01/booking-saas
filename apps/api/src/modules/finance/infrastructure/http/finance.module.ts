@@ -2,6 +2,7 @@ import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
+import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { COMMISSION_RULE_REPOSITORY } from '../../domain/ports/commission-rule-repository.port';
 import { LEDGER_REPOSITORY } from '../../domain/ports/ledger-repository.port';
@@ -65,7 +66,7 @@ import { CustomerFinanceController } from './customer-finance.controller';
 import { TenantDisputeController } from './tenant-dispute.controller';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule],
+  imports: [PrismaModule, TenantContextModule, TenancyModule, LegalModule],
   controllers: [
     TenantFinanceController,
     PartnerFinanceController,

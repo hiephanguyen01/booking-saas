@@ -2,6 +2,7 @@ import { Inject, Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
+import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { ListingModule } from '../../../listing/infrastructure/http/listing.module';
 import { AVAILABILITY_RULE_REPOSITORY } from '../../domain/ports/availability-rule-repository.port';
@@ -41,7 +42,7 @@ const BOOKING_BUSY_EVENTS = [
 ] as const;
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule, ListingModule],
+  imports: [PrismaModule, TenantContextModule, TenancyModule, ListingModule, LegalModule],
   controllers: [
     PublicAvailabilityController,
     TenantAvailabilityController,

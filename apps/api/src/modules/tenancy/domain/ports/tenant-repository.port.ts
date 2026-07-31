@@ -77,8 +77,18 @@ export interface ITenantRepository {
    * Stamps or clears the legal-readiness marker. Separate from `update()`
    * because the only writer is the legal-readiness outbox handler, never the
    * platform-admin tenant form.
+   *
+   * `emittedAt` is the emitting transaction's DB-clock time and makes this a
+   * compare-and-set: an event older than the one already applied is a no-op, so
+   * an out-of-order redelivery cannot resurrect a stale snapshot. Returns false
+   * when the write was skipped for that reason.
    */
-  setLegalReadiness(tenantId: string, at: Date | null, publishedCount: number): Promise<void>;
+  setLegalReadiness(
+    tenantId: string,
+    at: Date | null,
+    publishedCount: number,
+    emittedAt: Date,
+  ): Promise<boolean>;
   /** True when `policyId` is a tenant-level (partner_id null) cancellation policy of this tenant. */
   isTenantLevelPolicy(tenantId: string, policyId: string): Promise<boolean>;
   countPartners(tenantId: string): Promise<number>;

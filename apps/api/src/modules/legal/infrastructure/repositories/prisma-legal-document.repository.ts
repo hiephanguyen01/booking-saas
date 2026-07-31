@@ -129,9 +129,17 @@ export class PrismaLegalDocumentRepository implements ILegalDocumentRepository {
     return document.id;
   }
 
-  async publish(tx: PrismaTx, data: PublishData): Promise<void> {
-    await tx.legalDocumentVersion.updateMany({
-      where: { id: data.draftVersionId, tenantId: data.tenantId },
+  /**
+   * CAS on `published_at IS NULL`: under READ COMMITTED a second concurrent
+   * publish that read the same draft snapshot would otherwise block on the row
+   * lock, re-evaluate a WHERE clause that still matches, and rewrite the
+   * `published_at` and `is_material_change` of a version people may already be
+   * accepting against. Returns false on the miss so the use-case can throw the
+   * named 409 rather than reporting a second successful publish.
+   */
+  async publish(tx: PrismaTx, data: PublishData): Promise<boolean> {
+    const { count } = await tx.legalDocumentVersion.updateMany({
+      where: { id: data.draftVersionId, tenantId: data.tenantId, publishedAt: null },
       data: {
         versionNo: data.versionNo,
         isMaterialChange: data.isMaterialChange,
@@ -139,10 +147,12 @@ export class PrismaLegalDocumentRepository implements ILegalDocumentRepository {
         publishedByUserId: data.publishedByUserId,
       },
     });
+    if (count === 0) return false;
     await tx.legalDocument.updateMany({
       where: { id: data.documentId, tenantId: data.tenantId },
       data: { currentVersionId: data.draftVersionId },
     });
+    return true;
   }
 
   async withdraw(tx: PrismaTx, tenantId: string, documentId: string): Promise<void> {

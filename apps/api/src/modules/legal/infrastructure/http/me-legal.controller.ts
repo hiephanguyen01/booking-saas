@@ -1,14 +1,16 @@
 import { Body, Controller, Get, Headers, HttpCode, Ip, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AcceptanceRecord, PendingAcceptance } from '@booking/contracts';
-import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
-import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { ListMyAcceptancesUseCase } from '../../application/use-cases/list-my-acceptances.use-case';
 import { ListPendingAcceptancesUseCase } from '../../application/use-cases/list-pending-acceptances.use-case';
 import { RecordLegalAcceptanceUseCase } from '../../application/use-cases/record-legal-acceptance.use-case';
+import {
+  ResolveLegalCallerScopeUseCase,
+  type LegalCallerScopeInput,
+} from '../../application/use-cases/resolve-legal-caller-scope.use-case';
 import { AcceptanceRecordDto, AcceptLegalDto, PendingAcceptanceDto } from './dto/legal.dto';
 
 /**
@@ -16,22 +18,20 @@ import { AcceptanceRecordDto, AcceptLegalDto, PendingAcceptanceDto } from './dto
  * user may call it about themselves. Like every other `@AuthenticatedOnly()`
  * controller in this codebase (`customer-favorite`, `customer-finance`,
  * `customer-review`, `customer-content-report`), `PermissionsGuard` short-
- * circuits before it ever seeds `TenantContextService` for these routes (it
- * only does that on the `@RequirePermissions` branch), so there is no tenant
- * in context here either — every route resolves the tenant from the request
- * Host itself, the same way `PublicLegalController` does.
+ * circuits before it ever seeds `TenantContextService` for these routes.
  *
- * `GET /pending` and `POST /accept` are deliberately **not** narrowed to one
- * partner organisation: this is a user-wide self-service surface (there is no
- * verified `x-partner-id` scope on an `@AuthenticatedOnly()` route to narrow
- * to), unlike `RequireCurrentAgreementGuard`, which runs on an already
- * RBAC-checked route and can pass a real `partnerId`.
+ * Which tenant (and which re-acceptance gate) a call belongs to is therefore
+ * resolved by `ResolveLegalCallerScopeUseCase` from the scope headers the
+ * dashboard sends, falling back to the request Host for storefront callers —
+ * see that use-case for why Host alone could never work here. Everything below
+ * is narrowed to the caller's own `userId`; no route reads another person's
+ * consent.
  */
 @ApiTags('me: legal')
 @Controller('me/legal')
 export class MeLegalController {
   constructor(
-    private readonly resolveTenant: ResolveTenantByHostUseCase,
+    private readonly resolveScope: ResolveLegalCallerScopeUseCase,
     private readonly listPending: ListPendingAcceptancesUseCase,
     private readonly recordAcceptance: RecordLegalAcceptanceUseCase,
     private readonly listMyAcceptances: ListMyAcceptancesUseCase,
@@ -39,22 +39,28 @@ export class MeLegalController {
 
   @AuthenticatedOnly()
   @Get('pending')
-  @ApiOperation({ summary: 'Documents this user must (re-)accept, across partner + affiliate scope' })
+  @ApiOperation({ summary: "Documents this user must (re-)accept in the scope they are acting in" })
   @ApiOkResponse({ type: [PendingAcceptanceDto] })
   async pending(
-    @Headers('x-forwarded-host') forwardedHost: string | undefined,
-    @Headers('host') host: string | undefined,
+    @Headers() headers: Record<string, string | undefined>,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PendingAcceptance[]> {
-    const tenant = await this.resolveTenant.execute(this.hostOf(forwardedHost, host));
-    // The dashboard calls this identically from the partner layout AND the
-    // affiliate layout (no scope query param) — customers are never gated, so
-    // 'customer' is intentionally excluded from the merge (design §Re-acceptance).
-    const [partnerPending, affiliatePending] = await Promise.all([
-      this.listPending.execute(tenant.id, principal.userId, 'partner'),
-      this.listPending.execute(tenant.id, principal.userId, 'affiliate'),
-    ]);
-    return [...partnerPending, ...affiliatePending];
+    const scope = await this.resolveScope.execute(this.scopeInput(headers, principal));
+    // Only the gates the caller provably stands in: a partner is asked for
+    // partner_terms, an affiliate for affiliate_terms, and neither is dragged
+    // through the other's document. Merging both unconditionally forced every
+    // partner to "accept" the CTV terms whenever those were republished.
+    const results = await Promise.all(
+      scope.scopes.map((s) =>
+        this.listPending.execute(
+          scope.tenantId,
+          principal.userId,
+          s,
+          s === 'partner' ? scope.partnerId : null,
+        ),
+      ),
+    );
+    return results.flat();
   }
 
   @AuthenticatedOnly()
@@ -62,21 +68,23 @@ export class MeLegalController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Record acceptance of the versions currently on screen' })
   async accept(
-    @Headers('x-forwarded-host') forwardedHost: string | undefined,
-    @Headers('host') host: string | undefined,
+    @Headers() headers: Record<string, string | undefined>,
     @CurrentPrincipal() principal: SessionPrincipal,
     @Body() input: AcceptLegalDto,
     @Ip() ip: string,
   ): Promise<void> {
-    const tenant = await this.resolveTenant.execute(this.hostOf(forwardedHost, host));
+    const scope = await this.resolveScope.execute(this.scopeInput(headers, principal));
     // tx: null — this is its own business operation, not nested inside another
     // module's transaction, so RecordLegalAcceptanceUseCase opens its own.
+    // `partnerId` is the verified partner scope, so the row lands under the same
+    // key `RequireCurrentAgreementGuard` reads it back with; writing NULL here
+    // left every partner permanently blocked on their own signature.
     await this.recordAcceptance.execute(null, {
-      tenantId: tenant.id,
+      tenantId: scope.tenantId,
       userId: principal.userId,
-      partnerId: null,
+      partnerId: scope.partnerId,
       acceptedVersionIds: input.versionIds,
-      acceptedLocale: input.acceptedLocale,
+      requestedLocale: input.acceptedLocale,
       ip,
     });
   }
@@ -86,17 +94,24 @@ export class MeLegalController {
   @ApiOperation({ summary: "This user's acceptance history, newest first" })
   @ApiOkResponse({ type: [AcceptanceRecordDto] })
   async acceptances(
-    @Headers('x-forwarded-host') forwardedHost: string | undefined,
-    @Headers('host') host: string | undefined,
+    @Headers() headers: Record<string, string | undefined>,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<AcceptanceRecord[]> {
-    const tenant = await this.resolveTenant.execute(this.hostOf(forwardedHost, host));
-    return this.listMyAcceptances.execute(tenant.id, principal.userId);
+    const scope = await this.resolveScope.execute(this.scopeInput(headers, principal));
+    return this.listMyAcceptances.execute(scope.tenantId, principal.userId);
   }
 
-  private hostOf(forwardedHost?: string, host?: string): string {
-    const resolved = forwardedHost?.split(',')[0]?.trim() || host;
-    if (!resolved) throw new MissingTenantHost();
-    return resolved;
+  private scopeInput(
+    headers: Record<string, string | undefined>,
+    principal: SessionPrincipal,
+  ): LegalCallerScopeInput {
+    return {
+      userId: principal.userId,
+      tenantIdHeader: headers['x-tenant-id'],
+      partnerIdHeader: headers['x-partner-id'],
+      affiliateTenantHeader: headers['x-affiliate-tenant'],
+      forwardedHost: headers['x-forwarded-host'],
+      host: headers.host,
+    };
   }
 }

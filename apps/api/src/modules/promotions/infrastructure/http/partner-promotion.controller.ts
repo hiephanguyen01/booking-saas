@@ -22,6 +22,7 @@ import { GetPartnerPromotionUseCase } from '../../application/use-cases/get-part
 import { ListPartnerPromotionsUseCase } from '../../application/use-cases/list-partner-promotions.use-case';
 import { ListPendingOptInUseCase } from '../../application/use-cases/list-pending-optin.use-case';
 import { OptInPromotionUseCase } from '../../application/use-cases/opt-in-promotion.use-case';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabled.guard';
 import {
   CreatePartnerPromotionDto,
@@ -76,6 +77,7 @@ export class PartnerPromotionController {
   }
 
   @RequirePermissions('partner.promotions.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Post()
   @ApiOperation({ summary: 'Create a partner-funded promotion' })
   @ApiCreatedResponse({ type: PromotionResponseDto })
@@ -96,6 +98,7 @@ export class PartnerPromotionController {
   }
 
   @RequirePermissions('partner.promotions.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Patch(':id')
   @UuidParam()
   @ApiOperation({ summary: 'Update the partner’s own promotion' })
@@ -109,6 +112,7 @@ export class PartnerPromotionController {
   }
 
   @RequirePermissions('partner.promotions.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Post(':id/end')
   @UuidParam()
   @ApiOperation({ summary: 'End the partner’s own promotion' })
@@ -119,6 +123,7 @@ export class PartnerPromotionController {
   }
 
   @RequirePermissions('partner.promotions.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Post(':id/opt-in')
   @UuidParam()
   @ApiOperation({ summary: 'Opt in to fund a tenant-created partner-funded promotion' })
