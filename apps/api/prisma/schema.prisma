@@ -70,8 +70,22 @@ enum AgreementType {
   partner_terms
   commission_schedule
   promo_funding
+  customer_terms
+  privacy_policy
+  affiliate_terms
 
   @@map("agreement_type")
+}
+
+/// The four tenant-authored documents that gate a storefront. A subset of
+/// AgreementType by name — the other two values are not documents.
+enum LegalDocumentType {
+  customer_terms
+  privacy_policy
+  partner_terms
+  affiliate_terms
+
+  @@map("legal_document_type")
 }
 
 enum PartnerType {
@@ -528,6 +542,8 @@ model User {
   contentReportsHandled ContentReport[]  @relation("ContentReportHandler")
   listingRevisions      ListingRevision[] @relation("ListingRevisionSubmitter")
   listingRevisionsReviewed ListingRevision[] @relation("ListingRevisionReviewer")
+  agreementAcceptances     AgreementAcceptance[]
+  legalVersionsPublished   LegalDocumentVersion[]
 
   @@map("users")
 }
@@ -662,6 +678,12 @@ model Tenant {
   /// Tenant-level fallback cancellation policy (§11.3) applied when a listing and its
   /// partner set none. Points at a tenant-level policy (partner_id null).
   defaultCancellationPolicyId String?      @map("default_cancellation_policy_id") @db.Uuid
+  /// Stamped by the legal-readiness outbox handler when all four required
+  /// documents are published in the tenant's defaultLocale; cleared otherwise.
+  /// The storefront hard gate keys on this being non-null.
+  legalReadyAt                DateTime?    @map("legal_ready_at") @db.Timestamptz(6)
+  /// How many of the four required documents are published in defaultLocale (0-4).
+  legalDocumentsReady         Int          @default(0) @map("legal_documents_ready") @db.SmallInt
   createdAt                   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -694,6 +716,7 @@ model Tenant {
   payoutAllocations         PayoutAllocation[]
   promotions                Promotion[]
   affiliates                Affiliate[]
+  legalDocuments            LegalDocument[]
 
   @@map("tenants")
 }
@@ -725,13 +748,82 @@ model AgreementAcceptance {
   version       String
   acceptedAt    DateTime      @default(now()) @map("accepted_at") @db.Timestamptz(6)
   ip            String?
+  /// The exact tenant-authored version accepted. Null for commission_schedule / promo_funding.
+  documentVersionId String?       @map("document_version_id") @db.Uuid
+  /// The language actually rendered on screen when the person clicked, fallback included.
+  acceptedLocale    String?       @map("accepted_locale")
 
-  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  partner Partner? @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner         Partner?              @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  user            User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentVersion LegalDocumentVersion? @relation(fields: [documentVersionId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
   @@index([partnerId])
+  @@index([tenantId, userId, agreementType])
+  @@index([documentVersionId])
   @@map("agreement_acceptances")
+}
+
+/// One legal document per type per tenant. `currentVersionId` points at the
+/// published version the storefront serves; null means never published.
+model LegalDocument {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  docType          LegalDocumentType @map("doc_type")
+  currentVersionId String?           @map("current_version_id") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  currentVersion LegalDocumentVersion?  @relation("LegalDocumentCurrent", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  versions       LegalDocumentVersion[] @relation("LegalDocumentVersions")
+
+  @@unique([tenantId, docType])
+  @@map("legal_documents")
+}
+
+/// An immutable published version, or the single draft (published_at null).
+/// Every publish creates a new row; `isMaterialChange` decides who re-accepts.
+model LegalDocumentVersion {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  documentId        String    @map("document_id") @db.Uuid
+  versionNo         Int       @map("version_no")
+  isMaterialChange  Boolean   @default(false) @map("is_material_change")
+  publishedAt       DateTime? @map("published_at") @db.Timestamptz(6)
+  publishedByUserId String?   @map("published_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  document        LegalDocument              @relation("LegalDocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  publishedBy     User?                      @relation(fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  translations    LegalDocumentTranslation[]
+  currentOf       LegalDocument[]            @relation("LegalDocumentCurrent")
+  acceptances     AgreementAcceptance[]
+
+  @@unique([documentId, versionNo])
+  @@index([tenantId])
+  @@map("legal_document_versions")
+}
+
+/// One rendering of a version. A version is the agreement; vi and en of v3 are
+/// one contract in two languages, which is why locale lives here and not above.
+model LegalDocumentTranslation {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  versionId String   @map("version_id") @db.Uuid
+  locale    String
+  title     String
+  bodyMd    String   @map("body_md")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  version LegalDocumentVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, locale])
+  @@index([tenantId])
+  @@map("legal_document_translations")
 }
 
 model SubscriptionPlan {
