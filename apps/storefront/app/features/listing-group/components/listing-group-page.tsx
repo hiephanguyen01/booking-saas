@@ -23,7 +23,6 @@ import type { ListingGroupData } from '~/features/listing-group/lib/listing-grou
 import { SaleCampaignBanner } from '~/components/sale-campaign-banner';
 import { SalePrice } from '~/components/sale-price';
 import { compareMoney, minMoney } from '~/lib/money';
-import { campaignLabelsOf } from '~/lib/quote';
 import { discountPercent } from '~/lib/sale-campaign';
 
 /**
@@ -122,7 +121,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
                   <SalePrice
                     price={minimumPriceRoom.quote.subtotal}
                     regularPrice={minimumPriceRoom.quote.regularSubtotal}
-                    campaignLabel={campaignLabelsOf(minimumPriceRoom.quote).join(' · ')}
+                    showCampaignDetails={false}
                   />
                 ) : (
                   (minimumPrice ?? t('group.priceOnRequest'))

@@ -8,11 +8,13 @@ export function SalePrice({
   regularPrice,
   campaignLabel,
   compact = false,
+  showCampaignDetails = true,
 }: {
   price: string;
   regularPrice: string;
   campaignLabel?: string;
   compact?: boolean;
+  showCampaignDetails?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const percent = discountPercent(regularPrice, price);
@@ -39,11 +41,15 @@ export function SalePrice({
       >
         {formatVnd(price)}
       </span>
-      <span className="font-semibold text-warning-foreground" aria-hidden="true">
-        −{percent}%
-      </span>
-      <span className="sr-only">{t('campaign.exactPercent', { percent })}</span>
-      {label ? (
+      {showCampaignDetails ? (
+        <>
+          <span className="font-semibold text-warning-foreground" aria-hidden="true">
+            −{percent}%
+          </span>
+          <span className="sr-only">{t('campaign.exactPercent', { percent })}</span>
+        </>
+      ) : null}
+      {showCampaignDetails && label ? (
         <span
           className={cn(
             'min-w-0 max-w-full basis-full text-warning-foreground',
