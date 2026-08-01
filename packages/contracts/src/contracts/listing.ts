@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   cancellationTierSchema,
   paginationQuerySchema,
+  saleCampaignSummarySchema,
   uuidSchema,
   MAX_BULK_CALENDAR_DAYS,
 } from './common';
@@ -839,6 +840,8 @@ export const publicListingDetailResponseSchema = z
     trust: trustSignalsSchema,
     ratingAvg: z.number().nullable(),
     reviewCount: z.number().int().nonnegative(),
+    /** Running sale campaign across this listing's pricing rules; null when none. */
+    campaign: saleCampaignSummarySchema.nullable(),
   })
   .merge(administrativeAddressSnapshotSchema);
 export type PublicListingDetailResponse = z.infer<typeof publicListingDetailResponseSchema>;
@@ -871,6 +874,8 @@ export const publicListingGroupDetailResponseSchema = z
         capacity: z.number().int().positive().nullable(),
         bookingModes: z.array(bookingModeSchema),
         priceFrom: z.string().nullable(),
+        /** Running sale campaign on this room; null when none. */
+        campaign: saleCampaignSummarySchema.nullable(),
         ratingAvg: z.number().nullable(),
         reviewCount: z.number().int().nonnegative(),
       }),

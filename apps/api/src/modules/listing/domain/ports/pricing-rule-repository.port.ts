@@ -44,5 +44,11 @@ export interface IPricingRuleRepository {
     listingId: string,
     window?: PricingRuleDateWindow,
   ): Promise<PricingRuleRecord[]>;
+  /**
+   * Every rule of several listings at once, for surfaces that render a whole
+   * group of listings (a listing group's rooms, a favorites page). One `IN`
+   * query rather than a `listByListing` per row.
+   */
+  listByListings(tx: PrismaTx, listingIds: readonly string[]): Promise<PricingRuleRecord[]>;
   delete(tx: PrismaTx, id: string): Promise<void>;
 }

@@ -106,6 +106,9 @@ export async function fetchListings(
     attributes: {},
     photos: item.photos,
     priceFrom: item.priceFrom,
+    // Dropping this is what left home rails, related, provider and the group page
+    // with no sale signal at all while the search page had one.
+    campaign: item.campaign,
     itemLabel: null,
     ratingAvg: item.ratingAvg,
     reviewCount: item.reviewCount,

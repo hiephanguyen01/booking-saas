@@ -21,6 +21,8 @@ export interface ListingRecord {
   partnerId: string;
   listingTypeId: string;
   resourceId: string;
+  /** Resource-local booking boundary used by public campaign projections. */
+  resourceTimezone: string;
   groupId: string | null;
   categoryId: string | null;
   title: string;
@@ -77,7 +79,6 @@ export interface ListingRecord {
  * signals need. `cancellationPolicy` is inherited from `ListingRecord`.
  */
 export interface PublicListingRecord extends ListingRecord {
-  resourceTimezone: string;
   listingTypeSlug: string;
   partnerName: string;
   partnerSlug: string;
