@@ -161,10 +161,12 @@ Campaign labels are partner-authored text already in the tenant's language: rend
 translated. Only the no-name fallback goes through i18n. Calendar pricing is already reflected in
 the quoted subtotal; checkout promotion validation receives that subtotal and applies afterward.
 When a customer supplies a code, the Storefront resolves only that code; without a code, its
-server-side checkout loader previews the best code-less auto-campaign. The booking use-case resolves
-the winner again authoritatively inside its transaction, including customer-specific limits. The two
-names are never merged, code-over-auto precedence remains unchanged, and this presentation adds no
-stacking behavior.
+server-side checkout loader previews the name of the best code-less auto-campaign as a conditional
+offer. Because that identity-free preview cannot evaluate first-booking or per-customer limits, it
+does not change the displayed final amount, deposit or due-now amount. The booking use-case resolves
+the winner and monetary result authoritatively inside its transaction, including customer-specific
+limits. The two names are never merged, code-over-auto precedence remains unchanged, and this
+presentation adds no stacking behavior.
 
 ## Known limits
 

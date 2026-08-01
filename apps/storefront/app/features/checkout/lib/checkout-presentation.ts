@@ -2,16 +2,21 @@ import type { CancellationPolicySummary } from '@booking/contracts';
 import { cancellationPolicyLines, type CancellationPolicyLine } from '~/lib/cancellation-policy';
 
 /** One non-stacking checkout promotion selected server-side for presentation. */
-export interface CheckoutPromotionPresentation {
-  kind: 'code' | 'auto';
-  label: string;
-  discountAmount: string;
-  finalAmount: string;
-}
+export type CheckoutPromotionPresentation =
+  | {
+      kind: 'code';
+      label: string;
+      discountAmount: string;
+      finalAmount: string;
+    }
+  | {
+      kind: 'auto';
+      label: string;
+    };
 
 export function checkoutAmounts(
   quote: { subtotal: string; depositAmount: string; securityDeposit: string },
-  promotion?: Pick<CheckoutPromotionPresentation, 'discountAmount' | 'finalAmount'> | null,
+  promotion?: Extract<CheckoutPromotionPresentation, { kind: 'code' }> | null,
 ) {
   const subtotal = BigInt(quote.subtotal);
   const deposit = BigInt(quote.depositAmount);

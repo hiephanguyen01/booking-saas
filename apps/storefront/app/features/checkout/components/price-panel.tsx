@@ -71,7 +71,19 @@ export function PricePanel({
           </div>
         </div>
       ) : null}
-      {hasDiscount ? (
+      {checkoutPromotion?.kind === 'auto' ? (
+        <div className="mt-2 rounded-md border border-success/30 bg-success/10 px-3 py-2.5">
+          <Badge variant="success" className="max-w-full rounded-sm font-semibold">
+            <span className="min-w-0 truncate">
+              {t('automaticPromotion', { name: checkoutPromotion.label })}
+            </span>
+          </Badge>
+          <p className="mt-2 text-xs leading-4 text-success">
+            {t('automaticPromotionConditional')}
+          </p>
+        </div>
+      ) : null}
+      {hasDiscount && checkoutPromotion?.kind === 'code' ? (
         <div className="mt-2 rounded-md border border-success/30 bg-success/10 px-3 py-2.5">
           <PriceRow
             label={t('checkoutPromotion')}
@@ -79,11 +91,7 @@ export function PricePanel({
             className="font-semibold text-success"
           />
           <Badge variant="success" className="mt-2 max-w-full rounded-sm font-semibold">
-            <span className="min-w-0 truncate">
-              {checkoutPromotion?.kind === 'auto'
-                ? t('automaticPromotion', { name: checkoutPromotion.label })
-                : (checkoutPromotion?.label ?? t('checkoutPromotion'))}
-            </span>
+            <span className="min-w-0 truncate">{checkoutPromotion.label}</span>
           </Badge>
         </div>
       ) : null}

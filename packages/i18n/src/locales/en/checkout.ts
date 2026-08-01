@@ -16,6 +16,8 @@ export const enCheckout = {
   calendarSalePrice: 'Calendar sale price',
   checkoutPromotion: 'Checkout promotion',
   automaticPromotion: 'Automatic · {name}',
+  automaticPromotionConditional:
+    'Eligibility and savings are confirmed when you place the booking.',
   promoSection: 'Promo code',
   promoPlaceholder: 'Enter code',
   promoApply: 'Apply',

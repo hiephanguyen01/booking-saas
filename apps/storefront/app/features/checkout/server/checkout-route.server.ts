@@ -160,8 +160,6 @@ function checkoutPromotionOf(
   return {
     kind: 'auto',
     label: autoCampaign.name,
-    discountAmount: autoCampaign.discountAmount,
-    finalAmount: autoCampaign.finalAmount,
   };
 }
 

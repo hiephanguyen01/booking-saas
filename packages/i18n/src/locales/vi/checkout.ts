@@ -14,6 +14,7 @@ export const viCheckout = {
   calendarSalePrice: 'Giá ưu đãi theo lịch',
   checkoutPromotion: 'Ưu đãi thanh toán',
   automaticPromotion: 'Tự động · {name}',
+  automaticPromotionConditional: 'Điều kiện và mức giảm sẽ được xác nhận khi bạn đặt chỗ.',
   promoSection: 'Mã khuyến mãi',
   promoPlaceholder: 'Nhập mã',
   promoApply: 'Áp dụng',

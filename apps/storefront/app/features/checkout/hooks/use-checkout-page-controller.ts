@@ -24,7 +24,10 @@ export function useCheckoutPageController({ loaderData, actionData }: CheckoutPa
   const locale = useLocale();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const amounts = checkoutAmounts(quote, checkoutPromotion);
+  const amounts = checkoutAmounts(
+    quote,
+    checkoutPromotion?.kind === 'code' ? checkoutPromotion : null,
+  );
   const checkoutPath = `${location.pathname}${location.search}`;
   const handoff = checkoutDestinationSchema.safeParse(
     actionData && 'handoff' in actionData ? actionData.handoff : null,
