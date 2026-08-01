@@ -3,6 +3,7 @@ import {
   bookingDateRangeSchema,
   dateOnlySchema,
   moneyStringSchema,
+  saleCampaignSummarySchema,
   timeOfDaySchema,
 } from './common';
 import { publicListingTypeResponseSchema } from './listing-type';
@@ -234,6 +235,11 @@ export const publicCatalogSearchItemSchema = z.object({
   priceFrom: moneyStringSchema,
   /** Price before a calendar sale; equals priceFrom when no sale applies. */
   regularPriceFrom: moneyStringSchema,
+  /**
+   * Running sale campaign, independent of `priceFrom`: it is present even on an
+   * undated search, where no window exists to price the sale against.
+   */
+  campaign: saleCampaignSummarySchema.nullable(),
   priceUnit: z.enum(['hour', 'day', 'item', 'session', 'package']),
   completedBookings: z.number().int().nonnegative(),
   ratingAvg: z.number().nullable(),

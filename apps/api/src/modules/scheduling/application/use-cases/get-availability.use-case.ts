@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
+  AvailabilityCalendarResponse,
   AvailabilityQuery,
   AvailabilityResponse,
   DayAvailability,
@@ -30,9 +31,17 @@ import {
 import { BUSY_READER, type IBusyReader } from '../../domain/ports/busy-reader.port';
 import { HOLD_READER, type IHoldReader } from '../../domain/ports/hold-reader.port';
 import { eachDate, parseDate, weekdayOf } from '../../../../shared/domain/availability/date-util';
-import { openWindowsForDate, type DateException } from '../../../../shared/domain/availability/open-windows';
-import { applyLiveHolds, generateHourlySlots } from '../../../../shared/domain/availability/slot-generator';
+import {
+  openWindowsForDate,
+  type DateException,
+} from '../../../../shared/domain/availability/open-windows';
+import {
+  applyLiveHolds,
+  generateHourlySlots,
+} from '../../../../shared/domain/availability/slot-generator';
 import { computeDay } from '../../../../shared/domain/availability/day-availability';
+import { summarizeAvailabilityCalendar } from '../../../../shared/domain/availability/calendar-sale-summary';
+import type { UnitPrice } from '../../../../shared/domain/pricing/quote-calculator';
 import type { Interval } from '../../../../shared/domain/availability/interval';
 import { overlapsAny } from '../../../../shared/domain/availability/interval';
 import {
@@ -77,7 +86,7 @@ export class GetAvailabilityUseCase {
     host: string,
     slug: string,
     query: AvailabilityQuery,
-  ): Promise<AvailabilityResponse> {
+  ): Promise<AvailabilityResponse | AvailabilityCalendarResponse> {
     const tenant = await this.resolveTenant.execute(host);
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const listing = await this.listings.findPublicBySlug(tx, slug);
@@ -124,6 +133,9 @@ export class GetAvailabilityUseCase {
         params: r.params,
         price: r.price,
         salePrice: r.salePrice,
+        saleStartsAt: r.saleStartsAt,
+        saleEndsAt: r.saleEndsAt,
+        campaignLabel: r.campaignLabel,
         priority: r.priority,
       }));
       const ruleRows = await this.rules.listByListing(tx, listing.id);
@@ -149,8 +161,13 @@ export class GetAvailabilityUseCase {
       // and merge at read time so an expired hold never leaves a ghost-busy slot.
       const liveHolds = await this.holds.activeHolds(listing.resourceId, rangeStart, rangeEnd);
 
-      const priceFor = (startUtc: Date, endUtc: Date): string =>
-        priceQuote({
+      // One clock for the whole response: every slot in it must be priced
+      // against the same instant, or two slots could disagree about whether a
+      // sale campaign is still running.
+      const now = utcNow();
+
+      const priceFor = (startUtc: Date, endUtc: Date): UnitPrice => {
+        const quote = priceQuote({
           mode: query.mode,
           modeConfig,
           pricingRules: pv,
@@ -161,10 +178,20 @@ export class GetAvailabilityUseCase {
           depositPercent: listing.depositPercent,
           bookingSelection: listing.bookingSelection,
           packageId: query.packageId,
-        }).subtotal;
+          now,
+        });
+        // The quote already knows the pre-sale price and the campaign that cut
+        // it; keeping only `subtotal` is what made a discounted slot and a cheap
+        // slot look identical on the wire.
+        const campaignLabel = quote.lineItems.find((line) => line.campaignLabel)?.campaignLabel;
+        return {
+          price: quote.subtotal,
+          regularPrice: quote.regularSubtotal,
+          ...(campaignLabel ? { campaignLabel } : {}),
+        };
+      };
 
       const dates = eachDate(query.from, query.to);
-      const now = utcNow();
 
       if (query.mode === 'hourly') {
         const hourly = modeConfig.hourly;
@@ -206,6 +233,8 @@ export class GetAvailabilityUseCase {
               endUtc: s.endUtc.toISOString(),
               available: s.available,
               price: s.price,
+              regularPrice: s.regularPrice,
+              ...(s.campaignLabel ? { campaignLabel: s.campaignLabel } : {}),
             }));
             await this.cache.set(listing.resourceId, listing.id, date, selectionKey, cached);
           }
@@ -216,6 +245,8 @@ export class GetAvailabilityUseCase {
               endUtc: new Date(s.endUtc),
               available: s.available,
               price: s.price,
+              regularPrice: s.regularPrice ?? s.price,
+              ...(s.campaignLabel ? { campaignLabel: s.campaignLabel } : {}),
             })),
             {
               bufferBeforeMin: listing.bufferBefore,
@@ -230,10 +261,17 @@ export class GetAvailabilityUseCase {
               endUtc: s.endUtc.toISOString(),
               available: s.available,
               price: s.price,
+              regularPrice: s.regularPrice,
+              ...(s.campaignLabel ? { campaignLabel: s.campaignLabel } : {}),
             })),
           });
         }
-        return { mode: 'hourly', timezone: tz, days };
+        const detail: Extract<AvailabilityResponse, { mode: 'hourly' }> = {
+          mode: 'hourly',
+          timezone: tz,
+          days,
+        };
+        return query.view === 'calendar' ? summarizeAvailabilityCalendar(detail) : detail;
       }
 
       // Daily is one price per day (cheap) → computed live, holds included directly.
@@ -241,35 +279,35 @@ export class GetAvailabilityUseCase {
         ...(await this.busy.busyBookings(tx, listing.resourceId, rangeStart, rangeEnd)),
         ...liveHolds,
       ];
+      let days: DayAvailability[];
       if (selectedPackage?.mode === 'daily') {
         const daily = modeConfig.daily;
         if (!daily) {
           throw new DailyModeConfigMissing();
         }
-        return {
-          mode: 'daily',
-          timezone: tz,
-          days: dates.map((date) =>
-            this.fixedDaily(
-              date,
-              selectedPackage!.durationDays,
-              tz,
-              daily,
-              ruleRows,
-              excByDate,
-              dailyBusy,
-              priceFor,
-            ),
+        days = dates.map((date) =>
+          this.fixedDaily(
+            date,
+            selectedPackage!.durationDays,
+            tz,
+            daily,
+            ruleRows,
+            excByDate,
+            dailyBusy,
+            priceFor,
           ),
-        };
+        );
+      } else {
+        days = dates.map((date) =>
+          this.daily(date, tz, modeConfig, ruleRows, excByDate.get(date), dailyBusy, priceFor),
+        );
       }
-      return {
+      const detail: Extract<AvailabilityResponse, { mode: 'daily' }> = {
         mode: 'daily',
         timezone: tz,
-        days: dates.map((date) =>
-          this.daily(date, tz, modeConfig, ruleRows, excByDate.get(date), dailyBusy, priceFor),
-        ),
+        days,
       };
+      return query.view === 'calendar' ? summarizeAvailabilityCalendar(detail) : detail;
     });
   }
 
@@ -281,7 +319,7 @@ export class GetAvailabilityUseCase {
     ruleRows: { dayOfWeek: number }[],
     exceptions: Map<string, DateException>,
     busy: Interval[],
-    priceFor: (s: Date, e: Date) => string,
+    priceFor: (s: Date, e: Date) => UnitPrice,
   ): DayAvailability {
     const stayDates = Array.from({ length: durationDays }, (_, index) =>
       addCalendarDays(date, index),
@@ -299,7 +337,8 @@ export class GetAvailabilityUseCase {
         ruleRows.some((rule) => rule.dayOfWeek === weekdayOf(stayDate))
       );
     });
-    if (!open) return { date, status: blocked ? 'blocked' : 'closed', price: null };
+    if (!open)
+      return { date, status: blocked ? 'blocked' : 'closed', price: null, regularPrice: null };
 
     const startParts = parseDate(date);
     const endParts = parseDate(addCalendarDays(date, durationDays));
@@ -307,11 +346,11 @@ export class GetAvailabilityUseCase {
     const [outH, outM] = daily.checkoutTime.split(':').map(Number);
     const start = zonedTimeToUtc({ ...startParts, hour: inH, minute: inM }, tz);
     const end = zonedTimeToUtc({ ...endParts, hour: outH, minute: outM }, tz);
-    const price = priceFor(start, end);
+    const priced = priceFor(start, end);
     return {
       date,
       status: overlapsAny({ start, end }, busy) ? 'booked' : 'available',
-      price,
+      ...priced,
     };
   }
 
@@ -322,7 +361,7 @@ export class GetAvailabilityUseCase {
     ruleRows: { dayOfWeek: number }[],
     exception: DateException | undefined,
     busy: Interval[],
-    priceFor: (s: Date, e: Date) => string,
+    priceFor: (s: Date, e: Date) => UnitPrice,
   ): DayAvailability {
     const daily = modeConfig.daily;
     const hasAnyRule = ruleRows.length > 0;
@@ -332,7 +371,7 @@ export class GetAvailabilityUseCase {
     const closedByException = exception?.type === 'closed';
 
     let night: Interval | null = null;
-    let price: string | null = null;
+    let price: UnitPrice | null = null;
     if (daily && weekdayOpen && !closedByException) {
       const { year, month, day } = parseDate(date);
       const [inH, inM] = daily.checkinTime.split(':').map(Number);
@@ -360,7 +399,13 @@ export class GetAvailabilityUseCase {
       busy,
       price,
     });
-    return { date, status: computed.status, price: computed.price };
+    return {
+      date,
+      status: computed.status,
+      price: computed.price?.price ?? null,
+      regularPrice: computed.price?.regularPrice ?? null,
+      ...(computed.price?.campaignLabel ? { campaignLabel: computed.price.campaignLabel } : {}),
+    };
   }
 }
 

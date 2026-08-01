@@ -51,9 +51,11 @@ export class PublicListingController {
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
   ): Promise<PublicListingDetailWithTimezoneResponse> {
-    return toPublicListingDetailResponse(
-      await this.getListing.execute(resolveHost(forwardedHost, host), slug),
+    const { listing, campaign } = await this.getListing.execute(
+      resolveHost(forwardedHost, host),
+      slug,
     );
+    return toPublicListingDetailResponse(listing, campaign);
   }
 
   @Public()

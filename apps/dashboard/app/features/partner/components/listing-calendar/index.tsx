@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Flame,
   Repeat,
   SquareDashedMousePointer,
   Users,
@@ -20,16 +21,19 @@ import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
-import { todayString } from '~/lib/calendar-dates';
+import { addDays, parseDay, toDayString, todayString } from '~/lib/calendar-dates';
 import { dayKey } from '~/lib/format';
 import {
   WEEKDAY_HEADS,
   bucketBookingsByDay,
   calendarDays,
+  campaignPresentationOf,
+  campaignRulesForCell,
   closureStateOf,
   dateMatches,
   datesBetween,
   defaultPrice,
+  formatDayShort,
   hasRecurringOn,
   monthShift,
   openWindowsFor,
@@ -40,6 +44,12 @@ import {
 import { DayCell } from './day-cell';
 import { DayDialog } from './day-dialog';
 import { RangeDialog } from './range-dialog';
+import { WeekGrid } from './week-grid';
+
+/** Monday `days` away — the week nav's only date arithmetic. */
+function shiftWeek(weekStart: string, days: number): string {
+  return toDayString(addDays(parseDay(weekStart), days));
+}
 
 interface Props {
   listing: ListingResponse;
@@ -51,6 +61,10 @@ interface Props {
   bookings: PartnerCalendarBookingResponse[];
   /** Other listings sharing this listing's resource calendar. */
   siblingCount: number;
+  view: 'month' | 'week';
+  /** Monday of the week on screen, and its seven dates. */
+  weekStart: string;
+  weekDates: string[];
   canWrite: boolean;
   canAvailability: boolean;
 }
@@ -64,6 +78,9 @@ export function ListingCalendarPricing({
   weeklyRules,
   bookings,
   siblingCount,
+  view,
+  weekStart,
+  weekDates,
   canWrite,
   canAvailability,
 }: Props) {
@@ -72,6 +89,7 @@ export function ListingCalendarPricing({
   const [rangeMode, setRangeMode] = useState(false);
   const [anchor, setAnchor] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [presetWindow, setPresetWindow] = useState<{ from: string; to: string } | null>(null);
   const today = todayString();
 
   const days = useMemo(() => calendarDays(month), [month]);
@@ -86,6 +104,17 @@ export function ListingCalendarPricing({
     (item): item is CalendarMode => item === 'hourly' || item === 'daily',
   );
   const rangeDates = range ? datesBetween(range.from, range.to) : [];
+
+  /** Every calendar link carries the whole view state, so no nav loses a setting. */
+  const calendarLink = (patch: {
+    mode?: CalendarMode;
+    view?: 'month' | 'week';
+    month?: string;
+    week?: string;
+  }): string => {
+    const next = { mode, view, month, week: weekStart, ...patch };
+    return `?tab=calendar&mode=${next.mode}&view=${next.view}&month=${next.month}&week=${next.week}`;
+  };
 
   /**
    * A plain click edits one day; shift-click (or the explicit range toggle, for
@@ -112,6 +141,7 @@ export function ListingCalendarPricing({
   const closeDay = (): void => {
     setSelected(null);
     setAnchor(null);
+    setPresetWindow(null);
   };
   const closeRange = (): void => {
     setRange(null);
@@ -165,11 +195,23 @@ export function ListingCalendarPricing({
         <div className="flex flex-wrap gap-2">
           {enabledModes.map((item) => (
             <Button key={item} asChild size="sm" variant={item === mode ? 'default' : 'outline'}>
-              <Link to={`?tab=calendar&month=${month}&mode=${item}`}>
+              <Link to={calendarLink({ mode: item })}>
                 {item === 'hourly' ? 'Theo giờ' : 'Theo ngày'}
               </Link>
             </Button>
           ))}
+          {mode === 'hourly' ? (
+            // An hour grid only carries information for hourly listings — a
+            // night is one priced unit, so rows of hours would say nothing.
+            <div className="flex rounded-lg border p-0.5">
+              <Button asChild size="sm" variant={view === 'month' ? 'secondary' : 'ghost'}>
+                <Link to={calendarLink({ view: 'month' })}>Tháng</Link>
+              </Button>
+              <Button asChild size="sm" variant={view === 'week' ? 'secondary' : 'ghost'}>
+                <Link to={calendarLink({ view: 'week' })}>Tuần</Link>
+              </Button>
+            </div>
+          ) : null}
           <Button
             size="sm"
             variant={rangeMode ? 'default' : 'outline'}
@@ -239,7 +281,7 @@ export function ListingCalendarPricing({
       {recurringRules.length > 0 ? (
         <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
           <p className="flex items-center gap-2 font-medium text-foreground">
-            <Repeat className="size-4" /> {recurringRules.length} quy tắc giá lặp lại đang áp dụng
+            <Repeat className="size-4" /> {recurringRules.length} quy tắc giá lặp lại
           </p>
           <p className="mt-1">
             {mode === 'hourly'
@@ -247,15 +289,39 @@ export function ListingCalendarPricing({
               : 'Ô ngày đã tính các quy tắc này; giá riêng đặt cho một ngày cụ thể vẫn đè lên.'}
           </p>
           <ul className="mt-2 space-y-1">
-            {recurringRules.map((rule) => (
-              <li key={rule.id} className="text-xs">
-                {rule.ruleType === 'time_range'
-                  ? `Khung giờ ${String(rule.params.from)}–${String(rule.params.to)}`
-                  : `Theo thứ trong tuần`}{' '}
-                · <Money value={rule.salePrice ?? rule.price} />
-                {mode === 'hourly' ? '/giờ' : '/ngày'}
-              </li>
-            ))}
+            {recurringRules.map((rule) => {
+              const campaign = campaignPresentationOf([rule], mode);
+              return (
+                <li key={rule.id} className="flex flex-wrap items-center gap-1 text-xs">
+                  <span>
+                    {rule.ruleType === 'time_range'
+                      ? `Khung giờ ${String(rule.params.from)}–${String(rule.params.to)}`
+                      : `Theo thứ trong tuần`}{' '}
+                    ·{' '}
+                    <Money
+                      value={
+                        campaign.state === 'running'
+                          ? (campaign.salePrice ?? rule.price)
+                          : rule.price
+                      }
+                    />
+                    {mode === 'hourly' ? '/giờ' : '/ngày'}
+                  </span>
+                  {campaign.state === 'running' ? (
+                    <>
+                      <span className="text-muted-foreground line-through">
+                        <Money value={rule.price} />
+                      </span>
+                      <span className="text-warning-foreground">· Đang chạy</span>
+                    </>
+                  ) : campaign.state === 'scheduled' ? (
+                    <span>· Sắp diễn ra</span>
+                  ) : campaign.state === 'ended' ? (
+                    <span>· Đã kết thúc</span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
           <Button asChild size="sm" variant="outline" className="mt-3">
             <Link to="?tab=pricing">Quản lý giá lặp lại</Link>
@@ -265,62 +331,133 @@ export function ListingCalendarPricing({
 
       {listing.bookingSelection === 'fixed_packages' ? (
         <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          Giá của tin đăng này được quản lý trong mục “Các gói dịch vụ”. Lịch giá riêng không áp dụng cho gói cố định.
+          Giá của tin đăng này được quản lý trong mục “Các gói dịch vụ”. Lịch giá riêng không áp
+          dụng cho gói cố định.
         </div>
       ) : null}
 
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <Button asChild variant="ghost" size="icon" aria-label="Tháng trước">
-            <Link to={`?tab=calendar&month=${monthShift(month, -1)}&mode=${mode}`}>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            aria-label={view === 'week' ? 'Tuần trước' : 'Tháng trước'}
+          >
+            <Link
+              to={
+                view === 'week'
+                  ? calendarLink({ week: shiftWeek(weekStart, -7) })
+                  : calendarLink({ month: monthShift(month, -1) })
+              }
+            >
               <ChevronLeft />
             </Link>
           </Button>
           <div className="text-center">
             <p className="text-sm text-muted-foreground">Lịch và giá</p>
             <p className="font-semibold">
-              Tháng {Number(month.slice(5))}/{month.slice(0, 4)}
+              {view === 'week'
+                ? `${formatDayShort(weekDates[0] ?? weekStart)} – ${formatDayShort(weekDates[6] ?? weekStart)}`
+                : `Tháng ${Number(month.slice(5))}/${month.slice(0, 4)}`}
             </p>
           </div>
-          <Button asChild variant="ghost" size="icon" aria-label="Tháng sau">
-            <Link to={`?tab=calendar&month=${monthShift(month, 1)}&mode=${mode}`}>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            aria-label={view === 'week' ? 'Tuần sau' : 'Tháng sau'}
+          >
+            <Link
+              to={
+                view === 'week'
+                  ? calendarLink({ week: shiftWeek(weekStart, 7) })
+                  : calendarLink({ month: monthShift(month, 1) })
+              }
+            >
               <ChevronRight />
             </Link>
           </Button>
         </div>
-        <div className="grid grid-cols-7 border-b bg-muted/30">
-          {WEEKDAY_HEADS.map((label) => (
-            <div
-              key={label}
-              className="px-2 py-2 text-center text-xs font-medium text-muted-foreground"
-            >
-              {label}
-            </div>
-          ))}
+        <div
+          className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-b bg-muted/10 px-4 py-2 text-[11px] text-muted-foreground"
+          aria-label="Chú giải chiến dịch giá ưu đãi"
+        >
+          <span className="flex items-center gap-1.5">
+            <span className="grid size-3.5 place-items-center rounded-sm border border-warning/50 bg-warning/15 text-warning-foreground">
+              <Flame className="size-2.5" aria-hidden />
+            </span>
+            Giảm cả ngày
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="grid size-3.5 place-items-center rounded-sm border border-warning/50 bg-warning/5 text-warning-foreground [background-image:repeating-linear-gradient(135deg,transparent_0,transparent_3px,color-mix(in_oklch,var(--warning)_25%,transparent)_3px,color-mix(in_oklch,var(--warning)_25%,transparent)_5px)]">
+              <Flame className="size-2.5" aria-hidden />
+            </span>
+            Có giờ ưu đãi
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-3.5 rounded-full border border-warning/50 bg-card" /> Sắp diễn ra
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-3.5 rounded-full border border-muted-foreground/40 bg-muted" /> Đã
+            kết thúc
+          </span>
         </div>
-        <div className="grid grid-cols-7">
-          {days.map((date, index) =>
-            date ? (
-              <DayCell
-                key={date}
-                date={date}
-                mode={mode}
-                closure={closureStateOf(date, mode, weeklyRules, exceptionMap.get(date))}
-                rules={pricingRulesForCell(date, mode, rules)}
-                basePrice={basePrice}
-                bookingCount={bookingsByDay.get(date)?.length ?? 0}
-                // Daily cells already fold the weekly rule into their price, so
-                // only hourly needs the "this is not the final price" marker.
-                hasRecurring={mode === 'hourly' && hasRecurringOn(date, mode, rules)}
-                isPast={date < today}
-                isSelected={date === anchor || (rangeDates.length > 0 && rangeDates.includes(date))}
-                onPick={pick}
-              />
-            ) : (
-              <div key={`empty-${index}`} className="min-h-24 border-r border-b bg-muted/10" />
-            ),
-          )}
-        </div>
+        {view === 'week' ? null : (
+          <div className="grid grid-cols-7 border-b bg-muted/30">
+            {WEEKDAY_HEADS.map((label) => (
+              <div
+                key={label}
+                className="px-2 py-2 text-center text-xs font-medium text-muted-foreground"
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+        )}
+        {view === 'week' ? (
+          <WeekGrid
+            dates={weekDates}
+            mode={mode}
+            rules={rules}
+            weeklyRules={weeklyRules}
+            exceptionMap={exceptionMap}
+            bookings={bookings}
+            today={today}
+            onPickWindow={(date, from, to) => {
+              setNotice(null);
+              setPresetWindow({ from, to });
+              setSelected(date);
+            }}
+          />
+        ) : (
+          <div className="grid grid-cols-7">
+            {days.map((date, index) =>
+              date ? (
+                <DayCell
+                  key={date}
+                  date={date}
+                  mode={mode}
+                  closure={closureStateOf(date, mode, weeklyRules, exceptionMap.get(date))}
+                  rules={pricingRulesForCell(date, mode, rules)}
+                  campaignRules={campaignRulesForCell(date, mode, rules)}
+                  basePrice={basePrice}
+                  bookingCount={bookingsByDay.get(date)?.length ?? 0}
+                  // Daily cells already fold the weekly rule into their price, so
+                  // only hourly needs the "this is not the final price" marker.
+                  hasRecurring={mode === 'hourly' && hasRecurringOn(date, mode, rules)}
+                  isPast={date < today}
+                  isSelected={
+                    date === anchor || (rangeDates.length > 0 && rangeDates.includes(date))
+                  }
+                  onPick={pick}
+                />
+              ) : (
+                <div key={`empty-${index}`} className="min-h-24 border-r border-b bg-muted/10" />
+              ),
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
@@ -329,10 +466,6 @@ export function ListingCalendarPricing({
         </span>
         <span className="flex items-center gap-2">
           <span className="size-3 rounded-sm border bg-primary/5" /> Mở theo giờ riêng
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm border bg-emerald-50 dark:bg-emerald-950/40" /> Có giá
-          sale
         </span>
         <span className="flex items-center gap-2">
           <span className="size-3 rounded-sm border bg-muted/50" /> Nghỉ theo lịch tuần
@@ -351,6 +484,7 @@ export function ListingCalendarPricing({
         exception={selectedException}
         rules={selectedRules}
         bookings={selected ? (bookingsByDay.get(selected) ?? []) : []}
+        presetWindow={presetWindow}
         canAvailability={canAvailability}
         canPricing={canPricing}
         onClose={closeDay}

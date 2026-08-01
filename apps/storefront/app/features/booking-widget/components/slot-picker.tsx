@@ -27,11 +27,12 @@ import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronDown, Clock3, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { PendingLink } from '~/components/pending-link';
+import { SalePrice } from '~/components/sale-price';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '~/lib/time';
-import { formatVnd } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 import { useSlotPickerController } from '~/features/booking-widget/hooks/use-slot-picker-controller';
+import { discountPercent } from '~/lib/sale-campaign';
 
 interface SlotPickerOption {
   child: {
@@ -144,22 +145,36 @@ function SlotPickerContent({
         <CollapsibleContent className="mt-2 overflow-hidden rounded-md border">
           <div className="max-h-65 overflow-y-auto p-2">
             {slots.length ? (
-              slots.map((slot) => (
-                <SlotRow
-                  key={`${slot.startUtc}:${slot.endUtc}`}
-                  id={slotFieldId(option.child.id, slot.startUtc)}
-                  checked={selectedStarts.has(slot.startUtc)}
-                  disabled={!slot.available}
-                  onToggle={() => toggleSlot(slot)}
-                >
-                  <span className="flex-1 text-sm">
-                    {timeInTz(slot.startUtc, timezone)} - {timeInTz(slot.endUtc, timezone)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {slot.available ? formatVnd(slot.price) : t('group.unavailableSlot')}
-                  </span>
-                </SlotRow>
-              ))
+              slots.map((slot) => {
+                const discounted =
+                  slot.available && discountPercent(slot.regularPrice, slot.price) !== null;
+                return (
+                  <SlotRow
+                    key={`${slot.startUtc}:${slot.endUtc}`}
+                    id={slotFieldId(option.child.id, slot.startUtc)}
+                    checked={selectedStarts.has(slot.startUtc)}
+                    disabled={!slot.available}
+                    discounted={discounted}
+                    onToggle={() => toggleSlot(slot)}
+                  >
+                    <span className="flex-1 text-sm">
+                      {timeInTz(slot.startUtc, timezone)} - {timeInTz(slot.endUtc, timezone)}
+                    </span>
+                    <span className="flex min-w-0 max-w-[58%] justify-end text-xs text-muted-foreground">
+                      {slot.available ? (
+                        <SalePrice
+                          price={slot.price}
+                          regularPrice={slot.regularPrice}
+                          campaignLabel={slot.campaignLabel}
+                          compact
+                        />
+                      ) : (
+                        t('group.unavailableSlot')
+                      )}
+                    </span>
+                  </SlotRow>
+                );
+              })
             ) : (
               <p className="px-3 py-8 text-center text-sm text-muted-foreground">
                 {t('group.noOpenSlots')}
@@ -221,12 +236,14 @@ function SlotRow({
   id,
   checked,
   disabled,
+  discounted,
   onToggle,
   children,
 }: {
   id: string;
   checked: boolean;
   disabled: boolean;
+  discounted: boolean;
   onToggle: () => void;
   children: ReactNode;
 }) {
@@ -235,9 +252,14 @@ function SlotRow({
       htmlFor={id}
       className={cn(
         'flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5',
+        discounted && 'border border-warning/50 bg-warning/10',
+        checked && !disabled && 'bg-primary/10 text-primary ring-2 ring-primary ring-inset',
         disabled
           ? 'cursor-not-allowed bg-muted/40 text-muted-foreground opacity-60'
-          : 'cursor-pointer hover:bg-muted',
+          : 'cursor-pointer',
+        !disabled && !checked && !discounted && 'hover:bg-muted',
+        !disabled && !checked && discounted && 'hover:bg-warning/15',
+        !disabled && checked && 'hover:bg-primary/15',
       )}
     >
       <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={onToggle} />

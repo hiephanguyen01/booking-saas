@@ -1,13 +1,15 @@
 import type { AvailabilityResponse, HourlySlot } from '@booking/contracts';
 import { useMemo } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import { openDailyDates } from '~/lib/availability';
+import { dailyAvailabilityInRange, openDailyDates } from '~/lib/availability';
 import type { PublicPackageOption } from '~/lib/package-options';
-import { DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '~/lib/time';
+import { addDays, DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
 import { intlLocale } from '~/lib/intl';
 import { useCalendarFormatters } from '~/hooks/use-calendar-formatters';
 import { useLocale } from '~/hooks/use-locale';
+import { monthOf } from '~/features/booking-widget/lib/sale-calendar';
+import { discountPercent } from '~/lib/sale-campaign';
 
 export function useBookingDialogStepsController({
   mode,
@@ -22,9 +24,11 @@ export function useBookingDialogStepsController({
   to,
   availability,
   availabilityPending,
+  calendarMonth,
   slots,
   selectedSlots,
   onSelectDate,
+  onCalendarMonthChange,
   packageFlow,
 }: {
   mode: 'hourly' | 'daily';
@@ -39,23 +43,17 @@ export function useBookingDialogStepsController({
   to: string | null;
   availability: AvailabilityResponse | null;
   availabilityPending: boolean;
+  calendarMonth: string;
   slots: HourlySlot[];
   selectedSlots: HourlySlot[];
   onSelectDate: (date: string) => void;
+  onCalendarMonthChange: (month: string) => void;
   packageFlow: boolean;
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
   const todayDate = dateOnlyToLocal(today);
   const openDates = useMemo(() => openDailyDates(availability), [availability]);
-  const dailyEndDate = useMemo(() => {
-    if (availability?.mode !== 'daily' || availability.days.length === 0) return undefined;
-    let latest = availability.days[0].date;
-    for (const day of availability.days) {
-      if (day.date > latest) latest = day.date;
-    }
-    return dateOnlyToLocal(latest);
-  }, [availability]);
   const formatters = useCalendarFormatters(locale, 'narrow');
   const calendarA11y = useMemo(() => {
     const tag = intlLocale(locale);
@@ -107,9 +105,8 @@ export function useBookingDialogStepsController({
         ),
         startLabel: timeFormatter.format(new Date(slot.startUtc)),
         endLabel: timeFormatter.format(new Date(slot.endUtc)),
-        priceLabel: slot.available ? formatVnd(slot.price) : t('group.unavailableSlot'),
       })),
-    [packageFlow, selectedSlotKeys, slots, t, timeFormatter],
+    [packageFlow, selectedSlotKeys, slots, timeFormatter],
   );
   const packageModels = useMemo(
     () =>
@@ -131,9 +128,23 @@ export function useBookingDialogStepsController({
         : null,
     [listingPhotos, listingTitle, selectedPackage],
   );
+  const dailyPriceHints = useMemo(
+    () =>
+      dailyAvailabilityInRange(availability, from, to ?? (from ? addDays(from, 1) : null))
+        .filter((day) => discountPercent(day.regularPrice, day.price) !== null)
+        .map((day) => ({
+          ...day,
+          dateLabel: dateLabelInTz(day.date, availability?.timezone ?? DEFAULT_TZ, locale),
+        })),
+    [availability, from, locale, to],
+  );
 
   function selectCalendarDay(day: Date | undefined): void {
     if (day) onSelectDate(localToDateOnly(day));
+  }
+
+  function changeCalendarMonth(day: Date): void {
+    onCalendarMonthChange(monthOf(localToDateOnly(day)));
   }
 
   function isRangeDateDisabled(day: Date): boolean {
@@ -146,9 +157,10 @@ export function useBookingDialogStepsController({
 
   return {
     calendarA11y,
-    dailyEndDate,
+    calendarMonthDate: dateOnlyToLocal(`${calendarMonth}-01`),
+    changeCalendarMonth,
+    dailyPriceHints,
     dailySoldOut: availability?.mode === 'daily' && openDates.size === 0,
-    defaultRangeMonth: dateOnlyToLocal(from ?? today),
     hourlyDateInstruction: date
       ? `${dateLabelInTz(date, DEFAULT_TZ, locale)} · ${t(packageFlow ? 'packages.hourlyInstruction' : 'group.hourlyInstruction')}`
       : null,

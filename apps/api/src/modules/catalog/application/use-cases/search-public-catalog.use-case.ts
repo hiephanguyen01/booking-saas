@@ -11,11 +11,16 @@ import {
   type PublicCatalogSearchResponse,
 } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { addMinutes, zonedTimeToUtc } from '../../../../shared/time/time';
+import { addMinutes, utcNow, zonedTimeToUtc } from '../../../../shared/time/time';
 import { toVnd } from '../../../../shared/money/money';
 import { pageOffset } from '../../../../shared/pagination/pagination';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
-import { computeQuote } from '../../../../shared/domain/pricing/quote-calculator';
+import { computeQuote, type QuoteResult } from '../../../../shared/domain/pricing/quote-calculator';
+import {
+  selectSaleCampaign,
+  type SaleCampaignSelection,
+  type SaleCampaignSummary,
+} from '../../../../shared/domain/pricing/sale-campaign';
 import { activePackages } from '../../../../shared/domain/pricing/package-config';
 import { parseDate, weekdayOf } from '../../../../shared/domain/availability/date-util';
 import {
@@ -47,11 +52,30 @@ import {
 
 const DAY_MS = 86_400_000;
 
-interface EvaluatedListing {
+interface PricedListing {
   listing: PublicListingRecord;
   price: bigint;
   regularPrice: bigint;
   priceUnit: 'hour' | 'day' | 'item' | 'session' | 'package';
+  /**
+   * Present only when `price` came from an exact quote. `null` is meaningful:
+   * the quote had no single compatible campaign identity, so a discovery-wide
+   * campaign must not be substituted beside this price.
+   */
+  appliedCampaign?: SaleCampaignSelection | null;
+}
+
+interface EvaluatedListing extends PricedListing {
+  /**
+   * Attached once per candidate rather than inside pricing, because a campaign
+   * is advertised even on the branches that never build a quote — an undated
+   * search prices from `mode_config` and would otherwise show no sale at all.
+   */
+  campaign: SaleCampaignSummary | null;
+  /** Private rank tie-break only; never mapped to the public contract. */
+  campaignEndsAt: Date | null;
+  /** Whether campaign metadata is bound to the exact quote that produced `price`. */
+  campaignBoundToPrice: boolean;
 }
 
 interface SearchWindow {
@@ -128,6 +152,9 @@ export class SearchPublicCatalogUseCase {
       const inventoryUsed = new Map(inventoryRows.map((r) => [r.listingId, r.used]));
 
       const facetRows: EvaluatedListing[] = [];
+      // One clock for the whole search: two listings in the same result page
+      // must not disagree about whether a sale campaign is still running.
+      const now = utcNow();
       for (const listing of facetCandidates) {
         const result = this.evaluate(
           listing,
@@ -136,8 +163,19 @@ export class SearchPublicCatalogUseCase {
           busy.get(listing.resourceId) ?? [],
           holds.get(listing.resourceId) ?? [],
           inventoryUsed.get(listing.id) ?? 0,
+          now,
         );
-        if (result) facetRows.push(result);
+        if (!result) continue;
+        const campaign =
+          result.appliedCampaign === undefined
+            ? selectSaleCampaign(listing.pricingRules, now, listing.resourceTimezone, mode)
+            : result.appliedCampaign;
+        facetRows.push({
+          ...result,
+          campaign: campaign?.summary ?? null,
+          campaignEndsAt: campaign?.endsAt ?? null,
+          campaignBoundToPrice: result.appliedCampaign !== undefined,
+        });
       }
 
       const evaluated = facetRows.filter((row) =>
@@ -314,12 +352,13 @@ export class SearchPublicCatalogUseCase {
     busy: Interval[],
     holds: Interval[],
     inventoryUsed: number,
-  ): EvaluatedListing | null {
+    now: Date,
+  ): PricedListing | null {
     if (!mode) return configuredRawPrice(listing);
     const config = parseModeConfig(listing.modeConfig);
     if (!config) return null;
     if (mode === 'daily' && listing.bookingSelection === 'fixed_packages' && query.date) {
-      return this.evaluateFixedDailyDate(listing, config, query.date, busy, holds);
+      return this.evaluateFixedDailyDate(listing, config, query.date, busy, holds, now);
     }
     const hasExplicitWindow = mode === 'hourly' ? Boolean(query.date) : Boolean(query.from);
     if (!hasExplicitWindow) return configuredPrice(listing, config, mode);
@@ -332,7 +371,7 @@ export class SearchPublicCatalogUseCase {
       const hourly = config.hourly;
       if (!hourly || !query.date) return null;
       if (!query.startTime || !query.endTime) {
-        return this.evaluateHourlyDate(listing, config, query.date, busy, holds);
+        return this.evaluateHourlyDate(listing, config, query.date, busy, holds, now);
       }
       start = localInstant(query.date, query.startTime, tz);
       end = localInstant(query.date, query.endTime, tz);
@@ -404,6 +443,7 @@ export class SearchPublicCatalogUseCase {
         depositPercent: listing.depositPercent,
         bookingSelection: listing.bookingSelection,
         packageId,
+        now,
       });
       return {
         listing,
@@ -411,6 +451,7 @@ export class SearchPublicCatalogUseCase {
         regularPrice: quote.regularSubtotal,
         priceUnit:
           listing.bookingSelection === 'fixed_packages' ? 'package' : unitFor(mode, config),
+        appliedCampaign: campaignAppliedByQuote(quote, listing, now, mode),
       };
     } catch {
       return null;
@@ -423,10 +464,11 @@ export class SearchPublicCatalogUseCase {
     date: string,
     busy: Interval[],
     holds: Interval[],
-  ): EvaluatedListing | null {
+    now: Date,
+  ): PricedListing | null {
     const daily = config.daily;
     if (!daily) return null;
-    let cheapest: EvaluatedListing | null = null;
+    let cheapest: PricedListing | null = null;
     for (const selected of activePackages(config, 'daily')) {
       const endDate = addDateDays(date, selected.durationDays);
       const dates = dateRange(date, endDate);
@@ -450,6 +492,7 @@ export class SearchPublicCatalogUseCase {
           depositPercent: listing.depositPercent,
           bookingSelection: listing.bookingSelection,
           packageId: selected.id,
+          now,
         });
         if (!cheapest || quote.subtotal < cheapest.price) {
           cheapest = {
@@ -457,6 +500,7 @@ export class SearchPublicCatalogUseCase {
             price: quote.subtotal,
             regularPrice: quote.regularSubtotal,
             priceUnit: 'package',
+            appliedCampaign: campaignAppliedByQuote(quote, listing, now, 'daily'),
           };
         }
       } catch {
@@ -472,7 +516,8 @@ export class SearchPublicCatalogUseCase {
     date: string,
     busy: Interval[],
     holds: Interval[],
-  ): EvaluatedListing | null {
+    now: Date,
+  ): PricedListing | null {
     const hourly = config.hourly;
     if (!hourly) return null;
     const exception = listing.availabilityExceptions.find((item) => item.date === date);
@@ -492,7 +537,11 @@ export class SearchPublicCatalogUseCase {
           ? []
           : [{ durationMinutes: hourly.minDuration * 60, packageId: undefined }];
     const earliestStart = Date.now() + hourly.leadTimeMin * 60_000;
-    let cheapest: { price: bigint; regularPrice: bigint } | null = null;
+    let cheapest: {
+      price: bigint;
+      regularPrice: bigint;
+      appliedCampaign: SaleCampaignSelection | null;
+    } | null = null;
 
     for (const window of windows) {
       for (const candidate of candidates) {
@@ -521,9 +570,14 @@ export class SearchPublicCatalogUseCase {
               depositPercent: listing.depositPercent,
               bookingSelection: listing.bookingSelection,
               packageId: candidate.packageId,
+              now,
             });
             if (cheapest === null || quote.subtotal < cheapest.price) {
-              cheapest = { price: quote.subtotal, regularPrice: quote.regularSubtotal };
+              cheapest = {
+                price: quote.subtotal,
+                regularPrice: quote.regularSubtotal,
+                appliedCampaign: campaignAppliedByQuote(quote, listing, now, 'hourly'),
+              };
             }
           } catch {
             continue;
@@ -539,6 +593,7 @@ export class SearchPublicCatalogUseCase {
           price: cheapest.price,
           regularPrice: cheapest.regularPrice,
           priceUnit: listing.bookingSelection === 'fixed_packages' ? 'package' : 'hour',
+          appliedCampaign: cheapest.appliedCampaign,
         };
   }
 
@@ -580,6 +635,10 @@ export class SearchPublicCatalogUseCase {
         reviewCount: g?.reviewCount ?? l.reviewCount,
         priceFrom: cheapest.price.toString(),
         regularPriceFrom: cheapest.regularPrice.toString(),
+        // A dated result's metadata belongs to the exact cheapest child/quote.
+        // Undated discovery has no quote identity and keeps the listing-wide
+        // deepest-campaign behavior used across browse surfaces.
+        campaign: cheapest.campaignBoundToPrice ? cheapest.campaign : deepestCampaign(matches),
         priceUnit: cheapest.priceUnit,
         completedBookings: matches.reduce((sum, row) => sum + row.listing.completedBookings, 0),
         matchingRoomCount: matches.length,
@@ -678,6 +737,58 @@ export class SearchPublicCatalogUseCase {
   }
 }
 
+/**
+ * Project the campaign identity from the discounted rules that actually won an
+ * exact quote. Distinct labels (including named versus unnamed) are
+ * incompatible for one card badge; suppressing the badge is safer than
+ * attaching one campaign's deadline/schedule to a combined price.
+ */
+function campaignAppliedByQuote(
+  quote: QuoteResult,
+  listing: PublicListingRecord,
+  now: Date,
+  mode: Extract<BookingMode, 'hourly' | 'daily' | 'inventory'>,
+): SaleCampaignSelection | null {
+  const discountedLines = quote.lineItems.filter((line) => line.regularAmount > line.amount);
+  if (discountedLines.length === 0 || discountedLines.some((line) => !line.appliedRuleId)) {
+    return null;
+  }
+
+  const appliedRuleIds = new Set(discountedLines.map((line) => line.appliedRuleId!));
+  const appliedRules = listing.pricingRules.filter((rule) => appliedRuleIds.has(rule.id));
+  if (appliedRules.length !== appliedRuleIds.size) return null;
+
+  const identities = new Set(appliedRules.map((rule) => rule.campaignLabel?.trim() || null));
+  if (identities.size !== 1) return null;
+
+  return selectSaleCampaign(appliedRules, now, listing.resourceTimezone, mode);
+}
+
+function deepestCampaign(rows: EvaluatedListing[]): SaleCampaignSummary | null {
+  let best: Pick<EvaluatedListing, 'campaign' | 'campaignEndsAt'> | null = null;
+  for (const row of rows) {
+    if (!row.campaign) continue;
+    if (best === null || campaignOutranks(row, best)) best = row;
+  }
+  return best?.campaign ?? null;
+}
+
+/** Same ordering as the campaign kernel, including the precise end instant. */
+function campaignOutranks(
+  candidate: Pick<EvaluatedListing, 'campaign' | 'campaignEndsAt'>,
+  current: Pick<EvaluatedListing, 'campaign' | 'campaignEndsAt'>,
+): boolean {
+  const candidateCampaign = candidate.campaign!;
+  const currentCampaign = current.campaign!;
+  if (candidateCampaign.discountPercent !== currentCampaign.discountPercent)
+    return candidateCampaign.discountPercent > currentCampaign.discountPercent;
+  if ((candidateCampaign.label !== null) !== (currentCampaign.label !== null))
+    return candidateCampaign.label !== null;
+  if (candidate.campaignEndsAt === null || current.campaignEndsAt === null)
+    return current.campaignEndsAt === null;
+  return candidate.campaignEndsAt < current.campaignEndsAt;
+}
+
 function parseModeConfig(raw: Record<string, unknown>): ModeConfig | null {
   const normalizePrice = (value: unknown) =>
     typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : value;
@@ -700,7 +811,7 @@ function configuredPrice(
   listing: PublicListingRecord,
   config: ModeConfig,
   preferred?: BookingMode,
-): EvaluatedListing | null {
+): PricedListing | null {
   const modes = preferred ? [preferred] : listing.bookingModes;
   if (listing.bookingSelection === 'fixed_packages') {
     const packages = modes.flatMap((mode) =>
@@ -728,7 +839,7 @@ function configuredPrice(
   };
 }
 
-function configuredRawPrice(listing: PublicListingRecord): EvaluatedListing | null {
+function configuredRawPrice(listing: PublicListingRecord): PricedListing | null {
   const parsed = parseModeConfig(listing.modeConfig);
   if (!parsed) return null;
   if (listing.bookingSelection === 'fixed_packages') {

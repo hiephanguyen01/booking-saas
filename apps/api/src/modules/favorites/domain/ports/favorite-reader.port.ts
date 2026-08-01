@@ -1,7 +1,14 @@
+import type { CampaignRuleView } from '../../../../shared/domain/pricing/sale-campaign';
 import type { PartnerFavoritesQuery, TenantFavoritesQuery } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const FAVORITE_READER = Symbol('FAVORITE_READER');
+
+/** One listing resource represented by a favorite card's campaign. */
+export interface FavoriteCampaignSource {
+  pricingRules: CampaignRuleView[];
+  resourceTimezone: string;
+}
 
 /** A favorited target shaped for a storefront listing card (mirrors PublicListingResponse). */
 export interface FavoriteCardRecord {
@@ -13,6 +20,8 @@ export interface FavoriteCardRecord {
   attributes: Record<string, unknown>;
   photos: unknown[];
   priceFrom: string | null;
+  /** Raw rules plus the resource-local booking boundary for each represented listing. */
+  campaignSources: FavoriteCampaignSource[];
   itemLabel: string | null;
   ratingAvg: number | null;
   reviewCount: number;

@@ -22,6 +22,9 @@ function toRecord(p: Row): PricingRuleRecord {
     params: (p.params ?? {}) as Record<string, unknown>,
     price: p.price.toString(),
     salePrice: p.salePrice?.toString() ?? null,
+    saleStartsAt: p.saleStartsAt,
+    saleEndsAt: p.saleEndsAt,
+    campaignLabel: p.campaignLabel,
     priority: p.priority,
     createdAt: p.createdAt,
   };
@@ -64,6 +67,9 @@ export class PrismaPricingRuleRepository implements IPricingRuleRepository {
             params: data.params as Prisma.InputJsonValue,
             price: BigInt(data.price),
             salePrice: data.salePrice ? BigInt(data.salePrice) : null,
+            saleStartsAt: data.saleStartsAt,
+            saleEndsAt: data.saleEndsAt,
+            campaignLabel: data.campaignLabel,
             priority: data.priority,
           },
         }),
@@ -92,6 +98,15 @@ export class PrismaPricingRuleRepository implements IPricingRuleRepository {
   ): Promise<PricingRuleRecord[]> {
     const items = await tx.pricingRule.findMany({
       where: { listingId, ...(window ? { OR: windowClauses(window) } : {}) },
+      orderBy: { priority: 'desc' },
+    });
+    return items.map(toRecord);
+  }
+
+  async listByListings(tx: PrismaTx, listingIds: readonly string[]): Promise<PricingRuleRecord[]> {
+    if (listingIds.length === 0) return [];
+    const items = await tx.pricingRule.findMany({
+      where: { listingId: { in: [...listingIds] } },
       orderBy: { priority: 'desc' },
     });
     return items.map(toRecord);

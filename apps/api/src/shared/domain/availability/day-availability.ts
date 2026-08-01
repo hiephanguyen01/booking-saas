@@ -1,4 +1,5 @@
 import type { DayStatus } from '@booking/contracts';
+import type { UnitPrice } from '../pricing/quote-calculator';
 import { overlapsAny, type Interval } from './interval';
 
 export interface DayAvailabilityInput {
@@ -10,13 +11,13 @@ export interface DayAvailabilityInput {
   night: Interval | null;
   /** Busy intervals by resource (daily bookings' blocked_period). */
   busy: readonly Interval[];
-  /** Night price (VND đồng), or null. */
-  price: string | null;
+  /** The night's priced quote, or null when the date is not open. */
+  price: UnitPrice | null;
 }
 
 export interface ComputedDay {
   status: DayStatus;
-  price: string | null;
+  price: UnitPrice | null;
 }
 
 /**

@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { Plus, Tag, Trash2 } from 'lucide-react';
-import type { AvailabilityExceptionResponse, PartnerCalendarBookingResponse, PricingRuleResponse } from '@booking/contracts';
+import type {
+  AvailabilityExceptionResponse,
+  PartnerCalendarBookingResponse,
+  PricingRuleResponse,
+} from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -13,12 +17,22 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
+import { Switch } from '@booking/ui/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { cn } from '@booking/ui/lib/utils';
 import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
-import { formatDayLong, type CalendarMode } from '~/features/partner/lib/listing-calendar';
+import {
+  campaignEndDate,
+  campaignPresentationOf,
+  dateOnly,
+  formatDayLong,
+  maximumSalePrice,
+  type CalendarMode,
+} from '~/features/partner/lib/listing-calendar';
 import { BookingWarning } from './booking-warning';
+import { CampaignPreview } from './campaign-preview';
+import { SaleCampaignFields, type SaleCampaignValue } from './sale-campaign-fields';
 import { WindowListField } from './window-list-field';
 import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
 
@@ -31,6 +45,8 @@ interface Props {
   exception: AvailabilityExceptionResponse | undefined;
   rules: PricingRuleResponse[];
   bookings: PartnerCalendarBookingResponse[];
+  /** Hours swept in the week grid — prefills the price form and opens that tab. */
+  presetWindow?: { from: string; to: string } | null;
   canAvailability: boolean;
   canPricing: boolean;
   onClose: () => void;
@@ -47,6 +63,7 @@ export function DayDialog({
   exception,
   rules,
   bookings,
+  presetWindow,
   canAvailability,
   canPricing,
   onClose,
@@ -59,15 +76,39 @@ export function DayDialog({
   const [setting, setSetting] = useState<string>(exception?.type ?? 'default');
   const [acknowledged, setAcknowledged] = useState(false);
   const [windowsValid, setWindowsValid] = useState(true);
+  // Controlled so the campaign fields can appear the moment a sale is entered.
+  const [salePrice, setSalePrice] = useState('');
+  const [regularPrice, setRegularPrice] = useState('');
+  const [windowFrom, setWindowFrom] = useState('08:00');
+  const [windowTo, setWindowTo] = useState('09:00');
+  const [saleEnabled, setSaleEnabled] = useState(false);
+  const [campaign, setCampaign] = useState<SaleCampaignValue>({
+    startDate: '',
+    endDate: '',
+    label: '',
+  });
 
   // A new date is a new decision: never carry the previous day's confirmation
   // or its "closed" choice into it.
+  const initialWindowFrom = presetWindow?.from ?? openWindows[0]?.from ?? '08:00';
+  const initialWindowTo = presetWindow?.to ?? openWindows[0]?.to ?? '09:00';
   useEffect(() => {
     setNotice(null);
     setSetting(exception?.type ?? 'default');
     setAcknowledged(false);
     setWindowsValid(true);
-  }, [date, exception?.type]);
+    const rule = mode === 'daily' ? rules[0] : undefined;
+    setRegularPrice(rule?.price ?? '');
+    setWindowFrom(initialWindowFrom);
+    setWindowTo(initialWindowTo);
+    setSalePrice(rule?.salePrice ?? '');
+    setSaleEnabled(Boolean(rule?.salePrice));
+    setCampaign({
+      startDate: dateOnly(rule?.saleStartsAt) ?? '',
+      endDate: campaignEndDate(rule?.saleEndsAt) ?? '',
+      label: rule?.campaignLabel ?? '',
+    });
+  }, [date, exception?.type, initialWindowFrom, initialWindowTo, mode, rules]);
 
   const exceptionWindows = (exception?.windows ?? []).map((window) => ({
     open: window.openTime,
@@ -83,7 +124,6 @@ export function DayDialog({
   });
   useSubmitSuccess(deletePriceFetcher, () => setNotice('Đã xoá khung giá.'));
 
-  const firstRule = rules[0];
   // Only a closure needs the acknowledgement — narrowing to custom hours or
   // just repricing does not take the day off the market.
   const needsAck = setting === 'closed' && bookings.length > 0;
@@ -103,7 +143,14 @@ export function DayDialog({
         <SuccessBanner message={notice} />
 
         {date && (canAvailability || canPricing) ? (
-          <Tabs defaultValue={canAvailability ? 'availability' : 'price'} className="pt-2">
+          <Tabs
+            // A sweep in the week grid is a pricing gesture; landing on the
+            // opening-hours tab would make the partner re-navigate every time.
+            defaultValue={
+              presetWindow && canPricing ? 'price' : canAvailability ? 'availability' : 'price'
+            }
+            className="pt-2"
+          >
             <TabsList
               className={cn(
                 'grid w-full',
@@ -206,48 +253,75 @@ export function DayDialog({
                       <Badge variant="secondary">{rules.length} khung</Badge>
                     </div>
                     <div className="space-y-2">
-                      {rules.map((rule) => (
-                        <div
-                          key={rule.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2.5"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">
-                              {String(rule.params.from)}–{String(rule.params.to)}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2 text-xs">
-                              <span className={cn(rule.salePrice && 'font-medium text-emerald-700')}>
-                                <Money value={rule.salePrice ?? rule.price} />/giờ
-                              </span>
-                              {rule.salePrice ? (
-                                <span className="text-muted-foreground line-through">
-                                  <Money value={rule.price} />
-                                </span>
-                              ) : null}
+                      {rules.map((rule) => {
+                        const presentation = campaignPresentationOf([rule], mode);
+                        return (
+                          <div
+                            key={rule.id}
+                            className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2.5"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">
+                                {String(rule.params.from)}–{String(rule.params.to)}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2 text-xs">
+                                {presentation.state === 'running' && presentation.salePrice ? (
+                                  <>
+                                    <span className="font-medium text-warning-foreground">
+                                      <Money value={presentation.salePrice} />
+                                      /giờ
+                                    </span>
+                                    <span className="text-muted-foreground line-through">
+                                      <Money value={rule.price} />
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span>
+                                    <Money value={rule.price} />
+                                    /giờ
+                                  </span>
+                                )}
+                                {presentation.state !== 'none' ? (
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      'text-[10px]',
+                                      presentation.state === 'running' &&
+                                        'border-warning/40 bg-warning/15 text-warning-foreground',
+                                    )}
+                                  >
+                                    {presentation.state === 'running'
+                                      ? 'Đang chạy'
+                                      : presentation.state === 'scheduled'
+                                        ? 'Sắp diễn ra'
+                                        : 'Đã kết thúc'}
+                                  </Badge>
+                                ) : null}
+                              </div>
                             </div>
+                            <deletePriceFetcher.Form method="post">
+                              <input type="hidden" name="intent" value="delete_price" />
+                              <input type="hidden" name="date" value={date} />
+                              <input type="hidden" name="ruleId" value={rule.id} />
+                              <Button
+                                type="submit"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Xoá khung giá ${String(rule.params.from)} đến ${String(rule.params.to)}`}
+                                disabled={deletePriceFetcher.state !== 'idle'}
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                              </Button>
+                            </deletePriceFetcher.Form>
                           </div>
-                          <deletePriceFetcher.Form method="post">
-                            <input type="hidden" name="intent" value="delete_price" />
-                            <input type="hidden" name="date" value={date} />
-                            <input type="hidden" name="ruleId" value={rule.id} />
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`Xoá khung giá ${String(rule.params.from)} đến ${String(rule.params.to)}`}
-                              disabled={deletePriceFetcher.state !== 'idle'}
-                            >
-                              <Trash2 className="size-4 text-destructive" />
-                            </Button>
-                          </deletePriceFetcher.Form>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ) : null}
 
                 <priceFetcher.Form
-                  key={`price:${date}:${mode}:${rules.map((rule) => rule.id).join(',')}`}
+                  key={`price:${date}:${mode}:${presetWindow?.from ?? ''}-${presetWindow?.to ?? ''}:${rules.map((rule) => rule.id).join(',')}`}
                   method="post"
                   className="space-y-4"
                 >
@@ -285,7 +359,8 @@ export function DayDialog({
                             id="price-from"
                             name="from"
                             type="time"
-                            defaultValue={openWindows[0]?.from ?? '08:00'}
+                            value={windowFrom}
+                            onChange={(event) => setWindowFrom(event.target.value)}
                             required
                           />
                         </div>
@@ -295,7 +370,8 @@ export function DayDialog({
                             id="price-to"
                             name="to"
                             type="time"
-                            defaultValue={openWindows[0]?.to ?? '09:00'}
+                            value={windowTo}
+                            onChange={(event) => setWindowTo(event.target.value)}
                             required
                           />
                         </div>
@@ -306,23 +382,73 @@ export function DayDialog({
                       <Input
                         id="regular-price"
                         name="price"
+                        type="number"
+                        min="1"
+                        step="1"
                         inputMode="numeric"
-                        defaultValue={mode === 'daily' ? (firstRule?.price ?? '') : ''}
+                        value={regularPrice}
+                        onChange={(event) => setRegularPrice(event.target.value)}
                         placeholder={basePrice ? `Mặc định: ${basePrice}` : 'Nhập giá thường'}
-                        required={mode === 'hourly'}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="sale-price">Giá sale (VND)</Label>
-                      <Input
-                        id="sale-price"
-                        name="salePrice"
-                        inputMode="numeric"
-                        defaultValue={mode === 'daily' ? (firstRule?.salePrice ?? '') : ''}
-                        placeholder="Không bắt buộc"
+                        required={mode === 'hourly' || saleEnabled}
                       />
                     </div>
                   </div>
+                  <div className="flex items-center justify-between gap-4 rounded-lg border px-3 py-3">
+                    <div>
+                      <Label htmlFor="day-sale-enabled">Bật giá ưu đãi</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Tạo chiến dịch hiển thị cho khách.
+                      </p>
+                    </div>
+                    <Switch
+                      id="day-sale-enabled"
+                      checked={saleEnabled}
+                      onCheckedChange={(checked) => {
+                        setSaleEnabled(checked);
+                        if (!checked) setSalePrice('');
+                      }}
+                    />
+                  </div>
+                  {saleEnabled ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="sale-price">Giá ưu đãi (VND)</Label>
+                      <Input
+                        id="sale-price"
+                        name="salePrice"
+                        type="number"
+                        min="1"
+                        max={maximumSalePrice(regularPrice)}
+                        step="1"
+                        inputMode="numeric"
+                        value={salePrice}
+                        onChange={(event) => setSalePrice(event.target.value)}
+                        placeholder="Thấp hơn giá thường"
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <input type="hidden" name="salePrice" value="" />
+                  )}
+                  <SaleCampaignFields
+                    idPrefix="day"
+                    enabled={saleEnabled}
+                    value={campaign}
+                    onChange={setCampaign}
+                  />
+                  {saleEnabled ? (
+                    <CampaignPreview
+                      regularPrice={regularPrice}
+                      salePrice={salePrice}
+                      campaignLabel={campaign.label}
+                      ruleScopeDescription={
+                        mode === 'daily'
+                          ? `${formatDayLong(date)} · cả ngày`
+                          : `${formatDayLong(date)} · ${windowFrom}–${windowTo}`
+                      }
+                      startDate={campaign.startDate}
+                      endDate={campaign.endDate}
+                    />
+                  ) : null}
                   {priceFetcher.data?.error ? (
                     <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                       {priceFetcher.data.error}

@@ -3,6 +3,7 @@ import type {
   PublicListingDetailResponse,
   QuoteResponse,
 } from '@booking/contracts';
+import { Badge } from '@booking/ui/components/ui/badge';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { Image } from '@booking/ui/components/media/image';
 import { cn } from '@booking/ui/lib/utils';
@@ -154,17 +155,59 @@ export function ModeToggle({
 
 export function Breakdown({ quote }: { quote: QuoteResponse }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const { t: tCheckout } = useTranslation(NsI18n.Checkout);
+  const hasCalendarSale = quote.regularSubtotal !== quote.subtotal;
+  const calendarSavings = hasCalendarSale
+    ? (BigInt(quote.regularSubtotal) - BigInt(quote.subtotal)).toString()
+    : '0';
+
   return (
     <dl className="rounded-lg bg-muted/40 p-3 text-sm">
-      {quote.lineItems.map((line, index) => (
-        <div key={index} className="flex justify-between gap-3 py-0.5 text-muted-foreground">
-          <dt>
-            {line.label}
-            {line.block ? ` (${t('package')})` : ''}
-          </dt>
-          <dd>{formatVnd(line.amount)}</dd>
+      {hasCalendarSale ? (
+        <div className="mb-2 flex items-baseline justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2 text-warning-foreground">
+          <dt className="font-semibold">{tCheckout('calendarSalePrice')}</dt>
+          <dd className="shrink-0 font-semibold">− {formatVnd(calendarSavings)}</dd>
         </div>
-      ))}
+      ) : null}
+      {quote.lineItems.map((line, index) => {
+        const discounted = line.regularAmount !== line.amount;
+
+        return (
+          <div key={index} className="flex justify-between gap-3 py-0.5 text-muted-foreground">
+            <dt className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              <span className="min-w-0">
+                {line.label}
+                {line.block ? ` (${t('package')})` : ''}
+              </span>
+              {/* Per line, not per quote: a booking can span hours priced by
+                  different campaigns, and only this level can show which one
+                  discounted this unit. Partner-authored text is verbatim. */}
+              {line.campaignLabel ? (
+                <Badge
+                  variant="outline"
+                  className="max-w-full rounded-sm border-warning/50 bg-warning/10 px-1.5 py-0 text-[10px] text-warning-foreground"
+                >
+                  <span className="min-w-0 truncate">{line.campaignLabel}</span>
+                </Badge>
+              ) : null}
+            </dt>
+            <dd className="flex shrink-0 items-baseline gap-1.5 text-right">
+              {discounted ? (
+                <del className="text-xs text-muted-foreground">
+                  <span className="sr-only">{t('campaign.regularPrice')}: </span>
+                  {formatVnd(line.regularAmount)}
+                </del>
+              ) : null}
+              <span className={discounted ? 'font-medium text-warning-foreground' : undefined}>
+                {discounted ? (
+                  <span className="sr-only">{tCheckout('calendarSalePrice')}: </span>
+                ) : null}
+                {formatVnd(line.amount)}
+              </span>
+            </dd>
+          </div>
+        );
+      })}
       <Separator className="my-2.5" />
       <div className="flex justify-between gap-3 font-semibold text-foreground">
         <dt>{t('subtotal')}</dt>

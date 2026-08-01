@@ -5,12 +5,23 @@ import type { PricingRuleResponse, RecurringPricingKind } from '@booking/contrac
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
+import { Switch } from '@booking/ui/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { cn } from '@booking/ui/lib/utils';
 import { Money } from '~/components/money';
 import { DAYS } from '~/features/partner/lib/listing-hours';
-import type { CalendarMode } from '~/features/partner/lib/listing-calendar';
+import {
+  campaignEndDate,
+  dateOnly,
+  maximumSalePrice,
+  type CalendarMode,
+} from '~/features/partner/lib/listing-calendar';
 import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
+import { CampaignPreview } from '../listing-calendar/campaign-preview';
+import {
+  SaleCampaignFields,
+  type SaleCampaignValue,
+} from '../listing-calendar/sale-campaign-fields';
 
 interface Props {
   mode: CalendarMode;
@@ -37,6 +48,16 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
     mode === 'hourly' ? 'time_range' : 'day_of_week',
   );
   const [days, setDays] = useState<string[]>(WEEKEND);
+  const [windowFrom, setWindowFrom] = useState('18:00');
+  const [windowTo, setWindowTo] = useState('22:00');
+  const [regularPrice, setRegularPrice] = useState('');
+  const [salePrice, setSalePrice] = useState('');
+  const [saleEnabled, setSaleEnabled] = useState(false);
+  const [campaign, setCampaign] = useState<SaleCampaignValue>({
+    startDate: '',
+    endDate: '',
+    label: '',
+  });
 
   // Editing reuses the create form and the create request: the API replaces a
   // rule that names the same scope, so "edit" is seeding these fields. Picking a
@@ -44,11 +65,31 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
   // scope only if it happens to match, which is why the button says "Lưu" and
   // the header names the rule being changed.
   useEffect(() => {
-    if (!editing) return;
+    if (!editing) {
+      setKind(mode === 'hourly' ? 'time_range' : 'day_of_week');
+      setDays(WEEKEND);
+      setWindowFrom('18:00');
+      setWindowTo('22:00');
+      setRegularPrice('');
+      setSalePrice('');
+      setSaleEnabled(false);
+      setCampaign({ startDate: '', endDate: '', label: '' });
+      return;
+    }
     setKind(editing.ruleType === 'time_range' ? 'time_range' : 'day_of_week');
+    setWindowFrom(String(editing.params.from ?? '18:00'));
+    setWindowTo(String(editing.params.to ?? '22:00'));
+    setRegularPrice(editing.price);
+    setSalePrice(editing.salePrice ?? '');
+    setSaleEnabled(Boolean(editing.salePrice));
+    setCampaign({
+      startDate: dateOnly(editing.saleStartsAt) ?? '',
+      endDate: campaignEndDate(editing.saleEndsAt) ?? '',
+      label: editing.campaignLabel ?? '',
+    });
     const picked = daysOf(editing);
     setDays(picked.length > 0 ? picked : ['0', '1', '2', '3', '4', '5', '6']);
-  }, [editing]);
+  }, [editing, mode]);
 
   useSubmitSuccess(fetcher, onSaved);
 
@@ -128,7 +169,8 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
                 id="recurring-from"
                 name="windowFrom"
                 type="time"
-                defaultValue={editing ? String(editing.params.from ?? '18:00') : '18:00'}
+                value={windowFrom}
+                onChange={(event) => setWindowFrom(event.target.value)}
                 required
               />
             </div>
@@ -138,7 +180,8 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
                 id="recurring-to"
                 name="windowTo"
                 type="time"
-                defaultValue={editing ? String(editing.params.to ?? '22:00') : '22:00'}
+                value={windowTo}
+                onChange={(event) => setWindowTo(event.target.value)}
                 required
               />
             </div>
@@ -149,27 +192,80 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
           <Input
             id="recurring-price"
             name="price"
+            type="number"
+            min="1"
+            step="1"
             inputMode="numeric"
-            defaultValue={editing?.price ?? ''}
+            value={regularPrice}
+            onChange={(event) => setRegularPrice(event.target.value)}
             placeholder={basePrice ? `Mặc định: ${basePrice}` : 'Nhập giá thường'}
             required
           />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border px-3 py-3">
+        <div>
+          <Label htmlFor="recurring-sale-enabled">Bật giá ưu đãi</Label>
+          <p className="text-xs text-muted-foreground">Gắn chiến dịch vào quy tắc lặp lại này.</p>
+        </div>
+        <Switch
+          id="recurring-sale-enabled"
+          checked={saleEnabled}
+          onCheckedChange={(checked) => {
+            setSaleEnabled(checked);
+            if (!checked) setSalePrice('');
+          }}
+        />
+      </div>
+      {saleEnabled ? (
         <div className="space-y-2">
-          <Label htmlFor="recurring-sale-price">Giá sale (VND)</Label>
+          <Label htmlFor="recurring-sale-price">Giá ưu đãi (VND)</Label>
           <Input
             id="recurring-sale-price"
             name="salePrice"
+            type="number"
+            min="1"
+            max={maximumSalePrice(regularPrice)}
+            step="1"
             inputMode="numeric"
-            defaultValue={editing?.salePrice ?? ''}
-            placeholder="Không bắt buộc"
+            value={salePrice}
+            onChange={(event) => setSalePrice(event.target.value)}
+            placeholder="Thấp hơn giá thường"
+            required
           />
         </div>
-      </div>
+      ) : (
+        <input type="hidden" name="salePrice" value="" />
+      )}
+
+      <SaleCampaignFields
+        idPrefix="recurring"
+        enabled={saleEnabled}
+        value={campaign}
+        onChange={setCampaign}
+      />
+      {saleEnabled ? (
+        <CampaignPreview
+          regularPrice={regularPrice}
+          salePrice={salePrice}
+          campaignLabel={campaign.label}
+          ruleScopeDescription={`${
+            days.length === 7
+              ? 'Mọi ngày trong tuần'
+              : DAYS.filter((day) => days.includes(String(day.dow)))
+                  .map((day) => day.label)
+                  .join(', ')
+          } · ${kind === 'time_range' ? `${windowFrom}–${windowTo}` : 'cả ngày'}`}
+          startDate={campaign.startDate}
+          endDate={campaign.endDate}
+        />
+      ) : null}
 
       {basePrice ? (
         <p className="text-xs text-muted-foreground">
-          Giá mặc định của tin đăng: <Money value={basePrice} />/{mode === 'hourly' ? 'giờ' : 'ngày'}
+          Giá mặc định của tin đăng: <Money value={basePrice} />/
+          {mode === 'hourly' ? 'giờ' : 'ngày'}
         </p>
       ) : null}
 

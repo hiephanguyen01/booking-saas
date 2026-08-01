@@ -1,4 +1,4 @@
-import { type AvailabilityResponse } from '@booking/contracts';
+import { type AvailabilityCalendarResponse, type AvailabilityResponse } from '@booking/contracts';
 import { Controller, Get, Headers, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
@@ -21,7 +21,7 @@ export class PublicAvailabilityController {
     @Query() query: AvailabilityQueryDto,
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
-  ): Promise<AvailabilityResponse> {
+  ): Promise<AvailabilityResponse | AvailabilityCalendarResponse> {
     return this.getAvailability.execute(resolveHost(forwardedHost, host), slug, query);
   }
 }

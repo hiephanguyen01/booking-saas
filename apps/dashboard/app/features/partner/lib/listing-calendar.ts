@@ -18,15 +18,7 @@ export type CalendarMode = Extract<BookingMode, 'hourly' | 'daily'>;
 
 export const WEEKDAY_HEADS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
-const WEEKDAY_NAME = [
-  'Chủ nhật',
-  'Thứ hai',
-  'Thứ ba',
-  'Thứ tư',
-  'Thứ năm',
-  'Thứ sáu',
-  'Thứ bảy',
-];
+const WEEKDAY_NAME = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
 
 function isoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -123,6 +115,65 @@ export function pricingRulesForCell(
       rule.ruleType === 'day_of_week' &&
       recurringDays(rule).includes(weekday(date)),
   );
+}
+
+/**
+ * Campaign-bearing rules that can affect a date, including recurring hourly
+ * rules which the month cell intentionally excludes from its headline price.
+ */
+export function campaignRulesForCell(
+  date: string,
+  mode: CalendarMode,
+  rules: PricingRuleResponse[],
+): PricingRuleResponse[] {
+  if (mode === 'daily') return pricingRulesForCell(date, mode, rules);
+  const candidates = rules.filter(
+    (rule) =>
+      rule.bookingMode === mode &&
+      (dateMatches(rule, date) ||
+        ((rule.ruleType === 'day_of_week' || rule.ruleType === 'time_range') &&
+          recurringDays(rule).includes(weekday(date)))),
+  );
+  const spans = candidates.flatMap((rule) => {
+    const span = hourlyRuleSpan(rule);
+    return span ? [{ rule, ...span }] : [];
+  });
+  const boundaries = [...new Set(spans.flatMap(({ from, to }) => [from, to]))].sort(
+    (a, b) => a - b,
+  );
+  const effective = new Set<PricingRuleResponse>();
+
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const segmentStart = boundaries[index];
+    const winner = spans
+      .filter(({ from, to }) => segmentStart >= from && segmentStart < to)
+      .reduce<PricingRuleResponse | undefined>(
+        (best, { rule }) => (!best || rule.priority > best.priority ? rule : best),
+        undefined,
+      );
+    if (winner) effective.add(winner);
+  }
+
+  return candidates.filter((rule) => effective.has(rule));
+}
+
+function minuteOfClock(value: unknown): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(value));
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function hourlyRuleSpan(rule: PricingRuleResponse): { from: number; to: number } | null {
+  if (rule.ruleType === 'day_of_week' || rule.ruleType === 'date_range') {
+    return { from: 0, to: 24 * 60 };
+  }
+  if (rule.ruleType !== 'time_range' && rule.ruleType !== 'date_time_range') return null;
+  const from = minuteOfClock(rule.params.from);
+  const to = minuteOfClock(rule.params.to);
+  return from !== null && to !== null && from < to ? { from, to } : null;
 }
 
 /** Is a repeating rule in force on this date, whatever the cell shows? */
@@ -224,10 +275,200 @@ export function bucketBookingsByDay<T extends { startUtc: string }>(
   return byDay;
 }
 
+/**
+ * A stored campaign instant back as the `YYYY-MM-DD` a date input expects.
+ *
+ * The window is half-open, so `saleEndsAt` is midnight of the day AFTER the last
+ * day of the campaign — {@link campaignEndDate} shifts it back so the partner
+ * sees the date they actually typed.
+ */
+export function dateOnly(instant: string | null | undefined): string | undefined {
+  return instant ? dayKeyInTz(instant) : undefined;
+}
+
+export function campaignEndDate(instant: string | null | undefined): string | undefined {
+  if (!instant) return undefined;
+  return dayKeyInTz(new Date(Date.parse(instant) - 86_400_000).toISOString());
+}
+
+function dayKeyInTz(iso: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(iso));
+  const get = (type: string): string => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Is a rule's sale campaign running right now? */
+export function campaignState(
+  rule: PricingRuleResponse,
+  now: number = Date.now(),
+): 'none' | 'scheduled' | 'running' | 'ended' {
+  if (!rule.salePrice) return 'none';
+  if (rule.saleStartsAt && now < Date.parse(rule.saleStartsAt)) return 'scheduled';
+  if (rule.saleEndsAt && now >= Date.parse(rule.saleEndsAt)) return 'ended';
+  return 'running';
+}
+
+export interface CampaignPresentation {
+  state: 'none' | 'scheduled' | 'running' | 'ended';
+  coverage: 'full' | 'partial' | null;
+  regularPrice: string | null;
+  salePrice: string | null;
+  label: string | null;
+}
+
+/** HTML `max` for a positive sale price that must stay below the regular price. */
+export function maximumSalePrice(regularPrice: string): string | undefined {
+  if (!/^\d+$/.test(regularPrice)) return undefined;
+  const value = BigInt(regularPrice);
+  return value > 0n ? String(value - 1n) : '0';
+}
+
+/**
+ * One truthful campaign summary for a partner calendar unit.
+ *
+ * Running campaigns win over future campaigns, which win over campaign history.
+ * A time-scoped rule can only describe part of an hourly day, while a mixture of
+ * sale and non-sale rules is also partial. Scheduled/ended campaigns deliberately
+ * return no sale price: it is useful context, but it is not what a customer pays.
+ */
+export function campaignPresentationOf(
+  rules: readonly PricingRuleResponse[],
+  mode: CalendarMode,
+  now: number = Date.now(),
+): CampaignPresentation {
+  const states = rules.map((rule) => ({ rule, state: campaignState(rule, now) }));
+  const state = (['running', 'scheduled', 'ended'] as const).find((candidate) =>
+    states.some((item) => item.state === candidate),
+  );
+  if (!state) {
+    return { state: 'none', coverage: null, regularPrice: null, salePrice: null, label: null };
+  }
+
+  const campaignRules = states.filter((item) => item.state === state);
+  const representative = campaignRules.reduce<PricingRuleResponse | null>((best, item) => {
+    if (!best) return item.rule;
+    const candidateSale = BigInt(item.rule.salePrice ?? item.rule.price);
+    const bestSale = BigInt(best.salePrice ?? best.price);
+    return candidateSale < bestSale ? item.rule : best;
+  }, null);
+  const timeScoped =
+    mode === 'hourly' &&
+    campaignRules.some(
+      ({ rule }) => rule.ruleType === 'time_range' || rule.ruleType === 'date_time_range',
+    );
+  const everyUnitMatches =
+    rules.length > 0 &&
+    states.every((item) => item.state === state && item.rule.salePrice !== null);
+
+  return {
+    state,
+    coverage: timeScoped || !everyUnitMatches ? 'partial' : 'full',
+    regularPrice: representative?.price ?? null,
+    salePrice: state === 'running' ? (representative?.salePrice ?? null) : null,
+    label: representative?.campaignLabel?.trim() || null,
+  };
+}
+
+/** Fallback hour span when a whole week is closed — a grid still needs a shape. */
+const DEFAULT_HOUR_ROWS: [number, number] = [8, 20];
+
+/**
+ * The hour rows a week grid spans: the union of every day's opening hours.
+ *
+ * Derived from OPENING HOURS, not from bookings — a week with no bookings still
+ * has to show the hours the partner sells, which is the whole point of the view.
+ * Clamped to 0–23 and rounded outwards so a window like 08:30–20:30 is fully
+ * visible.
+ */
+export function weekHourRows(
+  days: string[],
+  weeklyRules: AvailabilityRuleResponse[],
+  exceptionByDate: Map<string, AvailabilityExceptionResponse>,
+): number[] {
+  let min = 24;
+  let max = 0;
+  for (const date of days) {
+    for (const window of openWindowsFor(date, weeklyRules, exceptionByDate.get(date))) {
+      min = Math.min(min, Math.floor(Number(window.from.slice(0, 2))));
+      // A window closing at 20:30 still occupies the 20:00 row; one closing at
+      // 20:00 does not.
+      const endHour = Number(window.to.slice(0, 2));
+      const endMinute = Number(window.to.slice(3, 5));
+      max = Math.max(max, endMinute > 0 ? endHour : endHour - 1);
+    }
+  }
+  const [from, to] = min > max ? DEFAULT_HOUR_ROWS : [min, Math.min(23, max)];
+  return Array.from({ length: to - from + 1 }, (_, index) => from + index);
+}
+
+/** Is an hour inside any of a date's open windows? */
+export function hourIsOpen(
+  date: string,
+  hour: number,
+  weeklyRules: AvailabilityRuleResponse[],
+  exception: AvailabilityExceptionResponse | undefined,
+): boolean {
+  const stamp = `${String(hour).padStart(2, '0')}:00`;
+  return openWindowsFor(date, weeklyRules, exception).some(
+    (window) => stamp >= window.from && stamp < window.to,
+  );
+}
+
+/** The highest-priority dated or recurring rule pricing this exact hour. */
+export function ruleCoveringHour(
+  rules: PricingRuleResponse[],
+  date: string,
+  hour: number,
+  mode: CalendarMode,
+): PricingRuleResponse | undefined {
+  const stamp = `${String(hour).padStart(2, '0')}:00`;
+  return rules
+    .filter((rule) => {
+      if (rule.bookingMode !== mode) return false;
+      if (rule.ruleType === 'date_time_range') {
+        return (
+          String(rule.params.date) === date &&
+          stamp >= String(rule.params.from) &&
+          stamp < String(rule.params.to)
+        );
+      }
+      // A date range prices every unit on its covered dates. The quote kernel
+      // and month view already treat it as whole-day, so the week grid must let
+      // its higher priority outrank recurring hour/day rules too.
+      if (rule.ruleType === 'date_range') return dateMatches(rule, date);
+      if (rule.ruleType === 'time_range') {
+        return (
+          recurringDays(rule).includes(weekday(date)) &&
+          stamp >= String(rule.params.from) &&
+          stamp < String(rule.params.to)
+        );
+      }
+      return rule.ruleType === 'day_of_week' && recurringDays(rule).includes(weekday(date));
+    })
+    .reduce<PricingRuleResponse | undefined>(
+      (winner, rule) => (!winner || rule.priority > winner.priority ? rule : winner),
+      undefined,
+    );
+}
+
+/**
+ * The price a rule charges right now — its sale only while the campaign runs.
+ * A scheduled or finished campaign must not colour the calendar, or the partner
+ * reads a number no guest is being offered.
+ */
+export function effectivePriceOf(rule: PricingRuleResponse): string {
+  return campaignState(rule) === 'running' ? (rule.salePrice ?? rule.price) : rule.price;
+}
+
 /** The lowest effective price among a date's rules, or null when it has none. */
 export function cheapestOf(rules: PricingRuleResponse[]): string | null {
   return rules.reduce<string | null>((low, rule) => {
-    const value = rule.salePrice ?? rule.price;
+    const value = effectivePriceOf(rule);
     return low === null || BigInt(value) < BigInt(low) ? value : low;
   }, null);
 }

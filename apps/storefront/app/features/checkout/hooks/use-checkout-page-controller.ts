@@ -19,12 +19,15 @@ export interface CheckoutPageControllerProps {
 }
 
 export function useCheckoutPageController({ loaderData, actionData }: CheckoutPageControllerProps) {
-  const { listing, start, quote, promoCode, promo, currentUser } = loaderData;
+  const { listing, start, quote, promoCode, promo, checkoutPromotion, currentUser } = loaderData;
   const { tenant } = useOutletContext<StorefrontContext>();
   const locale = useLocale();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const amounts = checkoutAmounts(quote, promo?.valid ? promo : null);
+  const amounts = checkoutAmounts(
+    quote,
+    checkoutPromotion?.kind === 'code' ? checkoutPromotion : null,
+  );
   const checkoutPath = `${location.pathname}${location.search}`;
   const handoff = checkoutDestinationSchema.safeParse(
     actionData && 'handoff' in actionData ? actionData.handoff : null,

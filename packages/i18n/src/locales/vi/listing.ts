@@ -7,6 +7,28 @@ export const viListing = {
   fromPrice: 'trở lên',
   fromPriceShort: 'từ',
   perHour: 'cho 1 giờ',
+  /**
+   * Sale campaign badge (ADR 0009). `bookBy` says "book before", not "valid
+   * until": the campaign window is measured at the moment of BOOKING, not
+   * against the dates being booked.
+   */
+  campaign: {
+    unnamed: 'Đang giảm giá',
+    upTo: 'Giảm đến {percent}%',
+    bookBy: 'Đặt trước {date}',
+    daysLeft: 'Còn {count} ngày',
+    lastDay: 'Hôm nay là ngày cuối',
+    variedSchedule: 'Nhiều khung thời gian · Xem lịch',
+    allDaySale: 'Cả ngày',
+    partialDaySale: 'Một phần ngày',
+    exactPercent: 'Giảm {percent}%',
+    calendarUnavailable: 'Không thể tải lịch khuyến mãi. Vui lòng thử lại.',
+    regularPrice: 'Giá thường',
+    currentPrice: 'Giá hiện tại',
+    salePrice: 'Giá khuyến mãi',
+    calendarSaleHeading: 'Khuyến mãi theo lịch',
+    checkoutPromotionHeading: 'Ưu đãi',
+  },
   bookedCount: '{count} đã đặt',
   reviewCount: '{count} đánh giá',
   noReviews: 'Chưa có đánh giá',
