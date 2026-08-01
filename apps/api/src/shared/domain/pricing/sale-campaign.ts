@@ -79,6 +79,7 @@ interface Candidate {
   label: string | null;
   discountPercent: number;
   endsAt: Date | null;
+  rules: CampaignRuleView[];
 }
 
 /**
@@ -117,37 +118,61 @@ export function selectSaleCampaign(
   timezone: string,
   mode?: BookingMode,
 ): SaleCampaignSelection | null {
-  const live: CampaignRuleView[] = [];
-  let best: Candidate | null = null;
+  const liveByLabel = new Map<string | null, CampaignRuleView[]>();
+  const discountByRule = new Map<CampaignRuleView, number>();
   for (const rule of rules) {
     if (mode && rule.bookingMode !== mode) continue;
     const sale = activeSalePrice(rule, now);
     if (sale === null) continue;
     const discountPercent = discountPercentOf(rule.price, sale);
     if (discountPercent === null) continue;
-    live.push(rule);
+    const label = normalizedLabel(rule);
+    const campaign = liveByLabel.get(label);
+    if (campaign) campaign.push(rule);
+    else liveByLabel.set(label, [rule]);
+    discountByRule.set(rule, discountPercent);
+  }
+
+  let best: Candidate | null = null;
+  for (const [label, campaignRules] of liveByLabel) {
     const candidate: Candidate = {
-      label: rule.campaignLabel?.trim() || null,
-      discountPercent,
-      endsAt: rule.saleEndsAt ?? null,
+      label,
+      discountPercent: Math.max(...campaignRules.map((rule) => discountByRule.get(rule) ?? 0)),
+      endsAt: campaignEndsAt(campaignRules),
+      rules: campaignRules,
     };
     if (best === null || outranks(candidate, best)) best = candidate;
   }
   if (best === null) return null;
   const lastDay = best.endsAt === null ? null : lastBookingDay(best.endsAt, timezone);
-  // The winner names the campaign; every live rule carrying that same name is
-  // part of it, and the schedule has to describe all of them or none.
-  const group = live.filter((rule) => (rule.campaignLabel?.trim() || null) === best.label);
   return {
     summary: {
       label: best.label,
       discountPercent: best.discountPercent,
       lastBookingDate: lastDay === null ? null : formatDateOnly(lastDay),
       daysLeft: lastDay === null ? null : daysUntil(now, lastDay, timezone),
-      schedule: summarizeSaleSchedule(group),
+      schedule: summarizeSaleSchedule(best.rules),
     },
     endsAt: best.endsAt,
   };
+}
+
+function normalizedLabel(rule: CampaignRuleView): string | null {
+  return rule.campaignLabel?.trim() || null;
+}
+
+/**
+ * A campaign remains live while any one of its currently-live sale rules is
+ * live. An unbounded rule keeps the campaign unbounded; otherwise its deadline
+ * is the latest rule end, not whichever individual rule had the deepest rate.
+ */
+function campaignEndsAt(rules: readonly CampaignRuleView[]): Date | null {
+  let endsAt: Date | null = null;
+  for (const rule of rules) {
+    if (rule.saleEndsAt === null || rule.saleEndsAt === undefined) return null;
+    if (endsAt === null || rule.saleEndsAt > endsAt) endsAt = rule.saleEndsAt;
+  }
+  return endsAt;
 }
 
 const UNLIMITED: Omit<SaleSchedule, 'varies'> = {
@@ -190,13 +215,13 @@ function summarizeSaleSchedule(group: readonly CampaignRuleView[]): SaleSchedule
     }
 
     case 'date_range': {
-      const span = dateSpan(group, (rule) => [rule.params.from, rule.params.to]);
+      const span = contiguousDateSpan(group, (rule) => [rule.params.from, rule.params.to]);
       if (span === null) return { ...UNLIMITED, varies: true };
       return { ...UNLIMITED, dateFrom: span[0], dateTo: span[1], varies: false };
     }
 
     case 'date_time_range': {
-      const span = dateSpan(group, (rule) => [rule.params.date, rule.params.date]);
+      const span = contiguousDateSpan(group, (rule) => [rule.params.date, rule.params.date]);
       const band = sharedBand(group, (rule) => [rule.params.from, rule.params.to]);
       if (span === null || band === null) return { ...UNLIMITED, varies: true };
       return {
@@ -237,20 +262,39 @@ function sharedBand(
   return band;
 }
 
-/** Min/max of the group's dates. Lexicographic works: they are all `YYYY-MM-DD`. */
-function dateSpan(
+/**
+ * One honest calendar span for the group's inclusive date rules, or null when
+ * they are malformed or have a gap. Adjacent/overlapping rules are safe to
+ * merge; Aug 1–2 plus Aug 8–9 must instead render as a varying schedule.
+ */
+function contiguousDateSpan(
   group: readonly CampaignRuleView[],
   read: (rule: CampaignRuleView) => [unknown, unknown],
 ): [string, string] | null {
-  let earliest: string | null = null;
-  let latest: string | null = null;
+  const ranges: Array<{ from: string; to: string; fromMs: number; toMs: number }> = [];
   for (const rule of group) {
     const [from, to] = read(rule);
     if (typeof from !== 'string' || typeof to !== 'string') return null;
-    if (earliest === null || from < earliest) earliest = from;
-    if (latest === null || to > latest) latest = to;
+    const fromMs = dateOnlyMs(from);
+    const toMs = dateOnlyMs(to);
+    if (fromMs === null || toMs === null || toMs < fromMs) return null;
+    ranges.push({ from, to, fromMs, toMs });
   }
-  return earliest === null || latest === null ? null : [earliest, latest];
+  const [first, ...rest] = ranges.sort((left, right) => left.fromMs - right.fromMs);
+  if (!first) return null;
+  let latest = first;
+  for (const range of rest) {
+    if (range.fromMs > latest.toMs + 86_400_000) return null;
+    if (range.toMs > latest.toMs) latest = range;
+  }
+  return [first.from, latest.to];
+}
+
+function dateOnlyMs(value: string): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const ms = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return new Date(ms).toISOString().slice(0, 10) === value ? ms : null;
 }
 
 /** Deeper discount wins; then a named campaign; then the one expiring sooner. */
