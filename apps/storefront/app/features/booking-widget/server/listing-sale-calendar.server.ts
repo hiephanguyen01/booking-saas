@@ -2,7 +2,7 @@ import type { AvailabilityMode } from '@booking/contracts';
 import { fetchAvailabilityCalendar } from '~/features/booking/server/booking.server';
 import { fetchListing } from '~/features/catalog/server/catalog.server';
 import { monthBounds } from '~/features/booking-widget/lib/sale-calendar';
-import { rethrowCriticalDataError } from '~/lib/server/optional-data.server';
+import { isAbortLikeError } from '~/lib/server/optional-data.server';
 import { selectedPackageForListing } from '~/lib/package-options';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 import { bookingDataError } from './listing-booking-data.server';
@@ -60,7 +60,7 @@ export async function loadListingSaleCalendarRoute(
       calendar,
     };
   } catch (error) {
-    rethrowCriticalDataError(error);
+    if (isAbortLikeError(error)) throw error;
     return bookingDataError('availability-unavailable', 502);
   }
 }
