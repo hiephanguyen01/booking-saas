@@ -17,9 +17,11 @@ import { dateLabelInTz } from '~/lib/time';
 export function SaleCampaignBadge({
   campaign,
   className,
+  showIcon = true,
 }: {
   campaign: SaleCampaignSummary | null;
   className?: string;
+  showIcon?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
@@ -42,8 +44,11 @@ export function SaleCampaignBadge({
 
   return (
     <span className={cn('flex flex-wrap items-center gap-x-2 gap-y-1', className)}>
-      <Badge variant="success" className="max-w-full rounded-sm px-1.5 py-0 text-[11px]">
-        <Tag className="size-3 shrink-0" aria-hidden="true" />
+      <Badge
+        variant="outline"
+        className="max-w-full rounded-sm border-warning/40 bg-warning/15 px-1.5 py-0 text-[11px] text-warning-foreground"
+      >
+        {showIcon ? <Tag className="size-3 shrink-0" aria-hidden="true" /> : null}
         {/* Partner-authored, already in the tenant's language — shown verbatim,
             never translated. */}
         <span className="truncate">{campaign.label ?? t('campaign.unnamed')}</span>
@@ -52,7 +57,9 @@ export function SaleCampaignBadge({
         <span
           className={cn(
             'inline-flex items-center gap-1 text-xs',
-            urgency.kind === 'deadline' ? 'text-muted-foreground' : 'font-medium text-success',
+            urgency.kind === 'deadline'
+              ? 'text-muted-foreground'
+              : 'font-medium text-warning-foreground',
           )}
         >
           <Timer className="size-3 shrink-0" aria-hidden="true" />

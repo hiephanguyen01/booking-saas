@@ -1,6 +1,8 @@
 import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import { RatingStars } from '~/components/rating-stars';
+import { SaleCampaignBadge } from '~/components/sale-campaign-badge';
+import { SaleCampaignRibbon } from '~/components/sale-campaign-banner';
 import type {
   EnrichedSearchListing,
   SearchResultContext,
@@ -8,6 +10,7 @@ import type {
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
+import { discountPercent } from '~/lib/sale-campaign';
 import { useLocale } from '~/hooks/use-locale';
 import type { ListingFavoriteControl } from '~/features/catalog/lib/listing-card.types';
 
@@ -31,7 +34,7 @@ export function SearchResultCard({
   const location = formatListingLocation(listing);
   const price = formatVnd(listing.priceFrom);
   const regularPrice = formatVnd(listing.regularPriceFrom);
-  const discountPercent = calculateDiscountPercent(listing.regularPriceFrom, listing.priceFrom);
+  const pricedPercent = discountPercent(listing.regularPriceFrom, listing.priceFrom);
   const priceUnit = priceUnitLabel(context, listing.priceUnit);
 
   return (
@@ -64,11 +67,7 @@ export function SearchResultCard({
             className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : null}
-        {discountPercent !== null ? (
-          <span className="absolute top-6 left-0 flex h-10 w-18 items-center bg-success px-2 text-base font-semibold text-success-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
-            - {discountPercent}%
-          </span>
-        ) : null}
+        <SaleCampaignRibbon campaign={listing.campaign} exactPercent={pricedPercent} />
       </Link>
 
       <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
@@ -96,6 +95,7 @@ export function SearchResultCard({
           >
             {listing.title}
           </Link>
+          <SaleCampaignBadge campaign={listing.campaign} className="mt-1.5" />
           {location ? (
             <p className="mt-1 flex items-center gap-2 text-sm leading-5 text-muted-foreground">
               <MapPin className="size-5 shrink-0" aria-hidden="true" />
@@ -118,18 +118,20 @@ export function SearchResultCard({
         <div className="flex items-end justify-end text-right">
           <p className="text-sm leading-5 text-muted-foreground">
             <span className="flex flex-wrap items-baseline justify-end gap-x-2">
-              {discountPercent !== null && regularPrice ? (
+              {pricedPercent !== null && regularPrice ? (
                 <span className="text-base leading-6 text-muted-foreground/65 line-through">
                   {regularPrice}
                 </span>
               ) : null}
-              <span className={discountPercent !== null ? 'text-success' : 'text-foreground'}>
+              <span
+                className={pricedPercent !== null ? 'text-warning-foreground' : 'text-foreground'}
+              >
                 {t('listing:fromPriceShort')}{' '}
                 <strong className="text-lg leading-7 font-semibold">{price}</strong>
               </span>
             </span>
             <span
-              className={`block ${discountPercent !== null ? 'text-success' : 'text-muted-foreground'}`}
+              className={`block ${pricedPercent !== null ? 'text-warning-foreground' : 'text-muted-foreground'}`}
             >
               {t(priceUnit.key, priceUnit.count === undefined ? {} : { count: priceUnit.count })}
             </span>
@@ -170,12 +172,4 @@ function priceUnitLabel(
     return { key: 'listing:forHours', count: context.selectedHours };
   }
   return { key: PRICE_UNIT_KEYS[priceUnit] };
-}
-
-function calculateDiscountPercent(regularPrice: string, salePrice: string): number | null {
-  const regular = BigInt(regularPrice);
-  const sale = BigInt(salePrice);
-  if (regular <= 0n || sale >= regular) return null;
-
-  return Number(((regular - sale) * 100n + regular / 2n) / regular);
 }

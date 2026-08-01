@@ -2,6 +2,7 @@ import type { AttributeField, HourlySlot } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Check, Clock3, MapPin } from 'lucide-react';
 import { PendingLink } from '~/components/pending-link';
+import { SaleCampaignBadge } from '~/components/sale-campaign-badge';
 import { SalePrice } from '~/components/sale-price';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
@@ -17,17 +18,20 @@ import { SlotPicker } from '~/features/booking-widget/components/slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { OfferingDetailsDisclosure } from '~/components/offering-details-disclosure';
+import { campaignLabelsOf } from '~/lib/quote';
 
 export function RoomDetails({
   option,
   attributeSchema,
   hidePhotos = false,
   onOpenPhoto,
+  state,
 }: {
   option: RoomOption;
   attributeSchema: AttributeField[];
   hidePhotos?: boolean;
   onOpenPhoto?: (index: number, trigger: HTMLButtonElement) => void;
+  state: RoomAvailabilityState;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const cards = specCards(option.child.attributes, attributeSchema);
@@ -35,7 +39,10 @@ export function RoomDetails({
   const location = formatListingLocation(option.detail);
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-lg font-semibold leading-6">{option.child.title}</h3>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-lg font-semibold leading-6">{option.child.title}</h3>
+        {state === 'browse' ? <SaleCampaignBadge campaign={option.campaign} /> : null}
+      </div>
       {location ? (
         <span className="flex items-start gap-2 text-sm text-muted-foreground">
           <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -73,6 +80,11 @@ export function RoomPrice({
       <div className="flex flex-col gap-1">
         <span className="text-sm text-muted-foreground">{t('group.fromRoomPrice')}</span>
         <strong className="text-xl text-primary">{formatVnd(option.price)}</strong>
+        {option.campaign && option.campaign.discountPercent > 0 ? (
+          <span className="text-xs font-medium text-warning-foreground">
+            {t('campaign.upTo', { percent: option.campaign.discountPercent })}
+          </span>
+        ) : null}
         <span className="text-muted-foreground">{t('group.hourOrDay')}</span>
       </div>
     ) : (
@@ -87,7 +99,11 @@ export function RoomPrice({
     <div className="flex flex-col gap-1">
       <strong className="text-xl text-primary">
         {option.quote ? (
-          <SalePrice price={option.quote.subtotal} regularPrice={option.quote.regularSubtotal} />
+          <SalePrice
+            price={option.quote.subtotal}
+            regularPrice={option.quote.regularSubtotal}
+            campaignLabel={campaignLabelsOf(option.quote).join(' · ')}
+          />
         ) : (
           formatVnd(option.price)
         )}
