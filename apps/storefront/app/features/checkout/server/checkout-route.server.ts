@@ -2,6 +2,7 @@ import {
   createBookingInputSchema,
   customerPaymentMethodSchema,
   guestInfoSchema,
+  type AutoCampaignResponse,
   type ValidatePromoResponse,
 } from '@booking/contracts';
 import { localeTranslator } from '~/lib/translator';
@@ -14,6 +15,7 @@ import {
   createBooking,
   fetchPaymentOptions,
   fetchStorefrontPromotions,
+  resolveAutoCampaign,
   validatePromo,
 } from '~/features/booking/server/booking.server';
 import { fetchListing, fetchQuote } from '~/features/catalog/server/catalog.server';
@@ -37,6 +39,7 @@ import {
 } from '~/features/checkout/server/payment-redirect.server';
 import { appendRecentCookie } from '~/features/account/server/recent.server';
 import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
+import type { CheckoutPromotionPresentation } from '~/features/checkout/lib/checkout-presentation';
 
 const CHECKOUT_MAX_FORM_BYTES = 64 * 1024;
 
@@ -111,12 +114,15 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
   if (!quote) throw redirect(storefrontPaths.listing(locale, slug));
 
   const promoInput = { listingId: listing.id, amount: quote.subtotal, start, end };
-  const [promoResult, promotionsResult, legalConsent] = await Promise.all([
+  const [promoResult, autoCampaignResult, promotionsResult, legalConsent] = await Promise.all([
     promoCode ? validatePromo(request, { code: promoCode, ...promoInput }) : Promise.resolve(null),
+    promoCode ? Promise.resolve(null) : resolveAutoCampaign(request, promoInput),
     fetchStorefrontPromotions(request, promoInput),
     loadLegalConsentBundle(request, locale, CHECKOUT_LEGAL_TYPES),
   ]);
   const promo: ValidatePromoResponse | null = promoResult?.data ?? null;
+  const autoCampaign: AutoCampaignResponse = autoCampaignResult?.data ?? null;
+  const checkoutPromotion = checkoutPromotionOf(promo, autoCampaign);
 
   return {
     listing,
@@ -128,12 +134,34 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
     quote,
     promoCode,
     promo,
+    checkoutPromotion,
     availablePromotions: promotionsResult.data ?? [],
     promotionsUnavailable: !promotionsResult.ok,
     currentUser: getOptionalAuth()?.info.user ?? null,
     paymentMethods: paymentOptions.methods,
     legalConsent,
     checkoutAttemptId: createCheckoutAttemptId(),
+  };
+}
+
+function checkoutPromotionOf(
+  promo: ValidatePromoResponse | null,
+  autoCampaign: AutoCampaignResponse,
+): CheckoutPromotionPresentation | null {
+  if (promo?.valid) {
+    return {
+      kind: 'code',
+      label: promo.code,
+      discountAmount: promo.discountAmount,
+      finalAmount: promo.finalAmount,
+    };
+  }
+  if (!autoCampaign) return null;
+  return {
+    kind: 'auto',
+    label: autoCampaign.name,
+    discountAmount: autoCampaign.discountAmount,
+    finalAmount: autoCampaign.finalAmount,
   };
 }
 

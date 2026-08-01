@@ -175,10 +175,10 @@ rewrite history.
   detailed availability exposes `regularPrice`, `price` and optional `campaignLabel` per slot/night.
   Quote lines expose `regularAmount`, `amount` and optional `campaignLabel`, plus aggregate
   `regularSubtotal` and `subtotal`. The optional `view=calendar` availability response projects each
-  day to `status` and nullable sale fields `coverage`, `minDiscountPercent`, `maxDiscountPercent` and
-  distinct `campaignLabels`; discovery payloads expose the descriptive `SaleCampaignSummary` rather
-  than raw rules. These fields only explain existing computed prices. **No migration was added for
-  this public visibility/presentation work.**
+  day to `{ date, status, sale }`, where `sale` is either `null` or the nested object
+  `{ coverage, minDiscountPercent, maxDiscountPercent, campaignLabels }`; discovery payloads expose
+  the descriptive `SaleCampaignSummary` rather than raw rules. These fields only explain existing
+  computed prices. **No migration was added for this public visibility/presentation work.**
 - **One availability exception per resource/day** is enforced by `(resource_id, date)`. Because an
   exception belongs to the resource, it affects every listing sharing that calendar. For a
   `custom_hours` exception the source of truth is `windows` (jsonb `[{ openTime, closeTime }]`), so

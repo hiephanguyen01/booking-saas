@@ -192,11 +192,15 @@ export function Breakdown({ quote }: { quote: QuoteResponse }) {
             </dt>
             <dd className="flex shrink-0 items-baseline gap-1.5 text-right">
               {discounted ? (
-                <span className="text-xs text-muted-foreground line-through">
+                <del className="text-xs text-muted-foreground">
+                  <span className="sr-only">{t('campaign.regularPrice')}: </span>
                   {formatVnd(line.regularAmount)}
-                </span>
+                </del>
               ) : null}
               <span className={discounted ? 'font-medium text-warning-foreground' : undefined}>
+                {discounted ? (
+                  <span className="sr-only">{tCheckout('calendarSalePrice')}: </span>
+                ) : null}
                 {formatVnd(line.amount)}
               </span>
             </dd>

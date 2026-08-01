@@ -1,14 +1,17 @@
-import type { QuoteResponse, ValidatePromoResponse } from '@booking/contracts';
+import type { QuoteResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { cn } from '@booking/ui/lib/utils';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatVnd } from '~/lib/ui';
 import { campaignLabelsOf } from '~/lib/quote';
-import type { checkoutAmounts } from '~/features/checkout/lib/checkout-presentation';
+import type {
+  CheckoutPromotionPresentation,
+  checkoutAmounts,
+} from '~/features/checkout/lib/checkout-presentation';
 
 export function PricePanel({
   quote,
-  promo,
+  checkoutPromotion,
   amounts,
   qty,
   mode,
@@ -16,7 +19,7 @@ export function PricePanel({
   dayCount,
 }: {
   quote: QuoteResponse;
-  promo: ValidatePromoResponse | null;
+  checkoutPromotion: CheckoutPromotionPresentation | null;
   amounts: ReturnType<typeof checkoutAmounts>;
   qty: string;
   mode: string;
@@ -76,7 +79,11 @@ export function PricePanel({
             className="font-semibold text-success"
           />
           <Badge variant="success" className="mt-2 max-w-full rounded-sm font-semibold">
-            <span className="min-w-0 truncate">{promo?.code ?? t('checkoutPromotion')}</span>
+            <span className="min-w-0 truncate">
+              {checkoutPromotion?.kind === 'auto'
+                ? t('automaticPromotion', { name: checkoutPromotion.label })
+                : (checkoutPromotion?.label ?? t('checkoutPromotion'))}
+            </span>
           </Badge>
         </div>
       ) : null}

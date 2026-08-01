@@ -1,5 +1,7 @@
 import type { ApiResult } from '@booking/api-client';
 import type {
+  AutoCampaignInput,
+  AutoCampaignResponse,
   AvailabilityCalendarResponse,
   AvailabilityMode,
   AvailabilityResponse,
@@ -18,6 +20,7 @@ import type {
   ValidatePromoResponse,
 } from '@booking/contracts';
 import {
+  autoCampaignResponseSchema,
   availabilityCalendarResponseSchema,
   availabilityResponseSchema,
   bookingAccessResponseSchema,
@@ -108,6 +111,15 @@ export function fetchStorefrontPromotions(
 ): Promise<ApiResult<StorefrontPromotionsResponse>> {
   return optionalAuthPost(request, '/public/checkout/promotions', input, {
     schema: storefrontPromotionsResponseSchema,
+  });
+}
+
+export function resolveAutoCampaign(
+  request: Request,
+  input: AutoCampaignInput,
+): Promise<ApiResult<AutoCampaignResponse>> {
+  return optionalAuthPost(request, '/public/checkout/auto-campaigns', input, {
+    schema: autoCampaignResponseSchema,
   });
 }
 

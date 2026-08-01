@@ -72,8 +72,8 @@ Range reads are capped by `MAX_CALENDAR_RANGE_DAYS` (366) and bulk writes by
 `GET /public/listings/:slug/availability` keeps the detailed response by default. Passing
 `view=calendar` selects the month-summary projection for `hourly` or `daily` mode; `from` and `to`
 remain inclusive date-only bounds and fixed-package requests also carry `packageId`. Inventory mode
-does not support this view. Each returned day has a `status` (`available`, `sold_out`, `closed`, or
-`blocked`) and either no sale or these presentation fields:
+does not support this view. Each returned day is `{ date, status, sale }`, where `status` is
+`available`, `sold_out`, `closed`, or `blocked`, and `sale` is either `null` or one nested object with:
 
 - `coverage: 'full' | 'partial'`;
 - `minDiscountPercent` and `maxDiscountPercent`, calculated with the shared BigInt-safe half-up rule;
@@ -160,7 +160,11 @@ hours priced by different campaigns.
 Campaign labels are partner-authored text already in the tenant's language: rendered verbatim, never
 translated. Only the no-name fallback goes through i18n. Calendar pricing is already reflected in
 the quoted subtotal; checkout promotion validation receives that subtotal and applies afterward.
-The two names are never merged, and this presentation adds no stacking or precedence behavior.
+When a customer supplies a code, the Storefront resolves only that code; without a code, its
+server-side checkout loader previews the best code-less auto-campaign. The booking use-case resolves
+the winner again authoritatively inside its transaction, including customer-specific limits. The two
+names are never merged, code-over-auto precedence remains unchanged, and this presentation adds no
+stacking behavior.
 
 ## Known limits
 
