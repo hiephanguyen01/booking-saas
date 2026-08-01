@@ -167,7 +167,9 @@ function minuteOfClock(value: unknown): number | null {
 }
 
 function hourlyRuleSpan(rule: PricingRuleResponse): { from: number; to: number } | null {
-  if (rule.ruleType === 'day_of_week') return { from: 0, to: 24 * 60 };
+  if (rule.ruleType === 'day_of_week' || rule.ruleType === 'date_range') {
+    return { from: 0, to: 24 * 60 };
+  }
   if (rule.ruleType !== 'time_range' && rule.ruleType !== 'date_time_range') return null;
   const from = minuteOfClock(rule.params.from);
   const to = minuteOfClock(rule.params.to);
