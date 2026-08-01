@@ -139,9 +139,7 @@ export const availabilityExceptionRangeInputSchema = z
       });
     }
   });
-export type AvailabilityExceptionRangeInput = z.infer<
-  typeof availabilityExceptionRangeInputSchema
->;
+export type AvailabilityExceptionRangeInput = z.infer<typeof availabilityExceptionRangeInputSchema>;
 
 /**
  * Quick calendar block (§14) — the dashboard `QuickBlockDialog` GenericForm body.
@@ -169,8 +167,16 @@ export const availabilityQuerySchema = z
     from: dateOnlySchema,
     to: dateOnlySchema,
     packageId: uuidSchema.optional(),
+    view: z.enum(['detail', 'calendar']).default('detail'),
   })
   .superRefine((query, ctx) => {
+    if (query.mode === 'inventory' && query.view === 'calendar') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['view'],
+        message: 'Calendar view is not available for inventory mode',
+      });
+    }
     const distance = dateOnlyDistanceDays(query.from, query.to);
     if (distance === null || distance < 0) {
       ctx.addIssue({
@@ -226,6 +232,14 @@ export const hourlySlotSchema = z.object({
   endUtc: z.string(),
   available: z.boolean(),
   price: moneyStringSchema,
+  /**
+   * Price before a live sale campaign; equals `price` when nothing discounts
+   * this slot. Always present, so "this hour is on sale" is a comparison rather
+   * than a guess — without it a discounted slot and a cheap one look identical.
+   */
+  regularPrice: moneyStringSchema,
+  /** Named campaign that discounted this slot, when there is one. */
+  campaignLabel: z.string().optional(),
 });
 export type HourlySlot = z.infer<typeof hourlySlotSchema>;
 
@@ -237,6 +251,10 @@ export const dayAvailabilitySchema = z.object({
   status: dayStatusSchema,
   /** Night price (VND đồng); null when closed/blocked. */
   price: moneyStringSchema.nullable(),
+  /** Night price before a live sale; equals `price` when nothing discounts the day. */
+  regularPrice: moneyStringSchema.nullable(),
+  /** Named campaign that discounted this day, when there is one. */
+  campaignLabel: z.string().optional(),
 });
 export type DayAvailability = z.infer<typeof dayAvailabilitySchema>;
 
@@ -255,7 +273,11 @@ export type InventoryAvailability = z.infer<typeof inventoryAvailabilitySchema>;
 
 export const availabilityResponseSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('hourly'), timezone: z.string(), days: z.array(hourlyDaySchema) }),
-  z.object({ mode: z.literal('daily'), timezone: z.string(), days: z.array(dayAvailabilitySchema) }),
+  z.object({
+    mode: z.literal('daily'),
+    timezone: z.string(),
+    days: z.array(dayAvailabilitySchema),
+  }),
   z.object({
     mode: z.literal('inventory'),
     timezone: z.string(),
@@ -263,3 +285,40 @@ export const availabilityResponseSchema = z.discriminatedUnion('mode', [
   }),
 ]);
 export type AvailabilityResponse = z.infer<typeof availabilityResponseSchema>;
+
+export const availabilityCalendarStatusSchema = z.enum([
+  'available',
+  'sold_out',
+  'closed',
+  'blocked',
+]);
+export type AvailabilityCalendarStatus = z.infer<typeof availabilityCalendarStatusSchema>;
+
+export const availabilityCalendarSaleSchema = z.object({
+  coverage: z.enum(['full', 'partial']),
+  minDiscountPercent: z.number().int().min(1).max(100),
+  maxDiscountPercent: z.number().int().min(1).max(100),
+  campaignLabels: z.array(z.string()),
+});
+export type AvailabilityCalendarSale = z.infer<typeof availabilityCalendarSaleSchema>;
+
+export const availabilityCalendarResponseSchema = z.object({
+  view: z.literal('calendar'),
+  mode: z.enum(['hourly', 'daily']),
+  timezone: z.string(),
+  days: z.array(
+    z.object({
+      date: dateOnlySchema,
+      status: availabilityCalendarStatusSchema,
+      sale: availabilityCalendarSaleSchema.nullable(),
+    }),
+  ),
+});
+export type AvailabilityCalendarResponse = z.infer<typeof availabilityCalendarResponseSchema>;
+export type AvailabilityCalendarDay = AvailabilityCalendarResponse['days'][number];
+
+export const availabilityEndpointResponseSchema = z.union([
+  availabilityResponseSchema,
+  availabilityCalendarResponseSchema,
+]);
+export type AvailabilityEndpointResponse = z.infer<typeof availabilityEndpointResponseSchema>;
