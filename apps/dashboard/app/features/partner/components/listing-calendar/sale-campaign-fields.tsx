@@ -6,7 +6,14 @@ interface Props {
   idPrefix: string;
   /** Campaign fields only mean something alongside a sale price. */
   enabled: boolean;
-  initial?: { startDate?: string; endDate?: string; label?: string };
+  value: SaleCampaignValue;
+  onChange: (value: SaleCampaignValue) => void;
+}
+
+export interface SaleCampaignValue {
+  startDate: string;
+  endDate: string;
+  label: string;
 }
 
 /**
@@ -20,15 +27,23 @@ interface Props {
  *
  * Hidden until a sale price is entered: a window bounding nothing is noise.
  */
-export function SaleCampaignFields({ idPrefix, enabled, initial }: Props) {
-  if (!enabled) return null;
+export function SaleCampaignFields({ idPrefix, enabled, value, onChange }: Props) {
+  if (!enabled) {
+    return (
+      <>
+        <input type="hidden" name="saleStartDate" value="" />
+        <input type="hidden" name="saleEndDate" value="" />
+        <input type="hidden" name="campaignLabel" value="" />
+      </>
+    );
+  }
   return (
-    <div className="space-y-3 rounded-lg border border-dashed p-3">
+    <div className="space-y-3 rounded-lg border border-warning/30 bg-warning/5 p-3">
       <div>
-        <p className="text-sm font-medium">Thời hạn khuyến mãi</p>
+        <p className="text-sm font-medium">Chiến dịch giá ưu đãi</p>
         <p className="text-xs text-muted-foreground">
-          Tính theo lúc khách đặt. Để trống là áp mãi. Hết hạn thì quay lại giá thường của quy tắc
-          này, không phải giá gốc của tin đăng.
+          Thời hạn được xét theo lúc khách hoàn tất đặt chỗ, không phải ngày sử dụng dịch vụ. Để
+          trống là áp dụng không giới hạn.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -38,7 +53,8 @@ export function SaleCampaignFields({ idPrefix, enabled, initial }: Props) {
             id={`${idPrefix}-sale-start`}
             name="saleStartDate"
             type="date"
-            defaultValue={initial?.startDate ?? ''}
+            value={value.startDate}
+            onChange={(event) => onChange({ ...value, startDate: event.target.value })}
           />
         </div>
         <div className="space-y-2">
@@ -47,17 +63,20 @@ export function SaleCampaignFields({ idPrefix, enabled, initial }: Props) {
             id={`${idPrefix}-sale-end`}
             name="saleEndDate"
             type="date"
-            defaultValue={initial?.endDate ?? ''}
+            min={value.startDate || undefined}
+            value={value.endDate}
+            onChange={(event) => onChange({ ...value, endDate: event.target.value })}
           />
         </div>
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor={`${idPrefix}-campaign-label`}>Tên đợt khuyến mãi</Label>
+          <Label htmlFor={`${idPrefix}-campaign-label`}>Tên chiến dịch</Label>
           <Input
             id={`${idPrefix}-campaign-label`}
             name="campaignLabel"
             maxLength={80}
-            placeholder="Ví dụ: Khuyến mãi Tết"
-            defaultValue={initial?.label ?? ''}
+            placeholder="Ví dụ: Giá tốt mùa hè"
+            value={value.label}
+            onChange={(event) => onChange({ ...value, label: event.target.value })}
           />
         </div>
       </div>

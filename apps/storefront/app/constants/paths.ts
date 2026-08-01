@@ -47,11 +47,15 @@ export const storefrontPaths = {
   booking: (locale: Locale, code: string) => `/${locale}/bookings/${segment(code)}`,
   bookingPaymentStatus: (locale: Locale, code: string) =>
     `/${locale}/bookings/${segment(code)}/payment-status`,
-  /** Resource routes the booking widget fetches availability and quotes from. */
+  /** Resource routes the booking widget fetches availability, sale summaries and quotes from. */
   listingBookingData: (locale: Locale, listingSlug: string) =>
     `/${locale}/l/${segment(listingSlug)}/booking-data`,
+  listingSaleCalendar: (locale: Locale, listingSlug: string) =>
+    `/${locale}/l/${segment(listingSlug)}/sale-calendar`,
   listingGroupRoomBookingData: (locale: Locale, groupSlug: string, listingSlug: string) =>
     `/${locale}/g/${segment(groupSlug)}/rooms/${segment(listingSlug)}/booking-data`,
+  listingGroupRoomSaleCalendar: (locale: Locale, groupSlug: string, listingSlug: string) =>
+    `/${locale}/g/${segment(groupSlug)}/rooms/${segment(listingSlug)}/sale-calendar`,
   /** The four tenant legal documents (§ tenant-legal-documents); stable slugs, never translated. */
   legal: (locale: Locale, docType: LegalDocumentType) =>
     `/${locale}/legal/${LEGAL_DOCUMENT_SLUGS[docType]}`,

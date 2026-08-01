@@ -103,6 +103,15 @@ export class PrismaPricingRuleRepository implements IPricingRuleRepository {
     return items.map(toRecord);
   }
 
+  async listByListings(tx: PrismaTx, listingIds: readonly string[]): Promise<PricingRuleRecord[]> {
+    if (listingIds.length === 0) return [];
+    const items = await tx.pricingRule.findMany({
+      where: { listingId: { in: [...listingIds] } },
+      orderBy: { priority: 'desc' },
+    });
+    return items.map(toRecord);
+  }
+
   async delete(tx: PrismaTx, id: string): Promise<void> {
     await tx.pricingRule.delete({ where: { id } });
   }

@@ -1,4 +1,4 @@
-import { moneyStringSchema, timeOfDaySchema } from '@booking/contracts';
+import { moneyStringSchema, timeOfDaySchema, type SaleCampaignSummary } from '@booking/contracts';
 import type { PriceUnit } from '~/lib/ui';
 import { datesInDailyRange, normalizeDailyRange } from '~/lib/daily-range';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
@@ -44,6 +44,8 @@ export interface EnrichedSearchListing {
   amenities: string[];
   priceFrom: string;
   regularPriceFrom: string;
+  /** Running sale campaign; present even when the search carries no dates. */
+  campaign: SaleCampaignSummary | null;
   completedBookings: number;
   ratingAvg: number | null;
   reviewCount: number;

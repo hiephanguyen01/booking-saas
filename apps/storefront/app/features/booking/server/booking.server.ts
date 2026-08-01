@@ -1,5 +1,8 @@
 import type { ApiResult } from '@booking/api-client';
 import type {
+  AutoCampaignInput,
+  AutoCampaignResponse,
+  AvailabilityCalendarResponse,
   AvailabilityMode,
   AvailabilityResponse,
   BookingAccessResponse,
@@ -17,6 +20,8 @@ import type {
   ValidatePromoResponse,
 } from '@booking/contracts';
 import {
+  autoCampaignResponseSchema,
+  availabilityCalendarResponseSchema,
   availabilityResponseSchema,
   bookingAccessResponseSchema,
   bookingOtpResponseSchema,
@@ -67,6 +72,28 @@ export function fetchAvailability(
   });
 }
 
+export function fetchAvailabilityCalendar(
+  request: Request,
+  slug: string,
+  query: {
+    mode: Extract<AvailabilityMode, 'hourly' | 'daily'>;
+    from: string;
+    to: string;
+    packageId?: string;
+  },
+): Promise<AvailabilityCalendarResponse> {
+  const qs = new URLSearchParams({
+    mode: query.mode,
+    from: query.from,
+    to: query.to,
+    view: 'calendar',
+    ...(query.packageId ? { packageId: query.packageId } : {}),
+  }).toString();
+  return publicGetData(request, `/public/listings/${encodeURIComponent(slug)}/availability?${qs}`, {
+    schema: availabilityCalendarResponseSchema,
+  });
+}
+
 // ── Promotions (§12.3) ──────────────────────────────────────────────────────────
 
 export function validatePromo(
@@ -84,6 +111,15 @@ export function fetchStorefrontPromotions(
 ): Promise<ApiResult<StorefrontPromotionsResponse>> {
   return optionalAuthPost(request, '/public/checkout/promotions', input, {
     schema: storefrontPromotionsResponseSchema,
+  });
+}
+
+export function resolveAutoCampaign(
+  request: Request,
+  input: AutoCampaignInput,
+): Promise<ApiResult<AutoCampaignResponse>> {
+  return optionalAuthPost(request, '/public/checkout/auto-campaigns', input, {
+    schema: autoCampaignResponseSchema,
   });
 }
 

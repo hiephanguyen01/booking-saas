@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Flame,
   Repeat,
   SquareDashedMousePointer,
   Users,
@@ -26,6 +27,8 @@ import {
   WEEKDAY_HEADS,
   bucketBookingsByDay,
   calendarDays,
+  campaignPresentationOf,
+  campaignRulesForCell,
   closureStateOf,
   dateMatches,
   datesBetween,
@@ -103,7 +106,12 @@ export function ListingCalendarPricing({
   const rangeDates = range ? datesBetween(range.from, range.to) : [];
 
   /** Every calendar link carries the whole view state, so no nav loses a setting. */
-  const calendarLink = (patch: { mode?: CalendarMode; view?: 'month' | 'week'; month?: string; week?: string }): string => {
+  const calendarLink = (patch: {
+    mode?: CalendarMode;
+    view?: 'month' | 'week';
+    month?: string;
+    week?: string;
+  }): string => {
     const next = { mode, view, month, week: weekStart, ...patch };
     return `?tab=calendar&mode=${next.mode}&view=${next.view}&month=${next.month}&week=${next.week}`;
   };
@@ -273,7 +281,7 @@ export function ListingCalendarPricing({
       {recurringRules.length > 0 ? (
         <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
           <p className="flex items-center gap-2 font-medium text-foreground">
-            <Repeat className="size-4" /> {recurringRules.length} quy tắc giá lặp lại đang áp dụng
+            <Repeat className="size-4" /> {recurringRules.length} quy tắc giá lặp lại
           </p>
           <p className="mt-1">
             {mode === 'hourly'
@@ -281,15 +289,39 @@ export function ListingCalendarPricing({
               : 'Ô ngày đã tính các quy tắc này; giá riêng đặt cho một ngày cụ thể vẫn đè lên.'}
           </p>
           <ul className="mt-2 space-y-1">
-            {recurringRules.map((rule) => (
-              <li key={rule.id} className="text-xs">
-                {rule.ruleType === 'time_range'
-                  ? `Khung giờ ${String(rule.params.from)}–${String(rule.params.to)}`
-                  : `Theo thứ trong tuần`}{' '}
-                · <Money value={rule.salePrice ?? rule.price} />
-                {mode === 'hourly' ? '/giờ' : '/ngày'}
-              </li>
-            ))}
+            {recurringRules.map((rule) => {
+              const campaign = campaignPresentationOf([rule], mode);
+              return (
+                <li key={rule.id} className="flex flex-wrap items-center gap-1 text-xs">
+                  <span>
+                    {rule.ruleType === 'time_range'
+                      ? `Khung giờ ${String(rule.params.from)}–${String(rule.params.to)}`
+                      : `Theo thứ trong tuần`}{' '}
+                    ·{' '}
+                    <Money
+                      value={
+                        campaign.state === 'running'
+                          ? (campaign.salePrice ?? rule.price)
+                          : rule.price
+                      }
+                    />
+                    {mode === 'hourly' ? '/giờ' : '/ngày'}
+                  </span>
+                  {campaign.state === 'running' ? (
+                    <>
+                      <span className="text-muted-foreground line-through">
+                        <Money value={rule.price} />
+                      </span>
+                      <span className="text-warning-foreground">· Đang chạy</span>
+                    </>
+                  ) : campaign.state === 'scheduled' ? (
+                    <span>· Sắp diễn ra</span>
+                  ) : campaign.state === 'ended' ? (
+                    <span>· Đã kết thúc</span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
           <Button asChild size="sm" variant="outline" className="mt-3">
             <Link to="?tab=pricing">Quản lý giá lặp lại</Link>
@@ -299,13 +331,19 @@ export function ListingCalendarPricing({
 
       {listing.bookingSelection === 'fixed_packages' ? (
         <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          Giá của tin đăng này được quản lý trong mục “Các gói dịch vụ”. Lịch giá riêng không áp dụng cho gói cố định.
+          Giá của tin đăng này được quản lý trong mục “Các gói dịch vụ”. Lịch giá riêng không áp
+          dụng cho gói cố định.
         </div>
       ) : null}
 
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <Button asChild variant="ghost" size="icon" aria-label={view === 'week' ? 'Tuần trước' : 'Tháng trước'}>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            aria-label={view === 'week' ? 'Tuần trước' : 'Tháng trước'}
+          >
             <Link
               to={
                 view === 'week'
@@ -324,7 +362,12 @@ export function ListingCalendarPricing({
                 : `Tháng ${Number(month.slice(5))}/${month.slice(0, 4)}`}
             </p>
           </div>
-          <Button asChild variant="ghost" size="icon" aria-label={view === 'week' ? 'Tuần sau' : 'Tháng sau'}>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            aria-label={view === 'week' ? 'Tuần sau' : 'Tháng sau'}
+          >
             <Link
               to={
                 view === 'week'
@@ -335,6 +378,30 @@ export function ListingCalendarPricing({
               <ChevronRight />
             </Link>
           </Button>
+        </div>
+        <div
+          className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-b bg-muted/10 px-4 py-2 text-[11px] text-muted-foreground"
+          aria-label="Chú giải chiến dịch giá ưu đãi"
+        >
+          <span className="flex items-center gap-1.5">
+            <span className="grid size-3.5 place-items-center rounded-sm border border-warning/50 bg-warning/15 text-warning-foreground">
+              <Flame className="size-2.5" aria-hidden />
+            </span>
+            Giảm cả ngày
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="grid size-3.5 place-items-center rounded-sm border border-warning/50 bg-warning/5 text-warning-foreground [background-image:repeating-linear-gradient(135deg,transparent_0,transparent_3px,color-mix(in_oklch,var(--warning)_25%,transparent)_3px,color-mix(in_oklch,var(--warning)_25%,transparent)_5px)]">
+              <Flame className="size-2.5" aria-hidden />
+            </span>
+            Có giờ ưu đãi
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-3.5 rounded-full border border-warning/50 bg-card" /> Sắp diễn ra
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-3.5 rounded-full border border-muted-foreground/40 bg-muted" /> Đã
+            kết thúc
+          </span>
         </div>
         {view === 'week' ? null : (
           <div className="grid grid-cols-7 border-b bg-muted/30">
@@ -373,6 +440,7 @@ export function ListingCalendarPricing({
                   mode={mode}
                   closure={closureStateOf(date, mode, weeklyRules, exceptionMap.get(date))}
                   rules={pricingRulesForCell(date, mode, rules)}
+                  campaignRules={campaignRulesForCell(date, mode, rules)}
                   basePrice={basePrice}
                   bookingCount={bookingsByDay.get(date)?.length ?? 0}
                   // Daily cells already fold the weekly rule into their price, so
@@ -398,10 +466,6 @@ export function ListingCalendarPricing({
         </span>
         <span className="flex items-center gap-2">
           <span className="size-3 rounded-sm border bg-primary/5" /> Mở theo giờ riêng
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm border bg-emerald-50 dark:bg-emerald-950/40" /> Có giá
-          sale
         </span>
         <span className="flex items-center gap-2">
           <span className="size-3 rounded-sm border bg-muted/50" /> Nghỉ theo lịch tuần

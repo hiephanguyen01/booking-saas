@@ -169,6 +169,16 @@ rewrite history.
     apply the bands, and migration `20260731130000` re-banded the rows that predate the scale — a
     client posting a rule directly can still choose its own number. Collisions *within* a band are
     refused at write time rather than ranked, because a tie resolves by array order.
+- **Public calendar-sale presentation is contract data, not stored state.** The pricing order remains
+  unchanged: the winning rule supplies its regular `price`; an active `sale_price` replaces that
+  unit price in the quote subtotal; only then can a checkout promotion reduce that subtotal. Public
+  detailed availability exposes `regularPrice`, `price` and optional `campaignLabel` per slot/night.
+  Quote lines expose `regularAmount`, `amount` and optional `campaignLabel`, plus aggregate
+  `regularSubtotal` and `subtotal`. The optional `view=calendar` availability response projects each
+  day to `{ date, status, sale }`, where `sale` is either `null` or the nested object
+  `{ coverage, minDiscountPercent, maxDiscountPercent, campaignLabels }`; discovery payloads expose
+  the descriptive `SaleCampaignSummary` rather than raw rules. These fields only explain existing
+  computed prices. **No migration was added for this public visibility/presentation work.**
 - **One availability exception per resource/day** is enforced by `(resource_id, date)`. Because an
   exception belongs to the resource, it affects every listing sharing that calendar. For a
   `custom_hours` exception the source of truth is `windows` (jsonb `[{ openTime, closeTime }]`), so

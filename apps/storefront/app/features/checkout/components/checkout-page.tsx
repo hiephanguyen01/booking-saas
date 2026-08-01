@@ -17,6 +17,7 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
     quote,
     promoCode,
     promo,
+    checkoutPromotion,
     availablePromotions,
     promotionsUnavailable,
     currentUser,
@@ -55,6 +56,7 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
             searchParams={searchParams}
             promoCode={promoCode}
             promo={promo}
+            checkoutPromotion={checkoutPromotion}
             availablePromotions={availablePromotions}
             promotionsUnavailable={promotionsUnavailable}
             quote={quote}

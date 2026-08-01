@@ -10,7 +10,7 @@ import { WEEKDAY_SHORT } from '~/constants/time';
 import { formatVndCompact, dayKey, minutesOfDay } from '~/lib/format';
 import { parseDay } from '~/lib/calendar-dates';
 import {
-  effectivePriceOf,
+  campaignPresentationOf,
   hourIsOpen,
   ruleCoveringHour,
   weekHourRows,
@@ -123,13 +123,17 @@ export function WeekGrid({
         </div>
 
         {hours.map((hour) => (
-          <div key={hour} className="grid grid-cols-[3.5rem_repeat(7,1fr)] border-b last:border-b-0">
+          <div
+            key={hour}
+            className="grid grid-cols-[3.5rem_repeat(7,1fr)] border-b last:border-b-0"
+          >
             <div className="border-r px-2 py-2 text-center text-xs tabular-nums text-muted-foreground">
               {stamp(hour)}
             </div>
             {dates.map((date) => {
               const open = hourIsOpen(date, hour, weeklyRules, exceptionMap.get(date));
               const rule = ruleCoveringHour(rules, date, hour, mode);
+              const campaign = rule ? campaignPresentationOf([rule], mode) : null;
               const booked = bookedHours.has(`${date}|${hour}`);
               const isPast = date < today;
               const selected = inDrag(date, hour);
@@ -140,7 +144,7 @@ export function WeekGrid({
                   disabled={isPast}
                   aria-label={`${date} ${stamp(hour)} — ${open ? 'mở cửa' : 'ngoài giờ mở cửa'}${
                     rule ? ', có giá riêng' : ''
-                  }${booked ? ', có lượt đặt' : ''}`}
+                  }${campaign?.state === 'running' ? ', chiến dịch đang chạy' : campaign?.state === 'scheduled' ? ', chiến dịch sắp diễn ra' : campaign?.state === 'ended' ? ', chiến dịch đã kết thúc' : ''}${booked ? ', có lượt đặt' : ''}`}
                   onPointerDown={() =>
                     !isPast && setDrag({ date, anchorHour: hour, focusHour: hour })
                   }
@@ -148,15 +152,33 @@ export function WeekGrid({
                     drag && drag.date === date && setDrag({ ...drag, focusHour: hour })
                   }
                   className={cn(
-                    'relative min-h-9 border-r px-1 py-1 text-left text-[11px] transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'relative min-h-12 border-r px-1 py-1 text-left text-[11px] transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     open ? 'hover:bg-accent/60' : 'bg-muted/50',
                     rule && 'bg-primary/10 font-medium',
+                    campaign?.state === 'running' && 'bg-warning/15 text-warning-foreground',
                     selected && 'bg-primary/25',
                     isPast && 'cursor-not-allowed opacity-40',
                   )}
                 >
-                  {rule ? (
-                    <span className="tabular-nums">{formatVndCompact(effectivePriceOf(rule))}</span>
+                  {rule && campaign?.state === 'running' && campaign.salePrice ? (
+                    <span className="flex flex-col leading-tight tabular-nums">
+                      <span className="text-[9px] text-muted-foreground line-through">
+                        {formatVndCompact(rule.price)}
+                      </span>
+                      <span className="font-semibold text-warning-foreground">
+                        {formatVndCompact(campaign.salePrice)}
+                      </span>
+                      <span className="truncate text-[9px]">Đang chạy</span>
+                    </span>
+                  ) : rule ? (
+                    <span className="flex flex-col leading-tight tabular-nums">
+                      <span>{formatVndCompact(rule.price)}</span>
+                      {campaign?.state === 'scheduled' ? (
+                        <span className="text-[9px] text-muted-foreground">Sắp diễn ra</span>
+                      ) : campaign?.state === 'ended' ? (
+                        <span className="text-[9px] text-muted-foreground">Đã kết thúc</span>
+                      ) : null}
+                    </span>
                   ) : null}
                   {booked ? (
                     <span

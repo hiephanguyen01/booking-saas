@@ -18,13 +18,12 @@ import { findActivePackage, ListingModeConfigError } from './package-config';
  */
 export type RuleType = 'day_of_week' | 'time_range' | 'date_range' | 'date_time_range';
 
-export interface PricingRuleView {
-  id: string;
-  bookingMode: BookingMode;
-  ruleType: RuleType;
-  params: Record<string, unknown>;
-  /** VND đồng digit string — replaces the per-unit base when matched. */
-  price: string;
+/**
+ * The sale half of a pricing rule. Split out from `PricingRuleView` so surfaces
+ * that only advertise a campaign (search cards, listing detail) can share the
+ * one window check without carrying rule matching data they never look at.
+ */
+export interface SaleCampaignFields {
   /** Optional effective sale price; regular `price` remains visible in the quote. */
   salePrice?: string | null;
   /**
@@ -35,6 +34,15 @@ export interface PricingRuleView {
   saleEndsAt?: Date | null;
   /** Display-only campaign name, surfaced on the quote line that used the sale. */
   campaignLabel?: string | null;
+}
+
+export interface PricingRuleView extends SaleCampaignFields {
+  id: string;
+  bookingMode: BookingMode;
+  ruleType: RuleType;
+  params: Record<string, unknown>;
+  /** VND đồng digit string — replaces the per-unit base when matched. */
+  price: string;
   priority: number;
 }
 
@@ -46,11 +54,26 @@ export interface PricingRuleView {
  * back to the listing's base, which a partner cannot tell apart from someone
  * having deleted their rule.
  */
-export function activeSalePrice(rule: PricingRuleView, now: Date): string | null {
+export function activeSalePrice(rule: SaleCampaignFields, now: Date): string | null {
   if (!rule.salePrice) return null;
   if (rule.saleStartsAt && now < rule.saleStartsAt) return null;
   if (rule.saleEndsAt && now >= rule.saleEndsAt) return null;
   return rule.salePrice;
+}
+
+/**
+ * A quote projected down to one bookable unit — what a calendar day or an hourly
+ * slot shows.
+ *
+ * `regularPrice` always carries a value (equal to `price` when nothing is
+ * discounted) so a reader never has to tell "no sale" apart from "not computed".
+ * Without it a discounted slot and a merely cheap one are indistinguishable.
+ */
+export interface UnitPrice {
+  price: string;
+  regularPrice: string;
+  /** Named campaign that discounted this unit; absent when none did. */
+  campaignLabel?: string;
 }
 
 export interface QuoteLine {

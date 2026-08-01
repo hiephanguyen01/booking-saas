@@ -3,8 +3,8 @@ import {
   availabilityExceptionInputSchema,
   availabilityExceptionRangeInputSchema,
   availabilityExceptionResponseSchema,
+  availabilityEndpointResponseSchema,
   availabilityQuerySchema,
-  availabilityResponseSchema,
   availabilityRuleResponseSchema,
   calendarRangeQuerySchema,
   requiredCalendarRangeQuerySchema,
@@ -19,9 +19,7 @@ export class AvailabilityExceptionRangeDto extends createZodDto(
 ) {}
 export class AvailabilityQueryDto extends createZodDto(availabilityQuerySchema) {}
 export class CalendarRangeQueryDto extends createZodDto(calendarRangeQuerySchema) {}
-export class RequiredCalendarRangeQueryDto extends createZodDto(
-  requiredCalendarRangeQuerySchema,
-) {}
+export class RequiredCalendarRangeQueryDto extends createZodDto(requiredCalendarRangeQuerySchema) {}
 
 // Responses
 export class AvailabilityRuleResponseDto extends createZodDto(availabilityRuleResponseSchema) {}
@@ -32,5 +30,5 @@ export class AvailabilityExceptionResponseDto extends createZodDto(
 // plain const — still a valid constructor for `@ApiOkResponse({ type })` / Swagger.
 // Name it explicitly so the OpenAPI component is `AvailabilityResponseDto` (createZodDto
 // otherwise leaves an auto-generated ctor name, which also risks collisions).
-export const AvailabilityResponseDto = createZodDto(availabilityResponseSchema);
+export const AvailabilityResponseDto = createZodDto(availabilityEndpointResponseSchema);
 Object.defineProperty(AvailabilityResponseDto, 'name', { value: 'AvailabilityResponseDto' });

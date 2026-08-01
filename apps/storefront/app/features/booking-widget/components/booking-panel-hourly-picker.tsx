@@ -3,6 +3,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
+import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { dateOnlyToLocal, timeInTz } from '~/lib/time';
@@ -10,6 +11,8 @@ import { formatVnd } from '~/lib/ui';
 import { PickerLabel } from './booking-panel-presentation';
 import type { SetSearchParams } from '~/features/booking-widget/lib/booking-panel-types';
 import { useBookingPanelHourlyPickerController } from '~/features/booking-widget/hooks/use-booking-panel-hourly-picker-controller';
+import { SalePrice } from '~/components/sale-price';
+import { discountPercent } from '~/lib/sale-campaign';
 
 export function HourlyPicker({
   availability,
@@ -133,19 +136,46 @@ export function HourlyPicker({
               {visibleSlots.map((slot, slotIndex) => {
                 const startTime = timeInTz(slot.startUtc, tz);
                 const endTime = timeInTz(slot.endUtc, tz);
-                const slotStatus = slot.available ? formatVnd(slot.price) : t('unavailableSlot');
+                const percent = discountPercent(slot.regularPrice, slot.price);
+                const discounted = slot.available && percent !== null;
+                const slotStatus = slot.available
+                  ? discounted
+                    ? [
+                        `${t('campaign.regularPrice')}: ${formatVnd(slot.regularPrice)}`,
+                        `${t('campaign.salePrice')}: ${formatVnd(slot.price)}`,
+                        t('campaign.exactPercent', { percent }),
+                        slot.campaignLabel?.trim(),
+                      ]
+                        .filter(Boolean)
+                        .join(', ')
+                    : formatVnd(slot.price)
+                  : t('unavailableSlot');
                 return (
                   <ToggleGroupItem
                     key={`${slot.startUtc}-${slot.endUtc}-${slotIndex}`}
                     value={slot.startUtc}
                     disabled={!slot.available}
                     aria-label={`${startTime}–${endTime}, ${slotStatus}`}
-                    className="h-auto min-w-0 flex-col gap-0.5 px-1 py-2 whitespace-normal data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                    className={cn(
+                      'h-auto min-w-0 flex-col gap-0.5 px-1 py-2 whitespace-normal data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[state=on]:ring-2 data-[state=on]:ring-primary',
+                      discounted && 'border-warning/50 bg-warning/10',
+                    )}
                   >
                     <span>
                       {startTime}–{endTime}
                     </span>
-                    <span className="text-xs text-muted-foreground">{slotStatus}</span>
+                    <span className="flex justify-center text-xs text-muted-foreground">
+                      {slot.available ? (
+                        <SalePrice
+                          price={slot.price}
+                          regularPrice={slot.regularPrice}
+                          campaignLabel={slot.campaignLabel}
+                          compact
+                        />
+                      ) : (
+                        slotStatus
+                      )}
+                    </span>
                   </ToggleGroupItem>
                 );
               })}

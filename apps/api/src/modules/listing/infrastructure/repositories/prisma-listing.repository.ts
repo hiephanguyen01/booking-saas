@@ -46,6 +46,7 @@ const LISTING_INCLUDE = {
   },
   tenant: { select: { defaultCancellationPolicy: POLICY_SELECT } },
   listingType: { select: { bookingSelection: true, attributeSchema: true } },
+  resource: { select: { timezone: true } },
   group: { select: { title: true, slug: true } },
 } as const satisfies Prisma.ListingInclude;
 
@@ -73,6 +74,7 @@ function toRecord(l: Row): ListingRecord {
     partnerId: l.partnerId,
     listingTypeId: l.listingTypeId,
     resourceId: l.resourceId,
+    resourceTimezone: l.resource.timezone,
     groupId: l.groupId,
     categoryId: l.categoryId,
     title: l.title,
@@ -198,7 +200,6 @@ export class PrismaListingRepository implements IListingRepository {
       where: { slug, status: 'published', partner: { status: 'approved' } },
       include: {
         ...LISTING_INCLUDE,
-        resource: { select: { timezone: true } },
         listingType: { select: { slug: true, bookingSelection: true, attributeSchema: true } },
         group: { select: { title: true, slug: true, status: true } },
         // Trust signals (§16.1) — partner display name + verification + tenure.
@@ -234,7 +235,6 @@ export class PrismaListingRepository implements IListingRepository {
     const avgSeconds = approval[0]?.avg_seconds;
     return {
       ...toRecord(l),
-      resourceTimezone: l.resource.timezone,
       listingTypeSlug: l.listingType.slug,
       attributeSchema: (l.listingType.attributeSchema ?? []) as unknown as AttributeField[],
       group:

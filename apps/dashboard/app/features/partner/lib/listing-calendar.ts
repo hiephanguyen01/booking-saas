@@ -18,15 +18,7 @@ export type CalendarMode = Extract<BookingMode, 'hourly' | 'daily'>;
 
 export const WEEKDAY_HEADS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
-const WEEKDAY_NAME = [
-  'Chủ nhật',
-  'Thứ hai',
-  'Thứ ba',
-  'Thứ tư',
-  'Thứ năm',
-  'Thứ sáu',
-  'Thứ bảy',
-];
+const WEEKDAY_NAME = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
 
 function isoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -123,6 +115,65 @@ export function pricingRulesForCell(
       rule.ruleType === 'day_of_week' &&
       recurringDays(rule).includes(weekday(date)),
   );
+}
+
+/**
+ * Campaign-bearing rules that can affect a date, including recurring hourly
+ * rules which the month cell intentionally excludes from its headline price.
+ */
+export function campaignRulesForCell(
+  date: string,
+  mode: CalendarMode,
+  rules: PricingRuleResponse[],
+): PricingRuleResponse[] {
+  if (mode === 'daily') return pricingRulesForCell(date, mode, rules);
+  const candidates = rules.filter(
+    (rule) =>
+      rule.bookingMode === mode &&
+      (dateMatches(rule, date) ||
+        ((rule.ruleType === 'day_of_week' || rule.ruleType === 'time_range') &&
+          recurringDays(rule).includes(weekday(date)))),
+  );
+  const spans = candidates.flatMap((rule) => {
+    const span = hourlyRuleSpan(rule);
+    return span ? [{ rule, ...span }] : [];
+  });
+  const boundaries = [...new Set(spans.flatMap(({ from, to }) => [from, to]))].sort(
+    (a, b) => a - b,
+  );
+  const effective = new Set<PricingRuleResponse>();
+
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const segmentStart = boundaries[index];
+    const winner = spans
+      .filter(({ from, to }) => segmentStart >= from && segmentStart < to)
+      .reduce<PricingRuleResponse | undefined>(
+        (best, { rule }) => (!best || rule.priority > best.priority ? rule : best),
+        undefined,
+      );
+    if (winner) effective.add(winner);
+  }
+
+  return candidates.filter((rule) => effective.has(rule));
+}
+
+function minuteOfClock(value: unknown): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(value));
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function hourlyRuleSpan(rule: PricingRuleResponse): { from: number; to: number } | null {
+  if (rule.ruleType === 'day_of_week' || rule.ruleType === 'date_range') {
+    return { from: 0, to: 24 * 60 };
+  }
+  if (rule.ruleType !== 'time_range' && rule.ruleType !== 'date_time_range') return null;
+  const from = minuteOfClock(rule.params.from);
+  const to = minuteOfClock(rule.params.to);
+  return from !== null && to !== null && from < to ? { from, to } : null;
 }
 
 /** Is a repeating rule in force on this date, whatever the cell shows? */
@@ -262,6 +313,67 @@ export function campaignState(
   return 'running';
 }
 
+export interface CampaignPresentation {
+  state: 'none' | 'scheduled' | 'running' | 'ended';
+  coverage: 'full' | 'partial' | null;
+  regularPrice: string | null;
+  salePrice: string | null;
+  label: string | null;
+}
+
+/** HTML `max` for a positive sale price that must stay below the regular price. */
+export function maximumSalePrice(regularPrice: string): string | undefined {
+  if (!/^\d+$/.test(regularPrice)) return undefined;
+  const value = BigInt(regularPrice);
+  return value > 0n ? String(value - 1n) : '0';
+}
+
+/**
+ * One truthful campaign summary for a partner calendar unit.
+ *
+ * Running campaigns win over future campaigns, which win over campaign history.
+ * A time-scoped rule can only describe part of an hourly day, while a mixture of
+ * sale and non-sale rules is also partial. Scheduled/ended campaigns deliberately
+ * return no sale price: it is useful context, but it is not what a customer pays.
+ */
+export function campaignPresentationOf(
+  rules: readonly PricingRuleResponse[],
+  mode: CalendarMode,
+  now: number = Date.now(),
+): CampaignPresentation {
+  const states = rules.map((rule) => ({ rule, state: campaignState(rule, now) }));
+  const state = (['running', 'scheduled', 'ended'] as const).find((candidate) =>
+    states.some((item) => item.state === candidate),
+  );
+  if (!state) {
+    return { state: 'none', coverage: null, regularPrice: null, salePrice: null, label: null };
+  }
+
+  const campaignRules = states.filter((item) => item.state === state);
+  const representative = campaignRules.reduce<PricingRuleResponse | null>((best, item) => {
+    if (!best) return item.rule;
+    const candidateSale = BigInt(item.rule.salePrice ?? item.rule.price);
+    const bestSale = BigInt(best.salePrice ?? best.price);
+    return candidateSale < bestSale ? item.rule : best;
+  }, null);
+  const timeScoped =
+    mode === 'hourly' &&
+    campaignRules.some(
+      ({ rule }) => rule.ruleType === 'time_range' || rule.ruleType === 'date_time_range',
+    );
+  const everyUnitMatches =
+    rules.length > 0 &&
+    states.every((item) => item.state === state && item.rule.salePrice !== null);
+
+  return {
+    state,
+    coverage: timeScoped || !everyUnitMatches ? 'partial' : 'full',
+    regularPrice: representative?.price ?? null,
+    salePrice: state === 'running' ? (representative?.salePrice ?? null) : null,
+    label: representative?.campaignLabel?.trim() || null,
+  };
+}
+
 /** Fallback hour span when a whole week is closed — a grid still needs a shape. */
 const DEFAULT_HOUR_ROWS: [number, number] = [8, 20];
 
@@ -307,7 +419,7 @@ export function hourIsOpen(
   );
 }
 
-/** The date-scoped hourly rule pricing this hour, if one does. */
+/** The highest-priority dated or recurring rule pricing this exact hour. */
 export function ruleCoveringHour(
   rules: PricingRuleResponse[],
   date: string,
@@ -315,14 +427,33 @@ export function ruleCoveringHour(
   mode: CalendarMode,
 ): PricingRuleResponse | undefined {
   const stamp = `${String(hour).padStart(2, '0')}:00`;
-  return rules.find(
-    (rule) =>
-      rule.bookingMode === mode &&
-      rule.ruleType === 'date_time_range' &&
-      String(rule.params.date) === date &&
-      stamp >= String(rule.params.from) &&
-      stamp < String(rule.params.to),
-  );
+  return rules
+    .filter((rule) => {
+      if (rule.bookingMode !== mode) return false;
+      if (rule.ruleType === 'date_time_range') {
+        return (
+          String(rule.params.date) === date &&
+          stamp >= String(rule.params.from) &&
+          stamp < String(rule.params.to)
+        );
+      }
+      // A date range prices every unit on its covered dates. The quote kernel
+      // and month view already treat it as whole-day, so the week grid must let
+      // its higher priority outrank recurring hour/day rules too.
+      if (rule.ruleType === 'date_range') return dateMatches(rule, date);
+      if (rule.ruleType === 'time_range') {
+        return (
+          recurringDays(rule).includes(weekday(date)) &&
+          stamp >= String(rule.params.from) &&
+          stamp < String(rule.params.to)
+        );
+      }
+      return rule.ruleType === 'day_of_week' && recurringDays(rule).includes(weekday(date));
+    })
+    .reduce<PricingRuleResponse | undefined>(
+      (winner, rule) => (!winner || rule.priority > winner.priority ? rule : winner),
+      undefined,
+    );
 }
 
 /**
