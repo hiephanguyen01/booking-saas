@@ -370,47 +370,50 @@ function DailyBookingStep({
         <div className="mt-4">
           <BookingDialogErrorMessage onRetry={onRetryDaily} />
         </div>
-      ) : model.dailySoldOut ? (
-        <div className="mt-4">
-          <EmptyAvailability message={t('group.soldOut')} />
-        </div>
       ) : (
-        <SaleCalendarDayButtonProvider calendar={calendar}>
-          <div className="relative mt-3" aria-busy={calendarPending}>
-            <Calendar
-              fullWidth
-              connectedRange
-              mode="range"
-              numberOfMonths={1}
-              selected={model.selectedRange}
-              onSelect={onSelectRange}
-              disabled={model.isRangeDateDisabled}
-              startMonth={model.todayDate}
-              excludeDisabled
-              resetOnSelect
-              showOutsideDays={false}
-              fixedWeeks
-              month={model.calendarMonthDate}
-              onMonthChange={model.changeCalendarMonth}
-              formatters={model.calendarA11y.formatters}
-              labels={model.calendarA11y.labels}
-              components={SALE_CALENDAR_COMPONENTS}
-              className="sf-calendar mx-auto [--cell-size:2.75rem]"
-            />
-            <SaleCalendarLegend />
-            {availabilityPending ? (
-              <div
-                className="absolute inset-0 grid place-items-center rounded-lg bg-background/75"
-                role="status"
-                aria-live="polite"
-              >
-                <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Spinner aria-hidden="true" /> {t('group.loadingAvailability')}
-                </span>
-              </div>
-            ) : null}
-          </div>
-        </SaleCalendarDayButtonProvider>
+        <>
+          <SaleCalendarDayButtonProvider calendar={calendar}>
+            <div className="relative mt-3" aria-busy={calendarPending}>
+              <Calendar
+                fullWidth
+                connectedRange
+                mode="range"
+                numberOfMonths={1}
+                selected={model.selectedRange}
+                onSelect={onSelectRange}
+                disabled={model.isRangeDateDisabled}
+                startMonth={model.todayDate}
+                excludeDisabled
+                resetOnSelect
+                showOutsideDays={false}
+                fixedWeeks
+                month={model.calendarMonthDate}
+                onMonthChange={model.changeCalendarMonth}
+                formatters={model.calendarA11y.formatters}
+                labels={model.calendarA11y.labels}
+                components={SALE_CALENDAR_COMPONENTS}
+                className="sf-calendar mx-auto [--cell-size:2.75rem]"
+              />
+              <SaleCalendarLegend />
+              {availabilityPending ? (
+                <div
+                  className="absolute inset-0 grid place-items-center rounded-lg bg-background/75"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Spinner aria-hidden="true" /> {t('group.loadingAvailability')}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          </SaleCalendarDayButtonProvider>
+          {model.dailySoldOut ? (
+            <div className="mt-4">
+              <EmptyAvailability message={t('group.soldOut')} />
+            </div>
+          ) : null}
+        </>
       )}
       {calendarError ? <SaleCalendarWarning onRetry={onRetryCalendar} /> : null}
       <DailyPriceHints hints={model.dailyPriceHints} />
