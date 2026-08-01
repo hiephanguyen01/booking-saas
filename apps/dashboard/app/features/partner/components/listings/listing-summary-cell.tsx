@@ -1,6 +1,7 @@
 import { Clock3, Heart, ImageIcon, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublishStatus } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 
 function compactCount(value: number): string {
   if (value < 1_000) return String(value);
@@ -30,7 +31,11 @@ export function ListingSummaryCell({
     <div className="flex min-w-72 items-center gap-3.5">
       <div className="flex h-14 w-[5.5rem] shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-muted-foreground">
         {photos[0] ? (
-          <img src={photos[0]} alt="" className="size-full object-cover" loading="lazy" />
+          <Image
+            src={photos[0]}
+            alt=""
+            className="size-full object-cover"
+          />
         ) : (
           <ImageIcon className="size-5" aria-hidden />
         )}

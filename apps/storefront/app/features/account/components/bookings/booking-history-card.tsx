@@ -1,5 +1,6 @@
 import type { CustomerReviewItem } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3 } from 'lucide-react';
 import { Link } from 'react-router';
@@ -43,7 +44,7 @@ export function BookingHistoryCard({
       <div className="px-5 py-5 sm:px-6">
         <div className="grid gap-4 sm:grid-cols-[158px_minmax(0,1fr)]">
           {booking.imageUrl ? (
-            <img
+            <Image
               src={booking.imageUrl}
               alt={booking.listingTitle}
               className="aspect-[4/3] w-full rounded-lg object-cover"

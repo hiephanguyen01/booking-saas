@@ -30,6 +30,7 @@ const storefrontFiles = walk(storefrontRoot).filter((file) => sourceExtensions.h
 const apiServerPath = 'apps/storefront/app/lib/server/api.server.ts';
 const envServerPath = 'apps/storefront/app/lib/server/env.server.ts';
 const formRequestServerPath = 'apps/storefront/app/lib/server/form-request.server.ts';
+const genericFormPath = 'packages/ui/src/components/form/generic-form.tsx';
 const requestSecurityServerPath =
   'apps/storefront/app/features/root/server/request-security.server.ts';
 const tenantServerPath = 'apps/storefront/app/lib/server/tenant.server.ts';
@@ -74,6 +75,24 @@ for (const file of storefrontFiles) {
 
   if (/[?&](otp|token|password|challengeId)=/.test(source)) {
     failures.push(`${path}: sensitive credential encoded in a URL`);
+  }
+
+  const protectsAuthCredentials =
+    path.startsWith('apps/storefront/app/features/auth/components/') ||
+    path === 'apps/storefront/app/features/partner-onboarding/components/partner-verify-page.tsx';
+  if (protectsAuthCredentials) {
+    for (const formTag of source.match(/<form\b[^>]*>/g) ?? []) {
+      if (!/\bmethod=["']post["']/i.test(formTag)) {
+        failures.push(`${path}: auth forms must declare a native POST fallback`);
+      }
+    }
+  }
+}
+
+const genericFormSource = readFileSync(join(root, genericFormPath), 'utf8');
+for (const formTag of genericFormSource.match(/<form\b[^>]*>/g) ?? []) {
+  if (!/\bmethod=["']post["']/i.test(formTag)) {
+    failures.push(`${genericFormPath}: shared forms must declare a native POST fallback`);
   }
 }
 

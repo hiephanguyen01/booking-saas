@@ -1,4 +1,5 @@
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 
 export function DemosSection() {
   const { t } = useTranslation(NsI18n.Platform);
@@ -58,12 +59,10 @@ function DemoFigure({
   return (
     <figure className="platform-section-reveal overflow-hidden rounded-[1.375rem] border border-border bg-card">
       <div className="overflow-hidden border-b border-border bg-muted">
-        <img
+        <Image
           src={image}
           width={width}
           height={height}
-          loading="lazy"
-          decoding="async"
           alt={alt}
           className="aspect-[16/10] w-full object-cover"
         />

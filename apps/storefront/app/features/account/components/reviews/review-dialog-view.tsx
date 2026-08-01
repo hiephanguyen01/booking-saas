@@ -1,4 +1,5 @@
 import { REVIEW_MEDIA_MAX_FILES } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Dialog,
@@ -172,9 +173,10 @@ export function ReviewDialogView({
                     className="relative aspect-square overflow-hidden rounded-md border border-border bg-muted"
                   >
                     {item.kind === 'image' ? (
-                      <img
+                      <Image
                         src={item.previewUrl}
                         alt={t('reviews.dialog.imagePreview', { name: item.file.name })}
+                        loading="eager"
                         className="size-full object-cover"
                       />
                     ) : (

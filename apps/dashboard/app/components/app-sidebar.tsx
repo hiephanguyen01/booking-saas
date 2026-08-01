@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router';
 import { CalendarCheck2, PanelsTopLeft } from 'lucide-react';
 import type { SessionInfoResponse } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import {
   Sidebar,
   SidebarContent,
@@ -38,7 +39,12 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
         <div className="flex items-center gap-2 px-2 py-1.5">
           <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground">
             {appIconUrl ? (
-              <img src={appIconUrl} alt="" className="size-full object-contain" />
+              <Image
+                src={appIconUrl}
+                alt=""
+                loading="eager"
+                className="size-full object-contain"
+              />
             ) : (
               <CalendarCheck2 className="size-5" />
             )}

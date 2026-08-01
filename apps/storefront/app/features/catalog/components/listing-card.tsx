@@ -1,6 +1,7 @@
 import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { attributeSummary, formatListingLocation, formatVnd } from '~/lib/ui';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
@@ -54,12 +55,11 @@ export function ListingCard({
       >
         <div className="relative h-46 shrink-0 overflow-hidden bg-muted">
           {cover ? (
-            <img
+            <Image
               src={cover}
               alt={listing.title}
               width={720}
               height={480}
-              loading="lazy"
               className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-105"
             />
           ) : (

@@ -2,6 +2,7 @@ import type { AvailabilityResponse, HourlySlot } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Spinner } from '@booking/ui/components/ui/spinner';
+import { Image } from '@booking/ui/components/media/image';
 import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -169,7 +170,11 @@ function BookingPackageSelector({
             >
               <span className="flex items-center gap-3">
                 {photo ? (
-                  <img src={photo} alt="" className="size-12 rounded-md object-cover" />
+                  <Image
+                    src={photo}
+                    alt=""
+                    className="size-12 rounded-md object-cover"
+                  />
                 ) : null}
                 <span className="min-w-0 flex-1">
                   <span className="flex justify-between gap-3 text-sm font-medium">

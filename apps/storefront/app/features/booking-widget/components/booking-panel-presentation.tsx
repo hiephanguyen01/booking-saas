@@ -5,6 +5,7 @@ import type {
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Separator } from '@booking/ui/components/ui/separator';
+import { Image } from '@booking/ui/components/media/image';
 import { cn } from '@booking/ui/lib/utils';
 import type { ReactNode } from 'react';
 import { minimumConfiguredPrice } from '~/lib/booking-presentation';
@@ -47,7 +48,7 @@ export function PackagePicker({
             >
               <span className="flex items-center gap-3">
                 {(item.photos[0] ?? fallbackPhoto) ? (
-                  <img
+                  <Image
                     src={item.photos[0] ?? fallbackPhoto}
                     alt=""
                     className="size-14 shrink-0 rounded-md object-cover"

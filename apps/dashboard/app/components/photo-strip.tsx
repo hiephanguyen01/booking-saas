@@ -1,3 +1,4 @@
+import { Image } from '@booking/ui/components/media/image';
 import { cn } from '@booking/ui/lib/utils';
 
 export interface PhotoStripProps {
@@ -25,10 +26,9 @@ export function PhotoStrip({ photos, alt, className }: PhotoStripProps) {
           rel="noreferrer"
           className="group relative block size-28 overflow-hidden rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <img
+          <Image
             src={src}
             alt={alt ? `${alt} ${i + 1}` : `Ảnh ${i + 1}`}
-            loading="lazy"
             className="size-full object-cover transition group-hover:opacity-90"
           />
         </a>

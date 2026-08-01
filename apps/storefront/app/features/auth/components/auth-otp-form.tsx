@@ -30,7 +30,7 @@ export function OtpForm({
   return (
     <div className="flex flex-col gap-6">
       <AuthFormError actionData={actionData} />
-      <form onSubmit={handleSubmit}>
+      <form method="post" onSubmit={handleSubmit}>
         <FieldGroup className="gap-6">
           <Field data-invalid={Boolean(actionData?.fieldErrors?.code)}>
             <FieldLabel htmlFor="otp-code" className="justify-center">

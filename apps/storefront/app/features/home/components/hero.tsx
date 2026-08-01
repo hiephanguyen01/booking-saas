@@ -1,4 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { SearchForm, type LocationOption } from '~/features/search/components/search-form';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
@@ -31,10 +32,10 @@ export function StudioHero({
       <div className="relative h-68 overflow-hidden bg-primary sm:h-70">
         {image ? (
           <>
-            <img
+            <Image
               src={image}
               alt=""
-              fetchPriority="high"
+              priority
               className="absolute inset-0 size-full object-cover"
             />
             <div className="absolute inset-0 bg-black/20" />

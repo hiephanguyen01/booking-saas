@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Image } from '@booking/ui/components/media/image';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { NsI18n, useTranslation } from '@booking/i18n';
 
@@ -22,22 +23,24 @@ export function AuthFrame({
       {split ? (
         <aside className="relative hidden min-h-157.5 w-1/2 max-w-[585px] overflow-hidden bg-primary/10 p-10 lg:flex lg:flex-col lg:justify-end">
           {tenant.themeConfig.hero?.imageUrl ? (
-            <img
+            <Image
               src={tenant.themeConfig.hero.imageUrl}
               alt=""
               width={1170}
               height={1260}
+              priority
               className="absolute inset-0 size-full object-cover opacity-45"
             />
           ) : null}
           <div className="absolute inset-0 bg-linear-to-t from-primary/45 via-primary/12 to-background/20" />
           <div className="relative max-w-md rounded-sm border border-white/40 bg-background/90 p-6 backdrop-blur-sm">
             {tenant.themeConfig.logoUrl ? (
-              <img
+              <Image
                 src={tenant.themeConfig.logoUrl}
                 alt={tenant.name}
                 width={150}
                 height={48}
+                loading="eager"
                 className="mb-5 h-10 w-auto object-contain"
               />
             ) : (

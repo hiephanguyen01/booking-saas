@@ -34,7 +34,7 @@ export function StartForm({
   );
 
   return (
-    <form onSubmit={submitForm} noValidate aria-busy={submitting}>
+    <form method="post" onSubmit={submitForm} noValidate aria-busy={submitting}>
       <FieldGroup className="gap-5">
         <AuthFormError actionData={actionData} />
         {mode === 'register' ? (
