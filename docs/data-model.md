@@ -138,14 +138,43 @@ rewrite history.
 - **JSON blobs** (`Listing.modeConfig`, `ListingGroup.amenities`, booking
   `listingSnapshot`/`pricingSnapshot`/`commissionSnapshot`/`promotionSnapshot`/
   `cancellationPolicySnapshot`, `ListingType.searchConfig`, `Tenant.settings`,
-  `SubscriptionPlan.limits`, `Payout.evidence`) are typed & validated by `@booking/contracts`, not
+  `SubscriptionPlan.limits`, `Payout.evidence`, `PricingRule.params`,
+  `AvailabilityException.windows`) are typed & validated by `@booking/contracts`, not
   by the DB. `listingSnapshot` freezes the attributes together with their label/icon schema so a
   later listing-type edit cannot rewrite a historical booking display.
 - **Calendar pricing** stays in `pricing_rules`: `date_range` covers exact daily overrides and
-  `date_time_range` covers one local-date hourly window. `price` is the regular unit price and
-  nullable `sale_price` is the effective partner-funded sale; booking snapshots freeze both.
+  `date_time_range` covers one local-date hourly window. Four things about it are load-bearing and
+  none of them are visible in `schema.prisma` alone:
+  - `price` is the rule's own regular unit price. `sale_price` is a partner-funded discount that is
+    **only effective inside `[sale_starts_at, sale_ends_at)`**, judged at **booking** time (NULL on
+    either side = unbounded). Outside that window the rule still applies **its own `price`** — not
+    the listing's base price, because a campaign ending must not be indistinguishable from the rule
+    having been deleted. `campaign_label` is the partner's name for the campaign, display only.
+    Booking snapshots freeze the resulting numbers.
+  - **One rule per scope**, enforced by a UNIQUE index `pricing_rules_scope_key` on
+    `(listing_id, booking_mode, rule_type, params)`. This is what makes "saving a scope replaces it"
+    true even under concurrent writes. Prisma cannot express `@@unique` over a `Json` column, so the
+    index exists **only in the migration** `20260731130000_pricing_rule_scope_unique`; violations
+    surface as P2002 and become `PRICING_RULE_SCOPE_TAKEN` (409).
+  - Because that key contains `jsonb`, **`params` must be canonicalised before it is compared or
+    written**. Postgres normalises jsonb key order on write, so a plain `JSON.stringify` of a
+    freshly-built object will not match the stored row (this bug shipped once: replaces silently
+    became inserts). `canonicalParams` in `listing/domain/entities/pricing-rule.entity.ts` is the
+    only sanctioned comparison.
+  - When two rules match the same instant, the higher `priority` wins (the quote kernel sorts
+    descending). The band scale is `PRICING_RULE_PRIORITY` in `@booking/contracts` — 100 recurring
+    (`day_of_week`, `time_range`), 500 `date_range`, 1000 `date_time_range`, so the narrowest scope
+    wins. **It is a caller-side convention, not a DB or API rule**: the column accepts any integer
+    and the create schema defaults it to `0`. The dashboard route actions and the seed are what
+    apply the bands, and migration `20260731130000` re-banded the rows that predate the scale — a
+    client posting a rule directly can still choose its own number. Collisions *within* a band are
+    refused at write time rather than ranked, because a tie resolves by array order.
 - **One availability exception per resource/day** is enforced by `(resource_id, date)`. Because an
-  exception belongs to the resource, it affects every listing sharing that calendar.
+  exception belongs to the resource, it affects every listing sharing that calendar. For a
+  `custom_hours` exception the source of truth is `windows` (jsonb `[{ openTime, closeTime }]`), so
+  one special day can open, break for lunch and reopen — exactly what the weekly schedule already
+  allows. `open_time`/`close_time` are a mirror of `windows[0]`, rewritten on every save purely so
+  readers predating the column keep working; never edit them directly.
 - **The booking state machine** (allowed transitions, who may trigger each, what `expiresAt` expiry
   does per status) is in the booking module's use-cases + `TONG-QUAN.md` §8, not the enum.
 

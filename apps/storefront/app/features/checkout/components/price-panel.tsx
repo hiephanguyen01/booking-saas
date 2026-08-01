@@ -3,6 +3,7 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { cn } from '@booking/ui/lib/utils';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatVnd } from '~/lib/ui';
+import { campaignLabelsOf } from '~/lib/quote';
 import type { checkoutAmounts } from '~/features/checkout/lib/checkout-presentation';
 
 export function PricePanel({
@@ -34,6 +35,10 @@ export function PricePanel({
         : t('quantityLine', { rooms: quantity, slots: slotCount });
   const hasCalendarSale = quote.regularSubtotal !== quote.subtotal;
   const hasPromotion = hasDiscount || hasCalendarSale;
+  // Partner-authored, already in the tenant's language — shown verbatim, never
+  // translated. Several campaigns can price one booking, so join rather than
+  // pick one.
+  const campaigns = campaignLabelsOf(quote);
 
   return (
     <div
@@ -45,7 +50,7 @@ export function PricePanel({
       {hasCalendarSale ? (
         <div className="mb-2 flex items-center justify-between gap-4">
           <Badge variant="success" className="rounded-sm">
-            Sale
+            {campaigns.length > 0 ? campaigns.join(' · ') : t('saleBadge')}
           </Badge>
           <span className="text-muted-foreground line-through">
             {formatVnd(quote.regularSubtotal)}

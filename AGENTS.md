@@ -187,7 +187,7 @@ never drift between what production configures and what the demo fills in.
 - [`docs/glossary.md`](./docs/glossary.md) — domain terminology
 - [`docs/deployment.md`](./docs/deployment.md) — staging & production containers, migrations, releases, scaling
 - [`docs/deployment-runbook.md`](./docs/deployment-runbook.md) — step-by-step first deploy (AWS + Cloudflare R2 + Resend)
-- [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services, listing edit revisions, legal documents)
-- [`docs/features/`](./docs/features/) — per-feature deep dives ([favorites](./docs/features/favorites.md), [legal documents & consent](./docs/features/legal-documents.md))
+- [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services, listing edit revisions, legal documents, pricing-rule scope & sale campaigns)
+- [`docs/features/`](./docs/features/) — per-feature deep dives ([favorites](./docs/features/favorites.md), [legal documents & consent](./docs/features/legal-documents.md), [partner calendar & pricing](./docs/features/partner-calendar-pricing.md))
 - [`docs/deprecated-artifacts.md`](./docs/deprecated-artifacts.md) — dead code slated for deletion (don't extend it)
 - Per-subtree `CLAUDE.md`: [`apps/api`](./apps/api/CLAUDE.md) · [`apps/storefront`](./apps/storefront/CLAUDE.md) · [`apps/dashboard`](./apps/dashboard/CLAUDE.md) · [`packages/ui`](./packages/ui/CLAUDE.md) · [`packages/contracts`](./packages/contracts/CLAUDE.md)

@@ -3,6 +3,7 @@ import type {
   PublicListingDetailResponse,
   QuoteResponse,
 } from '@booking/contracts';
+import { Badge } from '@booking/ui/components/ui/badge';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
 import type { ReactNode } from 'react';
@@ -157,9 +158,19 @@ export function Breakdown({ quote }: { quote: QuoteResponse }) {
     <dl className="rounded-lg bg-muted/40 p-3 text-sm">
       {quote.lineItems.map((line, index) => (
         <div key={index} className="flex justify-between gap-3 py-0.5 text-muted-foreground">
-          <dt>
-            {line.label}
-            {line.block ? ` (${t('package')})` : ''}
+          <dt className="flex flex-wrap items-center gap-1.5">
+            <span>
+              {line.label}
+              {line.block ? ` (${t('package')})` : ''}
+            </span>
+            {/* Per line, not per quote: a booking can span hours priced by
+                different campaigns, and only this level can show that. The
+                label is the partner's own text — rendered verbatim. */}
+            {line.campaignLabel ? (
+              <Badge variant="success" className="rounded-sm px-1.5 py-0 text-[10px]">
+                {line.campaignLabel}
+              </Badge>
+            ) : null}
           </dt>
           <dd>{formatVnd(line.amount)}</dd>
         </div>

@@ -37,6 +37,8 @@ export const enCheckout = {
     cancel: 'Cancel',
   },
   discount: 'Discount',
+  /** Fallback badge for a calendar sale the partner did not name. */
+  saleBadge: 'On sale',
   quantityLine: '{rooms} room × {slots} time slots',
   dailyQuantityLine: '{rooms} room × {days} days',
   inventoryQuantityLine: 'Quantity: {quantity}',

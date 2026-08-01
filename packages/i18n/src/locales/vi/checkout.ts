@@ -35,6 +35,8 @@ export const viCheckout = {
     cancel: 'Hủy',
   },
   discount: 'Giảm giá',
+  /** Fallback badge for a calendar sale the partner did not name. */
+  saleBadge: 'Đang giảm giá',
   quantityLine: '{rooms} phòng × {slots} khung giờ',
   dailyQuantityLine: '{rooms} phòng × {days} ngày',
   inventoryQuantityLine: 'Số lượng: {quantity}',
