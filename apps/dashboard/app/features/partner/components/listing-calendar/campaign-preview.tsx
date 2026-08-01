@@ -48,7 +48,7 @@ export function CampaignPreview({
       ) : (
         <div className="relative overflow-hidden rounded-lg border border-warning/40 bg-warning/10 text-warning-foreground">
           <div
-            className="flex h-10 w-18 items-center justify-center whitespace-nowrap pr-3 pl-1 font-['Montserrat'] text-[16px] leading-5 font-semibold text-white [background:linear-gradient(270deg,_#F43F3F_0%,_#F68C6A_100%)] [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]"
+            className="mt-6 flex h-10 w-18 items-center justify-center whitespace-nowrap pr-3 pl-1 font-['Montserrat'] text-[16px] leading-5 font-semibold text-white [background:linear-gradient(270deg,_#F43F3F_0%,_#F68C6A_100%)] [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]"
             aria-label={`Giảm ${percent}%`}
           >
             <span aria-hidden="true">- {percent}%</span>
