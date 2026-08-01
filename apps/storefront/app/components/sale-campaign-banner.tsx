@@ -59,8 +59,13 @@ export function SaleCampaignRibbon({
   if (!headline) return null;
 
   return (
-    <span className="absolute top-6 left-0 flex min-h-10 min-w-18 items-center bg-warning py-1 pr-5 pl-2 text-sm leading-4 font-semibold text-warning-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
-      {headline.exact ? `−${headline.percent}%` : t('campaign.upTo', { percent: headline.percent })}
+    <span
+      className="absolute top-6 left-0 flex h-10 w-18 items-center justify-center whitespace-nowrap pr-3 pl-1 font-['Montserrat'] text-[16px] leading-5 font-semibold text-white [background:linear-gradient(270deg,_#F43F3F_0%,_#F68C6A_100%)] [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]"
+      aria-label={t(headline.exact ? 'campaign.exactPercent' : 'campaign.upTo', {
+        percent: headline.percent,
+      })}
+    >
+      <span aria-hidden="true">- {headline.percent}%</span>
     </span>
   );
 }
