@@ -25,6 +25,7 @@ import {
   type SortableItemState,
 } from '@booking/ui/components/form/sortable-collection';
 import { Spinner } from '@booking/ui/components/ui/spinner';
+import { Image } from '@booking/ui/components/media/image';
 import { presignAndPut, type UploadTarget } from '@booking/ui/lib/upload';
 import { cn } from '@booking/ui/lib/utils';
 
@@ -174,7 +175,7 @@ export function ImageUpload({
                   isDragging && 'z-10 opacity-45 ring-2 ring-primary/40',
                 )}
               >
-                <img
+                <Image
                   src={item.url}
                   alt={`Ảnh tin đăng ${index + 1}`}
                   className="size-full object-cover transition duration-300 group-hover/image:scale-[1.02]"
@@ -337,7 +338,7 @@ export function ImageUpload({
                   isDragging && 'z-10 opacity-45 ring-2 ring-primary/40',
                 )}
               >
-                <img
+                <Image
                   src={item.url}
                   alt={`Ảnh gói ${index + 1}`}
                   className="size-full object-cover transition-transform duration-200 group-hover/image:scale-[1.02]"
@@ -509,7 +510,7 @@ export function ImageUpload({
         <div className="group relative h-[156px] overflow-hidden rounded-md border border-dashed border-primary bg-background">
           {previewUrl ? (
             <>
-              <img
+              <Image
                 src={previewUrl}
                 alt="Ảnh giấy tờ đã tải lên"
                 className="size-full object-cover"
@@ -574,7 +575,10 @@ export function ImageUpload({
             >
               <Attachment orientation="vertical" state="done" className="w-full">
                 <AttachmentMedia variant="image">
-                  <img src={item.url} alt={`Ảnh đã tải lên ${index + 1}`} />
+                  <Image
+                    src={item.url}
+                    alt={`Ảnh đã tải lên ${index + 1}`}
+                  />
                   {reorderable && index === 0 ? (
                     <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground shadow-sm">
                       Ảnh đại diện

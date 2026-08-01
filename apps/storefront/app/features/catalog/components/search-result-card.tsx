@@ -1,5 +1,6 @@
 import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
+import { Image } from '@booking/ui/components/media/image';
 import { RatingStars } from '~/components/rating-stars';
 import type {
   EnrichedSearchListing,
@@ -55,12 +56,11 @@ export function SearchResultCard({
         className="relative min-h-52 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
       >
         {photos[0] ? (
-          <img
+          <Image
             src={photos[0]}
             alt={listing.title}
             width={720}
             height={480}
-            loading="lazy"
             className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : null}
@@ -75,12 +75,11 @@ export function SearchResultCard({
         {[photos[1], photos[2]].map((photo, index) => (
           <div key={photo ?? index} className="min-h-0 overflow-hidden bg-muted">
             {photo ? (
-              <img
+              <Image
                 src={photo}
                 alt=""
                 width={360}
                 height={264}
-                loading="lazy"
                 className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
               />
             ) : null}

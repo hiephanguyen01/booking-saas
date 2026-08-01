@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Image } from '@booking/ui/components/media/image';
 
 type TenantBrandProps = {
   name: string;
@@ -26,11 +27,12 @@ export function TenantBrand({
   return (
     <span className={className}>
       {showLogo ? (
-        <img
+        <Image
           src={logoUrl!}
           alt={name}
           width={width}
           height={height}
+          loading="eager"
           className={imageClassName}
           onError={() => setFailedLogoUrl(logoUrl)}
         />

@@ -1,4 +1,5 @@
 import * as Icons from 'lucide-react';
+import { Image } from '@booking/ui/components/media/image';
 import { cn } from '@booking/ui/lib/utils';
 
 /**
@@ -19,7 +20,14 @@ export function ListingTypeIcon({
   className?: string;
 }) {
   if (imageUrl) {
-    return <img src={imageUrl} alt="" className={cn(className, 'object-contain')} aria-hidden />;
+    return (
+      <Image
+        src={imageUrl}
+        alt=""
+        className={cn(className, 'object-contain')}
+        aria-hidden
+      />
+    );
   }
   if (!name) return null;
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon | undefined>)[name];

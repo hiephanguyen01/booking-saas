@@ -1,5 +1,6 @@
 import { affiliateRegistrationSchema } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
+import { Image } from '@booking/ui/components/media/image';
 import { CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAffiliateApplicationPageController } from '~/features/affiliate/hooks/use-affiliate-application-page-controller';
@@ -18,7 +19,12 @@ function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantNa
         className="flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {logoUrl ? (
-          <img src={logoUrl} alt={tenantName} className="h-9 w-auto max-w-40 object-contain" />
+          <Image
+            src={logoUrl}
+            alt={tenantName}
+            loading="eager"
+            className="h-9 w-auto max-w-40 object-contain"
+          />
         ) : (
           <span className="text-lg font-semibold text-foreground">{tenantName}</span>
         )}

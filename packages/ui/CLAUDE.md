@@ -38,6 +38,15 @@ palette on a themed surface (narrow exceptions: text/scrims over a photo, univer
 - Composed shared components (the form system, data-table, detail, theme) live in sibling folders
   (`src/components/{form,data-table,detail,theme}/`), not `ui/`.
 
+## Images
+
+Use `Image` from `@booking/ui/components/media/image` for every application image. It lazy-loads and
+decodes asynchronously by default; pass `priority` only for a page's hero/LCP image, or
+`loading="eager"` for small above-the-fold images that should not receive high fetch priority. Raw
+`<img>` is allowed only inside that shared component and is rejected elsewhere by
+`pnpm check:frontend-structure`. Future CDN transforms, responsive sources and placeholders belong in
+the shared component so call sites remain unchanged.
+
 ## ⚠️ Form-control geometry — re-apply after any `shadcn add`
 
 Six primitives deliberately diverge from the registry (each carries a `NOT FROM THE REGISTRY` comment).

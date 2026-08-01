@@ -1,5 +1,6 @@
 import { CircleAlert } from 'lucide-react';
 import type { PartnerAgreementResponse, PartnerResponse } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
@@ -112,9 +113,10 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
       <section className="rounded-xl border bg-background">
         <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-start">
           {logoUrl ? (
-            <img
+            <Image
               src={logoUrl}
               alt={`Logo ${partner.name}`}
+              loading="eager"
               className="size-16 shrink-0 rounded-lg border object-cover"
             />
           ) : (

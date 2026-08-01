@@ -1,5 +1,6 @@
 import { CalendarRange, PlayCircle } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 
 export function PlatformHero() {
   const { t } = useTranslation(NsI18n.Platform);
@@ -27,13 +28,12 @@ export function PlatformHero() {
 
         <figure className="platform-hero-media relative pb-0 lg:pb-10">
           <div className="platform-media-shadow relative overflow-hidden rounded-[1.25rem] border border-border bg-card">
-            <img
+            <Image
               src="/booking-studio/hero.png"
               width="1024"
               height="485"
               alt={t('hero.visualAlt')}
-              fetchPriority="high"
-              decoding="async"
+              priority
               className="aspect-4/3 w-full object-cover"
             />
           </div>

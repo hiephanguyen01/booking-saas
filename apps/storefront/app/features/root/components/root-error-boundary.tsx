@@ -1,6 +1,7 @@
 import type { Locale } from '@booking/i18n';
 import { BookingI18nProvider } from '@booking/i18n';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
+import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
 import { isRouteErrorResponse, Link } from 'react-router';
 import { TenantBrand } from '~/features/site-shell/components/tenant-brand';
@@ -133,11 +134,12 @@ function RootErrorNotice({
 
 function NotFoundIllustration() {
   return (
-    <img
+    <Image
       src="/booking-studio/404-illustration.png"
       alt=""
       width={500}
       height={500}
+      loading="eager"
       className="aspect-square w-full object-contain"
     />
   );

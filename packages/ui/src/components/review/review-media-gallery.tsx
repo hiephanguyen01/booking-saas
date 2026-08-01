@@ -6,6 +6,7 @@ import {
   type MediaViewerLabels,
 } from "@booking/ui/components/media/media-viewer-dialog"
 import { cn } from "@booking/ui/lib/utils"
+import { Image } from "@booking/ui/components/media/image"
 
 export interface ReviewMediaGalleryItem {
   kind: "image" | "video"
@@ -45,7 +46,11 @@ export function ReviewMediaGallery({
             className="group relative size-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {item.kind === "image" ? (
-              <img src={item.url} alt="" loading="lazy" className="size-full object-cover" />
+              <Image
+                src={item.url}
+                alt=""
+                className="size-full object-cover"
+              />
             ) : (
               <>
                 <video

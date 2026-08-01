@@ -1,4 +1,5 @@
 import type { ListingRevisionResponse, RevisionDiffEntry } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import {
   Card,
   CardContent,
@@ -31,7 +32,13 @@ function DiffValue({ value }: { value: unknown }) {
   if (typeof value === 'boolean') return <span>{value ? 'Có' : 'Không'}</span>;
   if (typeof value === 'number') return <span className="tabular-nums">{value}</span>;
   if (isImageUrl(value)) {
-    return <img src={value} alt="" className="size-14 rounded-md object-cover" loading="lazy" />;
+    return (
+      <Image
+        src={value}
+        alt=""
+        className="size-14 rounded-md object-cover"
+      />
+    );
   }
   if (typeof value === 'string') return <span className="break-words">{value}</span>;
 
@@ -41,12 +48,11 @@ function DiffValue({ value }: { value: unknown }) {
       return (
         <div className="flex flex-wrap gap-1.5">
           {value.map((url) => (
-            <img
+            <Image
               key={url}
               src={url}
               alt=""
               className="size-14 rounded-md object-cover"
-              loading="lazy"
             />
           ))}
         </div>

@@ -1,4 +1,5 @@
 import type { ThemeConfigInput } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
 import { ExternalLink, ImageIcon, Monitor } from 'lucide-react';
 
@@ -46,7 +47,7 @@ export function StorefrontThemePreview({
           <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
               {value.logoUrl ? (
-                <img
+                <Image
                   src={value.logoUrl}
                   alt={`Logo ${tenantName}`}
                   className="size-7 rounded-md object-contain"
@@ -66,7 +67,7 @@ export function StorefrontThemePreview({
 
           <div className="relative min-h-52 overflow-hidden">
             {heroImage ? (
-              <img
+              <Image
                 src={heroImage}
                 alt="Ảnh hero đang xem trước"
                 className="absolute inset-0 size-full object-cover"

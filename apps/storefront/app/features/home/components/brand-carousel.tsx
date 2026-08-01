@@ -5,6 +5,7 @@ import 'swiper/css/a11y';
 import 'swiper/css/effect-coverflow';
 import { useSyncExternalStore } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 
 const LOOP_MIN_IMAGES = 5;
 const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)';
@@ -92,12 +93,11 @@ export function BrandCarousel({ images, tenantName }: { images: string[]; tenant
 
 function BrandCarouselImage({ src }: { src: string }) {
   return (
-    <img
+    <Image
       src={src}
       alt=""
       width={700}
       height={700}
-      loading="lazy"
       draggable={false}
       className="size-full object-cover"
     />

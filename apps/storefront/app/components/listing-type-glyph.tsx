@@ -1,4 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { cn } from '@booking/ui/lib/utils';
 import { Tag } from 'lucide-react';
 import { LucideByName } from './lucide-by-name';
@@ -19,7 +20,7 @@ export function ListingTypeGlyph({
 }) {
   if (type.iconImageUrl) {
     return (
-      <img
+      <Image
         src={type.iconImageUrl}
         alt=""
         className={cn(className, 'object-contain')}

@@ -1,4 +1,5 @@
 import type { Locale } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3, PackageCheck, Users } from 'lucide-react';
 import { Link } from 'react-router';
@@ -79,7 +80,7 @@ function ListingSummary({
     <div className="px-5 pb-0 pt-5 sm:px-6">
       <div className="grid gap-4 sm:grid-cols-[166px_minmax(0,1fr)]">
         {booking.imageUrl ? (
-          <img
+          <Image
             src={booking.imageUrl}
             alt={booking.listingTitle}
             className="aspect-[4/3] w-full object-cover"

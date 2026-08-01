@@ -1,4 +1,5 @@
 import type { ListingResponse } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { listingPriceFrom } from '~/lib/listing-price';
@@ -19,10 +20,9 @@ export function ChildListingCard({ listing }: { listing: ListingResponse }) {
           rel="noreferrer"
           className="block size-16 shrink-0 overflow-hidden rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <img
+          <Image
             src={thumb}
             alt={listing.title}
-            loading="lazy"
             className="size-full object-cover"
           />
         </a>

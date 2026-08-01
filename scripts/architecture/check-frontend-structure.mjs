@@ -13,6 +13,7 @@ const rootFiles = new Set([
   'entry.client.tsx',
 ]);
 const featureDirectories = new Set(['components', 'hooks', 'server', 'lib']);
+const managedImageFile = 'packages/ui/src/components/media/image.tsx';
 const maxRouteLines = 120;
 const routeModuleExports = new Set([
   'action',
@@ -57,6 +58,34 @@ function hasModifier(node, kind) {
 function sourceLocation(sourceFile, node) {
   const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
   return `${line + 1}:${character + 1}`;
+}
+
+function validateManagedImages(file) {
+  const workspaceRelativePath = relative(root, file).split('\\').join('/');
+  if (workspaceRelativePath === managedImageFile) return;
+
+  const source = readFileSync(file, 'utf8');
+  const sourceFile = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+
+  function visit(node) {
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+      node.tagName.getText(sourceFile) === 'img'
+    ) {
+      failures.push(
+        `${workspaceRelativePath}:${sourceLocation(sourceFile, node)}: dùng Image từ @booking/ui/components/media/image thay cho <img> để giữ chính sách tải/tối ưu ảnh tập trung`,
+      );
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
 }
 
 function routeModuleNames(routeConfigFile) {
@@ -185,6 +214,7 @@ for (const app of apps) {
   }
 
   for (const file of sourceFiles(appDirectory)) {
+    validateManagedImages(file);
     const appRelativePath = relative(appDirectory, file).split('\\').join('/');
     const isLibModule =
       appRelativePath.startsWith('lib/') || /^features\/[^/]+\/lib\//.test(appRelativePath);
@@ -285,6 +315,10 @@ for (const app of apps) {
 
     validateRouteModule(app, appDirectory, file);
   }
+}
+
+for (const file of sourceFiles(join(root, 'packages/ui/src'))) {
+  validateManagedImages(file);
 }
 
 if (failures.length > 0) {

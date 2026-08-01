@@ -1,4 +1,5 @@
 import type { CustomerReviewItem } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
@@ -46,7 +47,7 @@ export function ReviewBookingCard({
 
       <div className="grid gap-4 border-b border-border px-5 py-5 sm:grid-cols-[158px_1fr] sm:px-6">
         {review.listingImageUrl ? (
-          <img
+          <Image
             src={review.listingImageUrl}
             alt=""
             className="h-36 w-full rounded-sm object-cover sm:h-[114px]"

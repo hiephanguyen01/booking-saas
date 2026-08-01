@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@booking/ui/components/ui/dialog"
 import { cn } from "@booking/ui/lib/utils"
+import { Image } from "@booking/ui/components/media/image"
 
 import { useImageZoom } from "./use-image-zoom"
 
@@ -238,10 +239,11 @@ export function MediaViewerCore({
               >
                 {active && !mediaError ? (
                   active.kind === "image" ? (
-                    <img
+                    <Image
                       key={active.url}
                       src={active.url}
                       alt={active.alt ?? ""}
+                      loading="eager"
                       draggable={false}
                       onError={() => setMediaError(true)}
                       className="max-h-full max-w-full object-contain will-change-transform"
@@ -344,10 +346,9 @@ export function MediaViewerCore({
                     className="group relative h-full w-28 shrink-0 overflow-hidden bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-48.5"
                   >
                     {item.kind === "image" ? (
-                      <img
+                      <Image
                         src={item.url}
                         alt=""
-                        loading="lazy"
                         className="size-full object-cover"
                       />
                     ) : (

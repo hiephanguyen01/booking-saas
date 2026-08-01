@@ -1,4 +1,5 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { usePhotoMediaItems } from '~/hooks/use-media-gallery';
 import { MediaViewerDialog } from '@booking/ui/components/media/media-viewer-dialog';
 import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
@@ -46,7 +47,7 @@ export function PackageAlbums({
               className="group relative h-20 w-28 shrink-0 overflow-hidden rounded-md bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={t('packages.viewAlbum', { name: album.name })}
             >
-              <img
+              <Image
                 src={album.photos[0]}
                 alt=""
                 className="size-full object-cover transition-transform duration-300 group-hover:scale-105"

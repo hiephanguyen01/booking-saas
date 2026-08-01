@@ -1,5 +1,6 @@
 import { CalendarRange, Check, CircleDollarSign, Globe2, Handshake } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 
 export function CapabilitiesSection() {
   const { t } = useTranslation(NsI18n.Platform);
@@ -105,12 +106,10 @@ function CapabilityRow({
           mediaFirst ? 'md:order-1' : ''
         }`}
       >
-        <img
+        <Image
           src={image}
           width="1800"
           height="1200"
-          loading="lazy"
-          decoding="async"
           alt={imageAlt}
           className="aspect-[16/10] w-full object-cover"
         />

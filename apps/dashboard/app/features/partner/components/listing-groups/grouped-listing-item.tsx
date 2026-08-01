@@ -1,4 +1,5 @@
 import type { ListingResponse } from '@booking/contracts';
+import { Image } from '@booking/ui/components/media/image';
 import { Badge } from '@booking/ui/components/ui/badge';
 import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Money } from '~/components/money';
@@ -24,7 +25,7 @@ export function ChildPrice({ listing }: { listing: ListingResponse }) {
 /** Thumbnail or muted placeholder for a child listing; `sizeClassName` differs desktop/mobile. */
 function ChildThumbnail({ listing, sizeClassName }: { listing: ListingResponse; sizeClassName: string }) {
   return listing.photos[0] ? (
-    <img
+    <Image
       src={listing.photos[0]}
       alt={listing.title}
       className={`${sizeClassName} shrink-0 rounded-md object-cover`}

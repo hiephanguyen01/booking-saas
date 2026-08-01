@@ -1,4 +1,5 @@
 import { MediaViewerDialog } from '@booking/ui/components/media/media-viewer-dialog';
+import { Image } from '@booking/ui/components/media/image';
 import { usePhotoMediaItems } from '~/hooks/use-media-gallery';
 import { Expand, ImageIcon } from 'lucide-react';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
@@ -35,11 +36,12 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
           }
         >
           {visiblePhotos[0] ? (
-            <img
+            <Image
               src={visiblePhotos[0]}
               alt={title}
               width={920}
               height={680}
+              priority
               className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
@@ -67,7 +69,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
                 }
               >
                 {photo ? (
-                  <img
+                  <Image
                     src={photo}
                     alt=""
                     width={430}

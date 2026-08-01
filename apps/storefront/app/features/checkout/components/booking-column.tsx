@@ -5,6 +5,7 @@ import type {
   ValidatePromoResponse,
 } from '@booking/contracts';
 import { formatCurrency } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { CalendarDays, Check, MapPin } from 'lucide-react';
 import { SectionCard } from '~/components/section-card';
@@ -87,11 +88,12 @@ export function BookingColumn({
       <div className="mt-3 flex gap-4">
         <div className="h-27.5 w-39 shrink-0 overflow-hidden rounded-sm bg-muted">
           {coverPhoto ? (
-            <img
+            <Image
               src={coverPhoto}
               alt={quote.selectedPackage?.name ?? listing.title}
               width={312}
               height={220}
+              loading="eager"
               className="size-full object-cover"
             />
           ) : (
@@ -130,7 +132,7 @@ export function BookingColumn({
           {packagePhotos.length > 1 ? (
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
               {packagePhotos.map((photo, index) => (
-                <img
+                <Image
                   key={`${photo}-${index}`}
                   src={photo}
                   alt=""

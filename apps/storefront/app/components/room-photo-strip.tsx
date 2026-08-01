@@ -1,6 +1,7 @@
 import { ImageIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 
 /**
  * Compact gallery shared by listing and booking surfaces: one large cover plus two
@@ -82,12 +83,16 @@ function RoomPhoto({
   badge?: ReactNode;
 }) {
   const image = (
-    <img src={photo} alt={index === 0 ? title : ''} className="size-full object-cover" />
+    <Image
+      src={photo}
+      alt={index === 0 ? title : ''}
+      className="size-full object-cover"
+    />
   );
 
   if (!onOpenPhoto) {
     return (
-      <img
+      <Image
         src={photo}
         alt={index === 0 ? title : ''}
         className={`${className ?? ''} size-full object-cover`}
