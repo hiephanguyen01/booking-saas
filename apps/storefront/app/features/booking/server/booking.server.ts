@@ -1,5 +1,6 @@
 import type { ApiResult } from '@booking/api-client';
 import type {
+  AvailabilityCalendarResponse,
   AvailabilityMode,
   AvailabilityResponse,
   BookingAccessResponse,
@@ -17,6 +18,7 @@ import type {
   ValidatePromoResponse,
 } from '@booking/contracts';
 import {
+  availabilityCalendarResponseSchema,
   availabilityResponseSchema,
   bookingAccessResponseSchema,
   bookingOtpResponseSchema,
@@ -64,6 +66,28 @@ export function fetchAvailability(
   const qs = new URLSearchParams(query).toString();
   return publicGetData(request, `/public/listings/${encodeURIComponent(slug)}/availability?${qs}`, {
     schema: availabilityResponseSchema,
+  });
+}
+
+export function fetchAvailabilityCalendar(
+  request: Request,
+  slug: string,
+  query: {
+    mode: Extract<AvailabilityMode, 'hourly' | 'daily'>;
+    from: string;
+    to: string;
+    packageId?: string;
+  },
+): Promise<AvailabilityCalendarResponse> {
+  const qs = new URLSearchParams({
+    mode: query.mode,
+    from: query.from,
+    to: query.to,
+    view: 'calendar',
+    ...(query.packageId ? { packageId: query.packageId } : {}),
+  }).toString();
+  return publicGetData(request, `/public/listings/${encodeURIComponent(slug)}/availability?${qs}`, {
+    schema: availabilityCalendarResponseSchema,
   });
 }
 

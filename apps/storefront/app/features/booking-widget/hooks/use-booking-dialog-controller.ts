@@ -25,6 +25,7 @@ import {
   scheduledBookingModes,
   type ScheduledBookingMode,
 } from '~/features/booking-widget/lib/booking-modes';
+import { useBookingSaleCalendar } from '~/features/booking-widget/hooks/use-booking-sale-calendar';
 
 type BookingRequestKind = 'availability' | 'quote';
 
@@ -86,6 +87,17 @@ export function useBookingDialogController({
   const [cachedAvailability, setCachedAvailability] = useState<AvailabilityResponse | null>(null);
   const [selectionError, setSelectionError] = useState('');
   const [requestKind, setRequestKind] = useState<BookingRequestKind>('availability');
+  const dialogOpen = controlled ? controlled.open : desktopOpen || mobileOpen;
+  const saleCalendar = useBookingSaleCalendar({
+    open: dialogOpen,
+    locale,
+    listingSlug: listing.slug,
+    ...(groupSlug ? { groupSlug } : {}),
+    mode,
+    today,
+    fixedPackages,
+    packageId,
+  });
   const basePath = groupSlug
     ? storefrontPaths.listingGroupRoomBookingData(locale, groupSlug, listing.slug)
     : storefrontPaths.listingBookingData(locale, listing.slug);
@@ -403,6 +415,10 @@ export function useBookingDialogController({
       availability,
       availabilityPending,
       availabilityError,
+      calendar: saleCalendar.calendar,
+      calendarPending: saleCalendar.pending,
+      calendarError: saleCalendar.error,
+      calendarMonth: saleCalendar.month,
       requestError,
       slots,
       selectedSlots,
@@ -422,6 +438,8 @@ export function useBookingDialogController({
       },
       onRetryQuote: reloadSelection,
       onRetryDaily: reloadSelection,
+      onCalendarMonthChange: saleCalendar.loadMonth,
+      onRetryCalendar: saleCalendar.reload,
     },
     footerProps: {
       selectionSummary,
