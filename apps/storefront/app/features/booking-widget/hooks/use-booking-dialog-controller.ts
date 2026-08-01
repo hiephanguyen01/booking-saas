@@ -26,6 +26,7 @@ import {
   type ScheduledBookingMode,
 } from '~/features/booking-widget/lib/booking-modes';
 import { useBookingSaleCalendar } from '~/features/booking-widget/hooks/use-booking-sale-calendar';
+import { monthBounds } from '~/features/booking-widget/lib/sale-calendar';
 
 type BookingRequestKind = 'availability' | 'quote';
 
@@ -52,6 +53,7 @@ export function useBookingDialogController({
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
   const fetcher = useFetcher<ListingBookingDataResult>();
+  const dailyMonthFetcher = useFetcher<ListingBookingDataResult>();
   const supportedModes = scheduledBookingModes(listing.bookingModes);
   const initialMode = supportedModes.includes(preferredMode)
     ? preferredMode
@@ -87,6 +89,7 @@ export function useBookingDialogController({
   const [cachedAvailability, setCachedAvailability] = useState<AvailabilityResponse | null>(null);
   const [selectionError, setSelectionError] = useState('');
   const [requestKind, setRequestKind] = useState<BookingRequestKind>('availability');
+  const [dailyMonthRequestKey, setDailyMonthRequestKey] = useState<string | null>(null);
   const dialogOpen = controlled ? controlled.open : desktopOpen || mobileOpen;
   const saleCalendar = useBookingSaleCalendar({
     open: dialogOpen,
@@ -129,6 +132,20 @@ export function useBookingDialogController({
     void fetcher.load(`${basePath}?${params.toString()}`);
   }
 
+  function loadDailyMonth(nextMonth: string, nextPackageId = packageId): void {
+    if (fixedPackages && !nextPackageId) return;
+    let from: string;
+    try {
+      from = monthBounds(nextMonth).from;
+    } catch {
+      return;
+    }
+    const params = new URLSearchParams({ mode: 'daily', from });
+    if (nextPackageId) params.set('packageId', nextPackageId);
+    setDailyMonthRequestKey(`${nextMonth}:${nextPackageId ?? ''}`);
+    void dailyMonthFetcher.load(`${basePath}?${params.toString()}`);
+  }
+
   /** Drops every part of a selection that a mode, package or date change invalidates. */
   function clearSelection(): void {
     setDate(null);
@@ -165,15 +182,14 @@ export function useBookingDialogController({
     clearSelection();
     setMode(next);
     setInternalPackageId(nextPackageId);
-    if (next === 'daily')
-      load({ mode: next, from: today, packageId: nextPackageId }, 'availability');
+    if (next === 'daily') loadDailyMonth(saleCalendar.month, nextPackageId);
   }
 
   function selectPackage(nextPackageId: string): void {
     clearSelection();
     setInternalPackageId(nextPackageId);
     if (mode === 'daily') {
-      load({ mode, from: today, packageId: nextPackageId }, 'availability');
+      loadDailyMonth(saleCalendar.month, nextPackageId);
     }
   }
 
@@ -195,10 +211,22 @@ export function useBookingDialogController({
     response.packageId === packageId
       ? response.availability
       : null);
+  const dailyMonthResponse = dailyMonthFetcher.data;
+  const dailyMonthResponseMatches = Boolean(
+    dailyMonthResponse?.ok &&
+    dailyMonthResponse.mode === 'daily' &&
+    dailyMonthResponse.from === `${saleCalendar.month}-01` &&
+    dailyMonthResponse.packageId === packageId,
+  );
+  const dailyMonthAvailability =
+    dailyMonthResponseMatches && dailyMonthResponse?.ok ? dailyMonthResponse.availability : null;
   useEffect(() => {
     if (responseAvailability) setCachedAvailability(responseAvailability);
   }, [responseAvailability]);
-  const availability = responseAvailability ?? cachedAvailability;
+  const availability =
+    mode === 'daily' && dailyMonthAvailability
+      ? dailyMonthAvailability
+      : (responseAvailability ?? cachedAvailability);
   const slots = useMemo(
     () =>
       availability?.mode === 'hourly'
@@ -217,9 +245,24 @@ export function useBookingDialogController({
         interval.end === currentData.selectionEnd)),
   );
   const hasCompleteSelection = mode === 'hourly' ? Boolean(interval) : Boolean(from && to);
-  const availabilityPending = fetcher.state !== 'idle' && requestKind === 'availability';
+  const currentDailyMonthKey = `${saleCalendar.month}:${packageId ?? ''}`;
+  const dailyMonthRequestActive = dailyMonthRequestKey === currentDailyMonthKey;
+  const dailyMonthPending =
+    mode === 'daily' && dailyMonthRequestActive && dailyMonthFetcher.state !== 'idle';
+  const dailyMonthError = Boolean(
+    mode === 'daily' &&
+    dailyMonthRequestActive &&
+    dailyMonthFetcher.state === 'idle' &&
+    dailyMonthResponse !== undefined &&
+    !dailyMonthResponseMatches,
+  );
+  const availabilityPending =
+    (fetcher.state !== 'idle' && requestKind === 'availability') || dailyMonthPending;
   const quotePending = fetcher.state !== 'idle' && requestKind === 'quote';
   const requestError = fetcher.state === 'idle' && response !== undefined && !response.ok;
+  const dailyRequestError =
+    dailyMonthError ||
+    (requestError && (requestKind === 'quote' || !dailyMonthResponseMatches));
   const availabilityError = requestError && requestKind === 'availability';
   const quoteError = requestError && requestKind === 'quote' && hasCompleteSelection;
   const selectionUnavailable = Boolean(
@@ -419,7 +462,7 @@ export function useBookingDialogController({
       calendarPending: saleCalendar.pending,
       calendarError: saleCalendar.error,
       calendarMonth: saleCalendar.month,
-      requestError,
+      requestError: mode === 'daily' ? dailyRequestError : requestError,
       slots,
       selectedSlots,
       selectionError,
@@ -437,8 +480,14 @@ export function useBookingDialogController({
         if (date) load({ mode, date }, 'availability');
       },
       onRetryQuote: reloadSelection,
-      onRetryDaily: reloadSelection,
-      onCalendarMonthChange: saleCalendar.loadMonth,
+      onRetryDaily: () => {
+        if (dailyMonthError) loadDailyMonth(saleCalendar.month);
+        else reloadSelection();
+      },
+      onCalendarMonthChange: (nextMonth: string) => {
+        saleCalendar.loadMonth(nextMonth);
+        if (mode === 'daily') loadDailyMonth(nextMonth);
+      },
       onRetryCalendar: saleCalendar.reload,
     },
     footerProps: {

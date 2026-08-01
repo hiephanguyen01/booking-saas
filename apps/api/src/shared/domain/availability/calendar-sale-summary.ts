@@ -3,6 +3,7 @@ import type {
   AvailabilityCalendarSale,
   AvailabilityResponse,
 } from '@booking/contracts';
+import { saleDiscountPercent } from '../pricing/sale-campaign';
 
 /** Project detailed availability into the compact month-calendar response. */
 export function summarizeAvailabilityCalendar(
@@ -82,7 +83,11 @@ function summarizeSale(
 ): AvailabilityCalendarSale | null {
   if (units.length === 0) return null;
 
-  const percentages = units.map((unit) => discountPercent(unit.regularPrice, unit.price));
+  const percentages = units.flatMap((unit) => {
+    const percent = saleDiscountPercent(unit.regularPrice, unit.price);
+    return percent === null ? [] : [percent];
+  });
+  if (percentages.length === 0) return null;
   const campaignLabels: string[] = [];
   const seenLabels = new Set<string>();
   for (const unit of units) {
@@ -98,14 +103,4 @@ function summarizeSale(
     maxDiscountPercent: Math.max(...percentages),
     campaignLabels,
   };
-}
-
-/** Integer percent off, rounded half-up with BigInt-safe arithmetic. */
-function discountPercent(regularPrice: string, price: string): number {
-  const regular = BigInt(regularPrice);
-  const discounted = BigInt(price);
-  const rounded = Number(((regular - discounted) * 100n + regular / 2n) / regular);
-  // A real discount can round below 1%; keep the projection valid against its
-  // public 1..100 contract without hiding that sale from the calendar.
-  return Math.max(1, rounded);
 }

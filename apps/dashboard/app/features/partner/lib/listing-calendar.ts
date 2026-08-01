@@ -437,6 +437,10 @@ export function ruleCoveringHour(
           stamp < String(rule.params.to)
         );
       }
+      // A date range prices every unit on its covered dates. The quote kernel
+      // and month view already treat it as whole-day, so the week grid must let
+      // its higher priority outrank recurring hour/day rules too.
+      if (rule.ruleType === 'date_range') return dateMatches(rule, date);
       if (rule.ruleType === 'time_range') {
         return (
           recurringDays(rule).includes(weekday(date)) &&

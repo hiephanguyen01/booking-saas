@@ -119,15 +119,21 @@ export function SearchResultCard({
           <p className="text-sm leading-5 text-muted-foreground">
             <span className="flex flex-wrap items-baseline justify-end gap-x-2">
               {pricedPercent !== null && regularPrice ? (
-                <span className="text-base leading-6 text-muted-foreground/65 line-through">
+                <del className="text-base leading-6 text-muted-foreground/65">
+                  <span className="sr-only">{t('listing:campaign.regularPrice')}: </span>
                   {regularPrice}
-                </span>
+                </del>
               ) : null}
               <span
                 className={pricedPercent !== null ? 'text-warning-foreground' : 'text-foreground'}
               >
                 {t('listing:fromPriceShort')}{' '}
-                <strong className="text-lg leading-7 font-semibold">{price}</strong>
+                <strong className="text-lg leading-7 font-semibold">
+                  {pricedPercent !== null ? (
+                    <span className="sr-only">{t('listing:campaign.currentPrice')}: </span>
+                  ) : null}
+                  {price}
+                </strong>
               </span>
             </span>
             <span

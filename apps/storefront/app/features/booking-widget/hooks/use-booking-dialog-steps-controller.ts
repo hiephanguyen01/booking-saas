@@ -54,14 +54,6 @@ export function useBookingDialogStepsController({
   const locale = useLocale();
   const todayDate = dateOnlyToLocal(today);
   const openDates = useMemo(() => openDailyDates(availability), [availability]);
-  const dailyEndDate = useMemo(() => {
-    if (availability?.mode !== 'daily' || availability.days.length === 0) return undefined;
-    let latest = availability.days[0].date;
-    for (const day of availability.days) {
-      if (day.date > latest) latest = day.date;
-    }
-    return dateOnlyToLocal(latest);
-  }, [availability]);
   const formatters = useCalendarFormatters(locale, 'narrow');
   const calendarA11y = useMemo(() => {
     const tag = intlLocale(locale);
@@ -168,7 +160,6 @@ export function useBookingDialogStepsController({
     calendarMonthDate: dateOnlyToLocal(`${calendarMonth}-01`),
     changeCalendarMonth,
     dailyPriceHints,
-    dailyEndDate,
     dailySoldOut: availability?.mode === 'daily' && openDates.size === 0,
     hourlyDateInstruction: date
       ? `${dateLabelInTz(date, DEFAULT_TZ, locale)} · ${t(packageFlow ? 'packages.hourlyInstruction' : 'group.hourlyInstruction')}`

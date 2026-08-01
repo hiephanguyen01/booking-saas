@@ -16,7 +16,7 @@ export function discountPercent(regularPrice: string, salePrice: string): number
   const sale = BigInt(salePrice);
   if (regular <= 0n || sale >= regular) return null;
   // Half-up on bigint: add half the divisor before dividing.
-  return Number(((regular - sale) * 100n + regular / 2n) / regular);
+  return Math.max(1, Number(((regular - sale) * 100n + regular / 2n) / regular));
 }
 
 export type CampaignUrgency =

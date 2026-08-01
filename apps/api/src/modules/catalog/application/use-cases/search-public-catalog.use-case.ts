@@ -15,9 +15,10 @@ import { addMinutes, utcNow, zonedTimeToUtc } from '../../../../shared/time/time
 import { toVnd } from '../../../../shared/money/money';
 import { pageOffset } from '../../../../shared/pagination/pagination';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
-import { computeQuote } from '../../../../shared/domain/pricing/quote-calculator';
+import { computeQuote, type QuoteResult } from '../../../../shared/domain/pricing/quote-calculator';
 import {
   selectSaleCampaign,
+  type SaleCampaignSelection,
   type SaleCampaignSummary,
 } from '../../../../shared/domain/pricing/sale-campaign';
 import { activePackages } from '../../../../shared/domain/pricing/package-config';
@@ -56,6 +57,12 @@ interface PricedListing {
   price: bigint;
   regularPrice: bigint;
   priceUnit: 'hour' | 'day' | 'item' | 'session' | 'package';
+  /**
+   * Present only when `price` came from an exact quote. `null` is meaningful:
+   * the quote had no single compatible campaign identity, so a discovery-wide
+   * campaign must not be substituted beside this price.
+   */
+  appliedCampaign?: SaleCampaignSelection | null;
 }
 
 interface EvaluatedListing extends PricedListing {
@@ -67,6 +74,8 @@ interface EvaluatedListing extends PricedListing {
   campaign: SaleCampaignSummary | null;
   /** Private rank tie-break only; never mapped to the public contract. */
   campaignEndsAt: Date | null;
+  /** Whether campaign metadata is bound to the exact quote that produced `price`. */
+  campaignBoundToPrice: boolean;
 }
 
 interface SearchWindow {
@@ -157,16 +166,15 @@ export class SearchPublicCatalogUseCase {
           now,
         );
         if (!result) continue;
-        const campaign = selectSaleCampaign(
-          listing.pricingRules,
-          now,
-          listing.resourceTimezone,
-          mode,
-        );
+        const campaign =
+          result.appliedCampaign === undefined
+            ? selectSaleCampaign(listing.pricingRules, now, listing.resourceTimezone, mode)
+            : result.appliedCampaign;
         facetRows.push({
           ...result,
           campaign: campaign?.summary ?? null,
           campaignEndsAt: campaign?.endsAt ?? null,
+          campaignBoundToPrice: result.appliedCampaign !== undefined,
         });
       }
 
@@ -443,6 +451,7 @@ export class SearchPublicCatalogUseCase {
         regularPrice: quote.regularSubtotal,
         priceUnit:
           listing.bookingSelection === 'fixed_packages' ? 'package' : unitFor(mode, config),
+        appliedCampaign: campaignAppliedByQuote(quote, listing, now, mode),
       };
     } catch {
       return null;
@@ -491,6 +500,7 @@ export class SearchPublicCatalogUseCase {
             price: quote.subtotal,
             regularPrice: quote.regularSubtotal,
             priceUnit: 'package',
+            appliedCampaign: campaignAppliedByQuote(quote, listing, now, 'daily'),
           };
         }
       } catch {
@@ -527,7 +537,11 @@ export class SearchPublicCatalogUseCase {
           ? []
           : [{ durationMinutes: hourly.minDuration * 60, packageId: undefined }];
     const earliestStart = Date.now() + hourly.leadTimeMin * 60_000;
-    let cheapest: { price: bigint; regularPrice: bigint } | null = null;
+    let cheapest: {
+      price: bigint;
+      regularPrice: bigint;
+      appliedCampaign: SaleCampaignSelection | null;
+    } | null = null;
 
     for (const window of windows) {
       for (const candidate of candidates) {
@@ -559,7 +573,11 @@ export class SearchPublicCatalogUseCase {
               now,
             });
             if (cheapest === null || quote.subtotal < cheapest.price) {
-              cheapest = { price: quote.subtotal, regularPrice: quote.regularSubtotal };
+              cheapest = {
+                price: quote.subtotal,
+                regularPrice: quote.regularSubtotal,
+                appliedCampaign: campaignAppliedByQuote(quote, listing, now, 'hourly'),
+              };
             }
           } catch {
             continue;
@@ -575,6 +593,7 @@ export class SearchPublicCatalogUseCase {
           price: cheapest.price,
           regularPrice: cheapest.regularPrice,
           priceUnit: listing.bookingSelection === 'fixed_packages' ? 'package' : 'hour',
+          appliedCampaign: cheapest.appliedCampaign,
         };
   }
 
@@ -616,10 +635,10 @@ export class SearchPublicCatalogUseCase {
         reviewCount: g?.reviewCount ?? l.reviewCount,
         priceFrom: cheapest.price.toString(),
         regularPriceFrom: cheapest.regularPrice.toString(),
-        // A group card stands for every child in the bucket, so it advertises the
-        // best campaign any of them runs — not the cheapest child's, which may
-        // be cheap precisely because it is not on sale.
-        campaign: deepestCampaign(matches),
+        // A dated result's metadata belongs to the exact cheapest child/quote.
+        // Undated discovery has no quote identity and keeps the listing-wide
+        // deepest-campaign behavior used across browse surfaces.
+        campaign: cheapest.campaignBoundToPrice ? cheapest.campaign : deepestCampaign(matches),
         priceUnit: cheapest.priceUnit,
         completedBookings: matches.reduce((sum, row) => sum + row.listing.completedBookings, 0),
         matchingRoomCount: matches.length,
@@ -716,6 +735,33 @@ export class SearchPublicCatalogUseCase {
     }
     return facets;
   }
+}
+
+/**
+ * Project the campaign identity from the discounted rules that actually won an
+ * exact quote. Distinct labels (including named versus unnamed) are
+ * incompatible for one card badge; suppressing the badge is safer than
+ * attaching one campaign's deadline/schedule to a combined price.
+ */
+function campaignAppliedByQuote(
+  quote: QuoteResult,
+  listing: PublicListingRecord,
+  now: Date,
+  mode: Extract<BookingMode, 'hourly' | 'daily' | 'inventory'>,
+): SaleCampaignSelection | null {
+  const discountedLines = quote.lineItems.filter((line) => line.regularAmount > line.amount);
+  if (discountedLines.length === 0 || discountedLines.some((line) => !line.appliedRuleId)) {
+    return null;
+  }
+
+  const appliedRuleIds = new Set(discountedLines.map((line) => line.appliedRuleId!));
+  const appliedRules = listing.pricingRules.filter((rule) => appliedRuleIds.has(rule.id));
+  if (appliedRules.length !== appliedRuleIds.size) return null;
+
+  const identities = new Set(appliedRules.map((rule) => rule.campaignLabel?.trim() || null));
+  if (identities.size !== 1) return null;
+
+  return selectSaleCampaign(appliedRules, now, listing.resourceTimezone, mode);
 }
 
 function deepestCampaign(rows: EvaluatedListing[]): SaleCampaignSummary | null {

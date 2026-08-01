@@ -182,8 +182,8 @@ export type SaleSchedule = z.infer<typeof saleScheduleSchema>;
 export const saleCampaignSummarySchema = z.object({
   /** Partner-authored name, shown verbatim (already in the tenant's language). */
   label: z.string().nullable(),
-  /** Deepest live discount, integer percent. 0 = worth naming, not worth quoting. */
-  discountPercent: z.number().int().min(0).max(100),
+  /** Deepest live discount, integer percent; any real reduction is at least 1. */
+  discountPercent: z.number().int().min(1).max(100),
   /**
    * Last calendar day (`YYYY-MM-DD`) a booking still falls inside the campaign,
    * already resolved in the resource's timezone; null = unbounded.

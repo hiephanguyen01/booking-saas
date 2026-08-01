@@ -386,7 +386,6 @@ function DailyBookingStep({
               onSelect={onSelectRange}
               disabled={model.isRangeDateDisabled}
               startMonth={model.todayDate}
-              endMonth={model.dailyEndDate}
               excludeDisabled
               resetOnSelect
               showOutsideDays={false}

@@ -17,7 +17,7 @@ function discountPercent(regularValue: string, saleValue: string): number | null
   const regular = BigInt(regularValue);
   const sale = BigInt(saleValue);
   if (regular <= 0n || sale <= 0n || sale >= regular) return null;
-  return Number(((regular - sale) * 100n + regular / 2n) / regular);
+  return Math.max(1, Number(((regular - sale) * 100n + regular / 2n) / regular));
 }
 
 function dayLabel(value: string): string {

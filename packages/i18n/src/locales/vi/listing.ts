@@ -24,6 +24,7 @@ export const viListing = {
     exactPercent: 'Giảm {percent}%',
     calendarUnavailable: 'Không thể tải lịch khuyến mãi. Vui lòng thử lại.',
     regularPrice: 'Giá thường',
+    currentPrice: 'Giá hiện tại',
     salePrice: 'Giá khuyến mãi',
     calendarSaleHeading: 'Khuyến mãi theo lịch',
     checkoutPromotionHeading: 'Ưu đãi',

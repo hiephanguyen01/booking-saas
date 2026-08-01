@@ -22,6 +22,7 @@ export const enListing = {
     exactPercent: '{percent}% off',
     calendarUnavailable: 'The sale calendar could not be loaded. Please try again.',
     regularPrice: 'Regular price',
+    currentPrice: 'Current price',
     salePrice: 'Sale price',
     calendarSaleHeading: 'Calendar sales',
     checkoutPromotionHeading: 'Promotion',

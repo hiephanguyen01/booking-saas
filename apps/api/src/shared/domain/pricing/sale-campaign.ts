@@ -53,8 +53,8 @@ export interface SaleCampaignSummary {
   /** Partner-authored name in the tenant's own language; null when the sale is unnamed. */
   label: string | null;
   /**
-   * Deepest discount across the live rules, integer percent. 0 when every live
-   * sale rounds below 1% — the campaign is still worth naming, the number is not.
+   * Deepest discount across the live rules, integer percent. A real reduction
+   * is clamped to 1% so customer-facing copy never advertises a misleading 0%.
    */
   discountPercent: number;
   /**
@@ -124,7 +124,7 @@ export function selectSaleCampaign(
     if (mode && rule.bookingMode !== mode) continue;
     const sale = activeSalePrice(rule, now);
     if (sale === null) continue;
-    const discountPercent = discountPercentOf(rule.price, sale);
+    const discountPercent = saleDiscountPercent(rule.price, sale);
     if (discountPercent === null) continue;
     const label = normalizedLabel(rule);
     const campaign = liveByLabel.get(label);
@@ -307,12 +307,12 @@ function outranks(candidate: Candidate, best: Candidate): boolean {
 }
 
 /** Integer percent off, or null when the "sale" is not below the regular price. */
-function discountPercentOf(price: string, salePrice: string): number | null {
+export function saleDiscountPercent(price: string, salePrice: string): number | null {
   const regular = BigInt(price);
   const sale = BigInt(salePrice);
   if (regular <= 0n || sale >= regular) return null;
   // Half-up on bigint: add half the divisor before dividing.
-  return Number(((regular - sale) * 100n + regular / 2n) / regular);
+  return Math.max(1, Number(((regular - sale) * 100n + regular / 2n) / regular));
 }
 
 type CalendarDay = { year: number; month: number; day: number };
