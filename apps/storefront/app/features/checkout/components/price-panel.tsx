@@ -34,47 +34,52 @@ export function PricePanel({
         ? t('inventoryQuantityLine', { quantity })
         : t('quantityLine', { rooms: quantity, slots: slotCount });
   const hasCalendarSale = quote.regularSubtotal !== quote.subtotal;
-  const hasPromotion = hasDiscount || hasCalendarSale;
+  const calendarSavings = hasCalendarSale
+    ? (BigInt(quote.regularSubtotal) - BigInt(quote.subtotal)).toString()
+    : '0';
   // Partner-authored, already in the tenant's language — shown verbatim, never
-  // translated. Several campaigns can price one booking, so join rather than
-  // pick one.
+  // translated. Several campaigns can price one booking, so render the
+  // distinct labels independently rather than picking or merging one.
   const campaigns = campaignLabelsOf(quote);
 
   return (
-    <div
-      className={cn(
-        'mt-3 rounded-lg px-5 py-4 text-sm leading-5 text-foreground',
-        hasPromotion ? 'bg-success/10' : 'bg-muted/40',
-      )}
-    >
+    <div className="mt-3 rounded-lg bg-muted/40 px-5 py-4 text-sm leading-5 text-foreground">
+      <PriceRow
+        label={quantityLabel}
+        value={formatVnd(hasCalendarSale ? quote.regularSubtotal : amounts.subtotal)}
+      />
       {hasCalendarSale ? (
-        <div className="mb-2 flex items-center justify-between gap-4">
-          <Badge variant="success" className="rounded-sm">
-            {campaigns.length > 0 ? campaigns.join(' · ') : t('saleBadge')}
-          </Badge>
-          <span className="text-muted-foreground line-through">
-            {formatVnd(quote.regularSubtotal)}
-          </span>
+        <div className="mt-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5">
+          <PriceRow
+            label={t('calendarSalePrice')}
+            value={`− ${formatVnd(calendarSavings)}`}
+            className="font-semibold text-warning-foreground"
+          />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {(campaigns.length > 0 ? campaigns : [t('saleBadge')]).map((campaign) => (
+              <Badge
+                key={campaign}
+                variant="outline"
+                className="max-w-full rounded-sm border-warning/50 bg-background/70 text-warning-foreground"
+              >
+                <span className="min-w-0 truncate">{campaign}</span>
+              </Badge>
+            ))}
+          </div>
         </div>
       ) : null}
       {hasDiscount ? (
-        <div className="flex items-center justify-between gap-4">
-          <Badge variant="success" className="rounded-sm font-semibold">
-            {promo?.code ?? t('discount')}
+        <div className="mt-2 rounded-md border border-success/30 bg-success/10 px-3 py-2.5">
+          <PriceRow
+            label={t('checkoutPromotion')}
+            value={`− ${formatVnd(amounts.discount)}`}
+            className="font-semibold text-success"
+          />
+          <Badge variant="success" className="mt-2 max-w-full rounded-sm font-semibold">
+            <span className="min-w-0 truncate">{promo?.code ?? t('checkoutPromotion')}</span>
           </Badge>
-          <span className="text-muted-foreground line-through">{formatVnd(amounts.subtotal)}</span>
         </div>
       ) : null}
-      <PriceRow
-        label={quantityLabel}
-        value={formatVnd(amounts.subtotal)}
-        className={hasDiscount ? 'mt-2' : ''}
-      />
-      <PriceRow
-        label={t('discount')}
-        value={`− ${formatVnd(amounts.discount)}`}
-        className={cn('mt-2', hasDiscount && 'text-success')}
-      />
       {quote.securityDeposit !== '0' ? (
         <PriceRow
           label={tListing('securityDeposit')}
@@ -103,8 +108,8 @@ function PriceRow({
 }) {
   return (
     <div className={cn('flex items-baseline justify-between gap-4', className)}>
-      <span>{label}</span>
-      <span className="text-right font-medium">{value}</span>
+      <span className="min-w-0">{label}</span>
+      <span className="shrink-0 text-right font-medium">{value}</span>
     </div>
   );
 }

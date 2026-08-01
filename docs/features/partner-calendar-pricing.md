@@ -67,6 +67,25 @@ Errors: `PRICING_RULE_SCOPE_TAKEN` (409, from P2002 on the unique index), `PRICI
 Range reads are capped by `MAX_CALENDAR_RANGE_DAYS` (366) and bulk writes by
 `MAX_BULK_CALENDAR_DAYS` (92) — a bulk write runs a row per date, a read does not.
 
+### Public availability calendar projection
+
+`GET /public/listings/:slug/availability` keeps the detailed response by default. Passing
+`view=calendar` selects the month-summary projection for `hourly` or `daily` mode; `from` and `to`
+remain inclusive date-only bounds and fixed-package requests also carry `packageId`. Inventory mode
+does not support this view. Each returned day has a `status` (`available`, `sold_out`, `closed`, or
+`blocked`) and either no sale or these presentation fields:
+
+- `coverage: 'full' | 'partial'`;
+- `minDiscountPercent` and `maxDiscountPercent`, calculated with the shared BigInt-safe half-up rule;
+- distinct, trimmed `campaignLabels` in first-occurrence order.
+
+For hourly availability, `full` means every currently available slot is discounted; if only some
+available slots are discounted, coverage is `partial`. A date with no opening windows is `closed`,
+while a date with generated slots but no available slot is `sold_out`. A discounted available daily
+night is always `full`. Closed, blocked and sold-out days never expose a sale marker. The detailed
+response and calendar projection are built from the same computed unit prices and captured `now`, so
+the summary cannot invent a different price.
+
 ## Dashboard — `apps/dashboard/app/features/partner/`
 
 `components/listing-calendar/` — `index.tsx` (grid + month/week toggle), `day-cell.tsx`,
@@ -77,29 +96,71 @@ hold bookings — it warns, it does not block).
 
 All calendar arithmetic is pure and lives in `lib/listing-calendar.ts`, not in the components:
 `calendarDays`, `closureStateOf`, `openWindowsFor`, `pricingRulesForCell`, `hasRecurringOn`,
-`campaignState`, `effectivePriceOf`, `weekHourRows`, `hourIsOpen`, `ruleCoveringHour`,
+`campaignPresentationOf`, `campaignRulesForCell`, `effectivePriceOf`, `weekHourRows`, `hourIsOpen`,
+`ruleCoveringHour`,
 `bucketBookingsByDay`, `holdsResource`.
 
 The week view is guarded on the mode being *viewed* (`mode === 'hourly'`), not on the listing merely
 supporting hourly — a dual-mode listing in daily view must not render an hour grid.
 
+Month cells use the same C3 semantics as the customer calendar: solid warning treatment for full
+coverage, diagonal warning treatment for partial coverage, an exact percentage only for one full
+rate, and a flame for partial or multi-rate full coverage. Running campaigns can show their sale
+price; scheduled and ended campaigns retain the regular price and add a lifecycle badge instead.
+The hour grid resolves the effective rule by priority before showing an exact struck-through/current
+pair, so a shadowed campaign is never presented as customer-visible.
+
+Day, range and recurring pricing forms expose an explicit `Bật giá ưu đãi` toggle and mount the
+shared `CampaignPreview` below the campaign fields. The preview is labelled `Khách hàng sẽ thấy` and
+uses the regular price, sale price, campaign name/fallback, rule scope and booking deadline. Invalid
+or incomplete prices render the neutral `Nhập giá ưu đãi để xem trước` state rather than a fabricated
+percentage. Calendar cells, saved recurring rows and the preview all distinguish running,
+scheduled and ended campaigns.
+
 ## Storefront — `apps/storefront/app/`
+
+### Discovery, exact prices and C3 calendar
+
+Undated listing cards and detail banners consume `SaleCampaignSummary`, which is descriptive and
+therefore say `Giảm đến X%` / `Up to X% off`. Only a real dated search, detailed slot/night, or quote
+may show an exact percentage and struck-through/current prices. The configured “from” price is never
+silently turned into an exact campaign price.
+
+The booking dialog calls the localized Storefront resource routes
+`/:locale/l/:listingSlug/sale-calendar` and
+`/:locale/g/:groupSlug/rooms/:listingSlug/sale-calendar`. Their thin route modules delegate to
+`loadListingSaleCalendarRoute()`, which validates listing/group membership, mode, literal month and
+fixed-package selection, then calls the API server-to-server with `view=calendar`. The browser's
+dedicated `useBookingSaleCalendar()` fetcher keys responses by mode/month/package, while the existing
+detailed-availability fetcher remains the source of selectable dates and slots.
+
+Customer month cells render the C3 full/partial states described above and preserve selection/focus
+cues. Detailed slots and nightly hints use exact `regularPrice`, `price` and `campaignLabel`; totals
+still come only from the server quote. When the summary resource fails, the detailed calendar stays
+usable without sale markers, and a localized warning with retry is added without disabling dates or
+clearing the current selection.
+
+### Quote and checkout separation
 
 `lib/quote.ts` → `campaignLabelsOf(quote)` returns the distinct campaign names a quote is discounted
 by, read from `lineItems[]` because that is the only place the name exists — one booking can span
 hours priced by different campaigns.
 
-- `features/checkout/components/price-panel.tsx` — the sale badge shows those names joined by `·`,
-  falling back to the translated `checkout.saleBadge`.
+- `features/checkout/components/price-panel.tsx` presents `Giá ưu đãi theo lịch` / `Calendar sale
+  price` first, with distinct partner campaign labels (or the translated unnamed fallback), then
+  `Ưu đãi thanh toán` / `Checkout promotion` for the selected promotion code or auto-promotion.
 - `features/booking-widget/components/booking-panel-presentation.tsx` — `Breakdown` badges each line
-  individually. Note its actual reach: `BookingPanel` renders only when
+  individually and compares that line's `regularAmount` with `amount`. Note its actual reach:
+  `BookingPanel` renders only when
   `supportsScheduledBooking(listing.bookingModes)` is **false**, so an `hourly`/`daily` listing gets
   `ScheduledBookingCard` and its dialog instead. In practice `Breakdown` is the **inventory**
   listing's surface. Inventory still prices per time-unit through `matchingRule`, so a multi-day
   rental spanning two campaigns does show two differently-badged lines.
 
 Campaign labels are partner-authored text already in the tenant's language: rendered verbatim, never
-translated. Only the no-name fallback goes through i18n.
+translated. Only the no-name fallback goes through i18n. Calendar pricing is already reflected in
+the quoted subtotal; checkout promotion validation receives that subtotal and applies afterward.
+The two names are never merged, and this presentation adds no stacking or precedence behavior.
 
 ## Known limits
 
@@ -107,5 +168,7 @@ translated. Only the no-name fallback goes through i18n.
   `RedisAvailabilityCache` (TTL 60s) — a stale sale can be **displayed** for up to a minute. Nobody
   is charged it: the booking path re-prices against a live clock and `assertExpectedSubtotal`
   rejects a mismatch.
+- A missing/blank partner campaign name falls back to localized `Đang giảm giá` / `On sale` on public
+  surfaces; raw empty labels are never fabricated into API campaign names.
 - Recurring rules share one priority band, so an ambiguous pair is refused at write time rather than
   ranked at read time.
