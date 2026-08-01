@@ -297,7 +297,11 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
 
   return (
     <Form {...form}>
+      {/* Native POST prevents pre-hydration/no-JS fallback from serializing values
+          into the URL. Hydrated submissions still use the caller's method via useSubmit. */}
       <form
+        method="post"
+        action={action}
         onSubmit={form.handleSubmit(onValid, onInvalid)}
         className={cn(renderFields ? undefined : 'space-y-6', className)}
         noValidate

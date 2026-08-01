@@ -54,7 +54,7 @@ export function PartnerVerifyPage({ loaderData, actionData }: PartnerVerifyPageP
         <p className="mt-2 text-xs font-medium text-muted-foreground">{t('partner.verifyBadge')}</p>
       </div>
       <FormAlert>{message}</FormAlert>
-      <form onSubmit={handleSubmit} className="space-y-7">
+      <form method="post" onSubmit={handleSubmit} className="space-y-7">
         <div className="flex flex-col items-center">
           <InputOTP
             maxLength={6}
