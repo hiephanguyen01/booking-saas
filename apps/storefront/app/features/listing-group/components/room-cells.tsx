@@ -2,6 +2,7 @@ import type { AttributeField, HourlySlot } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Check, Clock3, MapPin } from 'lucide-react';
 import { PendingLink } from '~/components/pending-link';
+import { SalePrice } from '~/components/sale-price';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import { hoursBetween } from '~/lib/time';
@@ -84,7 +85,13 @@ export function RoomPrice({
   const selectedHours = option.start && option.end ? hoursBetween(option.start, option.end) : null;
   return (
     <div className="flex flex-col gap-1">
-      <strong className="text-xl text-primary">{formatVnd(option.price)}</strong>
+      <strong className="text-xl text-primary">
+        {option.quote ? (
+          <SalePrice price={option.quote.subtotal} regularPrice={option.quote.regularSubtotal} />
+        ) : (
+          formatVnd(option.price)
+        )}
+      </strong>
       <span className="text-muted-foreground">
         {mode === 'hourly'
           ? selectedHours
