@@ -61,7 +61,9 @@ export function DayCell({
   const displayedCampaign = campaignPresentationOf(rules, mode);
   const campaignActive = campaign.state === 'running' && campaign.salePrice !== null;
   const displayedSaleActive =
-    displayedCampaign.state === 'running' && displayedCampaign.salePrice !== null;
+    rules.length === 1 &&
+    displayedCampaign.state === 'running' &&
+    displayedCampaign.salePrice !== null;
   // With several windows on one day a single number is a misread — show the
   // cheapest and say how many there are.
   const multiple = rules.length > 1;

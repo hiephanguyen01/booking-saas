@@ -78,6 +78,8 @@ export function RangeDialog({
   const [acknowledged, setAcknowledged] = useState(false);
   const [windowsValid, setWindowsValid] = useState(true);
   const [regularPrice, setRegularPrice] = useState('');
+  const [windowFrom, setWindowFrom] = useState('08:00');
+  const [windowTo, setWindowTo] = useState('09:00');
   const [salePrice, setSalePrice] = useState('');
   const [saleEnabled, setSaleEnabled] = useState(false);
   const [campaign, setCampaign] = useState<SaleCampaignValue>({
@@ -92,6 +94,8 @@ export function RangeDialog({
     setAcknowledged(false);
     setWindowsValid(true);
     setRegularPrice('');
+    setWindowFrom('08:00');
+    setWindowTo('09:00');
     setSalePrice('');
     setSaleEnabled(false);
     setCampaign({ startDate: '', endDate: '', label: '' });
@@ -253,7 +257,8 @@ export function RangeDialog({
                             id="range-price-from"
                             name="windowFrom"
                             type="time"
-                            defaultValue="08:00"
+                            value={windowFrom}
+                            onChange={(event) => setWindowFrom(event.target.value)}
                             required
                           />
                         </div>
@@ -263,7 +268,8 @@ export function RangeDialog({
                             id="range-price-to"
                             name="windowTo"
                             type="time"
-                            defaultValue="09:00"
+                            value={windowTo}
+                            onChange={(event) => setWindowTo(event.target.value)}
                             required
                           />
                         </div>
@@ -332,7 +338,7 @@ export function RangeDialog({
                       regularPrice={regularPrice}
                       salePrice={salePrice}
                       campaignLabel={campaign.label}
-                      ruleScopeDescription={`${dates.length} ngày · ${mode === 'hourly' ? 'khung giờ đã chọn mỗi ngày' : 'cả ngày'}`}
+                      ruleScopeDescription={`${dates.length} ngày · ${mode === 'hourly' ? `${windowFrom}–${windowTo} mỗi ngày` : 'cả ngày'}`}
                       startDate={campaign.startDate}
                       endDate={campaign.endDate}
                     />

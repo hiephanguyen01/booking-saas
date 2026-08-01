@@ -79,6 +79,8 @@ export function DayDialog({
   // Controlled so the campaign fields can appear the moment a sale is entered.
   const [salePrice, setSalePrice] = useState('');
   const [regularPrice, setRegularPrice] = useState('');
+  const [windowFrom, setWindowFrom] = useState('08:00');
+  const [windowTo, setWindowTo] = useState('09:00');
   const [saleEnabled, setSaleEnabled] = useState(false);
   const [campaign, setCampaign] = useState<SaleCampaignValue>({
     startDate: '',
@@ -88,6 +90,8 @@ export function DayDialog({
 
   // A new date is a new decision: never carry the previous day's confirmation
   // or its "closed" choice into it.
+  const initialWindowFrom = presetWindow?.from ?? openWindows[0]?.from ?? '08:00';
+  const initialWindowTo = presetWindow?.to ?? openWindows[0]?.to ?? '09:00';
   useEffect(() => {
     setNotice(null);
     setSetting(exception?.type ?? 'default');
@@ -95,6 +99,8 @@ export function DayDialog({
     setWindowsValid(true);
     const rule = mode === 'daily' ? rules[0] : undefined;
     setRegularPrice(rule?.price ?? '');
+    setWindowFrom(initialWindowFrom);
+    setWindowTo(initialWindowTo);
     setSalePrice(rule?.salePrice ?? '');
     setSaleEnabled(Boolean(rule?.salePrice));
     setCampaign({
@@ -102,7 +108,7 @@ export function DayDialog({
       endDate: campaignEndDate(rule?.saleEndsAt) ?? '',
       label: rule?.campaignLabel ?? '',
     });
-  }, [date, exception?.type, mode, rules]);
+  }, [date, exception?.type, initialWindowFrom, initialWindowTo, mode, rules]);
 
   const exceptionWindows = (exception?.windows ?? []).map((window) => ({
     open: window.openTime,
@@ -353,7 +359,8 @@ export function DayDialog({
                             id="price-from"
                             name="from"
                             type="time"
-                            defaultValue={presetWindow?.from ?? openWindows[0]?.from ?? '08:00'}
+                            value={windowFrom}
+                            onChange={(event) => setWindowFrom(event.target.value)}
                             required
                           />
                         </div>
@@ -363,7 +370,8 @@ export function DayDialog({
                             id="price-to"
                             name="to"
                             type="time"
-                            defaultValue={presetWindow?.to ?? openWindows[0]?.to ?? '09:00'}
+                            value={windowTo}
+                            onChange={(event) => setWindowTo(event.target.value)}
                             required
                           />
                         </div>
@@ -435,7 +443,7 @@ export function DayDialog({
                       ruleScopeDescription={
                         mode === 'daily'
                           ? `${formatDayLong(date)} · cả ngày`
-                          : `${formatDayLong(date)} · ${presetWindow ? `${presetWindow.from}–${presetWindow.to}` : 'khung giờ đã chọn'}`
+                          : `${formatDayLong(date)} · ${windowFrom}–${windowTo}`
                       }
                       startDate={campaign.startDate}
                       endDate={campaign.endDate}

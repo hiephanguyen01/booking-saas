@@ -127,13 +127,51 @@ export function campaignRulesForCell(
   rules: PricingRuleResponse[],
 ): PricingRuleResponse[] {
   if (mode === 'daily') return pricingRulesForCell(date, mode, rules);
-  return rules.filter(
+  const candidates = rules.filter(
     (rule) =>
       rule.bookingMode === mode &&
       (dateMatches(rule, date) ||
         ((rule.ruleType === 'day_of_week' || rule.ruleType === 'time_range') &&
           recurringDays(rule).includes(weekday(date)))),
   );
+  const spans = candidates.flatMap((rule) => {
+    const span = hourlyRuleSpan(rule);
+    return span ? [{ rule, ...span }] : [];
+  });
+  const boundaries = [...new Set(spans.flatMap(({ from, to }) => [from, to]))].sort(
+    (a, b) => a - b,
+  );
+  const effective = new Set<PricingRuleResponse>();
+
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const segmentStart = boundaries[index];
+    const winner = spans
+      .filter(({ from, to }) => segmentStart >= from && segmentStart < to)
+      .reduce<PricingRuleResponse | undefined>(
+        (best, { rule }) => (!best || rule.priority > best.priority ? rule : best),
+        undefined,
+      );
+    if (winner) effective.add(winner);
+  }
+
+  return candidates.filter((rule) => effective.has(rule));
+}
+
+function minuteOfClock(value: unknown): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(value));
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function hourlyRuleSpan(rule: PricingRuleResponse): { from: number; to: number } | null {
+  if (rule.ruleType === 'day_of_week') return { from: 0, to: 24 * 60 };
+  if (rule.ruleType !== 'time_range' && rule.ruleType !== 'date_time_range') return null;
+  const from = minuteOfClock(rule.params.from);
+  const to = minuteOfClock(rule.params.to);
+  return from !== null && to !== null && from < to ? { from, to } : null;
 }
 
 /** Is a repeating rule in force on this date, whatever the cell shows? */
