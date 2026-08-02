@@ -120,21 +120,6 @@ export class PrismaAvailabilityExceptionRepository implements IAvailabilityExcep
     await tx.availabilityException.delete({ where: { id } });
   }
 
-  async deleteInRange(
-    tx: PrismaTx,
-    resourceId: string,
-    from: string,
-    to: string,
-  ): Promise<number> {
-    const { count } = await tx.availabilityException.deleteMany({
-      where: {
-        resourceId,
-        date: { gte: new Date(`${from}T00:00:00Z`), lte: new Date(`${to}T00:00:00Z`) },
-      },
-    });
-    return count;
-  }
-
   async findById(tx: PrismaTx, id: string): Promise<AvailabilityExceptionRecord | null> {
     const e = await tx.availabilityException.findUnique({ where: { id } });
     return e ? toRecord(e) : null;
