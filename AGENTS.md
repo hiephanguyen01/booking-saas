@@ -136,9 +136,7 @@ pnpm dev                                               # api :3000, storefront :
 | **BookingStad** | sport | `bookingstad.stg.bookingos.vn` | `bookingstad.localhost` | 5 court types (bóng đá, bóng rổ, tennis, cầu lông, pickleball), 40 courts |
 
 BookingStad's subscription is a **trial expiring in 5 days** on purpose — it is what fills the admin
-board's "expiring soon" queue. The rolling trial dates are refreshed only by the full demo seed;
-`SEED_SCOPE=tenants` preserves an existing operational subscription. `trial` is a billable status, so
-every partner/booking flow still works.
+board's "expiring soon" queue. `trial` is a billable status, so every partner/booking flow still works.
 
 Seeded logins (override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`):
 

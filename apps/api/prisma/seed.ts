@@ -52,7 +52,7 @@ async function main() {
   await seedStudioDemo(studio);
   await seedSportDemo(stad);
   console.log(
-    `Seeded 2 demo tenants: "${studio.tenant.name}" (studio — 6 listing types, 121 listings, weekday/weekend peak pricing with a 14-day sale, checkout promotions including WELCOME10, booking-history fixtures covering 5 UI states, 1 overdue payout, 1 webhook failure, affiliate affiliate@bookingstudio.vn / R-DEMO01) and "${stad.tenant.name}" (sport — 5 court types, 40 courts, weekday/weekend peak pricing with a 14-day sale, trial expiring soon).`,
+    `Seeded 2 demo tenants: "${studio.tenant.name}" (studio — 6 listing types, 121 listings, commission rules, WELCOME10, booking-history fixtures covering 5 UI states, 1 overdue payout, 1 webhook failure, affiliate affiliate@bookingstudio.vn / R-DEMO01) and "${stad.tenant.name}" (sport — 5 court types, 40 courts, peak-hour pricing, trial expiring soon).`,
   );
 }
 

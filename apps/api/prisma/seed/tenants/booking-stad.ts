@@ -1,12 +1,10 @@
 import argon2 from 'argon2';
 import type { Locale, ThemeConfigInput } from '@booking/contracts';
 import { prisma } from '../client';
-import { reconcileSeedDomains } from '../domains';
 import { ensure, ensureRoleAssignment } from '../shared';
 import { seedSportCatalogTypes } from '../catalog/sport-catalog';
 import { publishTenantLegalDocuments, seedTenantLegalDrafts } from '../legal';
 import { ownerPassword, type SeedScope } from '../scope';
-import { reconcileBookingStadTrial } from '../subscriptions';
 import type { TenantSetup } from './booking-studio';
 
 /**
@@ -67,22 +65,29 @@ export async function seedBookingStad(input: {
     },
   });
 
-  await reconcileSeedDomains({
-    tenantId: tenant.id,
-    domains: [
-      { hostname: 'bookingstad.stg.bookingos.vn', isPrimary: true },
-      { hostname: 'bookingstad.localhost', isPrimary: false },
-    ],
-    restoreCanonicalPrimary: input.scope === 'full',
-  });
+  for (const [hostname, isPrimary] of [
+    ['bookingstad.stg.bookingos.vn', true],
+    ['bookingstad.localhost', false],
+  ] as const) {
+    await prisma.tenantDomain.upsert({
+      where: { hostname },
+      update: {},
+      create: { tenantId: tenant.id, hostname, isPrimary, verifiedAt: new Date() },
+    });
+  }
 
-  await reconcileBookingStadTrial({
-    tenantId: tenant.id,
-    planId: input.planId,
-    scope: input.scope,
-    startsAt: input.trialStartsAt,
-    expiresAt: input.trialExpiresAt,
-  });
+  if (!(await prisma.tenantSubscription.findFirst({ where: { tenantId: tenant.id } }))) {
+    await prisma.tenantSubscription.create({
+      data: {
+        tenantId: tenant.id,
+        planId: input.planId,
+        status: 'trial',
+        startsAt: input.trialStartsAt,
+        expiresAt: input.trialExpiresAt,
+        note: 'Trial expiring soon',
+      },
+    });
+  }
 
   // BookingStad gets its OWN owner — never reuse BookingStudio's, or that account
   // would belong to two tenants and the dashboard (one tenant scope per session)
