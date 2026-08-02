@@ -23,7 +23,14 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
   const areas = dashboardAreasFor(info, location.pathname);
   const activeNavPath = areas
     .flatMap((area) => area.items)
-    .filter((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))
+    .filter(
+      (item) =>
+        location.pathname === item.to ||
+        location.pathname.startsWith(`${item.to}/`) ||
+        item.activePrefixes?.some(
+          (prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`),
+        ),
+    )
     .sort((left, right) => right.to.length - left.to.length)[0]?.to;
   const membership = activeTenantMembership(info, location.pathname);
   const appIconUrl =
@@ -39,12 +46,7 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
         <div className="flex items-center gap-2 px-2 py-1.5">
           <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground">
             {appIconUrl ? (
-              <Image
-                src={appIconUrl}
-                alt=""
-                loading="eager"
-                className="size-full object-contain"
-              />
+              <Image src={appIconUrl} alt="" loading="eager" className="size-full object-contain" />
             ) : (
               <CalendarCheck2 className="size-5" />
             )}

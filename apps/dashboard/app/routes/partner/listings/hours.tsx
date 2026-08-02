@@ -13,6 +13,7 @@ import type { Route } from './+types/hours';
 import { apiGet, apiPut } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
+import { dashboardPaths } from '~/constants/paths';
 import { BackLink } from '~/components/back-link';
 import { FormActions, FormSurface, Section } from '~/components/form-layout';
 import { PageHeader } from '~/components/page-header';
@@ -110,7 +111,11 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
     <div className="space-y-5" aria-busy={saving}>
       <div>
         <BackLink
-          to={listing.groupId ? `/partner/listing-groups/${listing.groupId}` : '/partner/listings'}
+          to={
+            listing.groupId
+              ? dashboardPaths.partner.listingGroup(listing.groupId)
+              : dashboardPaths.partner.listing(listing.id)
+          }
           label="Tin đăng"
           className="mb-2"
         />
@@ -194,9 +199,7 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
                                 onClick={() =>
                                   setDay(
                                     day.dow,
-                                    windows.filter(
-                                      (_, currentIndex) => currentIndex !== index,
-                                    ),
+                                    windows.filter((_, currentIndex) => currentIndex !== index),
                                   )
                                 }
                                 aria-label={`Xoá khung giờ ${index + 1} của ${day.label}`}
@@ -205,13 +208,9 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
                               </Button>
                             </div>
                             {!isValidWindow(window) ? (
-                              <p className="text-xs text-destructive">
-                                Giờ đóng phải sau giờ mở
-                              </p>
+                              <p className="text-xs text-destructive">Giờ đóng phải sau giờ mở</p>
                             ) : clashes.has(index) ? (
-                              <p className="text-xs text-destructive">
-                                Trùng với khung giờ khác
-                              </p>
+                              <p className="text-xs text-destructive">Trùng với khung giờ khác</p>
                             ) : null}
                           </div>
                         ))}

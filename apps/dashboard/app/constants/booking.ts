@@ -7,15 +7,14 @@ import type { BookingMode, BookingStatus } from '@booking/contracts';
 /**
  * Booking-mode → Vietnamese label — the ONE map for the whole dashboard.
  * Keyed by the `BookingMode` zod enum so a new mode is a compile error here.
- * `inventory` reads "Theo kho" (by stock — the equipment-rental mode); this is
- * the canonical wording, replacing the former "Cho thuê"/"Kho" variants.
+ * `inventory` is presented in partner-facing language as quantity-based rental.
  */
 export const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
   hourly: 'Theo giờ',
   daily: 'Theo ngày',
   appointment: 'Lịch hẹn',
   class: 'Lớp học',
-  inventory: 'Theo kho',
+  inventory: 'Theo số lượng',
 };
 
 /** Additional-charge type → Vietnamese label (§8.3). */

@@ -13,6 +13,8 @@ export interface DashboardNavItem {
   permission?: string;
   /** Show the item when the user holds at least one of these permissions. */
   anyPermissions?: string[];
+  /** Additional route prefixes that should keep this item highlighted. */
+  activePrefixes?: string[];
 }
 
 /**

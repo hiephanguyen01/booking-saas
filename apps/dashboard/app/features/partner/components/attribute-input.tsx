@@ -126,31 +126,19 @@ function SortableListAttribute({
   const inputRefs = React.useRef(new Map<string, HTMLInputElement>());
   const lastEmitted = React.useRef(externalSignature);
   const createId = React.useCallback(() => `${idSeed}-list-row-${nextId.current++}`, [idSeed]);
-  /**
-   * The editor always shows at least one row: an empty list would otherwise
-   * render as a bare "Thêm giá trị" button, hiding that the attribute is
-   * editable. A blank row emits nothing, so the submitted value stays empty.
-   */
-  const withLeadingRow = React.useCallback(
-    (nextRows: EditableListRow[]) =>
-      nextRows.length > 0 ? nextRows : [{ id: createId(), value: '' }],
-    [createId],
-  );
   const [rows, setRows] = React.useState<EditableListRow[]>(() =>
-    withLeadingRow(externalLines.map((line) => ({ id: createId(), value: line }))),
+    externalLines.map((line) => ({ id: createId(), value: line })),
   );
 
   React.useEffect(() => {
     if (externalSignature === lastEmitted.current) return;
     lastEmitted.current = externalSignature;
     setRows((current) =>
-      withLeadingRow(
-        externalLines.map((line, index) =>
-          current[index]?.value === line ? current[index] : { id: createId(), value: line },
-        ),
+      externalLines.map((line, index) =>
+        current[index]?.value === line ? current[index] : { id: createId(), value: line },
       ),
     );
-  }, [createId, externalLines, externalSignature, withLeadingRow]);
+  }, [createId, externalLines, externalSignature]);
 
   const emit = (nextRows: EditableListRow[]) => {
     const nextValue = nextRows.map((row) => row.value).filter((line) => line.trim() !== '');
@@ -167,7 +155,7 @@ function SortableListAttribute({
   };
 
   const remove = (index: number) => {
-    const nextRows = withLeadingRow(rows.filter((_, current) => current !== index));
+    const nextRows = rows.filter((_, current) => current !== index);
     setRows(nextRows);
     emit(nextRows);
   };
@@ -196,6 +184,12 @@ function SortableListAttribute({
   return (
     <Field label={label} icon={icon}>
       <div className="space-y-2">
+        {rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
+            Chưa có {label.toLocaleLowerCase('vi')}. Chỉ thêm những thông tin giúp khách đưa ra
+            quyết định.
+          </div>
+        ) : null}
         <SortableCollection onMove={move} announcementLabel="Giá trị">
           <div className="space-y-2">
             {rows.map((row, index) => (

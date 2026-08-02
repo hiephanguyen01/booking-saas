@@ -14,9 +14,11 @@ type AddressValues = FieldValues & {
 export function AdministrativeAddressFields<T extends AddressValues>({
   form,
   embedded = false,
+  disabled = false,
 }: {
   form: UseFormReturn<T>;
   embedded?: boolean;
+  disabled?: boolean;
 }) {
   const provincesFetcher = useFetcher<{ provinces: AdministrativeProvince[] }>();
   const wardsFetcher = useFetcher<{ provinceCode: string; wards: AdministrativeWard[] }>();
@@ -56,6 +58,7 @@ export function AdministrativeAddressFields<T extends AddressValues>({
             type: 'combobox',
             label: 'Tỉnh / Thành phố',
             required: true,
+            disabled,
             placeholder:
               provincesFetcher.state !== 'idle' ? 'Đang tải...' : 'Chọn tỉnh / thành phố',
             searchPlaceholder: 'Tìm tỉnh / thành phố...',
@@ -71,7 +74,7 @@ export function AdministrativeAddressFields<T extends AddressValues>({
             type: 'combobox',
             label: 'Phường / Xã / Đặc khu',
             required: true,
-            disabled: !provinceCode || wardsFetcher.state !== 'idle',
+            disabled: disabled || !provinceCode || wardsFetcher.state !== 'idle',
             placeholder:
               wardsFetcher.state !== 'idle'
                 ? 'Đang tải phường / xã...'
@@ -89,6 +92,7 @@ export function AdministrativeAddressFields<T extends AddressValues>({
               type: 'text',
               label: 'Địa chỉ cụ thể',
               required: true,
+              disabled,
               placeholder: 'Số nhà, tên đường...',
             }}
           />

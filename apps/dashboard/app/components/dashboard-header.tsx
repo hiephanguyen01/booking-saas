@@ -17,7 +17,17 @@ const LABELS: Record<string, string> = Object.fromEntries(
   DASHBOARD_AREAS.map((area) => [area.basePath.replace(/^\//, ''), area.title]),
 );
 
+Object.assign(LABELS, {
+  partner: 'Đối tác',
+  listings: 'Tin đăng',
+  'listing-groups': 'Tin nhiều hạng mục',
+  new: 'Tạo mới',
+  edit: 'Chỉnh sửa',
+  hours: 'Giờ hoạt động',
+});
+
 function humanize(segment: string): string {
+  if (/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(segment)) return 'Chi tiết';
   return LABELS[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
 }
 

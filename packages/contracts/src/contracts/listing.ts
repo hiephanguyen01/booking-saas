@@ -20,7 +20,7 @@ import {
 } from './administrative-division';
 
 /** VND đồng as a digit string — money never travels as a JS number. */
-const vndAmountSchema = z.string().regex(/^\d+$/, 'Must be an integer VND amount in đồng');
+const vndAmountSchema = z.string().regex(/^\d+$/, 'Vui lòng nhập số tiền VND hợp lệ');
 const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM (24h)');
 const dateStringSchema = z
   .string()
@@ -49,25 +49,31 @@ export type PricingRuleType = z.infer<typeof pricingRuleTypeSchema>;
 
 const packageBaseSchema = z.object({
   id: uuidSchema,
-  name: z.string().trim().min(1).max(120),
-  description: z.string().trim().max(1000).optional(),
-  price: vndAmountSchema.refine((value) => BigInt(value) > 0n, 'Package price must be positive'),
+  name: z.string().trim().min(1, 'Vui lòng nhập tên gói').max(120, 'Tên gói tối đa 120 ký tự'),
+  description: z.string().trim().max(1000, 'Mô tả gói tối đa 1.000 ký tự').optional(),
+  price: vndAmountSchema.refine((value) => BigInt(value) > 0n, 'Giá gói phải lớn hơn 0'),
   photos: z
     .array(z.string().url())
-    .max(8, 'A package can have at most 8 photos')
-    .refine((photos) => new Set(photos).size === photos.length, 'Package photos must be unique')
+    .max(8, 'Mỗi gói có tối đa 8 ảnh')
+    .refine((photos) => new Set(photos).size === photos.length, 'Ảnh trong gói không được trùng')
     .default([]),
   isActive: z.boolean().default(true),
   sortOrder: z.number().int().nonnegative().default(0),
 });
 
 export const hourlyPackageSchema = packageBaseSchema.extend({
-  durationMinutes: z.number().int().positive(),
+  durationMinutes: z
+    .number()
+    .int('Thời lượng phải là số phút nguyên')
+    .positive('Thời lượng phải lớn hơn 0'),
 });
 export type HourlyPackage = z.infer<typeof hourlyPackageSchema>;
 
 export const dailyPackageSchema = packageBaseSchema.extend({
-  durationDays: z.number().int().positive(),
+  durationDays: z
+    .number()
+    .int('Thời lượng phải là số ngày nguyên')
+    .positive('Thời lượng phải lớn hơn 0'),
 });
 export type DailyPackage = z.infer<typeof dailyPackageSchema>;
 
@@ -83,7 +89,7 @@ function uniquePackageIds(packages: ReadonlyArray<{ id: string }>, ctx: z.Refine
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['packages'],
-      message: 'Package IDs must be unique within a booking mode',
+      message: 'Mỗi gói dịch vụ phải có mã riêng',
     });
   }
 }
@@ -92,10 +98,10 @@ export const hourlyModeConfigSchema = z
   .object({
     basePrice: vndAmountSchema.optional(),
     packages: z.array(hourlyPackageSchema).default([]),
-    minDuration: z.number().int().positive().optional(),
-    maxDuration: z.number().int().positive().optional(),
-    granularity: z.number().int().positive().default(60),
-    leadTimeMin: z.number().int().nonnegative().default(0),
+    minDuration: z.number().int().positive('Thời lượng tối thiểu phải lớn hơn 0').optional(),
+    maxDuration: z.number().int().positive('Thời lượng tối đa phải lớn hơn 0').optional(),
+    granularity: z.number().int().positive('Bước thời gian phải lớn hơn 0').default(60),
+    leadTimeMin: z.number().int().nonnegative('Thời gian đặt trước không được âm').default(0),
   })
   .superRefine((c, ctx) => {
     if (
@@ -106,7 +112,7 @@ export const hourlyModeConfigSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['maxDuration'],
-        message: 'maxDuration must be ≥ minDuration',
+        message: 'Thời lượng tối đa phải lớn hơn hoặc bằng thời lượng tối thiểu',
       });
     }
     uniquePackageIds(c.packages, ctx);
@@ -115,7 +121,7 @@ export const hourlyModeConfigSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['packages', index, 'durationMinutes'],
-          message: 'Package duration must be a multiple of hourly granularity',
+          message: 'Thời lượng gói phải là bội số của bước thời gian đặt',
         });
       }
     }
@@ -125,18 +131,18 @@ export const dailyModeConfigSchema = z
   .object({
     basePricePerNight: vndAmountSchema.optional(),
     packages: z.array(dailyPackageSchema).default([]),
-    minNights: z.number().int().positive().optional(),
-    maxNights: z.number().int().positive().optional(),
+    minNights: z.number().int().positive('Số đêm tối thiểu phải lớn hơn 0').optional(),
+    maxNights: z.number().int().positive('Số đêm tối đa phải lớn hơn 0').optional(),
     checkinTime: timeStringSchema.default('14:00'),
     checkoutTime: timeStringSchema.default('12:00'),
-    leadTimeMin: z.number().int().nonnegative().default(0),
+    leadTimeMin: z.number().int().nonnegative('Thời gian đặt trước không được âm').default(0),
   })
   .superRefine((c, ctx) => {
     if (c.maxNights !== undefined && c.minNights !== undefined && c.maxNights < c.minNights) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['maxNights'],
-        message: 'maxNights must be ≥ minNights',
+        message: 'Số đêm tối đa phải lớn hơn hoặc bằng số đêm tối thiểu',
       });
     }
     uniquePackageIds(c.packages, ctx);
@@ -144,10 +150,10 @@ export const dailyModeConfigSchema = z
 
 export const inventoryModeConfigSchema = z.object({
   unit: z.enum(['hour', 'day']),
-  basePrice: vndAmountSchema,
+  basePrice: vndAmountSchema.refine((value) => BigInt(value) > 0n, 'Giá thuê phải lớn hơn 0'),
   securityDeposit: vndAmountSchema.default('0'),
-  minDuration: z.number().int().positive().optional(),
-  maxDuration: z.number().int().positive().optional(),
+  minDuration: z.number().int().positive('Thời lượng thuê tối thiểu phải lớn hơn 0').optional(),
+  maxDuration: z.number().int().positive('Thời lượng thuê tối đa phải lớn hơn 0').optional(),
   /** Late-return fee per overdue unit per item (§9.4); defaults to basePrice. */
   lateFeePerUnit: vndAmountSchema.optional(),
 });
@@ -178,7 +184,7 @@ export const listingGroupAmenitiesSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [index, 'label'],
-          message: 'Amenity labels must be unique',
+          message: 'Tên tiện ích không được trùng nhau',
         });
       }
       labels.add(normalized);
@@ -189,11 +195,11 @@ export const createListingGroupInputSchema = z
   .object({
     partnerId: uuidSchema,
     listingTypeId: uuidSchema,
-    title: z.string().min(1).max(200),
+    title: z.string().trim().min(1, 'Vui lòng nhập tên tin đăng').max(200, 'Tên tối đa 200 ký tự'),
     /** Optional on create: the API generates a stable public slug when omitted. */
     slug: slugSchema.optional(),
-    description: z.string().max(5000).optional(),
-    workingArea: z.string().max(200).optional(),
+    description: z.string().max(5000, 'Mô tả tối đa 5.000 ký tự').optional(),
+    workingArea: z.string().max(200, 'Khu vực hoạt động tối đa 200 ký tự').optional(),
     amenities: listingGroupAmenitiesSchema.default([]),
     photos: z.array(z.string().url()).default([]),
   })
@@ -210,19 +216,24 @@ const listingBaseSchema = z
     groupId: uuidSchema.optional(),
     categoryId: uuidSchema.optional(),
     resourceId: uuidSchema.optional(),
-    title: z.string().min(1).max(200),
+    title: z.string().trim().min(1, 'Vui lòng nhập tên bài đăng').max(200, 'Tên tối đa 200 ký tự'),
     slug: slugSchema,
-    description: z.string().max(5000).optional(),
+    description: z.string().max(5000, 'Mô tả tối đa 5.000 ký tự').optional(),
     photos: z.array(z.string().url()).default([]),
     attributes: z.record(z.unknown()).default({}),
-    bookingModes: z.array(bookingModeSchema).min(1),
+    bookingModes: z.array(bookingModeSchema).min(1, 'Vui lòng chọn ít nhất một hình thức đặt'),
     modeConfig: modeConfigSchema,
-    stockQuantity: z.number().int().positive().optional(),
-    capacity: z.number().int().positive().optional(),
-    bufferBefore: z.number().int().nonnegative().default(0),
-    bufferAfter: z.number().int().nonnegative().default(0),
+    stockQuantity: z.number().int().positive('Số lượng cho thuê phải lớn hơn 0').optional(),
+    capacity: z.number().int().positive('Sức chứa phải lớn hơn 0').optional(),
+    bufferBefore: z.number().int().nonnegative('Thời gian đệm không được âm').default(0),
+    bufferAfter: z.number().int().nonnegative('Thời gian đệm không được âm').default(0),
     approvalRequired: z.boolean().default(false),
-    depositPercent: z.number().int().min(0).max(100).default(100),
+    depositPercent: z
+      .number()
+      .int('Tỷ lệ đặt cọc phải là số nguyên')
+      .min(0, 'Tỷ lệ đặt cọc không được âm')
+      .max(100, 'Tỷ lệ đặt cọc không được vượt quá 100%')
+      .default(100),
     balanceDue: balanceDueSchema.default('online_before'),
     cancellationPolicyId: uuidSchema.optional(),
   })
@@ -240,7 +251,7 @@ const modeConfigCoversModes = (
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['modeConfig'],
-        message: `modeConfig.${mode} is required for enabled mode "${mode}"`,
+        message: `Vui lòng hoàn tất cấu hình cho hình thức đặt ${mode}`,
       });
     }
   }
@@ -248,7 +259,7 @@ const modeConfigCoversModes = (
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['stockQuantity'],
-      message: 'stockQuantity is required for inventory mode',
+      message: 'Vui lòng nhập số lượng có thể cho thuê',
     });
   }
 };

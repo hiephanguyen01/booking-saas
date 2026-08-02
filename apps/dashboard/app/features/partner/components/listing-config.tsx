@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { CreateListingInput, ListingResponse, ListingTypeResponse } from '@booking/contracts';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
+import { cn } from '@booking/ui/lib/utils';
 import type { UseFormReturn } from '@booking/ui/components/form/rhf';
 import {
   Select,
@@ -17,6 +18,12 @@ import { CONFIGURABLE, useListingModeState } from './use-listing-mode-state';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { INVENTORY_UNIT_LABEL } from '~/constants/listing';
 import type { DynamicState } from '../lib/listing-mode-config';
+
+const BOOKING_MODE_HELP = {
+  hourly: 'Khách chọn ngày, giờ bắt đầu và thời lượng.',
+  daily: 'Khách chọn ngày nhận và ngày trả.',
+  inventory: 'Khách chọn số lượng và thời gian thuê.',
+} as const;
 
 /**
  * The dynamic block of the listing form: booking-mode selection, per-mode
@@ -78,14 +85,29 @@ export function ListingConfig({
             Chọn loại dịch vụ để xem hình thức khả dụng.
           </p>
         ) : (
-          <div className="flex flex-wrap gap-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {allowedModes.map((m) => (
-              <label key={m} className="flex items-center gap-2 text-sm">
+              <label
+                key={m}
+                className={cn(
+                  'flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors',
+                  state.bookingModes.includes(m)
+                    ? 'border-primary/40 bg-primary/5'
+                    : 'bg-background hover:bg-muted/30',
+                  allowedModes.length === 1 && 'cursor-default',
+                )}
+              >
                 <Checkbox
                   checked={state.bookingModes.includes(m)}
+                  disabled={allowedModes.length === 1}
                   onCheckedChange={(v) => toggleMode(m, v === true)}
                 />
-                {BOOKING_MODE_LABEL[m]}
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{BOOKING_MODE_LABEL[m]}</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    {BOOKING_MODE_HELP[m as keyof typeof BOOKING_MODE_HELP]}
+                  </span>
+                </span>
               </label>
             ))}
           </div>
@@ -289,7 +311,10 @@ function InventoryConfigSection({
 }) {
   const unitLower = INVENTORY_UNIT_LABEL[value.unit].toLowerCase();
   return (
-    <ConfigSection title="Cấu hình — theo kho">
+    <ConfigSection
+      title="Giá và số lượng cho thuê"
+      description="Thiết lập đơn vị tính, giá thuê, tồn kho và các khoản bảo đảm."
+    >
       <Grid>
         <Field label="Đơn vị">
           <Select

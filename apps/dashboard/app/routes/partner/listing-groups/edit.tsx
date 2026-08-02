@@ -15,6 +15,7 @@ import { applyRevisionDiff } from '~/features/partner/lib/listing-revision';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
+import { dashboardPaths } from '~/constants/paths';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
@@ -56,7 +57,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           { status: 400 },
         );
       }
-      return redirect(`/partner/listing-groups/${params.groupId}/edit`);
+      return redirect(dashboardPaths.partner.listingGroupEdit(params.groupId));
     }
     return data({ error: 'Yêu cầu không hợp lệ.', fieldErrors: null }, { status: 400 });
   }
@@ -73,7 +74,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       { error: res.error ?? 'Lưu không thành công.', fieldErrors: res.errors ?? null },
       { status: 400 },
     );
-  return redirect(`/partner/listing-groups/${params.groupId}`);
+  return redirect(`${dashboardPaths.partner.listingGroup(params.groupId)}?updated=1`);
 }
 
 export default function EditListingGroupPage({ loaderData, actionData }: Route.ComponentProps) {
@@ -82,7 +83,11 @@ export default function EditListingGroupPage({ loaderData, actionData }: Route.C
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <BackLink to={`/partner/listing-groups/${group.id}`} label="Tin đăng" className="mb-2" />
+        <BackLink
+          to={dashboardPaths.partner.listingGroup(group.id)}
+          label="Tin đăng"
+          className="mb-2"
+        />
         <PageHeader title="Sửa thông tin chung" description={group.title} />
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">

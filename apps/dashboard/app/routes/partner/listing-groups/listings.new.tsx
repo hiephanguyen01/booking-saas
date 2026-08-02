@@ -3,6 +3,7 @@ import {
   createListingInputSchema,
   type CancellationPolicyResponse,
   type ListingGroupDetailResponse,
+  type ListingResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
 import type { Route } from './+types/listings.new';
@@ -11,8 +12,10 @@ import { requirePartner } from '~/features/partner/server/partner.server';
 import { ListingForm } from '~/features/partner/components/listing-form';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
+import { dashboardPaths } from '~/constants/paths';
+import { SuccessBanner } from '~/components/action-feedback';
 
-export async function loader({ request, params }: Route.LoaderArgs) {
+export async function loader({ request, params, url }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [groupRes, typesRes, policiesRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
@@ -32,15 +35,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     listingType,
     cancellationPolicies: policiesRes.data ?? [],
     partnerId: membership.partnerId,
+    created: url.searchParams.get('created') === '1',
   };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { auth, membership } = await requirePartner(request);
-  const parsed = createListingInputSchema.safeParse(await request.json());
+  const body = (await request.json()) as Record<string, unknown>;
+  const next = body.next === 'add-another' ? 'add-another' : 'group';
+  const parsed = createListingInputSchema.safeParse(body);
   if (!parsed.success)
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
-  const res = await apiPost(
+  const res = await apiPost<ListingResponse>(
     '/partner/listings',
     { ...parsed.data, partnerId: membership.partnerId, groupId: params.groupId },
     auth,
@@ -50,7 +56,11 @@ export async function action({ request, params }: Route.ActionArgs) {
       { error: res.error ?? 'Tạo hạng mục không thành công.', fieldErrors: res.errors ?? null },
       { status: 400 },
     );
-  return redirect(`/partner/listing-groups/${params.groupId}`);
+  return redirect(
+    next === 'add-another'
+      ? `${dashboardPaths.partner.listingGroupItemNew(params.groupId)}?created=1`
+      : `${dashboardPaths.partner.listingGroup(params.groupId)}?created=1`,
+  );
 }
 
 export default function NewGroupedListingPage({ loaderData, actionData }: Route.ComponentProps) {
@@ -59,7 +69,7 @@ export default function NewGroupedListingPage({ loaderData, actionData }: Route.
     <div className="flex flex-col gap-5">
       <div>
         <BackLink
-          to={`/partner/listing-groups/${loaderData.group.id}`}
+          to={dashboardPaths.partner.listingGroup(loaderData.group.id)}
           label={loaderData.group.title}
           className="mb-2"
         />
@@ -68,6 +78,9 @@ export default function NewGroupedListingPage({ loaderData, actionData }: Route.
           description={`Tạo một ${label} mà khách hàng có thể chọn và đặt.`}
         />
       </div>
+      <SuccessBanner
+        message={loaderData.created ? `Đã lưu ${label}. Tiếp tục thêm ${label} khác.` : null}
+      />
       <ListingForm
         listingTypes={[loaderData.listingType]}
         partnerId={loaderData.partnerId}
@@ -76,6 +89,11 @@ export default function NewGroupedListingPage({ loaderData, actionData }: Route.
         cancellationPolicies={loaderData.cancellationPolicies}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
+        inheritedAddress={{
+          provinceCode: loaderData.group.provinceCode ?? '',
+          wardCode: loaderData.group.wardCode ?? '',
+          address: loaderData.group.address ?? '',
+        }}
       />
     </div>
   );

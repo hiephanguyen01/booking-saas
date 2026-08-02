@@ -65,13 +65,16 @@ export function PackageEditor({
       </div>
       <SortableCollection onMove={move} announcementLabel="Gói dịch vụ">
         <div className="space-y-4">
+          {rows.length === 0 ? (
+            <div className="rounded-xl border border-dashed bg-muted/20 px-5 py-6 text-center">
+              <p className="text-sm font-medium">Chưa có gói dịch vụ</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Mỗi gói cần có tên, thời lượng và giá lớn hơn 0 để sẵn sàng gửi duyệt.
+              </p>
+            </div>
+          ) : null}
           {rows.map((row, index) => (
-            <SortableItem
-              key={row.id}
-              id={row.id}
-              index={index}
-              disabled={rows.length < 2}
-            >
+            <SortableItem key={row.id} id={row.id} index={index} disabled={rows.length < 2}>
               {({ itemRef, handleRef, isDragging }) => (
                 <div
                   ref={itemRef}
@@ -90,9 +93,7 @@ export function PackageEditor({
                     <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
                       <Checkbox
                         checked={row.isActive}
-                        onCheckedChange={(checked) =>
-                          update(index, { isActive: checked === true })
-                        }
+                        onCheckedChange={(checked) => update(index, { isActive: checked === true })}
                       />
                       Đang cung cấp
                     </label>
@@ -106,14 +107,23 @@ export function PackageEditor({
                       <Trash2 className="size-4" />
                     </Button>
                   </div>
+                  {row.isActive &&
+                  (!row.name.trim() ||
+                    Number(row.duration) <= 0 ||
+                    !/^\d+$/.test(row.price) ||
+                    BigInt(row.price || '0') <= 0n) ? (
+                    <p className="text-xs text-destructive">
+                      Cần nhập đủ tên gói, thời lượng và giá lớn hơn 0.
+                    </p>
+                  ) : null}
                   <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Tên gói">
+                    <Field label="Tên gói *">
                       <Input
                         value={row.name}
                         onChange={(event) => update(index, { name: event.target.value })}
                       />
                     </Field>
-                    <Field label={durationLabel}>
+                    <Field label={`${durationLabel} *`}>
                       <Input
                         type="number"
                         min={durationStep}
@@ -122,7 +132,7 @@ export function PackageEditor({
                         onChange={(event) => update(index, { duration: event.target.value })}
                       />
                     </Field>
-                    <Field label="Giá gói (VND)">
+                    <Field label="Giá gói (VND) *">
                       <Input
                         type="number"
                         min={1}

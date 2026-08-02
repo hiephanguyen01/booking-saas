@@ -61,11 +61,23 @@ export const dashboardPaths = {
     bookings: partnerPath('/bookings'),
     booking: (bookingId: string) => partnerPath(`/bookings/${segment(bookingId)}`),
     listings: partnerPath('/listings'),
+    listingNew: (listingTypeId?: string, mode?: 'standalone' | 'grouped') => {
+      const base = partnerPath('/listings/new');
+      if (!listingTypeId) return base;
+      const params = new URLSearchParams({ type: listingTypeId });
+      if (mode) params.set('mode', mode);
+      return `${base}?${params.toString()}`;
+    },
     listing: (listingId: string) => partnerPath(`/listings/${segment(listingId)}`),
     listingEdit: (listingId: string) => partnerPath(`/listings/${segment(listingId)}/edit`),
     listingHours: (listingId: string) => partnerPath(`/listings/${segment(listingId)}/hours`),
     listingGroup: (groupId: string) => partnerPath(`/listing-groups/${segment(groupId)}`),
+    listingGroups: partnerPath('/listing-groups'),
     listingGroupEdit: (groupId: string) => partnerPath(`/listing-groups/${segment(groupId)}/edit`),
+    listingGroupItemNew: (groupId: string) =>
+      partnerPath(`/listing-groups/${segment(groupId)}/listings/new`),
+    listingGroupItemEdit: (groupId: string, listingId: string) =>
+      partnerPath(`/listing-groups/${segment(groupId)}/listings/${segment(listingId)}/edit`),
     newListingGroup: (listingTypeId: string) =>
       `${partnerPath('/listing-groups/new')}?type=${segment(listingTypeId)}`,
     cancellationPolicies: partnerPath('/cancellation-policies'),

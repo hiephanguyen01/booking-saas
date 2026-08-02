@@ -15,6 +15,7 @@ import { applyRevisionDiff } from '~/features/partner/lib/listing-revision';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { dashboardPaths } from '~/constants/paths';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
@@ -23,10 +24,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
     apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
-    apiGet<ListingRevisionResponse | null>(
-      `/partner/listings/${params.listingId}/revision`,
-      auth,
-    ),
+    apiGet<ListingRevisionResponse | null>(`/partner/listings/${params.listingId}/revision`, auth),
   ]);
   if (
     !groupRes.ok ||
@@ -65,7 +63,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         );
       }
       return redirect(
-        `/partner/listing-groups/${params.groupId}/listings/${params.listingId}/edit`,
+        dashboardPaths.partner.listingGroupItemEdit(params.groupId, params.listingId),
       );
     }
     return data({ error: 'Yêu cầu không hợp lệ.', fieldErrors: null }, { status: 400 });
@@ -79,7 +77,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       { error: res.error ?? 'Lưu không thành công.', fieldErrors: res.errors ?? null },
       { status: 400 },
     );
-  return redirect(`/partner/listing-groups/${params.groupId}`);
+  return redirect(`${dashboardPaths.partner.listingGroup(params.groupId)}?updated=1`);
 }
 
 export default function EditGroupedListingPage({ loaderData, actionData }: Route.ComponentProps) {
@@ -88,7 +86,7 @@ export default function EditGroupedListingPage({ loaderData, actionData }: Route
     <div className="flex flex-col gap-5">
       <div>
         <BackLink
-          to={`/partner/listing-groups/${loaderData.group.id}`}
+          to={dashboardPaths.partner.listingGroup(loaderData.group.id)}
           label={loaderData.group.title}
           className="mb-2"
         />
@@ -104,6 +102,7 @@ export default function EditGroupedListingPage({ loaderData, actionData }: Route
         cancellationPolicies={loaderData.cancellationPolicies}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
+        mode="edit-workspace"
       />
     </div>
   );

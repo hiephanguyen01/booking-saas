@@ -11,9 +11,38 @@ export function listingFormFields(opts: {
   listingTypes: ListingTypeResponse[];
   isEdit: boolean;
   lockedListingTypeId?: string;
+  selectedListingTypeId?: string;
   minimumDepositPercent?: number | null;
 }): FieldConfig<CreateListingInput>[] {
-  const { listingTypes, isEdit, lockedListingTypeId, minimumDepositPercent } = opts;
+  const {
+    listingTypes,
+    isEdit,
+    lockedListingTypeId,
+    selectedListingTypeId,
+    minimumDepositPercent,
+  } = opts;
+  const selectedType =
+    listingTypes.find((type) => type.id === (lockedListingTypeId ?? selectedListingTypeId)) ??
+    listingTypes[0];
+  const itemLabel = selectedType?.itemLabel?.trim() || 'hạng mục';
+  const titleExample = (() => {
+    switch (selectedType?.name.toLocaleLowerCase('vi')) {
+      case 'studio':
+        return 'Ví dụ: Phòng Cyclorama trắng';
+      case 'nhiếp ảnh':
+        return 'Ví dụ: Gói chụp chân dung ngoại cảnh';
+      case 'makeup':
+        return 'Ví dụ: Trang điểm cô dâu tại nhà';
+      case 'thiết bị':
+        return 'Ví dụ: Sony A7 IV kèm ống kính 24-70mm';
+      case 'trang phục':
+        return 'Ví dụ: Áo dài lụa đỏ thêu tay';
+      case 'model':
+        return 'Ví dụ: Model lookbook nữ tại TP.HCM';
+      default:
+        return `Ví dụ: ${selectedType?.name ?? 'Dịch vụ'} nổi bật`;
+    }
+  })();
   return [
     ...(!isEdit && !lockedListingTypeId
       ? [
@@ -30,12 +59,18 @@ export function listingFormFields(opts: {
     {
       name: 'title',
       type: 'text',
-      label: 'Tên hạng mục',
+      label: `Tên ${itemLabel}`,
       required: true,
-      description: 'Ví dụ: Studio Ánh Dương · Phòng 01',
+      description: titleExample,
       colSpan: 2,
     },
-    { name: 'description', type: 'textarea', label: 'Mô tả chi tiết', rows: 6, colSpan: 2 },
+    {
+      name: 'description',
+      type: 'textarea',
+      label: `Mô tả ${itemLabel}`,
+      rows: 6,
+      colSpan: 2,
+    },
     {
       name: 'photos',
       type: 'file',
@@ -94,8 +129,9 @@ export function listingFormDefaults(opts: {
   listing?: ListingResponse;
   groupId?: string;
   lockedListingTypeId?: string;
+  inheritedAddress?: { provinceCode: string; wardCode: string; address: string };
 }): CreateListingInput {
-  const { partnerId, listingTypes, listing, groupId, lockedListingTypeId } = opts;
+  const { partnerId, listingTypes, listing, groupId, lockedListingTypeId, inheritedAddress } = opts;
   return {
     partnerId,
     listingTypeId: listing?.listingTypeId ?? lockedListingTypeId ?? listingTypes[0]?.id ?? '',
@@ -103,9 +139,9 @@ export function listingFormDefaults(opts: {
     title: listing?.title ?? '',
     slug: listing?.slug,
     description: listing?.description ?? '',
-    provinceCode: listing?.provinceCode ?? '',
-    wardCode: listing?.wardCode ?? '',
-    address: listing?.address ?? '',
+    provinceCode: listing?.provinceCode ?? inheritedAddress?.provinceCode ?? '',
+    wardCode: listing?.wardCode ?? inheritedAddress?.wardCode ?? '',
+    address: listing?.address ?? inheritedAddress?.address ?? '',
     photos: listing?.photos ?? [],
     bookingModes: (listing?.bookingModes ?? []) as BookingMode[],
     modeConfig: {},

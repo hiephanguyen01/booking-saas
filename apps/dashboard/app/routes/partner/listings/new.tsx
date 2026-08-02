@@ -3,6 +3,7 @@ import {
   createListingInputSchema,
   type CancellationPolicyResponse,
   type ListingTypeResponse,
+  type ListingResponse,
   type DepositRequirementResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -19,6 +20,7 @@ import { requirePartner } from '~/features/partner/server/partner.server';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { ListingForm } from '~/features/partner/components/listing-form';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng mới · Đối tác · BookingOS' }];
@@ -39,7 +41,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     selectedType?.structure === 'grouped' ||
     (selectedType?.structure === 'flexible' && mode === 'grouped')
   ) {
-    return redirect(`/partner/listing-groups/new?type=${selectedType.id}`);
+    return redirect(dashboardPaths.partner.newListingGroup(selectedType.id));
   }
   const requirement = selectedType
     ? await apiGet<DepositRequirementResponse>('/partner/listings/deposit-requirement', auth, {
@@ -67,14 +69,17 @@ export async function action({ request }: Route.ActionArgs) {
   if (!parsed.success) {
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  const res = await apiPost('/partner/listings', parsed.data, auth);
+  const res = await apiPost<ListingResponse>('/partner/listings', parsed.data, auth);
   if (!res.ok) {
     return data(
       { error: res.error ?? 'Tạo tin đăng không thành công.', fieldErrors: res.errors ?? null },
       { status: 400 },
     );
   }
-  return redirect('/partner/listings');
+  if (!res.data) {
+    return data({ error: 'API không trả về mã bản nháp.', fieldErrors: null }, { status: 502 });
+  }
+  return redirect(`${dashboardPaths.partner.listing(res.data.id)}?created=1`);
 }
 
 export default function NewListingPage({ loaderData, actionData }: Route.ComponentProps) {
@@ -97,7 +102,7 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
               </CardHeader>
               <CardContent>
                 <Button asChild className="w-full">
-                  <Link to={`/partner/listings/new?type=${type.id}`}>Chọn {type.name}</Link>
+                  <Link to={dashboardPaths.partner.listingNew(type.id)}>Chọn {type.name}</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -117,25 +122,29 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Một hạng mục</CardTitle>
-              <CardDescription>Tạo một lựa chọn có thể đặt độc lập.</CardDescription>
+              <CardTitle>Một {type.itemLabel || 'hạng mục'} độc lập</CardTitle>
+              <CardDescription>
+                Nhập nội dung, giá và vận hành cho một lựa chọn có thể đặt riêng.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
-                <Link to={`/partner/listings/new?type=${type.id}&mode=standalone`}>
-                  Tạo hạng mục độc lập
+                <Link to={dashboardPaths.partner.listingNew(type.id, 'standalone')}>
+                  Tạo {type.itemLabel || 'hạng mục'} độc lập
                 </Link>
               </Button>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Nhiều {type.itemLabel || 'hạng mục'}</CardTitle>
-              <CardDescription>Một tin đăng chung chứa nhiều lựa chọn có thể đặt.</CardDescription>
+              <CardTitle>Tin đăng nhiều {type.itemLabel || 'hạng mục'}</CardTitle>
+              <CardDescription>
+                Tạo nội dung chung trước, sau đó thêm giá và lịch riêng cho từng lựa chọn.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
-                <Link to={`/partner/listings/new?type=${type.id}&mode=grouped`}>
+                <Link to={dashboardPaths.partner.listingNew(type.id, 'grouped')}>
                   Tạo tin đăng nhiều hạng mục
                 </Link>
               </Button>
@@ -148,7 +157,7 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
   return (
     <div className="mx-auto max-w-[1440px] space-y-5">
       <div>
-        <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
+        <BackLink to={dashboardPaths.partner.listings} label="Tin đăng" className="mb-2" />
         <PageHeader
           title={`Tạo ${loaderData.selectedType.itemLabel || 'hạng mục'} mới`}
           description={`Hoàn thiện thông tin ${loaderData.selectedType.name}, giá và chính sách. Tin sẽ được lưu nháp để bạn kiểm tra trước khi gửi duyệt.`}
