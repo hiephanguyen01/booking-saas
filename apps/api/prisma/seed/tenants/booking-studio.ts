@@ -1,14 +1,9 @@
 import argon2 from 'argon2';
 import type { Locale, ThemeConfigInput } from '@booking/contracts';
 import { prisma } from '../client';
-import { reconcileSeedDomains } from '../domains';
 import { ensure, ensureRoleAssignment } from '../shared';
 import { seedStudioCatalogTypes, type CatalogTypes } from '../catalog/studio-catalog';
-import {
-  publishTenantLegalDocuments,
-  seedTenantLegalDrafts,
-  type PublishedLegalVersions,
-} from '../legal';
+import { publishTenantLegalDocuments, seedTenantLegalDrafts, type PublishedLegalVersions } from '../legal';
 import { ownerPassword, storagePublicUrl, type SeedScope } from '../scope';
 
 export type TenantSetup = {
@@ -97,14 +92,16 @@ export async function seedBookingStudio(input: {
   // Staging host is primary; the `.localhost` host rides along so ONE seed serves
   // both environments without an env switch. Bare `localhost`/`127.0.0.1` are
   // deliberately NOT mapped — the storefront serves the platform landing there.
-  await reconcileSeedDomains({
-    tenantId: tenant.id,
-    domains: [
-      { hostname: 'bookingstudio.stg.bookingos.vn', isPrimary: true },
-      { hostname: 'bookingstudio.localhost', isPrimary: false },
-    ],
-    restoreCanonicalPrimary: input.scope === 'full',
-  });
+  for (const [hostname, isPrimary] of [
+    ['bookingstudio.stg.bookingos.vn', true],
+    ['bookingstudio.localhost', false],
+  ] as const) {
+    await prisma.tenantDomain.upsert({
+      where: { hostname },
+      update: {},
+      create: { tenantId: tenant.id, hostname, isPrimary, verifiedAt: new Date() },
+    });
+  }
 
   if (!(await prisma.tenantSubscription.findFirst({ where: { tenantId: tenant.id } }))) {
     const now = new Date();

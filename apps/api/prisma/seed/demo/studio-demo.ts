@@ -3,7 +3,6 @@ import { PRICING_RULE_PRIORITY } from '@booking/contracts';
 import { prisma } from '../client';
 import { bookingHistory, ensure, ensureRoleAssignment, seedBooking } from '../shared';
 import { seedDemoCatalog } from '../catalog/studio-catalog';
-import { reconcileSeedPricingRules } from '../pricing-rules';
 import { percentOfBps } from '../../../src/shared/money/money';
 import { addMinutes, wallClockInZone, zonedTimeToUtc } from '../../../src/shared/time/time';
 import type { TenantSetup } from '../tenants/booking-studio';
@@ -211,46 +210,25 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
     cancellationPolicyId: cancelPolicy.id,
   });
 
-  // ── Golden-hour pricing on Studio A (18:00–22:00 costs more) ────────────────
-  const saleStartsAt = new Date(seedNow);
-  const saleEndsAt = new Date(seedNow + 14 * 24 * 60 * 60 * 1000);
-  await reconcileSeedPricingRules({
-    tenantId: tenant.id,
-    listingId: studioA.id,
-    legacy: [
-      {
+  // ── Golden-hour pricing rule on Studio A (18:00–22:00 costs more) ───────────
+  if (
+    !(await prisma.pricingRule.findFirst({
+      where: { listingId: studioA.id, ruleType: 'time_range' },
+    }))
+  ) {
+    await prisma.pricingRule.create({
+      data: {
+        tenantId: tenant.id,
+        listingId: studioA.id,
         bookingMode: 'hourly',
         ruleType: 'time_range',
         params: { from: '18:00', to: '22:00' },
-        price: '450000',
+        price: 450_000n, // vs the 300k base per-hour rate
         priority: PRICING_RULE_PRIORITY.recurring,
       },
-    ],
-    desired: [
-      {
-        id: '0198cce1-6f0c-7000-8000-000000000001',
-        bookingMode: 'hourly',
-        ruleType: 'time_range',
-        params: { days: [0, 1, 2, 3, 4], from: '18:00', to: '22:00' },
-        price: '450000',
-        priority: PRICING_RULE_PRIORITY.recurring,
-      },
-      {
-        id: '0198cce1-6f0c-7000-8000-000000000002',
-        bookingMode: 'hourly',
-        ruleType: 'time_range',
-        params: { days: [5, 6], from: '18:00', to: '22:00' },
-        price: '450000',
-        salePrice: '360000',
-        saleStartsAt: saleStartsAt.toISOString(),
-        saleEndsAt: saleEndsAt.toISOString(),
-        campaignLabel: 'Giờ vàng cuối tuần',
-        priority: PRICING_RULE_PRIORITY.recurring,
-      },
-    ],
-  });
-
-  // ── Checkout promotions ─────────────────────────────────────────────────────
+    });
+  }
+  // ── A basic promo code ───────────────────────────────────────────────────────
   await prisma.promotion.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: 'WELCOME10' } },
     update: { storefrontVisible: true },
@@ -288,7 +266,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
     },
   });
 
-  // Code-less checkout promotion for Studio listings; distinct from the pricing campaign above.
+  // An auto-applied campaign (no code) — off-peak Fri/Sat evenings on Studio listings.
   if (
     !(await prisma.promotion.findFirst({
       where: { tenantId: tenant.id, name: 'Giờ vàng cuối tuần' },
