@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { administrativeAddressSnapshotSchema } from './administrative-division';
-import { saleCampaignSummarySchema } from './common';
 import { slugSchema } from './tenancy';
 
 /** How a listing may be booked (mirrors the Prisma BookingMode enum, §7.3). */
@@ -565,13 +564,6 @@ export const publicListingResponseSchema = z
     photos: z.array(z.unknown()),
     /** Lowest configured price in VND đồng as a digit string, or null. */
     priceFrom: z.string().nullable(),
-    /**
-     * Running sale campaign, or null. Lives on the card shape itself rather than
-     * on a search-specific wrapper, because every surface that renders a listing
-     * card — home rails, related, provider, favorites — needs it, and only the
-     * dated search page can also produce an exact discounted price.
-     */
-    campaign: saleCampaignSummarySchema.nullable(),
     itemLabel: z.string().nullable(),
     ratingAvg: z.number().min(1).max(5).nullable(),
     reviewCount: z.number().int().nonnegative(),

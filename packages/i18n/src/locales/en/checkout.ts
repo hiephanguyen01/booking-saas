@@ -13,20 +13,15 @@ export const enCheckout = {
   memberPitch: 'Become a {tenant} member to receive more exclusive offers',
   login: 'Log in',
   register: 'Register',
-  calendarSalePrice: 'Calendar sale price',
-  checkoutPromotion: 'Checkout promotion',
-  automaticPromotion: 'Automatic · {name}',
-  automaticPromotionConditional:
-    'Eligibility and savings are confirmed when you place the booking.',
+  promotions: 'Offers for you',
   promoSection: 'Promo code',
   promoPlaceholder: 'Enter code',
   promoApply: 'Apply',
   promoApplied: 'Applied {code} — {amount} off',
   promoRemove: 'Remove',
   promoDialog: {
-    title: 'Choose a checkout promotion',
-    description:
-      'Enter a code or choose an eligible offer. Checkout promotions apply after the calendar sale price.',
+    title: 'Choose a promotion',
+    description: 'Enter a code or choose an eligible promotion for this booking.',
     close: 'Close promotions dialog',
     inputPlaceholder: 'Enter promotion code',
     available: 'Available codes',
@@ -42,8 +37,6 @@ export const enCheckout = {
     cancel: 'Cancel',
   },
   discount: 'Discount',
-  /** Fallback badge for a calendar sale the partner did not name. */
-  saleBadge: 'On sale',
   quantityLine: '{rooms} room × {slots} time slots',
   dailyQuantityLine: '{rooms} room × {days} days',
   inventoryQuantityLine: 'Quantity: {quantity}',

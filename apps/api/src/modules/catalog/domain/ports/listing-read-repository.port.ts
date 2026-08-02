@@ -38,10 +38,6 @@ export interface PublicListingRecord {
     params: Record<string, unknown>;
     price: string;
     salePrice: string | null;
-    /** Campaign window bounding `salePrice`, judged at booking time. */
-    saleStartsAt: Date | null;
-    saleEndsAt: Date | null;
-    campaignLabel: string | null;
     priority: number;
   }>;
   availabilityExceptions: Array<{

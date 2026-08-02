@@ -67,7 +67,6 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
       return {
         child,
         detail,
-        campaign: child.campaign,
         bookingToday: todayInTz(detail.timezone, requestNow),
         ...availability,
       };

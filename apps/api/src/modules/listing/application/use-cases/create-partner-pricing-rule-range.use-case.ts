@@ -82,9 +82,6 @@ export class CreatePartnerPricingRuleRangeUseCase {
           params,
           price: input.price,
           salePrice: input.salePrice ?? null,
-          saleStartsAt: input.saleStartsAt ? new Date(input.saleStartsAt) : null,
-          saleEndsAt: input.saleEndsAt ? new Date(input.saleEndsAt) : null,
-          campaignLabel: input.campaignLabel ?? null,
           priority: input.priority,
         });
       const spanParams = isDaily

@@ -7,7 +7,7 @@ import { ListingRatingSummary } from '~/components/listing-rating-summary';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import { formatListingLocation, formatVnd, googleMapsHref } from '~/lib/ui';
+import { formatListingLocation, googleMapsHref } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 import { clockHoursBetween } from '~/lib/time';
 import type { StorefrontContext } from '~/root';
@@ -20,15 +20,13 @@ import { RelatedListings } from '~/components/related-listings';
 import { RoomOptionsSection } from './room-options-section';
 import { ListingGallery } from '~/components/listing-gallery';
 import type { ListingGroupData } from '~/features/listing-group/lib/listing-group-types';
-import { SaleCampaignBanner } from '~/components/sale-campaign-banner';
-import { SalePrice } from '~/components/sale-price';
-import { compareMoney, minMoney } from '~/lib/money';
-import { discountPercent } from '~/lib/sale-campaign';
+import { minimumRoomPrice } from '~/features/listing-group/lib/room-attributes';
 
 /**
  * A listing group ("studio") and the rooms bookable inside it.
  *
- * Rating and review content come from the public review API and persisted aggregates.
+ * Rating and review content come from the public review API and persisted
+ * aggregates. Promotions remain absent until a truthful public contract exists.
  */
 export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData }) {
   const { group, state, roomOptions, locations, relatedListings } = loaderData;
@@ -37,15 +35,9 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   const locale = useLocale();
   const location = formatListingLocation(group, 'full');
   const trust = group.trust;
-  const pricedRoomOptions = roomOptions.filter((option) => option.browsing || option.available);
-  const minimumPriceValue = minMoney(
-    pricedRoomOptions.flatMap((option) => (option.price === null ? [] : [option.price])),
+  const minimumPrice = minimumRoomPrice(
+    roomOptions.filter((option) => option.browsing || option.available),
   );
-  const minimumPrice = minimumPriceValue === null ? null : formatVnd(minimumPriceValue);
-  const minimumPriceRoom = uniqueMinimumPricedRoom(pricedRoomOptions);
-  const minimumPricePercent = minimumPriceRoom?.quote
-    ? discountPercent(minimumPriceRoom.quote.regularSubtotal, minimumPriceRoom.quote.subtotal)
-    : null;
   const selectedHours = state.hasTimeSelection
     ? clockHoursBetween(state.startTime, state.endTime)
     : null;
@@ -107,25 +99,10 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
       aside={
         <>
           <DetailPriceCard>
-            {minimumPriceRoom ? (
-              <SaleCampaignBanner
-                campaign={minimumPriceRoom.campaign}
-                exactPercent={minimumPricePercent}
-                compact
-              />
-            ) : null}
-            <p className="mt-4 text-sm text-muted-foreground first:mt-0">
+            <p className="text-sm text-muted-foreground">
               {t('fromPriceShort')}{' '}
               <strong className="text-xl text-primary">
-                {minimumPriceRoom?.quote ? (
-                  <SalePrice
-                    price={minimumPriceRoom.quote.subtotal}
-                    regularPrice={minimumPriceRoom.quote.regularSubtotal}
-                    showCampaignDetails={false}
-                  />
-                ) : (
-                  (minimumPrice ?? t('group.priceOnRequest'))
-                )}
+                {minimumPrice ?? t('group.priceOnRequest')}
               </strong>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -171,22 +148,4 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
       }
     />
   );
-}
-
-/** A tie has no single room whose campaign can truthfully represent the group price. */
-function uniqueMinimumPricedRoom(options: ListingGroupData['roomOptions']) {
-  let winner: ListingGroupData['roomOptions'][number] | null = null;
-  let tied = false;
-
-  for (const option of options) {
-    if (option.price === null) continue;
-    if (!winner || winner.price === null || compareMoney(option.price, winner.price) < 0) {
-      winner = option;
-      tied = false;
-    } else if (compareMoney(option.price, winner.price) === 0) {
-      tied = true;
-    }
-  }
-
-  return tied ? null : winner;
 }

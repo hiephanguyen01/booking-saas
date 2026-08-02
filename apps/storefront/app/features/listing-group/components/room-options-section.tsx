@@ -178,7 +178,6 @@ function RoomRow({
         <RoomDetails
           option={option}
           attributeSchema={attributeSchema}
-          state={state}
           onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
         />
       </td>
@@ -221,7 +220,7 @@ function RoomCard({
         onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
       />
       <div className="flex flex-col gap-5 p-5">
-        <RoomDetails option={option} attributeSchema={attributeSchema} state={state} hidePhotos />
+        <RoomDetails option={option} attributeSchema={attributeSchema} hidePhotos />
         <div className="grid gap-4 sm:grid-cols-2">
           <GuestCapacityRules capacity={option.child.capacity} />
           <RoomPrice option={option} mode={mode} state={state} />

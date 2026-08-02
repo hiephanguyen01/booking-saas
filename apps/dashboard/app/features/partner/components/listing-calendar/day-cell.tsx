@@ -1,10 +1,9 @@
-import { CalendarCheck, Clock3, Flame, Repeat } from 'lucide-react';
+import { CalendarCheck, Clock3, Repeat } from 'lucide-react';
 import type { PricingRuleResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { cn } from '@booking/ui/lib/utils';
 import { Money } from '~/components/money';
 import {
-  campaignPresentationOf,
   cheapestOf,
   formatDayLong,
   isClosed,
@@ -18,8 +17,6 @@ interface Props {
   closure: ClosureState;
   /** Date-scoped rules covering this date, for the current mode. */
   rules: PricingRuleResponse[];
-  /** Dated + recurring rules used only for the campaign state overlay. */
-  campaignRules: PricingRuleResponse[];
   /** The listing's base price, shown when no rule covers the date. */
   basePrice: string | null;
   /** Bookings still holding the resource on this date. */
@@ -48,7 +45,6 @@ export function DayCell({
   mode,
   closure,
   rules,
-  campaignRules,
   basePrice,
   bookingCount,
   hasRecurring,
@@ -57,13 +53,7 @@ export function DayCell({
   onPick,
 }: Props) {
   const closed = isClosed(closure);
-  const campaign = campaignPresentationOf(campaignRules, mode);
-  const displayedCampaign = campaignPresentationOf(rules, mode);
-  const campaignActive = campaign.state === 'running' && campaign.salePrice !== null;
-  const displayedSaleActive =
-    rules.length === 1 &&
-    displayedCampaign.state === 'running' &&
-    displayedCampaign.salePrice !== null;
+  const priceRule = rules[0];
   // With several windows on one day a single number is a misread — show the
   // cheapest and say how many there are.
   const multiple = rules.length > 1;
@@ -80,22 +70,18 @@ export function DayCell({
           ? `${formatDayLong(date)} đã qua, không thể chỉnh sửa`
           : `${formatDayLong(date)} — ${STATE_LABEL[closure]}${booked ? `, ${bookingCount} lượt đặt` : ''}${
               hasRecurring ? ', có quy tắc giá lặp lại' : ''
-            }${campaign.state === 'running' ? `, chiến dịch đang chạy, ${campaign.coverage === 'full' ? 'giảm cả ngày' : 'có giờ ưu đãi'}` : campaign.state === 'scheduled' ? ', chiến dịch sắp diễn ra' : campaign.state === 'ended' ? ', chiến dịch đã kết thúc' : ''}`
+            }`
       }
       title={isPast ? 'Ngày đã qua — chỉ xem, không thể chỉnh sửa' : undefined}
       onClick={(event) => !isPast && onPick(date, event.shiftKey)}
       className={cn(
-        'relative min-h-28 border-r border-b p-2 text-left transition-[background-color,opacity,filter] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'relative min-h-24 border-r border-b p-2 text-left transition-[background-color,opacity,filter] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         !isPast && 'hover:bg-accent/60',
         closure === 'closed_override' && 'bg-destructive/10 text-muted-foreground',
         closure === 'closed_override' && !isPast && 'hover:bg-destructive/15',
         closure === 'closed_weekly' && 'bg-muted/50 text-muted-foreground',
         !closed && closure === 'custom_hours' && 'bg-primary/5',
-        !closed && campaignActive && campaign.coverage === 'full' && 'bg-warning/15',
-        !closed &&
-          campaignActive &&
-          campaign.coverage === 'partial' &&
-          'bg-warning/5 [background-image:repeating-linear-gradient(135deg,transparent_0,transparent_6px,color-mix(in_oklch,var(--warning)_22%,transparent)_6px,color-mix(in_oklch,var(--warning)_22%,transparent)_10px)]',
+        !closed && priceRule?.salePrice && 'bg-emerald-50/70 dark:bg-emerald-950/15',
         isPast && 'cursor-not-allowed opacity-40 saturate-50',
         isSelected && 'z-10 ring-2 ring-inset ring-primary',
       )}
@@ -128,14 +114,16 @@ export function DayCell({
 
       {price ? (
         <div className="mt-3 space-y-0.5">
-          {displayedSaleActive && displayedCampaign.regularPrice ? (
+          {!multiple && priceRule?.salePrice ? (
             <div className="text-[10px] text-muted-foreground line-through">
-              {multiple ? 'từ ' : null}
-              <Money value={displayedCampaign.regularPrice} />
+              <Money value={priceRule.price} />
             </div>
           ) : null}
           <div
-            className={cn('text-xs font-medium', displayedSaleActive && 'text-warning-foreground')}
+            className={cn(
+              'text-xs font-medium',
+              !multiple && priceRule?.salePrice && 'text-emerald-700 dark:text-emerald-400',
+            )}
           >
             {multiple ? 'từ ' : null}
             <Money value={price} />
@@ -147,26 +135,6 @@ export function DayCell({
       ) : (
         <p className="mt-3 text-[10px] text-muted-foreground">Chưa có giá</p>
       )}
-
-      {campaign.state !== 'none' && !closed ? (
-        <div className="mt-1 flex min-w-0 items-center gap-1">
-          {campaign.state === 'running' ? (
-            <Flame className="size-3 shrink-0 text-warning-foreground" aria-hidden />
-          ) : null}
-          <span
-            className={cn(
-              'truncate text-[10px] font-medium',
-              campaign.state === 'running' ? 'text-warning-foreground' : 'text-muted-foreground',
-            )}
-          >
-            {campaign.state === 'running'
-              ? `Đang chạy${campaign.label ? ` · ${campaign.label}` : ''}`
-              : campaign.state === 'scheduled'
-                ? 'Sắp diễn ra'
-                : 'Đã kết thúc'}
-          </span>
-        </div>
-      ) : null}
 
       {booked ? (
         <span className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-primary">

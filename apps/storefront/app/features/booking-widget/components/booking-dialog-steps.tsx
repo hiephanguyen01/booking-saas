@@ -1,8 +1,4 @@
-import type {
-  AvailabilityCalendarResponse,
-  AvailabilityResponse,
-  HourlySlot,
-} from '@booking/contracts';
+import type { AvailabilityResponse, HourlySlot } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Spinner } from '@booking/ui/components/ui/spinner';
@@ -16,12 +12,6 @@ import type { PublicPackageOption } from '~/lib/package-options';
 import type { ScheduledBookingMode } from '~/features/booking-widget/lib/booking-modes';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useBookingDialogStepsController } from '~/features/booking-widget/hooks/use-booking-dialog-steps-controller';
-import { SalePrice } from '~/components/sale-price';
-import { SaleCalendarDayButton, SaleCalendarDayButtonProvider } from './sale-calendar-day-button';
-import { SaleCalendarLegend } from './sale-calendar-legend';
-import { discountPercent } from '~/lib/sale-campaign';
-
-const SALE_CALENDAR_COMPONENTS = { DayButton: SaleCalendarDayButton };
 
 export type RoomBookingDateRange = { from: Date | undefined; to?: Date | undefined };
 
@@ -41,10 +31,6 @@ interface BookingDialogStepsProps {
   availability: AvailabilityResponse | null;
   availabilityPending: boolean;
   availabilityError: boolean;
-  calendar: AvailabilityCalendarResponse | null;
-  calendarPending: boolean;
-  calendarError: boolean;
-  calendarMonth: string;
   requestError: boolean;
   slots: HourlySlot[];
   selectedSlots: HourlySlot[];
@@ -61,8 +47,6 @@ interface BookingDialogStepsProps {
   onRetryHourly: () => void;
   onRetryQuote: () => void;
   onRetryDaily: () => void;
-  onCalendarMonthChange: (month: string) => void;
-  onRetryCalendar: () => void;
   onOpenPackageMedia?: (index: number, trigger: HTMLButtonElement) => void;
   packageFlow?: boolean;
 }
@@ -221,10 +205,6 @@ type HourlyStepProps = Pick<
   | 'availability'
   | 'availabilityPending'
   | 'availabilityError'
-  | 'calendar'
-  | 'calendarPending'
-  | 'calendarError'
-  | 'calendarMonth'
   | 'requestError'
   | 'quotePending'
   | 'quoteError'
@@ -232,22 +212,11 @@ type HourlyStepProps = Pick<
   | 'onToggleSlot'
   | 'onRetryHourly'
   | 'onRetryQuote'
-  | 'onCalendarMonthChange'
-  | 'onRetryCalendar'
 > & { packageFlow: boolean; model: BookingDialogStepModel };
 
 type DailyStepProps = Pick<
   BookingDialogStepsProps,
-  | 'availabilityPending'
-  | 'calendar'
-  | 'calendarPending'
-  | 'calendarError'
-  | 'calendarMonth'
-  | 'requestError'
-  | 'onSelectRange'
-  | 'onRetryDaily'
-  | 'onCalendarMonthChange'
-  | 'onRetryCalendar'
+  'availabilityPending' | 'requestError' | 'onSelectRange' | 'onRetryDaily'
 > & { model: BookingDialogStepModel };
 
 function HourlyBookingStep({
@@ -255,9 +224,6 @@ function HourlyBookingStep({
   availability,
   availabilityPending,
   availabilityError,
-  calendar,
-  calendarPending,
-  calendarError,
   requestError,
   quotePending,
   quoteError,
@@ -267,7 +233,6 @@ function HourlyBookingStep({
   onToggleSlot,
   onRetryHourly,
   onRetryQuote,
-  onRetryCalendar,
 }: HourlyStepProps) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const titleId = packageFlow ? 'packages-day-step-title' : 'room-day-step-title';
@@ -285,28 +250,20 @@ function HourlyBookingStep({
         <p className="mt-1 text-sm text-muted-foreground">
           {t(packageFlow ? 'packages.pickDayInstruction' : 'group.pickDayInstruction')}
         </p>
-        <SaleCalendarDayButtonProvider calendar={calendar}>
-          <div aria-busy={calendarPending}>
-            <Calendar
-              fullWidth
-              mode="single"
-              selected={undefined}
-              onSelect={model.selectCalendarDay}
-              disabled={{ before: model.todayDate }}
-              startMonth={model.todayDate}
-              month={model.calendarMonthDate}
-              onMonthChange={model.changeCalendarMonth}
-              showOutsideDays={false}
-              fixedWeeks
-              formatters={model.calendarA11y.formatters}
-              labels={model.calendarA11y.labels}
-              components={SALE_CALENDAR_COMPONENTS}
-              className="sf-calendar mx-auto mt-3 [--cell-size:2.75rem]"
-            />
-            <SaleCalendarLegend />
-          </div>
-        </SaleCalendarDayButtonProvider>
-        {calendarError ? <SaleCalendarWarning onRetry={onRetryCalendar} /> : null}
+        <Calendar
+          fullWidth
+          mode="single"
+          selected={undefined}
+          onSelect={model.selectCalendarDay}
+          disabled={{ before: model.todayDate }}
+          startMonth={model.todayDate}
+          defaultMonth={model.todayDate}
+          showOutsideDays={false}
+          fixedWeeks
+          formatters={model.calendarA11y.formatters}
+          labels={model.calendarA11y.labels}
+          className="sf-calendar mx-auto mt-3 [--cell-size:2.75rem]"
+        />
       </section>
     );
   }
@@ -355,14 +312,10 @@ function HourlyBookingStep({
 
 function DailyBookingStep({
   availabilityPending,
-  calendar,
-  calendarPending,
-  calendarError,
   requestError,
   model,
   onSelectRange,
   onRetryDaily,
-  onRetryCalendar,
 }: DailyStepProps) {
   const { t } = useTranslation(NsI18n.Listing);
   return (
@@ -375,53 +328,44 @@ function DailyBookingStep({
         <div className="mt-4">
           <BookingDialogErrorMessage onRetry={onRetryDaily} />
         </div>
+      ) : model.dailySoldOut ? (
+        <div className="mt-4">
+          <EmptyAvailability message={t('group.soldOut')} />
+        </div>
       ) : (
-        <>
-          <SaleCalendarDayButtonProvider calendar={calendar}>
-            <div className="relative mt-3" aria-busy={calendarPending}>
-              <Calendar
-                fullWidth
-                connectedRange
-                mode="range"
-                numberOfMonths={1}
-                selected={model.selectedRange}
-                onSelect={onSelectRange}
-                disabled={model.isRangeDateDisabled}
-                startMonth={model.todayDate}
-                excludeDisabled
-                resetOnSelect
-                showOutsideDays={false}
-                fixedWeeks
-                month={model.calendarMonthDate}
-                onMonthChange={model.changeCalendarMonth}
-                formatters={model.calendarA11y.formatters}
-                labels={model.calendarA11y.labels}
-                components={SALE_CALENDAR_COMPONENTS}
-                className="sf-calendar mx-auto [--cell-size:2.75rem]"
-              />
-              <SaleCalendarLegend />
-              {availabilityPending ? (
-                <div
-                  className="absolute inset-0 grid place-items-center rounded-lg bg-background/75"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Spinner aria-hidden="true" /> {t('group.loadingAvailability')}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </SaleCalendarDayButtonProvider>
-          {model.dailySoldOut ? (
-            <div className="mt-4">
-              <EmptyAvailability message={t('group.soldOut')} />
+        <div className="relative mt-3">
+          <Calendar
+            fullWidth
+            connectedRange
+            mode="range"
+            numberOfMonths={1}
+            selected={model.selectedRange}
+            onSelect={onSelectRange}
+            disabled={model.isRangeDateDisabled}
+            startMonth={model.todayDate}
+            endMonth={model.dailyEndDate}
+            excludeDisabled
+            resetOnSelect
+            showOutsideDays={false}
+            fixedWeeks
+            defaultMonth={model.defaultRangeMonth}
+            formatters={model.calendarA11y.formatters}
+            labels={model.calendarA11y.labels}
+            className="sf-calendar mx-auto [--cell-size:2.75rem]"
+          />
+          {availabilityPending ? (
+            <div
+              className="absolute inset-0 grid place-items-center rounded-lg bg-background/75"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner aria-hidden="true" /> {t('group.loadingAvailability')}
+              </span>
             </div>
           ) : null}
-        </>
+        </div>
       )}
-      {calendarError ? <SaleCalendarWarning onRetry={onRetryCalendar} /> : null}
-      <DailyPriceHints hints={model.dailyPriceHints} />
     </section>
   );
 }
@@ -446,101 +390,39 @@ function BookingSlotGrid({
     selected: boolean;
     startLabel: string;
     endLabel: string;
+    priceLabel: string | null;
   }>;
   quotePending?: boolean;
   packageFlow?: boolean;
   onToggleSlot: (slot: HourlySlot) => void;
 }) {
-  const { t } = useTranslation(NsI18n.Listing);
   return (
     <div className="grid grid-cols-2 gap-2" aria-busy={packageFlow ? quotePending : undefined}>
-      {slotModels.map(({ key, slot, selected, startLabel, endLabel }) => {
-        const discounted =
-          slot.available && discountPercent(slot.regularPrice, slot.price) !== null;
-        return (
-          <button
-            key={key}
-            type="button"
-            aria-pressed={selected}
-            disabled={!slot.available}
-            onClick={() => onToggleSlot(slot)}
-            className={cn(
-              'min-h-14 rounded-md border px-2 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              packageFlow &&
-                slot.available &&
-                'hover:border-primary hover:bg-primary/10 hover:text-primary',
-              discounted && 'border-warning/50 bg-warning/10',
-              selected && 'border-primary bg-primary/10 text-primary ring-2 ring-primary',
-              !slot.available && 'cursor-not-allowed bg-muted opacity-60',
+      {slotModels.map(({ key, slot, selected, startLabel, endLabel, priceLabel }) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={selected}
+          disabled={!slot.available}
+          onClick={() => onToggleSlot(slot)}
+          className={cn(
+            'min-h-14 rounded-md border px-2 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            packageFlow && 'hover:border-primary hover:bg-primary/10 hover:text-primary',
+            selected && 'border-primary bg-primary/10 text-primary',
+            !slot.available && 'cursor-not-allowed bg-muted opacity-60',
+          )}
+        >
+          <span className="flex items-center justify-center gap-1 font-medium">
+            {selected ? (
+              <Check className="size-3.5" aria-hidden="true" />
+            ) : (
+              <Clock3 className="size-3.5" aria-hidden="true" />
             )}
-          >
-            <span className="flex items-center justify-center gap-1 font-medium">
-              {selected ? (
-                <Check className="size-3.5" aria-hidden="true" />
-              ) : (
-                <Clock3 className="size-3.5" aria-hidden="true" />
-              )}
-              {startLabel}–{endLabel}
-            </span>
-            <span className="mt-1 flex justify-center text-xs text-muted-foreground">
-              {slot.available ? (
-                <SalePrice
-                  price={slot.price}
-                  regularPrice={slot.regularPrice}
-                  campaignLabel={slot.campaignLabel}
-                  compact
-                />
-              ) : (
-                t('group.unavailableSlot')
-              )}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function DailyPriceHints({ hints }: { hints: BookingDialogStepModel['dailyPriceHints'] }) {
-  const { t } = useTranslation(NsI18n.Listing);
-  if (!hints.length) return null;
-
-  return (
-    <div className="mt-3 rounded-md border border-warning/30 bg-warning/5 p-3">
-      <p className="text-xs font-semibold text-warning-foreground">
-        {t('campaign.calendarSaleHeading')}
-      </p>
-      <ul className="mt-2 max-h-32 space-y-2 overflow-y-auto">
-        {hints.map((day) => (
-          <li
-            key={day.date}
-            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs"
-          >
-            <span className="text-muted-foreground">{day.dateLabel}</span>
-            <SalePrice
-              price={day.price}
-              regularPrice={day.regularPrice}
-              campaignLabel={day.campaignLabel}
-              compact
-            />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function SaleCalendarWarning({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation(NsI18n.Listing);
-  return (
-    <div
-      role="status"
-      className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning-foreground"
-    >
-      <span className="min-w-0 flex-1">{t('campaign.calendarUnavailable')}</span>
-      <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={onRetry}>
-        <RotateCw aria-hidden="true" /> {t('group.retry')}
-      </Button>
+            {startLabel}–{endLabel}
+          </span>
+          <span className="mt-1 block text-xs text-muted-foreground">{priceLabel}</span>
+        </button>
+      ))}
     </div>
   );
 }

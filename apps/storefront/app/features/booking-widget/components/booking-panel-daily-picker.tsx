@@ -10,11 +10,6 @@ import {
   useDailyPickerController,
   useFixedDailyPickerController,
 } from '~/features/booking-widget/hooks/use-booking-panel-daily-picker-controller';
-import { SalePrice } from '~/components/sale-price';
-import { dailyAvailabilityInRange, type PricedDayAvailability } from '~/lib/availability';
-import { discountPercent } from '~/lib/sale-campaign';
-import { addDays, dateLabelInTz, localToDateOnly } from '~/lib/time';
-import { useLocale } from '~/hooks/use-locale';
 
 export function FixedDailyPicker({
   availability,
@@ -48,12 +43,6 @@ export function FixedDailyPicker({
     sp,
     tz,
   });
-  const selectedFrom = selectedDate ? localToDateOnly(selectedDate) : null;
-  const priceHints = discountedDailyPriceHints(
-    availability,
-    selectedFrom,
-    selectedFrom ? addDays(selectedFrom, durationDays) : null,
-  );
 
   return (
     <div className="space-y-2">
@@ -78,7 +67,6 @@ export function FixedDailyPicker({
       <p className="text-xs text-muted-foreground">
         {t('duration')}: {t('packages.durationDays', { count: durationDays })}.
       </p>
-      <DailyPriceHints hints={priceHints} timezone={tz} />
     </div>
   );
 }
@@ -109,12 +97,6 @@ export function DailyPicker({
     selectedDateLabel,
     setCalendarOpen,
   } = useDailyPickerController({ availability, listing, setSp, sp, tz });
-  const hintFrom = range?.from ? localToDateOnly(range.from) : null;
-  const priceHints = discountedDailyPriceHints(
-    availability,
-    hintFrom,
-    range?.to ? localToDateOnly(range.to) : hintFrom ? addDays(hintFrom, 1) : null,
-  );
 
   return (
     <div className="space-y-2">
@@ -160,55 +142,6 @@ export function DailyPicker({
       ) : (
         <p className="text-sm text-muted-foreground">{t('selectRange')}</p>
       )}
-      <DailyPriceHints hints={priceHints} timezone={tz} />
-    </div>
-  );
-}
-
-function discountedDailyPriceHints(
-  availability: AvailabilityResponse | null,
-  from: string | null,
-  to: string | null,
-): PricedDayAvailability[] {
-  return dailyAvailabilityInRange(availability, from, to).filter(
-    (day) => discountPercent(day.regularPrice, day.price) !== null,
-  );
-}
-
-function DailyPriceHints({
-  hints,
-  timezone,
-}: {
-  hints: PricedDayAvailability[];
-  timezone: string;
-}) {
-  const { t } = useTranslation(NsI18n.Listing);
-  const locale = useLocale();
-  if (!hints.length) return null;
-
-  return (
-    <div className="rounded-md border border-warning/30 bg-warning/5 p-3">
-      <p className="text-xs font-semibold text-warning-foreground">
-        {t('campaign.calendarSaleHeading')}
-      </p>
-      <ul className="mt-2 max-h-32 space-y-2 overflow-y-auto">
-        {hints.map((day) => (
-          <li
-            key={day.date}
-            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs"
-          >
-            <span className="text-muted-foreground">
-              {dateLabelInTz(day.date, timezone, locale)}
-            </span>
-            <SalePrice
-              price={day.price}
-              regularPrice={day.regularPrice}
-              campaignLabel={day.campaignLabel}
-              compact
-            />
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

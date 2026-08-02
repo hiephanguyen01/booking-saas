@@ -1,6 +1,4 @@
-import type { AvailabilityResponse, DayAvailability } from '@booking/contracts';
-
-export type PricedDayAvailability = DayAvailability & { price: string; regularPrice: string };
+import type { AvailabilityResponse } from '@booking/contracts';
 
 /**
  * The calendar dates a daily availability response reports as open, as a `Set` so
@@ -16,27 +14,5 @@ export function openDailyDates(availability: AvailabilityResponse | null | undef
     availability?.mode === 'daily'
       ? availability.days.filter((day) => day.status === 'available').map((day) => day.date)
       : [],
-  );
-}
-
-/**
- * Exact daily units in a selected stay. `to` is the checkout date and is therefore
- * excluded. Callers may present these unit prices, but the server quote remains the
- * only source of a multi-night total.
- */
-export function dailyAvailabilityInRange(
-  availability: AvailabilityResponse | null | undefined,
-  from: string | null | undefined,
-  to?: string | null,
-): PricedDayAvailability[] {
-  if (availability?.mode !== 'daily' || !from) return [];
-
-  return availability.days.filter(
-    (day): day is PricedDayAvailability =>
-      day.status === 'available' &&
-      day.price !== null &&
-      day.regularPrice !== null &&
-      day.date >= from &&
-      (!to || day.date < to),
   );
 }

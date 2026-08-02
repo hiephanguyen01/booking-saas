@@ -12,19 +12,12 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { Switch } from '@booking/ui/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { cn } from '@booking/ui/lib/utils';
 import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
-import {
-  formatDayShort,
-  maximumSalePrice,
-  type CalendarMode,
-} from '~/features/partner/lib/listing-calendar';
+import { formatDayShort, type CalendarMode } from '~/features/partner/lib/listing-calendar';
 import { BookingWarning } from './booking-warning';
-import { CampaignPreview } from './campaign-preview';
-import { SaleCampaignFields, type SaleCampaignValue } from './sale-campaign-fields';
 import { WindowListField } from './window-list-field';
 import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
 
@@ -77,28 +70,12 @@ export function RangeDialog({
   const [setting, setSetting] = useState('closed');
   const [acknowledged, setAcknowledged] = useState(false);
   const [windowsValid, setWindowsValid] = useState(true);
-  const [regularPrice, setRegularPrice] = useState('');
-  const [windowFrom, setWindowFrom] = useState('08:00');
-  const [windowTo, setWindowTo] = useState('09:00');
-  const [salePrice, setSalePrice] = useState('');
-  const [saleEnabled, setSaleEnabled] = useState(false);
-  const [campaign, setCampaign] = useState<SaleCampaignValue>({
-    startDate: '',
-    endDate: '',
-    label: '',
-  });
 
   useEffect(() => {
     setNotice(null);
     setSetting('closed');
     setAcknowledged(false);
     setWindowsValid(true);
-    setRegularPrice('');
-    setWindowFrom('08:00');
-    setWindowTo('09:00');
-    setSalePrice('');
-    setSaleEnabled(false);
-    setCampaign({ startDate: '', endDate: '', label: '' });
   }, [range?.from, range?.to]);
 
   useSubmitSuccess(availabilityFetcher, () =>
@@ -257,8 +234,7 @@ export function RangeDialog({
                             id="range-price-from"
                             name="windowFrom"
                             type="time"
-                            value={windowFrom}
-                            onChange={(event) => setWindowFrom(event.target.value)}
+                            defaultValue="08:00"
                             required
                           />
                         </div>
@@ -268,8 +244,7 @@ export function RangeDialog({
                             id="range-price-to"
                             name="windowTo"
                             type="time"
-                            value={windowTo}
-                            onChange={(event) => setWindowTo(event.target.value)}
+                            defaultValue="09:00"
                             required
                           />
                         </div>
@@ -280,75 +255,31 @@ export function RangeDialog({
                       <Input
                         id="range-regular-price"
                         name="price"
-                        type="number"
-                        min="1"
-                        step="1"
                         inputMode="numeric"
-                        value={regularPrice}
-                        onChange={(event) => setRegularPrice(event.target.value)}
                         placeholder={basePrice ? `Mặc định: ${basePrice}` : 'Nhập giá thường'}
                         required
                       />
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-4 rounded-lg border px-3 py-3">
-                    <div>
-                      <Label htmlFor="range-sale-enabled">Bật giá ưu đãi</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Tạo chiến dịch cho cả dải đã chọn.
-                      </p>
-                    </div>
-                    <Switch
-                      id="range-sale-enabled"
-                      checked={saleEnabled}
-                      onCheckedChange={(checked) => {
-                        setSaleEnabled(checked);
-                        if (!checked) setSalePrice('');
-                      }}
-                    />
-                  </div>
-                  {saleEnabled ? (
                     <div className="space-y-2">
-                      <Label htmlFor="range-sale-price">Giá ưu đãi (VND)</Label>
+                      <Label htmlFor="range-sale-price">Giá sale (VND)</Label>
                       <Input
                         id="range-sale-price"
                         name="salePrice"
-                        type="number"
-                        min="1"
-                        max={maximumSalePrice(regularPrice)}
-                        step="1"
                         inputMode="numeric"
-                        value={salePrice}
-                        onChange={(event) => setSalePrice(event.target.value)}
-                        placeholder="Thấp hơn giá thường"
-                        required
+                        placeholder="Không bắt buộc"
                       />
                     </div>
-                  ) : (
-                    <input type="hidden" name="salePrice" value="" />
-                  )}
-                  <SaleCampaignFields
-                    idPrefix="range"
-                    enabled={saleEnabled}
-                    value={campaign}
-                    onChange={setCampaign}
-                  />
-                  {saleEnabled ? (
-                    <CampaignPreview
-                      regularPrice={regularPrice}
-                      salePrice={salePrice}
-                      campaignLabel={campaign.label}
-                      ruleScopeDescription={`${dates.length} ngày · ${mode === 'hourly' ? `${windowFrom}–${windowTo} mỗi ngày` : 'cả ngày'}`}
-                      startDate={campaign.startDate}
-                      endDate={campaign.endDate}
-                    />
-                  ) : null}
+                  </div>
                   {priceFetcher.data?.error ? (
                     <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                       {priceFetcher.data.error}
                     </p>
                   ) : null}
-                  <Button type="submit" className="w-full" disabled={priceFetcher.state !== 'idle'}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={priceFetcher.state !== 'idle'}
+                  >
                     {priceFetcher.state === 'idle'
                       ? `Áp giá cho ${dates.length} ngày`
                       : 'Đang lưu...'}

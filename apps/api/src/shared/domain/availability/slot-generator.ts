@@ -1,12 +1,12 @@
 import { addMinutes } from '../../time/time';
-import type { UnitPrice } from '../pricing/quote-calculator';
 import { contains, overlapsAny, type Interval } from './interval';
 
 /** A generated hourly slot (a `(start, duration)` pair) with its availability + price. */
-export interface GeneratedSlot extends UnitPrice {
+export interface GeneratedSlot {
   startUtc: Date;
   endUtc: Date;
   available: boolean;
+  price: string;
 }
 
 export interface HourlySlotInput {
@@ -26,7 +26,7 @@ export interface HourlySlotInput {
   bufferAfterMin: number;
   leadTimeMin: number;
   /** Price a `[start,end)` booking of the given duration (wraps computeQuote). */
-  priceAt: (startUtc: Date, endUtc: Date) => UnitPrice;
+  priceAt: (startUtc: Date, endUtc: Date) => string;
 }
 
 /**
@@ -68,7 +68,7 @@ export function generateHourlySlots(input: HourlySlotInput): GeneratedSlot[] {
           startUtc: slot.start,
           endUtc: slot.end,
           available,
-          ...input.priceAt(slot.start, slot.end),
+          price: input.priceAt(slot.start, slot.end),
         });
       }
     }

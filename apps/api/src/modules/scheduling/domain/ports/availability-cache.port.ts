@@ -6,12 +6,6 @@ export interface CachedSlot {
   endUtc: string;
   available: boolean;
   price: string;
-  /**
-   * Optional because entries written before this field existed are still live
-   * for up to the cache TTL after a deploy; readers fall back to `price`.
-   */
-  regularPrice?: string;
-  campaignLabel?: string;
 }
 
 /**

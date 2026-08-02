@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { ModeConfig, QuoteQuery, QuoteResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow } from '../../../../shared/time/time';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import {
   LISTING_REPOSITORY,
@@ -46,9 +45,6 @@ export class GetPublicQuoteUseCase {
           params: r.params,
           price: r.price,
           salePrice: r.salePrice,
-          saleStartsAt: r.saleStartsAt,
-          saleEndsAt: r.saleEndsAt,
-          campaignLabel: r.campaignLabel,
           priority: r.priority,
         })),
         timezone: listing.resourceTimezone,
@@ -58,7 +54,6 @@ export class GetPublicQuoteUseCase {
         depositPercent: listing.depositPercent,
         bookingSelection: listing.bookingSelection,
         packageId: query.packageId,
-        now: utcNow(),
       });
     });
   }
