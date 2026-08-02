@@ -32,11 +32,13 @@ import {
   LISTING_FORM_SECTIONS,
   type ListingFormSectionId,
 } from './listing-form-progress';
+import { firstFormErrorField, formErrorMessagesAt } from '~/features/partner/lib/form-errors';
+import { validateListingAttributes } from '~/features/partner/lib/listing-attribute-validation';
 
 const CREATE_STEP_FIELDS: Record<ListingFormSectionId, Path<CreateListingInput>[]> = {
-  'listing-content': ['title'],
+  'listing-content': ['title', 'description', 'photos'],
   'listing-location': ['provinceCode', 'wardCode', 'address'],
-  'listing-pricing': ['bookingModes', 'modeConfig', 'stockQuantity'],
+  'listing-pricing': ['bookingModes', 'modeConfig', 'stockQuantity', 'attributes'],
   'listing-operations': ['capacity', 'bufferBefore', 'bufferAfter', 'approvalRequired'],
   'listing-payment': ['depositPercent', 'balanceDue', 'cancellationPolicyId'],
 };
@@ -60,6 +62,18 @@ const ERROR_FIELD_SECTION: Record<string, ListingFormSectionId> = {
   balanceDue: 'listing-payment',
   cancellationPolicyId: 'listing-payment',
 };
+
+function firstListingErrorSection(errors: unknown): ListingFormSectionId | undefined {
+  const field = firstFormErrorField(errors);
+  return field ? ERROR_FIELD_SECTION[field] : undefined;
+}
+
+function listingSectionErrorMessages(errors: unknown, section: ListingFormSectionId): string[] {
+  const messages = Object.entries(ERROR_FIELD_SECTION).flatMap(([field, fieldSection]) =>
+    fieldSection === section ? formErrorMessagesAt(errors, [field]) : [],
+  );
+  return [...new Set(messages)];
+}
 
 function scrollToWizardTop(): void {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -113,11 +127,27 @@ export function ListingForm({
     );
   }, [fieldErrors]);
   const [wizardIndex, setWizardIndex] = useState(initialWizardIndex);
+  const [furthestWizardIndex, setFurthestWizardIndex] = useState(initialWizardIndex);
   const [completedWizardSteps, setCompletedWizardSteps] = useState<Set<ListingFormSectionId>>(
     () => new Set(),
   );
   const [useGroupAddress, setUseGroupAddress] = useState(Boolean(inheritedAddress && !listing));
   const nextAfterCreateRef = useRef<'group' | 'add-another'>('group');
+  const listingFormSchema = useMemo(
+    () =>
+      createListingInputSchema.superRefine((values, context) => {
+        const type = listingTypes.find((item) => item.id === values.listingTypeId);
+        if (!type) return;
+        for (const issue of validateListingAttributes(type.attributeSchema, values.attributes)) {
+          context.addIssue({
+            code: 'custom',
+            path: ['attributes', issue.key],
+            message: issue.message,
+          });
+        }
+      }),
+    [listingTypes],
+  );
 
   useEffect(() => {
     if (experience !== 'create-wizard') return;
@@ -126,6 +156,7 @@ export function ListingForm({
     const index = LISTING_FORM_SECTIONS.findIndex((item) => item.id === section);
     if (index < 0) return;
     setWizardIndex(index);
+    setFurthestWizardIndex((current) => Math.max(current, index));
     window.requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(`[name="${firstField}"]`)?.focus();
     });
@@ -133,7 +164,7 @@ export function ListingForm({
 
   return (
     <GenericForm
-      schema={createListingInputSchema}
+      schema={listingFormSchema}
       fields={listingFormFields({
         listingTypes,
         isEdit,
@@ -153,24 +184,34 @@ export function ListingForm({
       submitLabel={submitLabel}
       serverError={serverError}
       fieldErrors={fieldErrors}
-      className="mx-auto w-full max-w-[1440px] space-y-4 pb-24 lg:pb-0"
+      className="mx-auto w-full max-w-[1440px] space-y-4 pb-36 xl:pb-0"
       showActions={false}
       warnOnUnsavedChanges
+      onInvalid={(errors) => {
+        if (experience !== 'create-wizard') return;
+        const section = firstListingErrorSection(errors);
+        const index = LISTING_FORM_SECTIONS.findIndex((item) => item.id === section);
+        if (index < 0) return;
+        setWizardIndex(index);
+        setFurthestWizardIndex((current) => Math.max(current, index));
+      }}
       renderFields={(renderedFields, values, form) => {
         const selectedType =
           listingTypes.find((type) => type.id === values.listingTypeId) ?? listingTypes[0];
         const progress = getListingFormProgress(values);
         const errorSections = getListingFormErrorSections(form.formState.errors);
         const complete = (id: ListingFormSectionId) =>
-          progress.items.find((item) => item.id === id)?.complete ?? false;
+          (progress.items.find((item) => item.id === id)?.complete ?? false) &&
+          !errorSections.has(id);
         const visualComplete = (id: ListingFormSectionId) =>
-          experience === 'create-wizard' ? completedWizardSteps.has(id) : complete(id);
+          experience === 'create-wizard'
+            ? completedWizardSteps.has(id) && complete(id)
+            : complete(id);
         const hasError = (id: ListingFormSectionId) => errorSections.has(id);
         const inventoryOnly =
           selectedType?.allowedModes.length === 1 && selectedType.allowedModes[0] === 'inventory';
-        const typeName = selectedType?.name.toLocaleLowerCase('vi') ?? '';
         const capacityNotApplicable =
-          inventoryOnly || ['nhiếp ảnh', 'makeup', 'model'].includes(typeName);
+          inventoryOnly || ['photography', 'makeup', 'model'].includes(selectedType?.slug ?? '');
 
         const sectionNodes: Record<ListingFormSectionId, ReactNode> = {
           'listing-content': (
@@ -309,6 +350,11 @@ export function ListingForm({
         if (experience === 'create-wizard') {
           const current = LISTING_FORM_SECTIONS[wizardIndex] ?? LISTING_FORM_SECTIONS[0];
           const currentHasError = current ? hasError(current.id) : false;
+          const currentErrorMessages = current
+            ? listingSectionErrorMessages(form.formState.errors, current.id)
+            : [];
+          const prerequisitesValid = (targetIndex: number) =>
+            LISTING_FORM_SECTIONS.slice(0, targetIndex).every((section) => complete(section.id));
           const goNext = async () => {
             if (!current) return;
             const valid = await form.trigger(CREATE_STEP_FIELDS[current.id], {
@@ -325,13 +371,15 @@ export function ListingForm({
               return;
             }
             setCompletedWizardSteps((previous) => new Set(previous).add(current.id));
-            setWizardIndex((index) => Math.min(index + 1, LISTING_FORM_SECTIONS.length - 1));
+            const nextIndex = Math.min(wizardIndex + 1, LISTING_FORM_SECTIONS.length - 1);
+            setWizardIndex(nextIndex);
+            setFurthestWizardIndex((index) => Math.max(index, nextIndex));
             scrollToWizardTop();
           };
 
           return (
-            <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-              <div className="order-2 min-w-0 space-y-5 lg:order-1">
+            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start">
+              <div className="order-2 min-w-0 space-y-5 xl:order-1">
                 <ListingContextStrip
                   typeName={selectedType?.name ?? 'Chưa chọn'}
                   itemContext={groupId ? 'Hạng mục trong tin đăng' : 'Một hạng mục độc lập'}
@@ -342,7 +390,16 @@ export function ListingForm({
                     role="alert"
                     className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
                   >
-                    Kiểm tra các trường được đánh dấu trong phần này trước khi tiếp tục.
+                    <p className="font-medium">Kiểm tra phần này trước khi tiếp tục:</p>
+                    {currentErrorMessages.length > 0 ? (
+                      <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                        {currentErrorMessages.map((message) => (
+                          <li key={message}>{message}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1">Có trường chưa hợp lệ.</p>
+                    )}
                   </div>
                 ) : null}
                 {LISTING_FORM_SECTIONS.map((section, index) => (
@@ -380,16 +437,15 @@ export function ListingForm({
                   onNext={() => void goNext()}
                 />
               </div>
-              <div className="order-1 lg:order-2">
+              <div className="order-1 xl:order-2">
                 <ListingWizardNav
                   items={LISTING_FORM_SECTIONS}
                   currentIndex={wizardIndex}
+                  furthestIndex={furthestWizardIndex}
                   completed={completedWizardSteps}
+                  canNavigate={(index) => index <= furthestWizardIndex && prerequisitesValid(index)}
                   onNavigate={(index) => {
-                    if (
-                      index <= wizardIndex ||
-                      completedWizardSteps.has(LISTING_FORM_SECTIONS[index]!.id)
-                    ) {
+                    if (index <= furthestWizardIndex && prerequisitesValid(index)) {
                       setWizardIndex(index);
                       scrollToWizardTop();
                     }
@@ -409,7 +465,7 @@ export function ListingForm({
               onNavigate={navigateToSection}
             />
 
-            <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
+            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start">
               <div className="min-w-0 space-y-5">
                 <ListingContextStrip
                   typeName={selectedType?.name ?? 'Chưa chọn'}

@@ -20,14 +20,18 @@ export function buildReviewChecklist(facts: ChecklistFacts): ChecklistItem[] {
   return [
     {
       key: 'photos',
-      label: `At least ${MIN_PHOTOS} photo${MIN_PHOTOS === 1 ? '' : 's'}`,
+      label: 'Có ít nhất một ảnh',
       passed: facts.photoCount >= MIN_PHOTOS,
     },
-    { key: 'description', label: 'Has a description', passed: facts.hasDescription },
-    { key: 'price', label: 'Every enabled mode has a price', passed: facts.hasPricePerMode },
+    { key: 'description', label: 'Có mô tả đầy đủ', passed: facts.hasDescription },
+    {
+      key: 'price',
+      label: 'Mỗi hình thức đặt có giá hoặc gói hợp lệ',
+      passed: facts.hasPricePerMode,
+    },
     {
       key: 'cancellation_policy',
-      label: 'Has a cancellation policy',
+      label: 'Có chính sách hủy đang áp dụng',
       passed: facts.hasCancellationPolicy,
     },
   ];

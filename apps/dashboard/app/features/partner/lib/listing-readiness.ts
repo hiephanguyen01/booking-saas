@@ -55,16 +55,13 @@ export function listingSubmissionReadiness(listing: ListingResponse): {
     },
     {
       key: 'price',
-      label:
-        listing.bookingSelection === 'fixed_packages'
-          ? 'Mỗi hình thức đặt có ít nhất một gói đang bật và giá lớn hơn 0'
-          : 'Mỗi hình thức đặt có giá lớn hơn 0',
+      label: 'Mỗi hình thức đặt có giá hoặc gói hợp lệ',
       passed: hasPricePerMode,
     },
     {
       key: 'cancellation',
-      label: 'Đã chọn chính sách hủy cho tin đăng',
-      passed: listing.cancellationPolicyId !== null,
+      label: 'Có chính sách hủy đang áp dụng',
+      passed: listing.effectiveCancellationPolicy !== null,
     },
   ];
   return { checklist, ready: checklist.every((item) => item.passed) };

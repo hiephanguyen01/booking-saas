@@ -25,29 +25,55 @@ export function AttributeInput({
   field,
   value,
   onChange,
+  error,
 }: {
   field: AttributeField;
   value: unknown;
   onChange: (value: unknown) => void;
+  error?: string;
 }) {
   // The attribute schema carries its own glyph (same allowlist as the listing
   // type's icon); label it here exactly as the storefront spec cards do.
   const icon = field.icon ? <ListingTypeIcon name={field.icon} className="size-4" /> : null;
+  const controlId = React.useId();
+  const errorId = `${controlId}-error`;
 
   if (field.type === 'boolean') {
     return (
-      <label className="flex items-center gap-2 text-sm">
-        <Switch checked={value === true} onCheckedChange={(v) => onChange(v)} />
+      <label htmlFor={controlId} className="flex items-center gap-2 text-sm">
+        <Switch
+          id={controlId}
+          checked={value === true}
+          onCheckedChange={(v) => onChange(v)}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+        />
         {icon ? <span className="text-muted-foreground">{icon}</span> : null}
         {field.label}
+        {error ? (
+          <span id={errorId} className="text-xs text-destructive" role="alert">
+            {error}
+          </span>
+        ) : null}
       </label>
     );
   }
   if (field.type === 'select') {
     return (
-      <Field label={field.label} icon={icon}>
+      <Field
+        label={field.label}
+        icon={icon}
+        htmlFor={controlId}
+        error={error ? [error] : undefined}
+        errorId={errorId}
+      >
         <Select value={typeof value === 'string' ? value : ''} onValueChange={onChange}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger
+            id={controlId}
+            className="w-full"
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+          >
             <SelectValue placeholder="—" />
           </SelectTrigger>
           <SelectContent>
@@ -64,7 +90,7 @@ export function AttributeInput({
   if (field.type === 'multiselect') {
     const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
-      <Field label={field.label} icon={icon}>
+      <Field label={field.label} icon={icon} error={error ? [error] : undefined} errorId={errorId}>
         <div className="flex flex-wrap gap-3">
           {(field.options ?? []).map((o) => (
             <label key={o} className="flex items-center gap-2 text-sm">
@@ -73,6 +99,8 @@ export function AttributeInput({
                 onCheckedChange={(v) =>
                   onChange(v === true ? [...selected, o] : selected.filter((x) => x !== o))
                 }
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? errorId : undefined}
               />
               {o}
             </label>
@@ -83,17 +111,32 @@ export function AttributeInput({
   }
   if (field.type === 'list') {
     return (
-      <SortableListAttribute label={field.label} icon={icon} value={value} onChange={onChange} />
+      <SortableListAttribute
+        label={field.label}
+        icon={icon}
+        value={value}
+        onChange={onChange}
+        error={error}
+      />
     );
   }
   return (
-    <Field label={field.label} icon={icon}>
+    <Field
+      label={field.label}
+      icon={icon}
+      htmlFor={controlId}
+      error={error ? [error] : undefined}
+      errorId={errorId}
+    >
       <Input
+        id={controlId}
         type={field.type === 'number' ? 'number' : 'text'}
         value={value === undefined || value === null ? '' : String(value)}
         onChange={(e) =>
           onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)
         }
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
       />
     </Field>
   );
@@ -109,11 +152,13 @@ function SortableListAttribute({
   icon,
   value,
   onChange,
+  error,
 }: {
   label: string;
   icon?: React.ReactNode;
   value: unknown;
   onChange: (value: unknown) => void;
+  error?: string;
 }) {
   const externalLines = React.useMemo(
     () =>
@@ -122,6 +167,7 @@ function SortableListAttribute({
   );
   const externalSignature = JSON.stringify(externalLines);
   const idSeed = React.useId();
+  const errorId = `${idSeed}-error`;
   const nextId = React.useRef(0);
   const inputRefs = React.useRef(new Map<string, HTMLInputElement>());
   const lastEmitted = React.useRef(externalSignature);
@@ -182,7 +228,7 @@ function SortableListAttribute({
   };
 
   return (
-    <Field label={label} icon={icon}>
+    <Field label={label} icon={icon} error={error ? [error] : undefined} errorId={errorId}>
       <div className="space-y-2">
         {rows.length === 0 ? (
           <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
@@ -221,6 +267,8 @@ function SortableListAttribute({
                       aria-label={`${label} ${index + 1}`}
                       className="min-w-0 rounded-xl"
                       onChange={(event) => update(index, event.target.value)}
+                      aria-invalid={Boolean(error)}
+                      aria-describedby={error ? errorId : undefined}
                     />
                     <Button
                       type="button"
@@ -239,7 +287,15 @@ function SortableListAttribute({
           </div>
         </SortableCollection>
 
-        <Button type="button" variant="ghost" size="sm" onClick={add} className="px-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={add}
+          className="px-1"
+          aria-invalid={rows.length === 0 && Boolean(error)}
+          aria-describedby={rows.length === 0 && error ? errorId : undefined}
+        >
           <CirclePlus className="size-4" />
           Thêm giá trị
         </Button>

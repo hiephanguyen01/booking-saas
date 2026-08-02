@@ -122,22 +122,16 @@ export function writePackages(
   rows: PackageRow[],
   durationKey: 'durationMinutes' | 'durationDays',
 ): Record<string, unknown>[] {
-  return rows.flatMap((row, index) => {
-    const duration = optInt(row.duration);
-    if (!row.id || !row.name.trim() || duration === undefined || row.price.trim() === '') return [];
-    return [
-      {
-        id: row.id,
-        name: row.name.trim(),
-        ...(row.description.trim() ? { description: row.description.trim() } : {}),
-        photos: row.photos,
-        [durationKey]: duration,
-        price: vnd(row.price),
-        isActive: row.isActive,
-        sortOrder: index,
-      },
-    ];
-  });
+  return rows.map((row, index) => ({
+    id: row.id,
+    name: row.name.trim(),
+    ...(row.description.trim() ? { description: row.description.trim() } : {}),
+    photos: row.photos,
+    [durationKey]: optInt(row.duration) ?? 0,
+    price: row.price.trim() ? vnd(row.price) : '0',
+    isActive: row.isActive,
+    sortOrder: index,
+  }));
 }
 
 export function savedModeConfig(listing?: ListingResponse): ModeConfigMap {

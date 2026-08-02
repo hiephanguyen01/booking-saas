@@ -29,6 +29,40 @@ import {
   LISTING_GROUP_FORM_SECTIONS,
   type ListingGroupFormSectionId,
 } from './listing-group-form-progress';
+import { firstFormErrorField, formErrorMessagesAt } from '~/features/partner/lib/form-errors';
+
+const GROUP_STEP_FIELDS: Record<ListingGroupFormSectionId, Path<CreateListingGroupInput>[]> = {
+  'group-content': ['title', 'description', 'photos', 'amenities'],
+  'group-location': ['provinceCode', 'wardCode', 'address'],
+};
+
+const GROUP_ERROR_FIELD_SECTION: Record<string, ListingGroupFormSectionId> = {
+  partnerId: 'group-content',
+  listingTypeId: 'group-content',
+  title: 'group-content',
+  description: 'group-content',
+  photos: 'group-content',
+  amenities: 'group-content',
+  provinceCode: 'group-location',
+  wardCode: 'group-location',
+  address: 'group-location',
+  workingArea: 'group-location',
+};
+
+function firstGroupErrorSection(errors: unknown): ListingGroupFormSectionId | undefined {
+  const field = firstFormErrorField(errors);
+  return field ? GROUP_ERROR_FIELD_SECTION[field] : undefined;
+}
+
+function groupSectionErrorMessages(errors: unknown, section: ListingGroupFormSectionId): string[] {
+  return [
+    ...new Set(
+      Object.entries(GROUP_ERROR_FIELD_SECTION).flatMap(([field, fieldSection]) =>
+        fieldSection === section ? formErrorMessagesAt(errors, [field]) : [],
+      ),
+    ),
+  ];
+}
 
 function scrollToWizardTop(): void {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -67,6 +101,7 @@ export function ListingGroupForm({
       : 0;
   }, [fieldErrors]);
   const [wizardIndex, setWizardIndex] = useState(initialWizardIndex);
+  const [furthestWizardIndex, setFurthestWizardIndex] = useState(initialWizardIndex);
   const [completedSteps, setCompletedSteps] = useState<Set<ListingGroupFormSectionId>>(
     () => new Set(),
   );
@@ -81,6 +116,7 @@ export function ListingGroupForm({
         : -1;
     if (index < 0) return;
     setWizardIndex(index);
+    setFurthestWizardIndex((current) => Math.max(current, index));
     window.requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(`[name="${firstField}"]`)?.focus();
     });
@@ -130,16 +166,25 @@ export function ListingGroupForm({
       submitLabel={submitLabel}
       serverError={serverError}
       fieldErrors={fieldErrors}
-      className="mx-auto w-full max-w-[1440px] space-y-4 pb-24 lg:pb-0"
+      className="mx-auto w-full max-w-[1440px] space-y-4 pb-36 xl:pb-0"
       showActions={false}
       warnOnUnsavedChanges
+      onInvalid={(errors) => {
+        if (!isCreate) return;
+        const section = firstGroupErrorSection(errors);
+        const index = LISTING_GROUP_FORM_SECTIONS.findIndex((item) => item.id === section);
+        if (index < 0) return;
+        setWizardIndex(index);
+        setFurthestWizardIndex((current) => Math.max(current, index));
+      }}
       renderFields={(renderedFields, values, form) => {
         const progress = getListingGroupFormProgress(values);
         const errorSections = getListingGroupFormErrorSections(form.formState.errors);
         const complete = (id: ListingGroupFormSectionId) =>
-          progress.items.find((item) => item.id === id)?.complete ?? false;
+          (progress.items.find((item) => item.id === id)?.complete ?? false) &&
+          !errorSections.has(id);
         const visualComplete = (id: ListingGroupFormSectionId) =>
-          isCreate ? completedSteps.has(id) : complete(id);
+          isCreate ? completedSteps.has(id) && complete(id) : complete(id);
         const hasError = (id: ListingGroupFormSectionId) => errorSections.has(id);
 
         const sections = {
@@ -190,13 +235,16 @@ export function ListingGroupForm({
         if (isCreate) {
           const current =
             LISTING_GROUP_FORM_SECTIONS[wizardIndex] ?? LISTING_GROUP_FORM_SECTIONS[0];
+          const currentErrorMessages = current
+            ? groupSectionErrorMessages(form.formState.errors, current.id)
+            : [];
+          const prerequisitesValid = (targetIndex: number) =>
+            LISTING_GROUP_FORM_SECTIONS.slice(0, targetIndex).every((section) =>
+              complete(section.id),
+            );
           const goNext = async () => {
             if (!current) return;
-            const stepFields: Record<ListingGroupFormSectionId, Path<CreateListingGroupInput>[]> = {
-              'group-content': ['title'],
-              'group-location': ['provinceCode', 'wardCode', 'address'],
-            };
-            const valid = await form.trigger(stepFields[current.id], { shouldFocus: true });
+            const valid = await form.trigger(GROUP_STEP_FIELDS[current.id], { shouldFocus: true });
             if (!valid) {
               window.requestAnimationFrame(() => {
                 const firstInvalid = document
@@ -208,13 +256,15 @@ export function ListingGroupForm({
               return;
             }
             setCompletedSteps((previous) => new Set(previous).add(current.id));
-            setWizardIndex((index) => Math.min(index + 1, LISTING_GROUP_FORM_SECTIONS.length - 1));
+            const nextIndex = Math.min(wizardIndex + 1, LISTING_GROUP_FORM_SECTIONS.length - 1);
+            setWizardIndex(nextIndex);
+            setFurthestWizardIndex((index) => Math.max(index, nextIndex));
             scrollToWizardTop();
           };
 
           return (
-            <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-              <div className="order-2 min-w-0 space-y-5 lg:order-1">
+            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start">
+              <div className="order-2 min-w-0 space-y-5 xl:order-1">
                 <ListingContextStrip
                   typeName={listingType.name}
                   itemContext={`Nhiều ${itemLabel}`}
@@ -225,7 +275,16 @@ export function ListingGroupForm({
                     role="alert"
                     className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
                   >
-                    Kiểm tra các trường được đánh dấu trong phần này trước khi tiếp tục.
+                    <p className="font-medium">Kiểm tra phần này trước khi tiếp tục:</p>
+                    {currentErrorMessages.length > 0 ? (
+                      <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                        {currentErrorMessages.map((message) => (
+                          <li key={message}>{message}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1">Có trường chưa hợp lệ.</p>
+                    )}
                   </div>
                 ) : null}
                 {LISTING_GROUP_FORM_SECTIONS.map((section, index) => (
@@ -249,16 +308,15 @@ export function ListingGroupForm({
                   onNext={() => void goNext()}
                 />
               </div>
-              <div className="order-1 lg:order-2">
+              <div className="order-1 xl:order-2">
                 <ListingWizardNav
                   items={LISTING_GROUP_FORM_SECTIONS}
                   currentIndex={wizardIndex}
+                  furthestIndex={furthestWizardIndex}
                   completed={completedSteps}
+                  canNavigate={(index) => index <= furthestWizardIndex && prerequisitesValid(index)}
                   onNavigate={(index) => {
-                    if (
-                      index <= wizardIndex ||
-                      completedSteps.has(LISTING_GROUP_FORM_SECTIONS[index]!.id)
-                    ) {
+                    if (index <= furthestWizardIndex && prerequisitesValid(index)) {
                       setWizardIndex(index);
                       scrollToWizardTop();
                     }
@@ -278,7 +336,7 @@ export function ListingGroupForm({
               onNavigate={navigateToSection}
             />
 
-            <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
+            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start">
               <div className="min-w-0 space-y-5">
                 <ListingContextStrip
                   typeName={listingType.name}

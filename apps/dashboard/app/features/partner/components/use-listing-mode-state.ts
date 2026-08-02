@@ -39,6 +39,7 @@ export function useListingModeState(opts: {
   selectedType?: ListingTypeResponse;
 }): ListingModeState {
   const { form, listing, listingTypeId, selectedType } = opts;
+  const { setValue } = form;
 
   const [state, setState] = useState<DynamicState>(() =>
     initialDynamic(
@@ -56,6 +57,7 @@ export function useListingModeState(opts: {
   // Depending on the ListingType object made edit forms lose their saved
   // attributes whenever loader data was revalidated with a new object identity.
   const previousListingTypeId = useRef(listingTypeId);
+  const hasMirroredInitialState = useRef(false);
   useEffect(() => {
     if (previousListingTypeId.current === listingTypeId) return;
     previousListingTypeId.current = listingTypeId;
@@ -66,21 +68,26 @@ export function useListingModeState(opts: {
 
   // Mirror the dynamic values into RHF so the schema can validate them.
   useEffect(() => {
-    form.setValue('bookingModes', state.bookingModes);
-    form.setValue(
+    const changedByUser = hasMirroredInitialState.current;
+    const options = { shouldDirty: changedByUser, shouldValidate: changedByUser };
+    setValue('bookingModes', state.bookingModes, options);
+    setValue(
       'modeConfig',
       buildModeConfig(
         state,
         saved,
         selectedType?.bookingSelection ?? listing?.bookingSelection ?? 'flexible_duration',
       ) as CreateListingInput['modeConfig'],
+      options,
     );
-    form.setValue('attributes', state.attributes);
-    form.setValue(
+    setValue('attributes', state.attributes, options);
+    setValue(
       'stockQuantity',
       state.bookingModes.includes('inventory') ? int(state.stockQuantity, 1) : undefined,
+      options,
     );
-  }, [state, form, saved, selectedType?.bookingSelection, listing?.bookingSelection]);
+    hasMirroredInitialState.current = true;
+  }, [state, saved, selectedType?.bookingSelection, listing?.bookingSelection, setValue]);
 
   const toggleMode = (mode: BookingMode, on: boolean): void =>
     set(

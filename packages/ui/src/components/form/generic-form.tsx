@@ -91,6 +91,8 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   warnOnUnsavedChanges?: boolean;
   /** Reset react-hook-form's dirty state after the parent confirms a successful save. */
   resetDirtyOnSuccess?: boolean;
+  /** Let composed forms reveal the section containing an invalid field before focus moves. */
+  onInvalid?: (errors: FieldErrors<z.infer<TSchema>>) => void;
 }
 
 const COLS: Record<1 | 2 | 3 | 4, string> = {
@@ -140,6 +142,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   showActions = true,
   warnOnUnsavedChanges,
   resetDirtyOnSuccess,
+  onInvalid: onInvalidProp,
 }: GenericFormProps<TSchema>) {
   type Values = z.infer<TSchema>;
   const form = useForm<Values>({
@@ -256,21 +259,30 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   };
 
   const onInvalid = (errors: FieldErrors<Values>) => {
+    onInvalidProp?.(errors);
     const firstName = Object.keys(errors)[0] as Path<Values> | undefined;
-    if (!firstName) return;
-
-    setFocus(firstName);
     window.requestAnimationFrame(() => {
-      const field = document.querySelector<HTMLElement>(`[name="${String(firstName)}"]`);
-      if (field && document.activeElement !== field) field.focus();
-      const focusedElement = field ?? document.activeElement;
+      window.requestAnimationFrame(() => {
+        const firstInvalid = document.querySelector<HTMLElement>('[aria-invalid="true"]');
+        const namedField = firstName
+          ? document.querySelector<HTMLElement>(`[name="${String(firstName)}"]`)
+          : null;
+        const field = firstInvalid ?? namedField;
+        if (field) {
+          field.focus();
+        } else if (firstName) {
+          setFocus(firstName);
+        }
 
-      if (focusedElement instanceof HTMLElement) {
-        focusedElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      }
+        const focusedElement = field ?? document.activeElement;
+        if (focusedElement instanceof HTMLElement) {
+          const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          focusedElement.scrollIntoView({
+            behavior: reducedMotion ? 'auto' : 'smooth',
+            block: 'center',
+          });
+        }
+      });
     });
   };
 

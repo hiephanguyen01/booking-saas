@@ -81,18 +81,22 @@ export interface ListingWizardItem<Id extends string> {
 export function ListingWizardNav<Id extends string>({
   items,
   currentIndex,
+  furthestIndex,
   completed,
+  canNavigate,
   onNavigate,
 }: {
   items: ReadonlyArray<ListingWizardItem<Id>>;
   currentIndex: number;
+  furthestIndex: number;
   completed: Set<Id>;
+  canNavigate: (index: number) => boolean;
   onNavigate: (index: number) => void;
 }) {
   const current = items[currentIndex];
   return (
     <>
-      <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur xl:hidden">
         <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground">
             Phần {currentIndex + 1}/{items.length}
@@ -104,11 +108,7 @@ export function ListingWizardNav<Id extends string>({
             aria-label="Chọn phần của biểu mẫu"
           >
             {items.map((item, index) => (
-              <option
-                key={item.id}
-                value={index}
-                disabled={index > currentIndex && !completed.has(item.id)}
-              >
+              <option key={item.id} value={index} disabled={!canNavigate(index)}>
                 {item.shortLabel}
               </option>
             ))}
@@ -116,7 +116,7 @@ export function ListingWizardNav<Id extends string>({
         </label>
       </div>
 
-      <aside className="hidden lg:block">
+      <aside className="hidden xl:block">
         <div className="sticky top-20 overflow-hidden rounded-2xl border bg-card">
           <div className="border-b px-5 py-4">
             <p className="text-sm font-semibold">Tạo bản nháp</p>
@@ -128,7 +128,7 @@ export function ListingWizardNav<Id extends string>({
             {items.map((item, index) => {
               const active = index === currentIndex;
               const done = completed.has(item.id);
-              const available = index <= currentIndex || done;
+              const available = index <= furthestIndex && canNavigate(index);
               return (
                 <button
                   key={item.id}
@@ -193,8 +193,8 @@ export function ListingWizardActions({
 }) {
   const last = currentIndex === total - 1;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur lg:static lg:z-auto lg:rounded-2xl lg:border lg:bg-card lg:p-4 lg:shadow-none">
-      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur xl:static xl:z-auto xl:rounded-2xl xl:border xl:bg-card xl:p-4 xl:shadow-none">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 xl:flex-nowrap xl:gap-3">
         <Button
           type="button"
           variant="ghost"
@@ -204,11 +204,16 @@ export function ListingWizardActions({
         >
           <ArrowLeft aria-hidden /> Quay lại
         </Button>
-        <p className="hidden text-xs text-muted-foreground sm:block">
+        <p className="text-xs text-muted-foreground">
           Phần {currentIndex + 1}/{total}
         </p>
         {last ? (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div
+            className={cn(
+              'order-last grid w-full gap-2 xl:order-none xl:flex xl:w-auto xl:justify-end',
+              secondaryFinalLabel ? 'grid-cols-2' : 'grid-cols-1',
+            )}
+          >
             {secondaryFinalLabel ? (
               <Button
                 type="submit"
@@ -310,7 +315,7 @@ export function ListingFormRail<Id extends string>({
   hint = 'Tin đăng được lưu ở trạng thái nháp để bạn kiểm tra.',
 }: ListingNavigationProps<Id> & { hint?: ReactNode }) {
   return (
-    <aside className="hidden self-stretch lg:block">
+    <aside className="hidden self-stretch xl:block">
       <div className="sticky top-20 space-y-4">
         <div className="overflow-hidden rounded-2xl border bg-card shadow-[0_12px_36px_-28px_hsl(var(--foreground)/0.35)]">
           <div className="border-b p-5">
@@ -364,7 +369,7 @@ export function ListingFormMobileNav<Id extends string>({
   'progress' | 'errorSections' | 'activeSection' | 'onNavigate'
 >) {
   return (
-    <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
+    <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur xl:hidden">
       <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
         <span className="text-xs font-medium text-muted-foreground">
           Phần{' '}
@@ -397,7 +402,7 @@ export function ListingFormMobileActions<Id extends string>({
   submitLabel,
 }: Pick<ListingNavigationProps<Id>, 'progress' | 'isSubmitting' | 'submitLabel'>) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur lg:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur xl:hidden">
       <div className="mx-auto flex max-w-2xl items-center gap-3">
         <p className="text-xs text-muted-foreground">Lưu toàn bộ thay đổi trên trang</p>
         <Button type="submit" size="control" disabled={isSubmitting} className="ml-auto px-5">
@@ -518,36 +523,48 @@ export function useActiveListingFormSection<Id extends string>(
       clearTimeout(navigationReleaseTimerRef.current);
     }
 
-    navigationReleaseTimerRef.current = setTimeout(() => {
-      navigationTargetRef.current = null;
-      updateActiveSection();
-    }, 160);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    navigationReleaseTimerRef.current = setTimeout(
+      () => {
+        navigationTargetRef.current = null;
+        updateActiveSection();
+      },
+      reducedMotion ? 0 : 450,
+    );
   }, [updateActiveSection]);
 
   useEffect(() => {
-    let animationFrame: number | null = null;
-
-    const handleViewportChange = () => {
-      if (navigationTargetRef.current) {
-        scheduleNavigationRelease();
-        return;
-      }
-
-      if (animationFrame !== null) return;
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = null;
-        updateActiveSection();
-      });
-    };
-
+    const visibleSections = new Map<Element, IntersectionObserverEntry>();
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-listing-form-section]'),
+    );
     updateActiveSection();
-    window.addEventListener('scroll', handleViewportChange, { passive: true });
-    window.addEventListener('resize', handleViewportChange);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visibleSections.set(entry.target, entry);
+          else visibleSections.delete(entry.target);
+        }
+        if (navigationTargetRef.current) return;
+
+        const active = Array.from(visibleSections.values()).sort(
+          (left, right) =>
+            Math.abs(left.boundingClientRect.top - 132) -
+            Math.abs(right.boundingClientRect.top - 132),
+        )[0]?.target as HTMLElement | undefined;
+        if (active?.id) setActiveSection(active.id as Id);
+      },
+      {
+        rootMargin: '-132px 0px -55% 0px',
+        threshold: [0, 0.01, 0.25, 0.5, 1],
+      },
+    );
+
+    for (const section of sections) observer.observe(section);
 
     return () => {
-      window.removeEventListener('scroll', handleViewportChange);
-      window.removeEventListener('resize', handleViewportChange);
-      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
       if (navigationReleaseTimerRef.current) {
         clearTimeout(navigationReleaseTimerRef.current);
       }
@@ -558,7 +575,10 @@ export function useActiveListingFormSection<Id extends string>(
     (id: Id) => {
       navigationTargetRef.current = id;
       setActiveSection(id);
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      document
+        .getElementById(id)
+        ?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
       scheduleNavigationRelease();
     },
     [scheduleNavigationRelease],

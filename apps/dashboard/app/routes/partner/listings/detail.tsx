@@ -588,6 +588,13 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
         error={actionData?.error ?? loaderData.calendarError ?? loaderData.recurringError}
       />
       <PendingChangeBanner revision={loaderData.revision} />
+      <ListingLifecycleCard
+        listing={listing}
+        checklist={readiness.checklist}
+        ready={readiness.ready}
+        canWrite={loaderData.canWrite}
+        canPublish={loaderData.canPublish}
+      />
 
       {tab === 'pricing' ? (
         <RecurringPricing
@@ -611,14 +618,6 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
         />
       ) : (
         <>
-          <ListingLifecycleCard
-            listing={listing}
-            checklist={readiness.checklist}
-            ready={readiness.ready}
-            canWrite={loaderData.canWrite}
-            canPublish={loaderData.canPublish}
-          />
-
           <Card>
             <CardHeader>
               <CardTitle>Thông tin</CardTitle>

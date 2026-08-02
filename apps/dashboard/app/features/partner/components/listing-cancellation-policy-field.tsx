@@ -35,6 +35,7 @@ export function ListingCancellationPolicyField({
         render={({ field, fieldState }) => {
           const explicitlySelected = policies.find((policy) => policy.id === field.value) ?? null;
           const preview = explicitlySelected ?? defaultPolicy;
+          const errorId = 'listing-cancellation-policy-error';
 
           return (
             <div className="space-y-4">
@@ -45,7 +46,11 @@ export function ListingCancellationPolicyField({
                     field.onChange(value === USE_DEFAULT ? undefined : value)
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    className="w-full"
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={fieldState.invalid ? errorId : undefined}
+                  >
                     <SelectValue placeholder="Chọn chính sách hủy" />
                   </SelectTrigger>
                   <SelectContent>
@@ -61,7 +66,9 @@ export function ListingCancellationPolicyField({
               ) : null}
 
               {fieldState.error?.message ? (
-                <p className="text-xs text-destructive">{fieldState.error.message}</p>
+                <p id={errorId} className="text-xs text-destructive" role="alert">
+                  {fieldState.error.message}
+                </p>
               ) : null}
 
               {preview ? (

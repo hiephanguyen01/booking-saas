@@ -21,7 +21,9 @@ import {
 
 /** VND đồng as a digit string — money never travels as a JS number. */
 const vndAmountSchema = z.string().regex(/^\d+$/, 'Vui lòng nhập số tiền VND hợp lệ');
-const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM (24h)');
+const timeStringSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Vui lòng nhập giờ theo định dạng 24 giờ');
 const dateStringSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be an ISO date (YYYY-MM-DD)');
@@ -53,7 +55,7 @@ const packageBaseSchema = z.object({
   description: z.string().trim().max(1000, 'Mô tả gói tối đa 1.000 ký tự').optional(),
   price: vndAmountSchema.refine((value) => BigInt(value) > 0n, 'Giá gói phải lớn hơn 0'),
   photos: z
-    .array(z.string().url())
+    .array(z.string().url('Đường dẫn ảnh gói không hợp lệ'))
     .max(8, 'Mỗi gói có tối đa 8 ảnh')
     .refine((photos) => new Set(photos).size === photos.length, 'Ảnh trong gói không được trùng')
     .default([]),
@@ -98,10 +100,26 @@ export const hourlyModeConfigSchema = z
   .object({
     basePrice: vndAmountSchema.optional(),
     packages: z.array(hourlyPackageSchema).default([]),
-    minDuration: z.number().int().positive('Thời lượng tối thiểu phải lớn hơn 0').optional(),
-    maxDuration: z.number().int().positive('Thời lượng tối đa phải lớn hơn 0').optional(),
-    granularity: z.number().int().positive('Bước thời gian phải lớn hơn 0').default(60),
-    leadTimeMin: z.number().int().nonnegative('Thời gian đặt trước không được âm').default(0),
+    minDuration: z
+      .number()
+      .int('Thời lượng tối thiểu phải là số nguyên')
+      .positive('Thời lượng tối thiểu phải lớn hơn 0')
+      .optional(),
+    maxDuration: z
+      .number()
+      .int('Thời lượng tối đa phải là số nguyên')
+      .positive('Thời lượng tối đa phải lớn hơn 0')
+      .optional(),
+    granularity: z
+      .number()
+      .int('Bước thời gian phải là số phút nguyên')
+      .positive('Bước thời gian phải lớn hơn 0')
+      .default(60),
+    leadTimeMin: z
+      .number()
+      .int('Thời gian đặt trước phải là số phút nguyên')
+      .nonnegative('Thời gian đặt trước không được âm')
+      .default(0),
   })
   .superRefine((c, ctx) => {
     if (
@@ -131,11 +149,23 @@ export const dailyModeConfigSchema = z
   .object({
     basePricePerNight: vndAmountSchema.optional(),
     packages: z.array(dailyPackageSchema).default([]),
-    minNights: z.number().int().positive('Số đêm tối thiểu phải lớn hơn 0').optional(),
-    maxNights: z.number().int().positive('Số đêm tối đa phải lớn hơn 0').optional(),
+    minNights: z
+      .number()
+      .int('Số đêm tối thiểu phải là số nguyên')
+      .positive('Số đêm tối thiểu phải lớn hơn 0')
+      .optional(),
+    maxNights: z
+      .number()
+      .int('Số đêm tối đa phải là số nguyên')
+      .positive('Số đêm tối đa phải lớn hơn 0')
+      .optional(),
     checkinTime: timeStringSchema.default('14:00'),
     checkoutTime: timeStringSchema.default('12:00'),
-    leadTimeMin: z.number().int().nonnegative('Thời gian đặt trước không được âm').default(0),
+    leadTimeMin: z
+      .number()
+      .int('Thời gian đặt trước phải là số nguyên')
+      .nonnegative('Thời gian đặt trước không được âm')
+      .default(0),
   })
   .superRefine((c, ctx) => {
     if (c.maxNights !== undefined && c.minNights !== undefined && c.maxNights < c.minNights) {
@@ -152,8 +182,16 @@ export const inventoryModeConfigSchema = z.object({
   unit: z.enum(['hour', 'day']),
   basePrice: vndAmountSchema.refine((value) => BigInt(value) > 0n, 'Giá thuê phải lớn hơn 0'),
   securityDeposit: vndAmountSchema.default('0'),
-  minDuration: z.number().int().positive('Thời lượng thuê tối thiểu phải lớn hơn 0').optional(),
-  maxDuration: z.number().int().positive('Thời lượng thuê tối đa phải lớn hơn 0').optional(),
+  minDuration: z
+    .number()
+    .int('Thời lượng thuê tối thiểu phải là số nguyên')
+    .positive('Thời lượng thuê tối thiểu phải lớn hơn 0')
+    .optional(),
+  maxDuration: z
+    .number()
+    .int('Thời lượng thuê tối đa phải là số nguyên')
+    .positive('Thời lượng thuê tối đa phải lớn hơn 0')
+    .optional(),
   /** Late-return fee per overdue unit per item (§9.4); defaults to basePrice. */
   lateFeePerUnit: vndAmountSchema.optional(),
 });
@@ -168,14 +206,18 @@ export type ModeConfig = z.infer<typeof modeConfigSchema>;
 // ── Inputs ───────────────────────────────────────────────────────────────────
 
 export const listingGroupAmenitySchema = z.object({
-  label: z.string().trim().min(1).max(120),
+  label: z
+    .string()
+    .trim()
+    .min(1, 'Vui lòng nhập tên tiện ích')
+    .max(120, 'Tên tiện ích tối đa 120 ký tự'),
   icon: listingTypeIconSchema,
 });
 export type ListingGroupAmenity = z.infer<typeof listingGroupAmenitySchema>;
 
 export const listingGroupAmenitiesSchema = z
   .array(listingGroupAmenitySchema)
-  .max(24)
+  .max(24, 'Mỗi tin đăng có tối đa 24 tiện ích chung')
   .superRefine((amenities, ctx) => {
     const labels = new Set<string>();
     for (const [index, amenity] of amenities.entries()) {
@@ -201,7 +243,7 @@ export const createListingGroupInputSchema = z
     description: z.string().max(5000, 'Mô tả tối đa 5.000 ký tự').optional(),
     workingArea: z.string().max(200, 'Khu vực hoạt động tối đa 200 ký tự').optional(),
     amenities: listingGroupAmenitiesSchema.default([]),
-    photos: z.array(z.string().url()).default([]),
+    photos: z.array(z.string().url('Đường dẫn ảnh tin đăng không hợp lệ')).default([]),
   })
   .merge(administrativeAddressInputSchema);
 export type CreateListingGroupInput = z.infer<typeof createListingGroupInputSchema>;
@@ -219,14 +261,30 @@ const listingBaseSchema = z
     title: z.string().trim().min(1, 'Vui lòng nhập tên bài đăng').max(200, 'Tên tối đa 200 ký tự'),
     slug: slugSchema,
     description: z.string().max(5000, 'Mô tả tối đa 5.000 ký tự').optional(),
-    photos: z.array(z.string().url()).default([]),
+    photos: z.array(z.string().url('Đường dẫn ảnh tin đăng không hợp lệ')).default([]),
     attributes: z.record(z.unknown()).default({}),
     bookingModes: z.array(bookingModeSchema).min(1, 'Vui lòng chọn ít nhất một hình thức đặt'),
     modeConfig: modeConfigSchema,
-    stockQuantity: z.number().int().positive('Số lượng cho thuê phải lớn hơn 0').optional(),
-    capacity: z.number().int().positive('Sức chứa phải lớn hơn 0').optional(),
-    bufferBefore: z.number().int().nonnegative('Thời gian đệm không được âm').default(0),
-    bufferAfter: z.number().int().nonnegative('Thời gian đệm không được âm').default(0),
+    stockQuantity: z
+      .number()
+      .int('Số lượng cho thuê phải là số nguyên')
+      .positive('Số lượng cho thuê phải lớn hơn 0')
+      .optional(),
+    capacity: z
+      .number()
+      .int('Sức chứa phải là số nguyên')
+      .positive('Sức chứa phải lớn hơn 0')
+      .optional(),
+    bufferBefore: z
+      .number()
+      .int('Thời gian đệm trước phải là số phút nguyên')
+      .nonnegative('Thời gian đệm trước không được âm')
+      .default(0),
+    bufferAfter: z
+      .number()
+      .int('Thời gian đệm sau phải là số phút nguyên')
+      .nonnegative('Thời gian đệm sau không được âm')
+      .default(0),
     approvalRequired: z.boolean().default(false),
     depositPercent: z
       .number()
@@ -248,10 +306,12 @@ const modeConfigCoversModes = (
   const config = value.modeConfig as Record<string, unknown>;
   for (const mode of value.bookingModes) {
     if (config[mode] === undefined) {
+      const modeLabel =
+        mode === 'hourly' ? 'theo giờ' : mode === 'daily' ? 'theo ngày' : 'cho thuê';
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['modeConfig'],
-        message: `Vui lòng hoàn tất cấu hình cho hình thức đặt ${mode}`,
+        message: `Vui lòng hoàn tất cấu hình ${modeLabel}`,
       });
     }
   }

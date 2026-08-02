@@ -22,7 +22,6 @@ import { requirePartner } from '~/features/partner/server/partner.server';
 import { runListingGroupAction } from '~/features/partner/server/listing-groups.server';
 import {
   GroupStatusAlert,
-  isAdminLocked,
   SubmitGroupButton,
 } from '~/features/partner/components/listing-groups/listing-group-lifecycle';
 import {
@@ -98,7 +97,6 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
     loaderData;
   const pendingChangeIds = new Set(pendingItemIds);
   const itemLabel = group.itemLabel;
-  const adminLocked = isAdminLocked(group);
   // Items of a live post are editable now: the change waits for review instead of
   // taking the whole post offline.
   const canEditItems = canWrite;
@@ -124,7 +122,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
         actions={
           <>
             <ListingStatusBadge status={group.status} />
-            {canWrite && !adminLocked ? (
+            {canWrite ? (
               <Button asChild variant="outline" size="sm">
                 <Link to={dashboardPaths.partner.listingGroupEdit(group.id)}>
                   <Pencil data-icon="inline-start" /> Sửa thông tin chung
@@ -174,8 +172,21 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
               </div>
               <Progress value={readyPct} />
             </div>
-            {canWrite && group.status === 'draft' ? (
-              <SubmitGroupButton disabled={!commonContentReady || !allListingsReady} />
+            {group.status === 'draft' ? (
+              <SubmitGroupButton
+                disabled={!canWrite || !commonContentReady || !allListingsReady}
+                disabledReason={
+                  !canWrite
+                    ? 'Bạn không có quyền gửi duyệt tin đăng này.'
+                    : !commonContentReady
+                      ? 'Bổ sung ảnh và mô tả chung trước khi gửi duyệt.'
+                      : !hasListings
+                        ? `Thêm ít nhất một ${itemLabel} trước khi gửi duyệt.`
+                        : !allListingsReady
+                          ? `Hoàn tất nội dung, giá và chính sách của mọi ${itemLabel}.`
+                          : undefined
+                }
+              />
             ) : null}
           </div>
           <div className="grid border-t sm:grid-cols-3 sm:divide-x">
@@ -194,8 +205,8 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
             <ReadinessItem
               label={`Nội dung ${itemLabel}`}
               ready={allListingsReady}
-              readyLabel="Tất cả đã đủ ảnh, mô tả và giá"
-              pendingLabel="Cần bổ sung ảnh, mô tả hoặc giá"
+              readyLabel="Tất cả đã đủ ảnh, mô tả, giá và chính sách"
+              pendingLabel="Cần bổ sung ảnh, mô tả, giá hoặc chính sách"
             />
           </div>
         </CardContent>

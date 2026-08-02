@@ -1,5 +1,5 @@
 import { useFetcher } from 'react-router';
-import { Check, Circle, EyeOff, Info, Lock, RotateCcw, Send } from 'lucide-react';
+import { Check, Circle, EyeOff, Info, LoaderCircle, Lock, RotateCcw, Send } from 'lucide-react';
 import type { ChecklistItem, ListingResponse, PublishStatus } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
@@ -42,6 +42,7 @@ export function ListingLifecycleCard({
 }) {
   const fetcher = useFetcher<LifecycleActionResult>();
   const { busy, run } = useSubmissionGuard(fetcher.state);
+  const pendingIntent = String(fetcher.formData?.get('intent') ?? '');
   const adminLocked = listing.status === 'archived' && listing.hiddenBy === 'admin';
   const copy = STATUS_COPY[listing.status];
   const submit = (intent: 'submit' | 'hide' | 'republish'): void => {
@@ -84,20 +85,40 @@ export function ListingLifecycleCard({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2" aria-busy={busy}>
+        <div
+          className="flex flex-wrap items-center gap-2"
+          aria-busy={busy}
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {listing.status === 'draft' && canWrite ? (
             <Button disabled={!ready || busy} onClick={() => submit('submit')}>
-              <Send /> Gửi duyệt
+              {busy && pendingIntent === 'submit' ? (
+                <LoaderCircle className="animate-spin" aria-hidden />
+              ) : (
+                <Send aria-hidden />
+              )}
+              {busy && pendingIntent === 'submit' ? 'Đang gửi duyệt…' : 'Gửi duyệt'}
             </Button>
           ) : null}
           {listing.status === 'published' && canPublish ? (
             <Button variant="outline" disabled={busy} onClick={() => submit('hide')}>
-              <EyeOff /> Ẩn tin đăng
+              {busy && pendingIntent === 'hide' ? (
+                <LoaderCircle className="animate-spin" aria-hidden />
+              ) : (
+                <EyeOff aria-hidden />
+              )}
+              {busy && pendingIntent === 'hide' ? 'Đang ẩn…' : 'Ẩn tin đăng'}
             </Button>
           ) : null}
           {listing.status === 'archived' && canPublish && !adminLocked ? (
             <Button variant="outline" disabled={busy} onClick={() => submit('republish')}>
-              <RotateCcw /> Đăng lại
+              {busy && pendingIntent === 'republish' ? (
+                <LoaderCircle className="animate-spin" aria-hidden />
+              ) : (
+                <RotateCcw aria-hidden />
+              )}
+              {busy && pendingIntent === 'republish' ? 'Đang đăng lại…' : 'Đăng lại'}
             </Button>
           ) : null}
           {listing.status === 'draft' && !ready ? (

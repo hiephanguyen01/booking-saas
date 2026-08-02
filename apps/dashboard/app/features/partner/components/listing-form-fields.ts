@@ -5,6 +5,11 @@ import type {
   ListingTypeResponse,
 } from '@booking/contracts';
 import type { FieldConfig } from '@booking/ui/components/form/types';
+import {
+  buildModeConfig,
+  initialDynamic,
+  savedModeConfig,
+} from '~/features/partner/lib/listing-mode-config';
 
 /** GenericForm field config for the partner listing form (presentation only). */
 export function listingFormFields(opts: {
@@ -26,16 +31,16 @@ export function listingFormFields(opts: {
     listingTypes[0];
   const itemLabel = selectedType?.itemLabel?.trim() || 'hạng mục';
   const titleExample = (() => {
-    switch (selectedType?.name.toLocaleLowerCase('vi')) {
+    switch (selectedType?.slug) {
       case 'studio':
         return 'Ví dụ: Phòng Cyclorama trắng';
-      case 'nhiếp ảnh':
+      case 'photography':
         return 'Ví dụ: Gói chụp chân dung ngoại cảnh';
       case 'makeup':
         return 'Ví dụ: Trang điểm cô dâu tại nhà';
-      case 'thiết bị':
+      case 'equipment':
         return 'Ví dụ: Sony A7 IV kèm ống kính 24-70mm';
-      case 'trang phục':
+      case 'costume':
         return 'Ví dụ: Áo dài lụa đỏ thêu tay';
       case 'model':
         return 'Ví dụ: Model lookbook nữ tại TP.HCM';
@@ -132,6 +137,11 @@ export function listingFormDefaults(opts: {
   inheritedAddress?: { provinceCode: string; wardCode: string; address: string };
 }): CreateListingInput {
   const { partnerId, listingTypes, listing, groupId, lockedListingTypeId, inheritedAddress } = opts;
+  const selectedType =
+    listingTypes.find(
+      (type) => type.id === (listing?.listingTypeId ?? lockedListingTypeId ?? listingTypes[0]?.id),
+    ) ?? listingTypes[0];
+  const dynamic = initialDynamic(listing, selectedType?.defaultModes ?? []);
   return {
     partnerId,
     listingTypeId: listing?.listingTypeId ?? lockedListingTypeId ?? listingTypes[0]?.id ?? '',
@@ -143,10 +153,16 @@ export function listingFormDefaults(opts: {
     wardCode: listing?.wardCode ?? inheritedAddress?.wardCode ?? '',
     address: listing?.address ?? inheritedAddress?.address ?? '',
     photos: listing?.photos ?? [],
-    bookingModes: (listing?.bookingModes ?? []) as BookingMode[],
-    modeConfig: {},
+    bookingModes: dynamic.bookingModes as BookingMode[],
+    modeConfig: buildModeConfig(
+      dynamic,
+      savedModeConfig(listing),
+      selectedType?.bookingSelection ?? listing?.bookingSelection ?? 'flexible_duration',
+    ) as CreateListingInput['modeConfig'],
     attributes: listing?.attributes ?? {},
-    stockQuantity: listing?.stockQuantity ?? undefined,
+    stockQuantity: dynamic.bookingModes.includes('inventory')
+      ? Number(dynamic.stockQuantity)
+      : undefined,
     capacity: listing?.capacity ?? undefined,
     bufferBefore: listing?.bufferBefore ?? 0,
     bufferAfter: listing?.bufferAfter ?? 0,

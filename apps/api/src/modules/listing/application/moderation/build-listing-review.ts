@@ -43,7 +43,7 @@ export function buildListingReview(listing: ListingRecord): ListingReviewRespons
           ? modeHasActivePackage(m, listing.modeConfig)
           : modeHasPrice(m, listing.modeConfig),
       ),
-    hasCancellationPolicy: listing.cancellationPolicyId !== null,
+    hasCancellationPolicy: listing.effectiveCancellationPolicy !== null,
   });
   const contactFlags = scanForContactInfo({
     title: listing.title,
