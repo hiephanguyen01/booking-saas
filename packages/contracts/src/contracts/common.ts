@@ -110,31 +110,6 @@ export const calendarRangeQuerySchema = z
   });
 export type CalendarRangeQuery = z.infer<typeof calendarRangeQuerySchema>;
 
-/**
- * Inclusive calendar window where both bounds are REQUIRED — for destructive
- * range operations. A read may default its own window when bounds are omitted;
- * a delete must never, because "no bounds" would silently mean "everything".
- */
-export const requiredCalendarRangeQuerySchema = z
-  .object({ from: dateOnlySchema, to: dateOnlySchema })
-  .superRefine((range, ctx) => {
-    const days = dateOnlyDistanceDays(range.from, range.to);
-    if (days === null || days < 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['to'],
-        message: 'to must be on/after from',
-      });
-    } else if (days + 1 > MAX_BULK_CALENDAR_DAYS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['to'],
-        message: `Range must be at most ${MAX_BULK_CALENDAR_DAYS} days`,
-      });
-    }
-  });
-export type RequiredCalendarRangeQuery = z.infer<typeof requiredCalendarRangeQuerySchema>;
-
 /** Default page size for every list endpoint / list screen — one source of truth. */
 export const DEFAULT_PAGE_SIZE = 20;
 /** Hard upper bound the API accepts for `pageSize` (guards against unbounded scans). */

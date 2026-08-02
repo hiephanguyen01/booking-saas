@@ -78,13 +78,7 @@ export function RangeDialog({
     setWindowsValid(true);
   }, [range?.from, range?.to]);
 
-  useSubmitSuccess(availabilityFetcher, () =>
-    onSaved(
-      setting === 'default'
-        ? `Đã trả ${dates.length} ngày về lịch tuần.`
-        : `Đã lưu lịch mở cửa cho ${dates.length} ngày.`,
-    ),
-  );
+  useSubmitSuccess(availabilityFetcher, () => onSaved(`Đã lưu lịch mở cửa cho ${dates.length} ngày.`));
   useSubmitSuccess(priceFetcher, (result) => {
     // A range apply is routinely partial, so its own outcome stays in the
     // dialog where the partner can read which dates were skipped and why.
@@ -130,21 +124,14 @@ export function RangeDialog({
                   method="post"
                   className="space-y-4"
                 >
-                  <input
-                    type="hidden"
-                    name="intent"
-                    value={
-                      setting === 'default' ? 'clear_availability_range' : 'save_availability_range'
-                    }
-                  />
+                  <input type="hidden" name="intent" value="save_availability_range" />
                   <input type="hidden" name="from" value={range.from} />
                   <input type="hidden" name="to" value={range.to} />
                   <div>
                     <h3 className="text-sm font-semibold">Áp cho cả dải</h3>
                     <p className="text-xs text-muted-foreground">
-                      {setting === 'default'
-                        ? 'Xoá thiết lập riêng của mọi ngày trong dải, trả các ngày này về lịch tuần.'
-                        : 'Thiết lập này ghi đè từng ngày trong dải.'}
+                      Thiết lập này ghi đè từng ngày trong dải. “Dùng lịch tuần” chưa hỗ trợ theo
+                      dải — bỏ thiết lập riêng vẫn phải làm từng ngày.
                     </p>
                   </div>
                   <div className="space-y-3">
@@ -159,7 +146,6 @@ export function RangeDialog({
                       >
                         <option value="closed">Đóng cả ngày</option>
                         <option value="custom_hours">Mở theo giờ riêng</option>
-                        <option value="default">Dùng lịch tuần (xoá thiết lập riêng)</option>
                       </select>
                     </div>
                     {setting === 'custom_hours' ? (
@@ -194,11 +180,9 @@ export function RangeDialog({
                       (setting === 'custom_hours' && !windowsValid)
                     }
                   >
-                    {availabilityFetcher.state !== 'idle'
-                      ? 'Đang lưu...'
-                      : setting === 'default'
-                        ? `Trả ${dates.length} ngày về lịch tuần`
-                        : `Áp cho ${dates.length} ngày`}
+                    {availabilityFetcher.state === 'idle'
+                      ? `Áp cho ${dates.length} ngày`
+                      : 'Đang lưu...'}
                   </Button>
                 </availabilityFetcher.Form>
               </TabsContent>

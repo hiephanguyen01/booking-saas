@@ -24,7 +24,6 @@ import { SetAvailabilityRulesUseCase } from '../../application/use-cases/set-ava
 import { ListAvailabilityExceptionsUseCase } from '../../application/use-cases/list-availability-exceptions.use-case';
 import { AddAvailabilityExceptionUseCase } from '../../application/use-cases/add-availability-exception.use-case';
 import { AddAvailabilityExceptionRangeUseCase } from '../../application/use-cases/add-availability-exception-range.use-case';
-import { ClearAvailabilityExceptionsRangeUseCase } from '../../application/use-cases/clear-availability-exceptions-range.use-case';
 import { DeleteAvailabilityExceptionUseCase } from '../../application/use-cases/delete-availability-exception.use-case';
 import { PublicAvailabilityController } from './public-availability.controller';
 import { TenantAvailabilityController } from './tenant-availability.controller';
@@ -61,7 +60,6 @@ const BOOKING_BUSY_EVENTS = [
     ListAvailabilityExceptionsUseCase,
     AddAvailabilityExceptionUseCase,
     AddAvailabilityExceptionRangeUseCase,
-    ClearAvailabilityExceptionsRangeUseCase,
     DeleteAvailabilityExceptionUseCase,
   ],
 })

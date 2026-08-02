@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useFetcher } from 'react-router';
-import { Pencil, Plus, X } from 'lucide-react';
-import type { PricingRuleResponse, RecurringPricingKind } from '@booking/contracts';
+import { Plus } from 'lucide-react';
+import type { RecurringPricingKind } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
-import { cn } from '@booking/ui/lib/utils';
 import { Money } from '~/components/money';
 import { DAYS } from '~/features/partner/lib/listing-hours';
 import type { CalendarMode } from '~/features/partner/lib/listing-calendar';
@@ -15,21 +14,13 @@ import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-
 interface Props {
   mode: CalendarMode;
   basePrice: string | null;
-  /** The rule being edited; `null` builds a new one. */
-  editing: PricingRuleResponse | null;
   onSaved: () => void;
-  onCancelEdit: () => void;
 }
 
 /** Weekend is the overwhelmingly common first rule, so it is the default pick. */
 const WEEKEND = ['6', '0'];
 
-function daysOf(rule: PricingRuleResponse): string[] {
-  const days = rule.params.days;
-  return Array.isArray(days) && days.length > 0 ? days.map(String) : [];
-}
-
-export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Props) {
+export function RuleForm({ mode, basePrice, onSaved }: Props) {
   const fetcher = useFetcher<SubmitResult>();
   // `time_range` prices a band of hours, which only means anything when the
   // unit being priced is an hour — a nightly listing has one unit per date.
@@ -37,30 +28,10 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
     mode === 'hourly' ? 'time_range' : 'day_of_week',
   );
   const [days, setDays] = useState<string[]>(WEEKEND);
-
-  // Editing reuses the create form and the create request: the API replaces a
-  // rule that names the same scope, so "edit" is seeding these fields. Picking a
-  // different scope while editing therefore MOVES the rule — it deletes the old
-  // scope only if it happens to match, which is why the button says "Lưu" and
-  // the header names the rule being changed.
-  useEffect(() => {
-    if (!editing) return;
-    setKind(editing.ruleType === 'time_range' ? 'time_range' : 'day_of_week');
-    const picked = daysOf(editing);
-    setDays(picked.length > 0 ? picked : ['0', '1', '2', '3', '4', '5', '6']);
-  }, [editing]);
-
   useSubmitSuccess(fetcher, onSaved);
 
   return (
-    <fetcher.Form
-      key={editing?.id ?? 'new'}
-      method="post"
-      className={cn(
-        'space-y-4 rounded-xl border p-4',
-        editing ? 'border-primary/40 bg-primary/5' : 'bg-muted/20',
-      )}
-    >
+    <fetcher.Form method="post" className="space-y-4 rounded-xl border bg-muted/20 p-4">
       <input type="hidden" name="intent" value="save_recurring_price" />
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="kind" value={kind} />
@@ -68,22 +39,11 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
         <input key={day} type="hidden" name="days" value={day} />
       ))}
 
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">
-            {editing ? 'Sửa quy tắc lặp lại' : 'Thêm quy tắc lặp lại'}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {editing
-              ? 'Đổi thứ hoặc khung giờ sẽ chuyển quy tắc sang phạm vi mới, không tạo thêm bản sao.'
-              : 'Áp mãi cho những thứ bạn chọn. Giá riêng của một ngày cụ thể vẫn đè lên quy tắc này.'}
-          </p>
-        </div>
-        {editing ? (
-          <Button type="button" variant="ghost" size="sm" onClick={onCancelEdit}>
-            <X className="size-4" aria-hidden /> Huỷ
-          </Button>
-        ) : null}
+      <div>
+        <h3 className="text-sm font-semibold">Thêm quy tắc lặp lại</h3>
+        <p className="text-xs text-muted-foreground">
+          Áp mãi cho những thứ bạn chọn. Giá riêng của một ngày cụ thể vẫn đè lên quy tắc này.
+        </p>
       </div>
 
       {mode === 'hourly' ? (
@@ -124,23 +84,11 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
           <div className="grid grid-cols-2 gap-2 sm:col-span-2">
             <div className="space-y-2">
               <Label htmlFor="recurring-from">Từ giờ</Label>
-              <Input
-                id="recurring-from"
-                name="windowFrom"
-                type="time"
-                defaultValue={editing ? String(editing.params.from ?? '18:00') : '18:00'}
-                required
-              />
+              <Input id="recurring-from" name="windowFrom" type="time" defaultValue="18:00" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="recurring-to">Đến giờ</Label>
-              <Input
-                id="recurring-to"
-                name="windowTo"
-                type="time"
-                defaultValue={editing ? String(editing.params.to ?? '22:00') : '22:00'}
-                required
-              />
+              <Input id="recurring-to" name="windowTo" type="time" defaultValue="22:00" required />
             </div>
           </div>
         ) : null}
@@ -150,7 +98,6 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
             id="recurring-price"
             name="price"
             inputMode="numeric"
-            defaultValue={editing?.price ?? ''}
             placeholder={basePrice ? `Mặc định: ${basePrice}` : 'Nhập giá thường'}
             required
           />
@@ -161,7 +108,6 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
             id="recurring-sale-price"
             name="salePrice"
             inputMode="numeric"
-            defaultValue={editing?.salePrice ?? ''}
             placeholder="Không bắt buộc"
           />
         </div>
@@ -181,15 +127,9 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
 
       <Button type="submit" disabled={fetcher.state !== 'idle' || days.length === 0}>
         {fetcher.state === 'idle' ? (
-          editing ? (
-            <>
-              <Pencil className="size-4" /> Lưu quy tắc
-            </>
-          ) : (
-            <>
-              <Plus className="size-4" /> Thêm quy tắc
-            </>
-          )
+          <>
+            <Plus className="size-4" /> Thêm quy tắc
+          </>
         ) : (
           'Đang lưu...'
         )}

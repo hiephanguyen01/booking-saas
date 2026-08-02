@@ -22,7 +22,6 @@ interface Props {
  */
 export function RecurringPricing({ listing, mode, rules, canWrite }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const enabledModes = listing.bookingModes.filter(
     (item): item is CalendarMode => item === 'hourly' || item === 'daily',
   );
@@ -81,17 +80,7 @@ export function RecurringPricing({ listing, mode, rules, canWrite }: Props) {
         </h2>
         {modeRules.length > 0 ? (
           modeRules.map((rule) => (
-            <RuleRow
-              key={rule.id}
-              rule={rule}
-              unit={unit}
-              canWrite={canPricing}
-              isEditing={rule.id === editingId}
-              onEdit={() => {
-                setNotice(null);
-                setEditingId(rule.id);
-              }}
-            />
+            <RuleRow key={rule.id} rule={rule} unit={unit} canWrite={canPricing} />
           ))
         ) : (
           <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
@@ -104,12 +93,7 @@ export function RecurringPricing({ listing, mode, rules, canWrite }: Props) {
         <RuleForm
           mode={mode}
           basePrice={basePrice}
-          editing={modeRules.find((rule) => rule.id === editingId) ?? null}
-          onSaved={() => {
-            setNotice(editingId ? 'Đã cập nhật quy tắc.' : 'Đã thêm quy tắc giá lặp lại.');
-            setEditingId(null);
-          }}
-          onCancelEdit={() => setEditingId(null)}
+          onSaved={() => setNotice('Đã thêm quy tắc giá lặp lại.')}
         />
       ) : null}
     </div>

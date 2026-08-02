@@ -40,7 +40,5 @@ export interface IAvailabilityExceptionRepository {
     data: AvailabilityExceptionInputData,
   ): Promise<AvailabilityExceptionRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;
-  /** Drop every exception in an inclusive date span; returns how many went. */
-  deleteInRange(tx: PrismaTx, resourceId: string, from: string, to: string): Promise<number>;
   findById(tx: PrismaTx, id: string): Promise<AvailabilityExceptionRecord | null>;
 }

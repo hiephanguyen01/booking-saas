@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PricingRuleInput } from '@booking/contracts';
-import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
   LISTING_REPOSITORY,
@@ -11,16 +11,33 @@ import {
   type IPricingRuleRepository,
   type PricingRuleRecord,
 } from '../../domain/ports/pricing-rule-repository.port';
-import { PricingRule } from '../../domain/entities/pricing-rule.entity';
+import {
+  OPEN_HOURS_READER,
+  type IOpenHoursReader,
+} from '../../domain/ports/open-hours-reader.port';
+import {
+  localOpenWindowsForDate,
+  windowFitsOpenHours,
+} from '../../../../shared/domain/availability/open-windows';
+import {
+  PricingRule,
+  findOverlappingRecurring,
+  findOverlappingWindow,
+  sameWindowKey,
+} from '../../domain/entities/pricing-rule.entity';
 import { ListingNotFound, ListingNotOwned } from '../../domain/errors/listing-errors';
-import { PreparePricingRuleWriteUseCase } from './prepare-pricing-rule-write.use-case';
+import {
+  PricingRuleOverlap,
+  PricingWindowOutsideOpenHours,
+  RecurringPricingRuleOverlap,
+} from '../../domain/errors/pricing-rule-errors';
 
 @Injectable()
 export class CreatePartnerPricingRuleUseCase {
   constructor(
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
     @Inject(PRICING_RULE_REPOSITORY) private readonly rules: IPricingRuleRepository,
-    private readonly prepareWrite: PreparePricingRuleWriteUseCase,
+    @Inject(OPEN_HOURS_READER) private readonly openHours: IOpenHoursReader,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -50,7 +67,42 @@ export class CreatePartnerPricingRuleUseCase {
         bookingModes: listing.bookingModes,
         bookingSelection: listing.bookingSelection,
       });
-      await this.prepareWrite.execute(tx, { ...listing, id: listingId }, candidate);
+      // Calendar edits are save/replace operations. Remove the previous exact
+      // override for the same mode and scope so repeated saves stay deterministic.
+      if (input.ruleType === 'date_range' || input.ruleType === 'date_time_range') {
+        const existing = await this.rules.listByListing(tx, listingId);
+        if (input.ruleType === 'date_time_range') {
+          const overlap = findOverlappingWindow(existing, candidate);
+          if (overlap) {
+            throw new PricingRuleOverlap(String(overlap.params.from), String(overlap.params.to));
+          }
+          await this.assertInsideOpenHours(tx, listingId, listing.resourceId, candidate.params);
+        }
+        for (const rule of existing) {
+          if (sameWindowKey(rule, candidate)) await this.rules.delete(tx, rule.id);
+        }
+      } else if (input.ruleType === 'day_of_week' || input.ruleType === 'time_range') {
+        // Recurring rules all share one priority band, so two that match the
+        // same instant resolve by array order — refuse the collision instead of
+        // letting an arbitrary one win.
+        const existing = await this.rules.listByListing(tx, listingId);
+        const overlap = findOverlappingRecurring(existing, candidate);
+        if (overlap) {
+          const days = Array.isArray(overlap.params.days) ? overlap.params.days.map(Number) : [];
+          throw new RecurringPricingRuleOverlap(
+            days,
+            input.ruleType === 'time_range'
+              ? { from: String(overlap.params.from), to: String(overlap.params.to) }
+              : undefined,
+          );
+        }
+        // `findOverlappingRecurring` deliberately does NOT flag an identical
+        // scope, so this replace is what stops that case becoming a duplicate
+        // row — same save/replace contract as the date-scoped branch above.
+        for (const rule of existing) {
+          if (sameWindowKey(rule, candidate)) await this.rules.delete(tx, rule.id);
+        }
+      }
       const created = await this.rules.create(tx, tenantId, candidate);
       await this.outbox.emit(tx, {
         tenantId,
@@ -59,5 +111,29 @@ export class CreatePartnerPricingRuleUseCase {
       });
       return created;
     });
+  }
+
+  /**
+   * A `date_time_range` window must fall inside the date's opening hours.
+   * Enforced here rather than in the dashboard so it holds for every partner —
+   * the dashboard could only check it for partners who also hold
+   * `partner.availability.manage`, since reading the hours needs that scope.
+   */
+  private async assertInsideOpenHours(
+    tx: PrismaTx,
+    listingId: string,
+    resourceId: string,
+    params: Record<string, unknown>,
+  ): Promise<void> {
+    const { rules, exception } = await this.openHours.forDate(
+      tx,
+      listingId,
+      resourceId,
+      String(params.date),
+    );
+    const windows = localOpenWindowsForDate(String(params.date), rules, exception);
+    if (!windowFitsOpenHours(windows, String(params.from), String(params.to))) {
+      throw new PricingWindowOutsideOpenHours(windows);
+    }
   }
 }
