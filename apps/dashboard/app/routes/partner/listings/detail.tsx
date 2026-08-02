@@ -43,13 +43,11 @@ import { dashboardPaths } from '~/constants/paths';
 import { listingPriceFrom } from '~/lib/listing-price';
 import {
   addDays,
-  mondayOf,
   monthBounds,
   parseDay,
   startOfDayUtc,
   toDayString,
   todayString,
-  weekDays,
 } from '~/lib/calendar-dates';
 import { holdsResource } from '~/features/partner/lib/listing-calendar';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
@@ -79,27 +77,11 @@ function pricingErrorMessage(code: string | undefined, fallback: string | undefi
 }
 
 /**
- * The sale campaign a form posted, as instants.
- *
- * The partner picks whole days; the stored window is half-open, so the chosen
- * end date D becomes midnight of D+1 — "kết thúc 31/12" has to include all of
- * 31/12. Returns `{}` when no campaign was entered, so the spread adds nothing.
+ * The `custom_hours` windows a dialog posted, as repeated `window=open|close`
+ * fields. Malformed rows are dropped so a half-typed time never reaches the API
+ * as `""` — zod would reject the whole save with a message about a field the
+ * partner cannot see.
  */
-function submittedCampaign(form: FormData): {
-  saleStartsAt?: string;
-  saleEndsAt?: string;
-  campaignLabel?: string;
-} {
-  const start = String(form.get('saleStartDate') ?? '');
-  const end = String(form.get('saleEndDate') ?? '');
-  const label = String(form.get('campaignLabel') ?? '').trim();
-  return {
-    ...(start ? { saleStartsAt: startOfDayUtc(start) } : {}),
-    ...(end ? { saleEndsAt: startOfDayUtc(toDayString(addDays(parseDay(end), 1))) } : {}),
-    ...(label ? { campaignLabel: label } : {}),
-  };
-}
-
 function submittedWindows(form: FormData): { openTime: string; closeTime: string }[] {
   return form
     .getAll(EXCEPTION_WINDOW_FIELD)
@@ -139,25 +121,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
         ? 'hourly'
         : 'daily';
   const canAvailability = can('partner.availability.manage');
-  // Gated on the mode BEING VIEWED, not on the modes the listing supports: a
-  // listing can offer both, and in its daily view a night is one priced unit —
-  // rows of hours would say nothing. Checking `bookingModes` instead let a
-  // hand-typed `?view=week` render the hour grid over a daily calendar.
-  const view: 'month' | 'week' =
-    url.searchParams.get('view') === 'week' && mode === 'hourly' ? 'week' : 'month';
-  const requestedWeek = url.searchParams.get('week');
-  const weekAnchor =
-    requestedWeek && /^\d{4}-\d{2}-\d{2}$/.test(requestedWeek) ? requestedWeek : todayString();
-  const weekStart = toDayString(mondayOf(parseDay(weekAnchor)));
-  const weekDates = weekDays(parseDay(weekStart)).map(toDayString);
-  // Calendar reads are windowed to WHAT IS ON SCREEN, not to the month: a week
-  // can straddle two months, and their defaults start at today — so a month
-  // window would leave the spill-over days with no overrides loaded and render
-  // stored closures as "no override".
-  const { from, to } =
-    view === 'week'
-      ? { from: weekDates[0]!, to: weekDates[6]! }
-      : monthBounds(month);
+  // Both calendar reads are windowed to the month on screen: their defaults
+  // start at today, so an unwindowed read of a past or far-future month comes
+  // back empty and every stored closure/price would render as "no override".
+  const { from, to } = monthBounds(month);
   const calendarRange = { from, to };
   const [pricingRes, exceptionsRes, weeklyRes, bookingsRes, siblingsRes] =
     tab === 'calendar'
@@ -214,9 +181,6 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     tab,
     month,
     mode,
-    view,
-    weekStart,
-    weekDates,
     pricingRules: pricingRes?.ok ? (pricingRes.data ?? []) : [],
     exceptions: exceptionsRes?.ok ? (exceptionsRes.data ?? []) : [],
     weeklyRules: weeklyRes?.ok ? (weeklyRes.data ?? []) : [],
@@ -299,7 +263,6 @@ export async function action({ request, params }: Route.ActionArgs) {
             : { days: recurring.days },
         price: recurring.price,
         ...(recurring.salePrice ? { salePrice: recurring.salePrice } : {}),
-        ...(recurring.salePrice ? submittedCampaign(form) : {}),
         priority: PRICING_RULE_PRIORITY.recurring,
       },
       auth,
@@ -382,7 +345,6 @@ export async function action({ request, params }: Route.ActionArgs) {
         : {}),
       price,
       ...(salePrice ? { salePrice } : {}),
-      ...(salePrice ? submittedCampaign(form) : {}),
       priority:
         mode === 'hourly'
           ? PRICING_RULE_PRIORITY.dateTimeRange
@@ -511,7 +473,6 @@ export async function action({ request, params }: Route.ActionArgs) {
               : { from: date, to: date },
           price,
           ...(salePrice ? { salePrice } : {}),
-          ...(salePrice ? submittedCampaign(form) : {}),
           priority:
             mode === 'hourly'
               ? PRICING_RULE_PRIORITY.dateTimeRange
@@ -617,9 +578,6 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
           weeklyRules={loaderData.weeklyRules}
           bookings={loaderData.bookings}
           siblingCount={loaderData.siblingCount}
-          view={loaderData.view}
-          weekStart={loaderData.weekStart}
-          weekDates={loaderData.weekDates}
           canWrite={loaderData.canWrite}
           canAvailability={loaderData.canAvailability}
         />

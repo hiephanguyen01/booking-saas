@@ -12,10 +12,6 @@ dist/
 !.env.example
 !.env.deploy.example
 .DS_Store
-# Playwright MCP scratch output (page-*.yml snapshots, screenshots, console logs).
-# Only the console logs were ever caught, by the `*.log` line above — the snapshots
-# leaked into a commit once and had to be removed (ad774372).
-.playwright-mcp/
 .react-router/
 build/
 coverage/

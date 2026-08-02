@@ -7,12 +7,10 @@ import type {
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { lowestBasePrice } from '../../../../shared/domain/pricing/base-prices';
-import type { CampaignRuleView } from '../../../../shared/domain/pricing/sale-campaign';
 import type { FavoritableTarget, NewFavorite } from '../../domain/entities/favorite.entity';
 import type { IFavoriteRepository } from '../../domain/ports/favorite-repository.port';
 import type {
   CustomerFavoritePage,
-  FavoriteCampaignSource,
   FavoriteCardRecord,
   FavoriteEntryRecord,
   FavoriteListPage,
@@ -44,29 +42,6 @@ function priceFromListing(l: {
   });
 }
 
-/** Prisma row → the shape the shared campaign kernel reads. */
-function toCampaignRule(rule: {
-  bookingMode: string;
-  ruleType: string;
-  params: Prisma.JsonValue;
-  price: bigint;
-  salePrice: bigint | null;
-  saleStartsAt: Date | null;
-  saleEndsAt: Date | null;
-  campaignLabel: string | null;
-}): CampaignRuleView {
-  return {
-    bookingMode: rule.bookingMode as CampaignRuleView['bookingMode'],
-    ruleType: rule.ruleType as CampaignRuleView['ruleType'],
-    params: (rule.params ?? {}) as Record<string, unknown>,
-    price: rule.price.toString(),
-    salePrice: rule.salePrice?.toString() ?? null,
-    saleStartsAt: rule.saleStartsAt,
-    saleEndsAt: rule.saleEndsAt,
-    campaignLabel: rule.campaignLabel,
-  };
-}
-
 function toStrings(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
@@ -76,18 +51,6 @@ function targetWhere(target: FavoriteTarget): Prisma.FavoriteWhereInput {
     ? { listingId: target.targetId }
     : { groupId: target.targetId };
 }
-
-/** Just enough of a pricing rule for `summarizeSaleCampaign` — no prices leak further. */
-const CAMPAIGN_RULE_SELECT = {
-  bookingMode: true,
-  ruleType: true,
-  params: true,
-  price: true,
-  salePrice: true,
-  saleStartsAt: true,
-  saleEndsAt: true,
-  campaignLabel: true,
-} as const;
 
 const CARD_INCLUDE = Prisma.validator<Prisma.FavoriteInclude>()({
   listing: {
@@ -109,8 +72,6 @@ const CARD_INCLUDE = Prisma.validator<Prisma.FavoriteInclude>()({
       wardName: true,
       address: true,
       listingType: { select: { slug: true, bookingSelection: true } },
-      resource: { select: { timezone: true } },
-      pricingRules: { select: CAMPAIGN_RULE_SELECT },
     },
   },
   group: {
@@ -133,8 +94,6 @@ const CARD_INCLUDE = Prisma.validator<Prisma.FavoriteInclude>()({
           modeConfig: true,
           bookingModes: true,
           listingType: { select: { bookingSelection: true } },
-          resource: { select: { timezone: true } },
-          pricingRules: { select: CAMPAIGN_RULE_SELECT },
         },
       },
     },
@@ -155,9 +114,6 @@ function toCard(row: CardRow): FavoriteCardRecord | null {
       attributes: (l.attributes ?? {}) as Record<string, unknown>,
       photos: toStrings(l.photos),
       priceFrom: priceFromListing(l),
-      campaignSources: [
-        { pricingRules: l.pricingRules.map(toCampaignRule), resourceTimezone: l.resource.timezone },
-      ],
       itemLabel: null,
       ratingAvg: l.ratingAvg === null ? null : l.ratingAvg.toNumber(),
       reviewCount: l.reviewCount,
@@ -185,13 +141,6 @@ function toCard(row: CardRow): FavoriteCardRecord | null {
       attributes: {},
       photos: toStrings(g.photos),
       priceFrom,
-      // A group card stands for every room in it. Keep each room's timezone so
-      // the application projection can summarize against the booking boundary
-      // of the resource that actually owns the campaign.
-      campaignSources: g.listings.map((child): FavoriteCampaignSource => ({
-        pricingRules: child.pricingRules.map(toCampaignRule),
-        resourceTimezone: child.resource.timezone,
-      })),
       itemLabel: g.listingType.itemLabel,
       ratingAvg: g.ratingAvg === null ? null : g.ratingAvg.toNumber(),
       reviewCount: g.reviewCount,

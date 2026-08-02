@@ -143,9 +143,6 @@ export class CreateBookingUseCase {
           params: r.params,
           price: r.price,
           salePrice: r.salePrice,
-          saleStartsAt: r.saleStartsAt,
-          saleEndsAt: r.saleEndsAt,
-          campaignLabel: r.campaignLabel,
           priority: r.priority,
         }));
         const quote = priceQuote({
@@ -159,9 +156,6 @@ export class CreateBookingUseCase {
           depositPercent: listing.depositPercent,
           bookingSelection: listing.bookingSelection,
           packageId: input.packageId,
-          // The campaign is judged at the moment of booking — this is the price
-          // the customer is actually committing to.
-          now: utcNow(),
         });
         Booking.assertExpectedSubtotal(input.expectedSubtotal, quote.subtotal);
         // §11.3 fallback (listing → partner default → tenant default) is already resolved

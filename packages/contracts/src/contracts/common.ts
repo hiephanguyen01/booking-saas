@@ -148,58 +148,6 @@ export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
  * loose (plain numbers) here because it is shared by both the listing-policy contract and
  * the immutable booking snapshot, whose historical rows must not be rejected by tighter rules.
  */
-/**
- * When a sale campaign applies — which weekdays, which clock band, which
- * calendar span — derived from its pricing rules' own `params`.
- *
- * A field is populated only when every rule in the campaign agrees on it;
- * otherwise `varies` is set and the rest is emptied, because half an answer is
- * worse than pointing the visitor at the calendar.
- */
-export const saleScheduleSchema = z.object({
-  /** 0=Sun…6=Sat, sorted. Empty = not limited by weekday. */
-  weekdays: z.array(z.number().int().min(0).max(6)),
-  /** Shared clock band. Null = the campaign is not hour-limited. */
-  timeFrom: timeOfDaySchema.nullable(),
-  timeTo: timeOfDaySchema.nullable(),
-  /** Calendar span covered by the campaign's dated rules. */
-  dateFrom: dateOnlySchema.nullable(),
-  dateTo: dateOnlySchema.nullable(),
-  /** The rules disagree — render "see the calendar", never a guess. */
-  varies: z.boolean(),
-});
-export type SaleSchedule = z.infer<typeof saleScheduleSchema>;
-
-/**
- * The storefront-facing summary of a running sale campaign (ADR 0009) — what a
- * listing card advertises before the visitor has picked any dates.
- *
- * All fields describe the SAME campaign (the deepest live discount), never a
- * mix of several. It carries no price on purpose: an undated card has no
- * bookable window to price, and the deepest sale is not a rate the visitor can
- * necessarily book.
- */
-export const saleCampaignSummarySchema = z.object({
-  /** Partner-authored name, shown verbatim (already in the tenant's language). */
-  label: z.string().nullable(),
-  /** Deepest live discount, integer percent; any real reduction is at least 1. */
-  discountPercent: z.number().int().min(1).max(100),
-  /**
-   * Last calendar day (`YYYY-MM-DD`) a booking still falls inside the campaign,
-   * already resolved in the resource's timezone; null = unbounded.
-   *
-   * A date rather than the raw instant on purpose: the window is half-open, and
-   * a client formatting the instant would resolve it in ITS OWN timezone — the
-   * SSR server and the browser would then disagree about which day it is.
-   */
-  lastBookingDate: dateOnlySchema.nullable(),
-  /** Whole calendar days left to book in the resource timezone; 0 = ends today. */
-  daysLeft: z.number().int().nonnegative().nullable(),
-  /** When the sale applies. Null when the campaign's rules place no limit. */
-  schedule: saleScheduleSchema.nullable(),
-});
-export type SaleCampaignSummary = z.infer<typeof saleCampaignSummarySchema>;
-
 export const cancellationTierSchema = z.object({
   hoursBefore: z.number(),
   refundPercent: z.number(),

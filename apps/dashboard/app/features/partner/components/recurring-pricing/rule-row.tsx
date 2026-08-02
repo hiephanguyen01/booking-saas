@@ -6,7 +6,6 @@ import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import { Money } from '~/components/money';
 import { DAYS } from '~/features/partner/lib/listing-hours';
-import { campaignPresentationOf } from '~/features/partner/lib/listing-calendar';
 
 interface Props {
   rule: PricingRuleResponse;
@@ -30,10 +29,6 @@ function describeDays(params: Record<string, unknown>): string {
 export function RuleRow({ rule, unit, canWrite, isEditing, onEdit }: Props) {
   const fetcher = useFetcher<{ ok: boolean; error?: string | null }>();
   const isWindow = rule.ruleType === 'time_range';
-  const campaign = campaignPresentationOf(
-    [rule],
-    rule.bookingMode === 'daily' ? 'daily' : 'hourly',
-  );
 
   return (
     <div
@@ -55,40 +50,13 @@ export function RuleRow({ rule, unit, canWrite, isEditing, onEdit }: Props) {
           )}
         </p>
         <p className="flex flex-wrap items-center gap-2 text-xs">
-          {/* A sale that is scheduled or over is NOT what a guest pays today,
-              so the headline number stays the regular price in those states. */}
-          <span
-            className={cn(campaign.state === 'running' && 'font-medium text-warning-foreground')}
-          >
-            <Money
-              value={campaign.state === 'running' ? (campaign.salePrice ?? rule.price) : rule.price}
-            />
-            /{unit}
+          <span className={cn(rule.salePrice && 'font-medium text-emerald-700')}>
+            <Money value={rule.salePrice ?? rule.price} />/{unit}
           </span>
-          {campaign.state === 'running' ? (
+          {rule.salePrice ? (
             <span className="text-muted-foreground line-through">
               <Money value={rule.price} />
             </span>
-          ) : null}
-          {campaign.state !== 'none' ? (
-            <Badge
-              variant="outline"
-              className={cn(
-                campaign.state === 'running' &&
-                  'border-warning/40 bg-warning/15 text-warning-foreground',
-              )}
-            >
-              {campaign.label ?? 'Đang giảm giá'}
-            </Badge>
-          ) : null}
-          {campaign.state === 'scheduled' || campaign.state === 'ended' ? (
-            <Badge variant="secondary">
-              {campaign.state === 'scheduled' ? 'Sắp diễn ra' : 'Đã kết thúc'}
-            </Badge>
-          ) : campaign.state === 'running' ? (
-            <Badge variant="outline" className="border-warning/40 text-warning-foreground">
-              Đang chạy
-            </Badge>
           ) : null}
         </p>
       </div>

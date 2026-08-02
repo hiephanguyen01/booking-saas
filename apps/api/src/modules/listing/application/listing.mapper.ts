@@ -9,7 +9,6 @@ import type {
   PublicListingDetailWithTimezoneResponse,
   PublicListingGroupDetailResponse,
   ResourceResponse,
-  SaleCampaignSummary,
 } from '@booking/contracts';
 import type { ListingTypeRecord } from '../../catalog/domain/ports/listing-type-repository.port';
 import { computeGroupStats } from '../domain/group-stats';
@@ -154,9 +153,6 @@ export function toPricingRuleResponse(p: PricingRuleRecord): PricingRuleResponse
     params: p.params,
     price: p.price,
     salePrice: p.salePrice,
-    saleStartsAt: p.saleStartsAt?.toISOString() ?? null,
-    saleEndsAt: p.saleEndsAt?.toISOString() ?? null,
-    campaignLabel: p.campaignLabel,
     priority: p.priority,
     createdAt: p.createdAt.toISOString(),
   };
@@ -174,10 +170,8 @@ export function toPricingRuleBulkResult(result: {
 
 export function toPublicListingDetailResponse(
   l: PublicListingRecord,
-  campaign: SaleCampaignSummary | null,
 ): PublicListingDetailWithTimezoneResponse {
   return {
-    campaign,
     id: l.id,
     title: l.title,
     slug: l.slug,
@@ -227,7 +221,6 @@ export function toPublicListingGroupDetailResponse(
   group: ListingGroupRecord,
   children: readonly ListingRecord[],
   listingType: ListingTypeRecord | null,
-  campaignByListing: ReadonlyMap<string, SaleCampaignSummary>,
 ): PublicListingGroupDetailResponse {
   const partner = group.partnerPublic;
   return {
@@ -270,10 +263,6 @@ export function toPublicListingGroupDetailResponse(
         capacity: listing.capacity,
         bookingModes: listing.bookingModes,
         priceFrom: lowestBasePrice(listing),
-        // `priceFrom` stays the configured base: a room card carries no dates,
-        // so there is no bookable window to price a sale against. The campaign
-        // is what says a discount exists.
-        campaign: campaignByListing.get(listing.id) ?? null,
         ratingAvg: listing.ratingAvg,
         reviewCount: listing.reviewCount,
       })),

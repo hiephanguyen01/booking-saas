@@ -1,17 +1,13 @@
-import type { QuoteResponse } from '@booking/contracts';
+import type { QuoteResponse, ValidatePromoResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { cn } from '@booking/ui/lib/utils';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatVnd } from '~/lib/ui';
-import { campaignLabelsOf } from '~/lib/quote';
-import type {
-  CheckoutPromotionPresentation,
-  checkoutAmounts,
-} from '~/features/checkout/lib/checkout-presentation';
+import type { checkoutAmounts } from '~/features/checkout/lib/checkout-presentation';
 
 export function PricePanel({
   quote,
-  checkoutPromotion,
+  promo,
   amounts,
   qty,
   mode,
@@ -19,7 +15,7 @@ export function PricePanel({
   dayCount,
 }: {
   quote: QuoteResponse;
-  checkoutPromotion: CheckoutPromotionPresentation | null;
+  promo: ValidatePromoResponse | null;
   amounts: ReturnType<typeof checkoutAmounts>;
   qty: string;
   mode: string;
@@ -37,64 +33,43 @@ export function PricePanel({
         ? t('inventoryQuantityLine', { quantity })
         : t('quantityLine', { rooms: quantity, slots: slotCount });
   const hasCalendarSale = quote.regularSubtotal !== quote.subtotal;
-  const calendarSavings = hasCalendarSale
-    ? (BigInt(quote.regularSubtotal) - BigInt(quote.subtotal)).toString()
-    : '0';
-  // Partner-authored, already in the tenant's language — shown verbatim, never
-  // translated. Several campaigns can price one booking, so render the
-  // distinct labels independently rather than picking or merging one.
-  const campaigns = campaignLabelsOf(quote);
+  const hasPromotion = hasDiscount || hasCalendarSale;
 
   return (
-    <div className="mt-3 rounded-lg bg-muted/40 px-5 py-4 text-sm leading-5 text-foreground">
+    <div
+      className={cn(
+        'mt-3 rounded-lg px-5 py-4 text-sm leading-5 text-foreground',
+        hasPromotion ? 'bg-success/10' : 'bg-muted/40',
+      )}
+    >
+      {hasCalendarSale ? (
+        <div className="mb-2 flex items-center justify-between gap-4">
+          <Badge variant="success" className="rounded-sm">
+            Sale
+          </Badge>
+          <span className="text-muted-foreground line-through">
+            {formatVnd(quote.regularSubtotal)}
+          </span>
+        </div>
+      ) : null}
+      {hasDiscount ? (
+        <div className="flex items-center justify-between gap-4">
+          <Badge variant="success" className="rounded-sm font-semibold">
+            {promo?.code ?? t('discount')}
+          </Badge>
+          <span className="text-muted-foreground line-through">{formatVnd(amounts.subtotal)}</span>
+        </div>
+      ) : null}
       <PriceRow
         label={quantityLabel}
-        value={formatVnd(hasCalendarSale ? quote.regularSubtotal : amounts.subtotal)}
+        value={formatVnd(amounts.subtotal)}
+        className={hasDiscount ? 'mt-2' : ''}
       />
-      {hasCalendarSale ? (
-        <div className="mt-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5">
-          <PriceRow
-            label={t('calendarSalePrice')}
-            value={`− ${formatVnd(calendarSavings)}`}
-            className="font-semibold text-warning-foreground"
-          />
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {(campaigns.length > 0 ? campaigns : [t('saleBadge')]).map((campaign) => (
-              <Badge
-                key={campaign}
-                variant="outline"
-                className="max-w-full rounded-sm border-warning/50 bg-background/70 text-warning-foreground"
-              >
-                <span className="min-w-0 truncate">{campaign}</span>
-              </Badge>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {checkoutPromotion?.kind === 'auto' ? (
-        <div className="mt-2 rounded-md border border-success/30 bg-success/10 px-3 py-2.5">
-          <Badge variant="success" className="max-w-full rounded-sm font-semibold">
-            <span className="min-w-0 truncate">
-              {t('automaticPromotion', { name: checkoutPromotion.label })}
-            </span>
-          </Badge>
-          <p className="mt-2 text-xs leading-4 text-success">
-            {t('automaticPromotionConditional')}
-          </p>
-        </div>
-      ) : null}
-      {hasDiscount && checkoutPromotion?.kind === 'code' ? (
-        <div className="mt-2 rounded-md border border-success/30 bg-success/10 px-3 py-2.5">
-          <PriceRow
-            label={t('checkoutPromotion')}
-            value={`− ${formatVnd(amounts.discount)}`}
-            className="font-semibold text-success"
-          />
-          <Badge variant="success" className="mt-2 max-w-full rounded-sm font-semibold">
-            <span className="min-w-0 truncate">{checkoutPromotion.label}</span>
-          </Badge>
-        </div>
-      ) : null}
+      <PriceRow
+        label={t('discount')}
+        value={`− ${formatVnd(amounts.discount)}`}
+        className={cn('mt-2', hasDiscount && 'text-success')}
+      />
       {quote.securityDeposit !== '0' ? (
         <PriceRow
           label={tListing('securityDeposit')}
@@ -123,8 +98,8 @@ function PriceRow({
 }) {
   return (
     <div className={cn('flex items-baseline justify-between gap-4', className)}>
-      <span className="min-w-0">{label}</span>
-      <span className="shrink-0 text-right font-medium">{value}</span>
+      <span>{label}</span>
+      <span className="text-right font-medium">{value}</span>
     </div>
   );
 }

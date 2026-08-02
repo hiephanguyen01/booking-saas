@@ -8,6 +8,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import { toCustomerFavoriteListResponse } from '../../application/favorite.mapper';
 import { AddFavoriteUseCase } from '../../application/use-cases/add-favorite.use-case';
 import { ListCustomerFavoritesUseCase } from '../../application/use-cases/list-customer-favorites.use-case';
 import { ListFavoriteRefsUseCase } from '../../application/use-cases/list-favorite-refs.use-case';
@@ -40,7 +41,10 @@ export class CustomerFavoriteController {
     @CurrentPrincipal() principal: SessionPrincipal,
     @Query() query: CustomerFavoritesQueryDto,
   ): Promise<CustomerFavoriteListResponse> {
-    return this.listFavorites.execute(forwardedHost ?? host ?? '', principal.userId, query);
+    return toCustomerFavoriteListResponse(
+      await this.listFavorites.execute(forwardedHost ?? host ?? '', principal.userId, query),
+      query,
+    );
   }
 
   @AuthenticatedOnly()

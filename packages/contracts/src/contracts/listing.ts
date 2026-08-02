@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   cancellationTierSchema,
   paginationQuerySchema,
-  saleCampaignSummarySchema,
   uuidSchema,
   MAX_BULK_CALENDAR_DAYS,
 } from './common';
@@ -320,39 +319,6 @@ export const dateTimeRangeParamsSchema = z
     message: 'to must be after from',
   });
 
-/**
- * Campaign fields shared by every shape that can carry a sale. The window is
- * measured at BOOKING time and bounds the sale only — the rule keeps applying
- * its regular `price` outside it.
- */
-export const saleCampaignFields = {
-  saleStartsAt: z.string().datetime().optional(),
-  saleEndsAt: z.string().datetime().optional(),
-  campaignLabel: z.string().trim().min(1).max(80).optional(),
-};
-
-/** A campaign is meaningless without a sale, and must not end before it starts. */
-function refineSaleCampaign(
-  rule: { salePrice?: string; saleStartsAt?: string; saleEndsAt?: string; campaignLabel?: string },
-  ctx: z.RefinementCtx,
-): void {
-  const hasCampaign = Boolean(rule.saleStartsAt ?? rule.saleEndsAt ?? rule.campaignLabel);
-  if (hasCampaign && !rule.salePrice) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['salePrice'],
-      message: 'A campaign needs a sale price',
-    });
-  }
-  if (rule.saleStartsAt && rule.saleEndsAt && rule.saleStartsAt >= rule.saleEndsAt) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['saleEndsAt'],
-      message: 'Campaign must end after it starts',
-    });
-  }
-}
-
 export const pricingRuleInputSchema = z
   .object({
     bookingMode: bookingModeSchema,
@@ -360,11 +326,9 @@ export const pricingRuleInputSchema = z
     params: z.record(z.unknown()),
     price: vndAmountSchema,
     salePrice: vndAmountSchema.optional(),
-    ...saleCampaignFields,
     priority: z.number().int().default(0),
   })
   .superRefine((rule, ctx) => {
-    refineSaleCampaign(rule, ctx);
     const schema =
       rule.ruleType === 'day_of_week'
         ? dayOfWeekParamsSchema
@@ -408,11 +372,9 @@ export const pricingRuleRangeInputSchema = z
     window: z.object({ from: timeStringSchema, to: timeStringSchema }).optional(),
     price: vndAmountSchema,
     salePrice: vndAmountSchema.optional(),
-    ...saleCampaignFields,
     priority: z.number().int().default(0),
   })
   .superRefine((rule, ctx) => {
-    refineSaleCampaign(rule, ctx);
     if (rule.dateTo < rule.dateFrom) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -481,10 +443,8 @@ export const recurringPricingRuleInputSchema = z
     window: z.object({ from: timeStringSchema, to: timeStringSchema }).optional(),
     price: vndAmountSchema,
     salePrice: vndAmountSchema.optional(),
-    ...saleCampaignFields,
   })
   .superRefine((rule, ctx) => {
-    refineSaleCampaign(rule, ctx);
     if (rule.kind === 'time_range') {
       if (!rule.window) {
         ctx.addIssue({
@@ -766,10 +726,6 @@ export const pricingRuleResponseSchema = z.object({
   params: z.record(z.unknown()),
   price: z.string(),
   salePrice: z.string().nullable(),
-  /** Campaign window for `salePrice`, half-open `[start, end)` at booking time. */
-  saleStartsAt: z.string().nullable(),
-  saleEndsAt: z.string().nullable(),
-  campaignLabel: z.string().nullable(),
   priority: z.number(),
   createdAt: z.string(),
 });
@@ -840,8 +796,6 @@ export const publicListingDetailResponseSchema = z
     trust: trustSignalsSchema,
     ratingAvg: z.number().nullable(),
     reviewCount: z.number().int().nonnegative(),
-    /** Running sale campaign across this listing's pricing rules; null when none. */
-    campaign: saleCampaignSummarySchema.nullable(),
   })
   .merge(administrativeAddressSnapshotSchema);
 export type PublicListingDetailResponse = z.infer<typeof publicListingDetailResponseSchema>;
@@ -874,8 +828,6 @@ export const publicListingGroupDetailResponseSchema = z
         capacity: z.number().int().positive().nullable(),
         bookingModes: z.array(bookingModeSchema),
         priceFrom: z.string().nullable(),
-        /** Running sale campaign on this room; null when none. */
-        campaign: saleCampaignSummarySchema.nullable(),
         ratingAvg: z.number().nullable(),
         reviewCount: z.number().int().nonnegative(),
       }),
@@ -895,8 +847,6 @@ export const quoteLineItemSchema = z.object({
   amount: z.string(),
   regularAmount: z.string(),
   appliedRuleId: z.string().optional(),
-  /** Present only when a named sale campaign discounted this line. */
-  campaignLabel: z.string().optional(),
   block: z.boolean().optional(),
 });
 export type QuoteLineItem = z.infer<typeof quoteLineItemSchema>;

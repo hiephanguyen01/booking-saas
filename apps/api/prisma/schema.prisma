@@ -1140,12 +1140,6 @@ model PricingRule {
   price       BigInt
   /// optional partner-funded calendar sale; must be lower than price.
   salePrice   BigInt?         @map("sale_price")
-  /// Campaign window for `salePrice` ONLY, half-open `[starts, ends)`, measured at
-  /// BOOKING time. Outside it the rule still applies its regular `price`. Null = unbounded.
-  saleStartsAt DateTime?      @map("sale_starts_at") @db.Timestamptz(6)
-  saleEndsAt   DateTime?      @map("sale_ends_at") @db.Timestamptz(6)
-  /// Partner-facing campaign name, e.g. "Khuyến mãi Tết". Display only.
-  campaignLabel String?       @map("campaign_label")
   priority    Int             @default(0)
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)

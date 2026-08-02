@@ -14,10 +14,7 @@ import { NsI18n, type ScopedI18n, useTranslation } from '@booking/i18n';
 import { dateLabelInTz, dateOnlyInTz, hoursBetween, nightsBetween, timeInTz } from '~/lib/time';
 import { formatListingLocation } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
-import type {
-  CheckoutPromotionPresentation,
-  checkoutAmounts,
-} from '~/features/checkout/lib/checkout-presentation';
+import type { checkoutAmounts } from '~/features/checkout/lib/checkout-presentation';
 import { PricePanel } from './price-panel';
 import { PromoForm } from './promo-form';
 
@@ -31,7 +28,6 @@ export function BookingColumn({
   searchParams,
   promoCode,
   promo,
-  checkoutPromotion,
   availablePromotions,
   promotionsUnavailable,
   quote,
@@ -46,7 +42,6 @@ export function BookingColumn({
   searchParams: URLSearchParams;
   promoCode: string | null;
   promo: ValidatePromoResponse | null;
-  checkoutPromotion: CheckoutPromotionPresentation | null;
   availablePromotions: StorefrontPromotion[];
   promotionsUnavailable: boolean;
   quote: QuoteResponse;
@@ -184,7 +179,7 @@ export function BookingColumn({
       <div className="mt-6">
         <div className="flex items-center justify-between gap-4">
           <h3 className="max-w-47.5 text-sm leading-5 font-semibold text-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-            {t('checkoutPromotion')}
+            {t('promotions')}
           </h3>
           <PromoForm
             searchParams={searchParams}
@@ -196,7 +191,7 @@ export function BookingColumn({
         </div>
         <PricePanel
           quote={quote}
-          checkoutPromotion={checkoutPromotion}
+          promo={promo}
           amounts={amounts}
           qty={qty}
           mode={mode}

@@ -1,6 +1,5 @@
 import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import { DetailPriceCard } from '~/components/detail-price-card';
-import { SaleCampaignBanner } from '~/components/sale-campaign-banner';
 import { minimumConfiguredPrice } from '~/lib/booking-presentation';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatVnd } from '~/lib/ui';
@@ -29,8 +28,7 @@ export function ScheduledBookingCard({
 
   return (
     <DetailPriceCard>
-      <SaleCampaignBanner campaign={listing.campaign} compact />
-      <p className="mt-4 text-sm text-muted-foreground first:mt-0">
+      <p className="text-sm text-muted-foreground">
         {t('fromPriceShort')}{' '}
         <strong className="text-xl text-primary">
           {price ? formatVnd(price) : t('group.priceOnRequest')}

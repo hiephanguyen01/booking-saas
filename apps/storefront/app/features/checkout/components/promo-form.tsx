@@ -86,12 +86,8 @@ export function PromoForm({
         }
       >
         <DialogHeader className="shrink-0 border-b px-5 py-5 pr-16 text-left sm:px-7 sm:py-6">
-          <DialogTitle className="text-xl leading-7 sm:text-2xl">
-            {t('promoDialog.title')}
-          </DialogTitle>
-          <DialogDescription className="mt-1 text-sm leading-5">
-            {t('promoDialog.description')}
-          </DialogDescription>
+          <DialogTitle className="text-xl leading-7 sm:text-2xl">{t('promoDialog.title')}</DialogTitle>
+          <DialogDescription className="sr-only">{t('promoDialog.description')}</DialogDescription>
         </DialogHeader>
         <DialogClose asChild>
           <Button
@@ -141,11 +137,7 @@ export function PromoForm({
               {t('promoDialog.empty')}
             </p>
           ) : (
-            <div
-              className="mt-3 grid gap-3 sm:grid-cols-2"
-              role="radiogroup"
-              aria-label={t('promoDialog.available')}
-            >
+            <div className="mt-3 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={t('promoDialog.available')}>
               {promotions.map((item) => {
                 const selected = item.code === selectedCode;
                 return (
@@ -166,33 +158,25 @@ export function PromoForm({
                           : 'bg-muted text-muted-foreground after:bg-muted/30'
                       }`}
                     >
-                      <span className="text-xl font-bold sm:text-2xl">{discountBadge(item)}</span>
+                      <span className="text-xl font-bold sm:text-2xl">
+                        {discountBadge(item)}
+                      </span>
                       <span className="text-[0.65rem] font-semibold tracking-wide uppercase">
                         {t('promoDialog.discountBadge')}
                       </span>
                     </span>
 
                     <span className="relative flex min-w-0 flex-col gap-1 p-3 pl-4 text-sm">
-                      <span
-                        className={
-                          item.eligible
-                            ? 'font-semibold text-foreground'
-                            : 'font-semibold text-muted-foreground'
-                        }
-                      >
+                      <span className={item.eligible ? 'font-semibold text-foreground' : 'font-semibold text-muted-foreground'}>
                         {item.name}
                       </span>
                       {item.minOrderAmount ? (
                         <span className="text-xs text-muted-foreground">
-                          {t('promoDialog.minOrder', {
-                            amount: formatVnd(item.minOrderAmount) ?? '',
-                          })}
+                          {t('promoDialog.minOrder', { amount: formatVnd(item.minOrderAmount) ?? '' })}
                         </span>
                       ) : null}
                       {item.firstBookingOnly ? (
-                        <span className="text-xs text-muted-foreground">
-                          {t('promoDialog.firstBooking')}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{t('promoDialog.firstBooking')}</span>
                       ) : null}
                       {item.endsAt ? (
                         <span className="mt-auto text-xs text-muted-foreground">
@@ -207,9 +191,7 @@ export function PromoForm({
                       <span
                         aria-hidden="true"
                         className={`absolute right-3 bottom-3 flex size-5 items-center justify-center rounded-full border ${
-                          selected
-                            ? 'border-success bg-success text-success-foreground'
-                            : 'border-border bg-background'
+                          selected ? 'border-success bg-success text-success-foreground' : 'border-border bg-background'
                         }`}
                       >
                         {selected ? <Check className="size-3.5" strokeWidth={2.5} /> : null}
@@ -246,24 +228,14 @@ export function PromoForm({
 
           <div className="mt-4 flex gap-2 sm:mt-0 sm:shrink-0">
             <DialogClose asChild>
-              <Button
-                type="button"
-                variant="secondary"
-                size="control"
-                className="flex-1 sm:flex-none"
-              >
+              <Button type="button" variant="secondary" size="control" className="flex-1 sm:flex-none">
                 {t('promoDialog.cancel')}
               </Button>
             </DialogClose>
             <Form method="get" className="flex-1 sm:flex-none">
               <CheckoutHiddenFields hidden={hidden} />
               {selectedCode ? <input type="hidden" name="promo" value={selectedCode} /> : null}
-              <Button
-                type="submit"
-                size="control"
-                className="w-full sm:min-w-32"
-                disabled={!selectedCode}
-              >
+              <Button type="submit" size="control" className="w-full sm:min-w-32" disabled={!selectedCode}>
                 {t('promoApply')}
               </Button>
             </Form>
