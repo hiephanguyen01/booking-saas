@@ -20,6 +20,7 @@ import { amountToneClass } from '~/components/money';
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sổ cái · Tài chính · Tenant · BookingOS' }];
@@ -43,7 +44,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, LEDGER_FILTER_SPEC);
 
-  const res = await apiGet<Paginated<LedgerEntryResponse>>('/tenant/finance/ledger', auth, {
+  const res = await apiGet<Paginated<LedgerEntryResponse>>(apiPaths.tenant.ledger, auth, {
     query: toApiQuery(apiFilters),
   });
 
@@ -153,8 +154,8 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         title="Sổ cái"
         description={`${total} bút toán ghi kép trên toàn cửa hàng.`}
         actions={
-          <Button asChild variant="outline" size="sm">
-            <Link to="/tenant/finance">
+          <Button asChild variant="outline">
+            <Link to={dashboardPaths.tenant.finance}>
               <ArrowLeft className="size-4" /> Về tài chính
             </Link>
           </Button>

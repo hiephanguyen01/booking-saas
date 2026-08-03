@@ -5,13 +5,16 @@ import {
   type CreatedTenantResponse,
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
+import { Building2, Settings2 } from 'lucide-react';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
 import { tenantCreateFields } from '~/features/admin/tenant-form-fields';
-import { BackLink } from '~/components/back-link';
-import { fieldNode, FormSurface, Grid, Section } from '~/components/form-layout';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
+import { fieldNode, FORM_ACTIONS_ROW, FormSurface, Grid, Section } from '~/components/form-layout';
+import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { TZ } from '~/constants/time';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tạo tenant · BookingOS Admin' }];
@@ -29,7 +32,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const res = await apiPost<CreatedTenantResponse>('/admin/tenants', parsed.data, auth, {
+  const res = await apiPost<CreatedTenantResponse>(apiPaths.admin.tenants, parsed.data, auth, {
     schema: createdTenantResponseSchema,
   });
   if (!res.ok || !res.data) {
@@ -38,7 +41,7 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
   }
-  return redirect(`/admin/tenants/${res.data.id}`);
+  return redirect(dashboardPaths.admin.tenant(res.data.id));
 }
 
 export default function NewTenant({ actionData }: Route.ComponentProps) {
@@ -46,15 +49,12 @@ export default function NewTenant({ actionData }: Route.ComponentProps) {
   const fieldErrors = actionData && 'fieldErrors' in actionData ? actionData.fieldErrors : null;
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <BackLink to="/admin/tenants" label="Danh sách tenant" />
-        <PageHeader
-          title="Tạo tenant"
-          description="Khởi tạo một tenant mới cùng tên miền phụ mặc định."
-        />
-      </div>
-
+    <FormPage
+      backTo={dashboardPaths.admin.tenants}
+      backLabel="Danh sách tenant"
+      title="Tạo tenant"
+      description="Khởi tạo một tenant mới cùng tên miền phụ mặc định."
+    >
       <GenericForm
         schema={createTenantInputSchema}
         fields={tenantCreateFields}
@@ -64,18 +64,19 @@ export default function NewTenant({ actionData }: Route.ComponentProps) {
           name: '',
           slug: '',
           vertical: 'studio',
-          defaultTimezone: 'Asia/Ho_Chi_Minh',
+          defaultTimezone: TZ,
           defaultLocale: 'vi',
         }}
         serverError={serverError}
         fieldErrors={fieldErrors}
-        actionsClassName="justify-end border-t pt-4"
+        actionsClassName={FORM_ACTIONS_ROW}
         warnOnUnsavedChanges
         renderFields={(renderedFields) => (
           <FormSurface>
             <Section
               title="Nhận diện tenant"
               description="Tên hiển thị, đường dẫn hệ thống và loại hình kinh doanh."
+              icon={<Building2 aria-hidden />}
             >
               {fieldNode(renderedFields, 'name')}
               <Grid>
@@ -86,6 +87,7 @@ export default function NewTenant({ actionData }: Route.ComponentProps) {
             <Section
               title="Thiết lập mặc định"
               description="Áp dụng cho dữ liệu mới và giao diện của tenant."
+              icon={<Settings2 aria-hidden />}
             >
               <Grid>
                 {fieldNode(renderedFields, 'defaultTimezone')}
@@ -95,6 +97,6 @@ export default function NewTenant({ actionData }: Route.ComponentProps) {
           </FormSurface>
         )}
       />
-    </div>
+    </FormPage>
   );
 }

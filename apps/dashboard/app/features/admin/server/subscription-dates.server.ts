@@ -1,4 +1,4 @@
-const MARKET_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+import { TZ } from '~/constants/time';
 const MARKET_UTC_OFFSET_HOURS = 7;
 const DAY_MS = 86_400_000;
 
@@ -40,7 +40,7 @@ export function vietnamCalendarDayEndIso(date: string): string | null {
 
 function marketDateKey(value: Date): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: MARKET_TIME_ZONE,
+    timeZone: TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

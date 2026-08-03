@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/a
 import { Button } from '@booking/ui/components/ui/button';
 import { ConfirmButton } from '~/components/confirm-button';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
-import type { GroupActionResult } from '../../server/listing-groups.server';
+import type { GroupActionResult } from '~/features/partner/server/listing-groups.server';
 
 /** Group publish status → the workspace's status banner copy. */
 export const GROUP_STATUS_COPY: Record<

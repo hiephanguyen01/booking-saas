@@ -12,7 +12,7 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: 'Điều khoản cập nhật · BookingOS' }];
 }
 
-// This route's own loader re-checks `/me/legal/pending` (rather than trusting
+// This route's own loader re-checks apiPaths.me.legalPending (rather than trusting
 // the layout's redirect) so a partner who lands here after already accepting
 // — stale tab, back button — bounces home instead of showing an empty screen.
 // It never redirects TO itself: the partner _layout.tsx loader skips its own

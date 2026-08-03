@@ -30,6 +30,6 @@ export function Money({ value, compact, className }: MoneyProps) {
  */
 export function amountToneClass(tone: 'positive' | 'negative'): string {
   return tone === 'positive'
-    ? 'text-emerald-600 dark:text-emerald-400'
-    : 'text-rose-600 dark:text-rose-400';
+    ? 'text-success'
+    : 'text-destructive';
 }

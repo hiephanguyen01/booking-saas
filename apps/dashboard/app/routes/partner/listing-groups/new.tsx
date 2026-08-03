@@ -4,16 +4,20 @@ import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
-import { BackLink } from '~/components/back-link';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
 import { WarningCallout } from '~/components/warning-callout';
 import { ListingGroupForm } from '~/features/partner/components/listing-group-form';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+
+export function meta(): Route.MetaDescriptors {
+  return [{ title: 'Tin đăng nhiều hạng mục mới · Đối tác · BookingOS' }];
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const typeId = new URL(request.url).searchParams.get('type');
-  const types = await apiGet<ListingTypeResponse[]>('/partner/listing-types', auth);
+  const types = await apiGet<ListingTypeResponse[]>(apiPaths.partner.listingTypes, auth);
   const requestedType = (types.data ?? []).find((type) => type.id === typeId);
   const listingType =
     requestedType && requestedType.structure !== 'standalone' ? requestedType : null;
@@ -28,7 +32,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (!parsed.success)
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   const res = await apiPost<{ id: string }>(
-    '/partner/listing-groups',
+    apiPaths.partner.listingGroups,
     { ...parsed.data, partnerId: membership.partnerId },
     auth,
   );
@@ -43,36 +47,35 @@ export async function action({ request }: Route.ActionArgs) {
 export default function NewListingGroupPage({ loaderData, actionData }: Route.ComponentProps) {
   if (!loaderData.listingType) {
     return (
-      <div className="flex flex-col gap-5">
-        <div>
-          <BackLink to={dashboardPaths.partner.listings} label="Tin đăng" className="mb-2" />
-          <PageHeader title="Không hỗ trợ tin đăng nhiều hạng mục" />
-        </div>
+      <FormPage
+        backTo={dashboardPaths.partner.listings}
+        backLabel="Tin đăng"
+        title="Không hỗ trợ tin đăng nhiều hạng mục"
+      >
         <WarningCallout title="Loại dịch vụ này tạo tin đăng đơn, không phải tin đăng nhiều hạng mục.">
           <p>Hãy dùng “Tạo bài đăng” để tạo tin đăng đơn cho loại dịch vụ này.</p>
           <Button asChild size="sm" className="mt-2">
             <Link to={dashboardPaths.partner.listingNew()}>Tạo bài đăng</Link>
           </Button>
         </WarningCallout>
-      </div>
+      </FormPage>
     );
   }
 
+  const itemLabel = loaderData.listingType.itemLabel || 'hạng mục';
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <BackLink to={dashboardPaths.partner.listings} label="Tin đăng" className="mb-2" />
-        <PageHeader
-          title={`Tạo tin đăng nhiều ${loaderData.listingType.itemLabel || 'hạng mục'}`}
-          description={`Thêm thông tin chung của ${loaderData.listingType.name}. Sau khi lưu, bạn sẽ thêm giá và lịch đặt cho từng ${loaderData.listingType.itemLabel || 'hạng mục'}.`}
-        />
-      </div>
+    <FormPage
+      backTo={dashboardPaths.partner.listings}
+      backLabel="Tin đăng"
+      title={`Tạo tin đăng nhiều ${itemLabel}`}
+      description={`Thêm thông tin chung của ${loaderData.listingType.name}. Sau khi lưu, bạn sẽ thêm giá và lịch đặt cho từng ${itemLabel}.`}
+    >
       <ListingGroupForm
         partnerId={loaderData.partnerId}
         listingType={loaderData.listingType}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
       />
-    </div>
+    </FormPage>
   );
 }

@@ -6,6 +6,7 @@ import {
   type LegalConsentInput,
 } from '@booking/contracts';
 import { apiPost, publicPost } from '~/lib/server/api.server';
+import { apiPaths } from '~/constants/api-paths';
 
 /**
  * Server-only affiliate attribution (§15.1). The storefront reads `?ref=CODE`,
@@ -63,7 +64,7 @@ export async function trackReferral(
 ): Promise<boolean> {
   const result = await publicPost(
     request,
-    '/public/referrals/track',
+    apiPaths.affiliate.trackReferral,
     { code, visitorId },
     { schema: trackReferralResponseSchema },
   );
@@ -94,7 +95,7 @@ export async function applyAsAffiliate(
   token: string,
   input: AffiliateApplyPayload,
 ): Promise<{ ok: true } | { ok: false; code: string; status: number }> {
-  const result = await apiPost(request, '/affiliate/apply', input, token, {
+  const result = await apiPost(request, apiPaths.affiliate.apply, input, token, {
     schema: affiliateResponseSchema,
   });
   if (result.ok) return { ok: true };

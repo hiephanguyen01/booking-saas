@@ -12,6 +12,7 @@ import {
   bookingDetailState,
   type AccountBookingViewModel,
 } from '~/features/account/lib/booking-history';
+import { DEFAULT_TZ } from '~/lib/time';
 
 export function BookingContactSection({ booking }: { booking: AccountBookingViewModel }) {
   const { t } = useTranslation(NsI18n.Account);
@@ -256,7 +257,7 @@ function CancellationSummary({
         {booking.cancelledAt ? (
           <DetailRow
             label={t('bookings.refund.cancelledAt')}
-            value={formatDateTime(booking.cancelledAt, locale, 'Asia/Ho_Chi_Minh')}
+            value={formatDateTime(booking.cancelledAt, locale, DEFAULT_TZ)}
           />
         ) : null}
         {booking.cancellationReason ? (

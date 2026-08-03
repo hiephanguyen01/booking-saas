@@ -22,7 +22,7 @@ import {
 } from '@booking/ui/components/ui/dropdown-menu';
 import { dashboardPaths } from '~/constants/paths';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
-import { usesOpeningHours } from '../../lib/listing-hours';
+import { usesOpeningHours } from '~/features/partner/lib/listing-hours';
 import type { ListingsActionResult } from './types';
 
 /** Compact primary edit action plus an overflow menu for the full lifecycle. */

@@ -17,6 +17,7 @@ import { StatusBadge } from '~/features/content-reports/components/content-repor
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import { formatDateTime } from '~/lib/format';
+import { apiPaths } from '~/constants/api-paths';
 
 const reasonLabels: Record<ContentReportReason, string> = {
   misleading: 'Thông tin sai lệch hoặc gây hiểu nhầm',
@@ -33,7 +34,7 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.listings.publish');
-  const result = await apiGet(`/tenant/content-reports/${params.reportId}`, auth, {
+  const result = await apiGet(apiPaths.tenant.contentReport(params.reportId), auth, {
     schema: contentReportResponseSchema,
   });
   if (!result.ok || !result.data)
@@ -49,7 +50,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       { saved: false as const, error: null, fieldErrors: parsed.error.flatten().fieldErrors },
       { status: 400 },
     );
-  const result = await apiPatch(`/tenant/content-reports/${params.reportId}`, parsed.data, auth, {
+  const result = await apiPatch(apiPaths.tenant.contentReport(params.reportId), parsed.data, auth, {
     schema: contentReportResponseSchema,
   });
   if (!result.ok)
@@ -68,8 +69,8 @@ export default function ContentReportDetail({ loaderData, actionData }: Route.Co
   const { report } = loaderData;
   const targetHref =
     report.target === 'listing'
-      ? `/tenant/listings/${encodeURIComponent(report.targetId)}/review`
-      : `/tenant/listing-groups/${encodeURIComponent(report.targetId)}/review`;
+      ? dashboardPaths.tenant.listingReview(report.targetId)
+      : dashboardPaths.tenant.listingGroupReview(report.targetId);
   return (
     <div className="space-y-6">
       <BackLink to={dashboardPaths.tenant.contentReports} label="Danh sách báo cáo" />

@@ -39,6 +39,7 @@ import {
 import { safeRedirectPath } from '~/lib/safe-redirect';
 import { createUserSession, destroyUserSession } from '~/lib/server/session.server';
 import type { AuthActionData } from '~/lib/auth-types';
+import { apiPaths } from '~/constants/api-paths';
 
 export type AuthPurpose = 'registration' | 'password_reset';
 
@@ -141,7 +142,7 @@ async function startAuthFlowAction(request: Request, locale: Locale, purpose: Au
   if (!parsed.success) return invalidAuthInput(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthChallengeResponse>(
     request,
-    `/auth/${flow.endpoint}/start`,
+    apiPaths.auth.flowStart(flow.endpoint),
     parsed.data,
     { schema: authChallengeResponseSchema },
   );
@@ -242,7 +243,7 @@ export async function verifyAction(
 
     const result = await publicPost<AuthChallengeResponse>(
       request,
-      `/auth/${config.endpoint}/resend`,
+      apiPaths.auth.flowResend(config.endpoint),
       {
         challengeId: flow.record.challengeId,
         ...(flow.record.tenantId ? { tenantId: flow.record.tenantId } : {}),
@@ -264,7 +265,7 @@ export async function verifyAction(
   if (!parsed.success) return invalidAuthInput(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthOtpVerifiedResponse>(
     request,
-    `/auth/${config.endpoint}/verify`,
+    apiPaths.auth.flowVerify(config.endpoint),
     parsed.data,
     { schema: authOtpVerifiedResponseSchema },
   );
@@ -299,7 +300,7 @@ export async function completePasswordAction(
   if (!parsed.success) return invalidAuthInput(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthFlowCompleteResponse>(
     request,
-    `/auth/${config.endpoint}/complete`,
+    apiPaths.auth.flowComplete(config.endpoint),
     parsed.data,
     { schema: authFlowCompleteResponseSchema },
   );

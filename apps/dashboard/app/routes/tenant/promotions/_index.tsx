@@ -18,6 +18,7 @@ import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
 import { PROMOTION_FILTER_SPEC } from '~/features/promotions/lib/promotion-filters';
 import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Tenant · BookingOS' }];
@@ -27,7 +28,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.promotions.manage');
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, PROMOTION_FILTER_SPEC);
-  const res = await apiGet<Paginated<PromotionResponse>>('/tenant/promotions', auth, {
+  const res = await apiGet<Paginated<PromotionResponse>>(apiPaths.tenant.promotions, auth, {
     query: toApiQuery(apiFilters),
   });
   return {
@@ -78,7 +79,7 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
       className: 'text-right',
       cell: (p) => (
         <Button asChild variant="ghost" size="sm">
-          <Link to={`/tenant/promotions/${p.id}`}>
+          <Link to={dashboardPaths.tenant.promotion(p.id)}>
             Chi tiết <ArrowUpRight className="size-4" />
           </Link>
         </Button>
@@ -92,8 +93,8 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
         title="Khuyến mãi"
         description="Tạo và theo dõi mã giảm giá cho cửa hàng của bạn."
         actions={
-          <Button asChild size="sm" disabled={readOnly} aria-disabled={readOnly}>
-            <Link to="/tenant/promotions/new"><Plus className="size-4" /> Tạo mã mới</Link>
+          <Button asChild disabled={readOnly} aria-disabled={readOnly}>
+            <Link to={dashboardPaths.tenant.promotionNew}><Plus className="size-4" /> Tạo mã mới</Link>
           </Button>
         }
       />

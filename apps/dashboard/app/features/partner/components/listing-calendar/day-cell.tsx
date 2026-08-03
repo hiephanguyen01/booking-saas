@@ -100,7 +100,7 @@ export function DayCell({
         closure === 'closed_override' && !isPast && canEdit && 'hover:bg-destructive/15',
         closure === 'closed_weekly' && 'bg-muted/50 text-muted-foreground',
         !closed && closure === 'custom_hours' && 'bg-primary/5',
-        !closed && priceRule?.salePrice && 'bg-emerald-50/70 dark:bg-emerald-950/15',
+        !closed && priceRule?.salePrice && 'bg-success/70',
         (isPast || !canEdit) && 'cursor-not-allowed',
         isPast && 'opacity-60 saturate-50',
         isSelected && 'z-10 ring-2 ring-inset ring-primary',
@@ -139,7 +139,7 @@ export function DayCell({
         ) : closure === 'custom_hours' ? (
           <Clock3 className="size-3.5 text-primary" />
         ) : null}
-        {priceRule?.salePrice ? <Tag className="size-3.5 text-emerald-600" /> : null}
+        {priceRule?.salePrice ? <Tag className="size-3.5 text-success" /> : null}
         {hasRecurring ? <Repeat className="size-3.5 text-primary" /> : null}
         {booked ? <CalendarCheck className="size-3.5 text-primary" /> : null}
       </span>
@@ -154,7 +154,7 @@ export function DayCell({
           <div
             className={cn(
               'text-xs font-medium',
-              !multiple && priceRule?.salePrice && 'text-emerald-700 dark:text-emerald-400',
+              !multiple && priceRule?.salePrice && 'text-success',
             )}
           >
             {multiple ? 'từ ' : null}

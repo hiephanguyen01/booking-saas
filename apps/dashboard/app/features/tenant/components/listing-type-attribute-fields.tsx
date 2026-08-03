@@ -19,7 +19,7 @@ import {
 import { Plus, X } from 'lucide-react';
 import { IconPicker } from '~/components/icon-picker';
 import { uniqueAttributeKey } from '~/features/tenant/lib/listing-type-attribute-key';
-import { ATTRIBUTE_FIELD_TYPE_LABEL } from '../constants';
+import { ATTRIBUTE_FIELD_TYPE_LABEL } from '~/features/tenant/constants';
 import { normalizeSearchConfig } from './listing-type-search-config';
 
 /** Only `select`/`multiselect` attributes carry an `options` list. */

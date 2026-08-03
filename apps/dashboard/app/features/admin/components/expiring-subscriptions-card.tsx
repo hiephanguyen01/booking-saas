@@ -36,7 +36,7 @@ export function ExpiringSubscriptionsCard({
             {expiring.map((e) => {
               const tone =
                 e.daysLeft <= 3
-                  ? 'text-rose-600 dark:text-rose-400'
+                  ? 'text-destructive'
                   : e.daysLeft <= 7
                     ? 'text-warning'
                     : 'text-muted-foreground';

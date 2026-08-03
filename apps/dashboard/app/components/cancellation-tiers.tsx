@@ -3,13 +3,7 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { DetailRow } from '@booking/ui/components/detail/detail-row';
 import { formatHoursBefore } from '~/lib/format';
 import { asRecord, readNumber } from '~/lib/records';
-
-/** Human label for where a listing's effective policy came from (partner's point of view). */
-export const CANCELLATION_SOURCE_LABEL: Record<CancellationPolicySource, string> = {
-  listing: 'Riêng tin đăng',
-  partner: 'Mặc định của bạn',
-  tenant: 'Mặc định hệ thống',
-};
+import { CANCELLATION_SOURCE_LABEL } from '~/constants/finance';
 
 export interface CancellationTier {
   hoursBefore: number;

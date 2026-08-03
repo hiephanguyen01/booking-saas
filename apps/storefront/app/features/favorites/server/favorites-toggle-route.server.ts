@@ -4,6 +4,7 @@ import { apiPost } from '~/lib/server/api.server';
 import { getOptionalAuth } from '~/lib/server/auth.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
+import { apiPaths } from '~/constants/api-paths';
 
 const CLIENT_MUTATION_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_FAVORITE_FORM_BYTES = 8 * 1024;
@@ -49,7 +50,7 @@ export async function handleFavoritesToggleAction(request: Request) {
 
   const result = await apiPost(
     request,
-    '/customer/favorites',
+    apiPaths.customer.favorites,
     parsed.data,
     auth.session.accessToken,
     {

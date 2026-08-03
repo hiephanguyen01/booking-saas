@@ -1,4 +1,4 @@
-import type { PaymentHistoryItem } from '@booking/contracts';
+import type { PaymentHistoryItem, RefundHistoryItem } from '@booking/contracts';
 
 export const PAYMENT_STATUS_LABEL: Record<PaymentHistoryItem['status'], string> = {
   pending: 'Chờ thanh toán',
@@ -28,4 +28,12 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   MOMO_WALLET: 'Ví MoMo',
   ZALOPAY_WALLET: 'Ví ZaloPay',
   CARD: 'Visa / Mastercard / JCB',
+};
+
+/** Refund status → Vietnamese label (tenant payments refund panel). */
+export const REFUND_STATUS_LABEL: Record<RefundHistoryItem['status'], string> = {
+  pending: 'Đang xử lý',
+  manual_required: 'Cần chuyển thủ công',
+  succeeded: 'Đã hoàn',
+  failed: 'Thất bại',
 };

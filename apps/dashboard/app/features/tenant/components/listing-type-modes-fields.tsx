@@ -2,17 +2,9 @@ import type { BookingMode, CreateListingTypeInput } from '@booking/contracts';
 import { Controller, type UseFormReturn } from '@booking/ui/components/form/rhf';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Switch } from '@booking/ui/components/ui/switch';
-import { BOOKING_MODE_LABEL } from '~/constants/booking';
+import { BOOKING_MODE_DESCRIPTION, BOOKING_MODE_LABEL } from '~/constants/booking';
 
 const ALL_MODES: BookingMode[] = ['hourly', 'daily', 'inventory', 'appointment', 'class'];
-
-const MODE_DESCRIPTION: Record<BookingMode, string> = {
-  hourly: 'Khách chọn giờ bắt đầu và thời lượng sử dụng.',
-  daily: 'Khách đặt theo một hoặc nhiều ngày.',
-  inventory: 'Khách chọn số lượng sản phẩm hoặc thiết bị.',
-  appointment: 'Khách chọn một lịch hẹn còn trống.',
-  class: 'Khách đăng ký một buổi học hoặc sự kiện có lịch cố định.',
-};
 
 /**
  * One row per booking mode. Availability and the create-listing default stay
@@ -105,7 +97,7 @@ export function ListingTypeModesFields({
                           {BOOKING_MODE_LABEL[mode]}
                         </span>
                         <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
-                          {MODE_DESCRIPTION[mode]}
+                          {BOOKING_MODE_DESCRIPTION[mode]}
                         </span>
                       </span>
                     </label>

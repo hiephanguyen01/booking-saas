@@ -14,7 +14,7 @@ import { StatusFilterTabs } from '~/components/status-filter-tabs';
 import { dashboardPaths } from '~/constants/paths';
 import { formatDateTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
-import { CONTENT_REPORT_FILTER_SPEC } from '../lib/content-report-filters';
+import { CONTENT_REPORT_FILTER_SPEC } from '~/features/content-reports/lib/content-report-filters';
 
 const statuses = [
   { value: 'all', label: 'Tất cả' },

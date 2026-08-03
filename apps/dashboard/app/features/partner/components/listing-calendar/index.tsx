@@ -66,7 +66,7 @@ function calendarUrl(listingId: string, month: string, mode: CalendarMode): stri
 const LEGEND_ITEMS = [
   { label: 'Mở theo lịch tuần', className: 'bg-card' },
   { label: 'Mở theo giờ riêng', className: 'bg-primary/10' },
-  { label: 'Có giá ưu đãi', className: 'bg-emerald-100 dark:bg-emerald-950/60' },
+  { label: 'Có giá ưu đãi', className: 'bg-success/15' },
   { label: 'Nghỉ theo lịch tuần', className: 'bg-muted' },
   { label: 'Đóng riêng', className: 'bg-destructive/15' },
 ] as const;

@@ -15,10 +15,10 @@ import { dashboardPaths } from '~/constants/paths';
 import { formatDateTime, formatVnd } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
 import { hasActiveFilters } from '~/lib/list-filters';
-import { PAYMENT_FILTER_SPEC } from '../lib/payment-filters';
+import { PAYMENT_FILTER_SPEC } from '~/features/payments/lib/payment-filters';
 
 function statusClass(status: PaymentHistoryItem['status']): string {
-  if (status === 'succeeded') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700';
+  if (status === 'succeeded') return 'border-success/30 bg-success/10 text-success';
   if (status === 'failed') return 'border-destructive/30 bg-destructive/10 text-destructive';
   if (status === 'expired') return 'text-muted-foreground';
   return 'border-warning/30 bg-warning/10 text-warning-foreground';

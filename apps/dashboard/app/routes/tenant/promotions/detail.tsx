@@ -33,6 +33,8 @@ import { PromotionSummarySection } from '~/features/promotions/components/promot
 import { EndPromotionDialog } from '~/features/promotions/components/end-promotion-dialog';
 import { FUNDED_BY_LABELS } from '~/constants/promotion';
 import { loadTenantScopeOptions } from '~/features/promotions/server/scope-options.server';
+import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết khuyến mãi · Tenant · BookingOS' }];
@@ -44,10 +46,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   // Read-one endpoint (not list+find) — survives pagination, and resolves the display
   // names (funding/creator partner, scope target) that the list response omits.
   const [promoRes, statsRes, scopeOptions, categoriesRes] = await Promise.all([
-    apiGet<PromotionDetailResponse>(`/tenant/promotions/${params.promotionId}`, auth),
-    apiGet<PromoUsageStatsResponse>(`/tenant/promotions/${params.promotionId}/usage-stats`, auth),
+    apiGet<PromotionDetailResponse>(apiPaths.tenant.promotion(params.promotionId), auth),
+    apiGet<PromoUsageStatsResponse>(apiPaths.tenant.promotionUsageStats(params.promotionId), auth),
     loadTenantScopeOptions(auth),
-    apiGet<PromotionCategoryOption[]>('/tenant/promotions/categories', auth),
+    apiGet<PromotionCategoryOption[]>(apiPaths.tenant.promotionCategories, auth),
   ]);
   if (!promoRes.ok || !promoRes.data) throw new Response('Không tìm thấy khuyến mãi', { status: 404 });
   const categoryOptions = (categoriesRes.ok ? (categoriesRes.data ?? []) : []).map((c) => ({
@@ -70,18 +72,18 @@ export async function action({ request, params }: Route.ActionArgs) {
   const id = params.promotionId;
 
   if (intent === 'end') {
-    const res = await apiPost(`/tenant/promotions/${id}/end`, {}, auth);
+    const res = await apiPost(apiPaths.tenant.promotionEnd(id), {}, auth);
     if (!res.ok) return routeData({ error: res.error ?? 'Không kết thúc được khuyến mãi.' }, { status: 400 });
-    return redirect('/tenant/promotions');
+    return redirect(dashboardPaths.tenant.promotions);
   }
 
   const parsed = updatePromotionInputSchema.safeParse(readPromotionForm(form));
   if (!parsed.success) {
     return routeData({ error: zodFirstIssueMessage(parsed.error) }, { status: 400 });
   }
-  const res = await apiPatch(`/tenant/promotions/${id}`, parsed.data, auth);
+  const res = await apiPatch(apiPaths.tenant.promotion(id), parsed.data, auth);
   if (!res.ok) return routeData({ error: res.error ?? 'Không cập nhật được khuyến mãi.' }, { status: 400 });
-  return redirect('/tenant/promotions');
+  return redirect(dashboardPaths.tenant.promotions);
 }
 
 export default function PromotionDetail({ loaderData, actionData }: Route.ComponentProps) {
@@ -93,7 +95,7 @@ export default function PromotionDetail({ loaderData, actionData }: Route.Compon
 
   return (
     <div className="space-y-6">
-      <BackLink to="/tenant/promotions" label="Khuyến mãi" />
+      <BackLink to={dashboardPaths.tenant.promotions} label="Khuyến mãi" />
 
       <PromotionHeader promotion={promotion} />
 

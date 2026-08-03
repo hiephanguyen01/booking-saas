@@ -127,7 +127,7 @@ function SuccessNotice({ text }: { text: string }) {
   return (
     <div
       role="status"
-      className="mt-6 flex items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+      className="mt-6 flex items-center gap-2 rounded-sm border border-success/15 bg-success/15 px-4 py-3 text-sm text-success"
     >
       <CheckCircle2 className="size-4" />
       {text}

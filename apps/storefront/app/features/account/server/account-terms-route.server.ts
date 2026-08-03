@@ -3,6 +3,7 @@ import type { Locale } from '@booking/i18n';
 import { z } from 'zod';
 import { apiGet } from '~/lib/server/api.server';
 import { requireCustomerAuth } from '~/lib/server/auth.server';
+import { apiPaths } from '~/constants/api-paths';
 
 const acceptanceListSchema = z.array(acceptanceRecordSchema);
 
@@ -12,13 +13,13 @@ export interface AccountTermsRouteData {
   loadFailed: boolean;
 }
 
-/** `/account/terms` — "the terms I accepted": `GET /me/legal/acceptances`, newest first. */
+/** apiPaths.account.terms — "the terms I accepted": `GET /me/legal/acceptances`, newest first. */
 export async function loadAccountTermsRoute(
   request: Request,
   locale: Locale,
 ): Promise<AccountTermsRouteData> {
   const auth = requireCustomerAuth(request, locale);
-  const result = await apiGet(request, '/me/legal/acceptances', auth.session.accessToken, {
+  const result = await apiGet(request, apiPaths.account.legalAcceptances, auth.session.accessToken, {
     schema: acceptanceListSchema,
   });
 

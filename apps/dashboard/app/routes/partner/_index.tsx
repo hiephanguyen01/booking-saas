@@ -27,6 +27,8 @@ import { BookingStatusBadge } from '~/components/status-badge';
 import { formatTime, formatVnd, dayKey, formatDayLabel } from '~/lib/format';
 import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from '~/lib/calendar-dates';
 import { useLiveClock } from '~/hooks/use-live-clock';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
+import { dashboardPaths } from '~/constants/paths';
 
 const ACTIVE: BookingStatus[] = ['pending_approval', 'pending_payment', 'confirmed'];
 
@@ -43,7 +45,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const [financeRes, feedRes, listingsRes, profileRes] = await Promise.all([
     can('partner.finance.read')
-      ? apiGet<PartnerFinanceResponse>('/partner/finance', auth)
+      ? apiGet<PartnerFinanceResponse>(apiPaths.partner.finance, auth)
       : Promise.resolve(null),
     can('partner.bookings.read')
       ? apiGet<PartnerCalendarBookingResponse[]>(
@@ -52,10 +54,10 @@ export async function loader({ request }: Route.LoaderArgs) {
         )
       : Promise.resolve(null),
     can('partner.listings.read')
-      ? apiGet<{ items: ListingResponse[] }>('/partner/listings?page=1&pageSize=100', auth)
+      ? apiGet<{ items: ListingResponse[] }>(apiPaths.partner.listings, auth, { query: { page: 1, pageSize: FETCH_ALL_PAGE_SIZE } })
       : Promise.resolve(null),
     can('partner.profile.manage')
-      ? apiGet<PartnerResponse>('/partner/profile', auth)
+      ? apiGet<PartnerResponse>(apiPaths.partner.profile, auth)
       : Promise.resolve(null),
   ]);
 
@@ -128,8 +130,8 @@ export default function PartnerOverview({ loaderData }: Route.ComponentProps) {
         title={partnerName ? `Xin chào, ${partnerName}` : 'Tổng quan'}
         description="Tình hình đặt chỗ, doanh thu và tin đăng của bạn."
         actions={
-          <Button asChild size="sm">
-            <Link to="/partner/calendar" prefetch="intent">
+          <Button asChild>
+            <Link to={dashboardPaths.partner.calendar} prefetch="intent">
               <CalendarDays className="size-4" aria-hidden /> Xem lịch tổng
             </Link>
           </Button>
@@ -143,7 +145,7 @@ export default function PartnerOverview({ loaderData }: Route.ComponentProps) {
           <AlertDescription className="space-y-2">
             <span>{reviewNote ?? 'Vui lòng kiểm tra và gửi lại thông tin định danh.'}</span>
             <Link
-              to="/partner/profile"
+              to={dashboardPaths.partner.profile}
               prefetch="intent"
               className="inline-flex w-fit rounded-sm font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
@@ -158,7 +160,7 @@ export default function PartnerOverview({ loaderData }: Route.ComponentProps) {
             duyệt.
           </span>
           <Button asChild variant="outline" size="sm" className="w-fit">
-            <Link to="/partner/profile" prefetch="intent">
+            <Link to={dashboardPaths.partner.profile} prefetch="intent">
               Xem hồ sơ
             </Link>
           </Button>
@@ -169,7 +171,7 @@ export default function PartnerOverview({ loaderData }: Route.ComponentProps) {
             Bạn chưa gửi thông tin định danh. Một số loại tin đăng yêu cầu xác minh danh tính.
           </span>
           <Button asChild variant="outline" size="sm" className="w-fit">
-            <Link to="/partner/profile" prefetch="intent">
+            <Link to={dashboardPaths.partner.profile} prefetch="intent">
               Gửi định danh
             </Link>
           </Button>

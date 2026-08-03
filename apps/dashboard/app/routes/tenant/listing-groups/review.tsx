@@ -32,6 +32,9 @@ import { RevisionDecisionCard } from '~/features/tenant/components/moderation/re
 import { RevisionDiffCard } from '~/features/tenant/components/moderation/revision-diff-card';
 import { ChildListingCard } from '~/features/tenant/components/group-review/child-listing-card';
 import { GroupContentCard } from '~/features/tenant/components/group-review/group-content-card';
+import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { notFoundMessages } from '~/constants/messages';
 
 /** Contact-scan field names are namespaced for children (`listings[0].description`). */
 function contactFieldLabel(field: string): string {
@@ -50,17 +53,17 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
   const [detailRes, reviewRes, pendingRes] = await Promise.all([
-    apiGet<ListingGroupDetailResponse>(`/tenant/listing-groups/${params.groupId}/detail`, auth),
+    apiGet<ListingGroupDetailResponse>(apiPaths.tenant.listingGroupDetail(params.groupId), auth),
     // The review endpoint requires `tenant.listings.publish`; a read-only user
     // (or a transient failure) gets no checklist rather than a broken page.
-    apiGet<ListingGroupReviewResponse>(`/tenant/listing-groups/${params.groupId}/review`, auth),
+    apiGet<ListingGroupReviewResponse>(apiPaths.tenant.listingGroupReview(params.groupId), auth),
     apiGet<ListingGroupPendingChangesResponse>(
       `/tenant/listing-groups/${params.groupId}/pending-changes`,
       auth,
     ),
   ]);
   if (!detailRes.ok || !detailRes.data) {
-    throw new Response('Không tìm thấy tin đăng.', { status: detailRes.status });
+    throw new Response(notFoundMessages.listing, { status: detailRes.status });
   }
   const pending = pendingRes.ok ? pendingRes.data : null;
   return {
@@ -101,17 +104,17 @@ export async function action({ request, params }: Route.ActionArgs) {
         ),
       });
     }
-    return redirect(`/tenant/listing-groups/${params.groupId}/review`);
+    return redirect(dashboardPaths.tenant.listingGroupReview(params.groupId));
   }
 
   return runModerationAction({
     form,
     auth,
-    basePath: `/tenant/listing-groups/${params.groupId}`,
+    basePath: apiPaths.tenant.listingGroup(params.groupId),
     intents: ['publish', 'republish', 'hide'],
     contactLeakMessage:
       'Tin đăng còn lộ thông tin liên hệ. Tích “Bỏ qua kiểm tra” để xuất bản bất chấp cảnh báo.',
-    redirectTo: '/tenant/listing-groups',
+    redirectTo: dashboardPaths.tenant.listingGroups,
   });
 }
 
@@ -124,7 +127,7 @@ export default function ListingGroupReviewPage({ loaderData, actionData }: Route
 
   return (
     <div className="space-y-6">
-      <BackLink to="/tenant/listing-groups" label="Tin đăng nhiều hạng mục" />
+      <BackLink to={dashboardPaths.tenant.listingGroups} label="Tin đăng nhiều hạng mục" />
 
       <PageHeader
         title={group.title}

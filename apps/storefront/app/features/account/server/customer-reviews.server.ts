@@ -10,8 +10,9 @@ import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { mapWithConcurrency } from '~/lib/server/concurrency.server';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
 
-const REVIEW_PAGE_SIZE = 100;
+const REVIEW_PAGE_SIZE = FETCH_ALL_PAGE_SIZE;
 const REVIEW_PAGE_CONCURRENCY = 4;
 
 export interface ReviewActionData {
@@ -32,7 +33,7 @@ export async function loadCustomerReviewsByBooking(
   accessToken: string,
 ): Promise<Map<string, CustomerReviewItem>> {
   const fetchPage = (page: number) =>
-    apiGet(request, '/customer/reviews', accessToken, {
+    apiGet(request, apiPaths.customer.reviews, accessToken, {
       query: { status: 'all', page, pageSize: REVIEW_PAGE_SIZE },
       schema: customerReviewListResponseSchema,
     });
@@ -95,7 +96,7 @@ export async function submitCustomerReview(
 
   const result = await apiPost(
     request,
-    '/customer/reviews',
+    apiPaths.customer.reviews,
     parsed.data,
     auth.session.accessToken,
     { schema: reviewResponseSchema },

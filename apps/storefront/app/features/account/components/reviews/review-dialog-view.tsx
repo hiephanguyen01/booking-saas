@@ -97,7 +97,7 @@ export function ReviewDialogView({
                     <Star
                       className={cn(
                         'size-8',
-                        active ? 'text-amber-500' : 'text-muted-foreground/35',
+                        active ? 'text-warning' : 'text-muted-foreground/35',
                       )}
                       fill={active ? 'currentColor' : 'none'}
                       aria-hidden="true"

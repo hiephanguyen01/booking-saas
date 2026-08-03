@@ -38,7 +38,7 @@ export function CopyableCode({ value, label, className }: CopyableCodeProps) {
         className="shrink-0 rounded-sm p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {copied ? (
-          <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <Check className="size-3.5 text-success" aria-hidden />
         ) : (
           <Copy className="size-3.5" aria-hidden />
         )}

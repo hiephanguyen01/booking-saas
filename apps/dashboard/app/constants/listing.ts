@@ -1,4 +1,4 @@
-import type { ModerationActor } from '@booking/contracts';
+import type { ListingTypeSearchFacetControl, ModerationActor } from '@booking/contracts';
 
 // Listing-domain display constants shared by the tenant (moderation) and
 // partner (workspace) areas.
@@ -14,3 +14,11 @@ export const MODERATION_ACTOR_LABEL: Record<ModerationActor, string> = {
  * values; lowercase inline uses call `.toLowerCase()`).
  */
 export const INVENTORY_UNIT_LABEL: Record<'hour' | 'day', string> = { hour: 'Giờ', day: 'Ngày' };
+
+/** Storefront search-facet control → Vietnamese label (listing-type editor). */
+export const FACET_CONTROL_LABEL: Record<ListingTypeSearchFacetControl, string> = {
+  checkbox: 'Checkbox',
+  radio: 'Radio',
+  range: 'Khoảng min / max',
+  buckets: 'Các khoảng định sẵn',
+};

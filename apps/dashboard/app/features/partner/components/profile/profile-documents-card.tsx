@@ -9,7 +9,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { SuccessBanner } from '~/components/action-feedback';
 import { PhotoStrip } from '~/components/photo-strip';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
-import type { PartnerProfileActionResult } from '../../server/profile-actions.server';
+import type { PartnerProfileActionResult } from '~/features/partner/server/profile-actions.server';
 import { Section } from '~/components/form-layout';
 
 const documentFields: FieldConfig<UpdatePartnerDocumentsInput>[] = [

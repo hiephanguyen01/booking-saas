@@ -18,6 +18,9 @@ import { AffiliateEarningsCards } from '~/features/tenant/components/affiliates/
 import { AffiliateLinksTable } from '~/features/tenant/components/affiliates/affiliate-links-table';
 import { AffiliateProfilePanel } from '~/features/tenant/components/affiliates/affiliate-profile-panel';
 import { AffiliateStatusActions } from '~/features/tenant/components/affiliates/affiliate-status-actions';
+import { apiPaths } from '~/constants/api-paths';
+import { dashboardPaths } from '~/constants/paths';
+import { actionMessages } from '~/constants/messages';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · Chi tiết · BookingOS' }];
@@ -50,7 +53,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       );
     }
     const res = await apiPost<AffiliateStatusResponse>(
-      `/tenant/affiliates/${id}/status`,
+      apiPaths.tenant.affiliateStatus(id),
       { status },
       auth,
     );
@@ -101,7 +104,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   return routeData(
-    { ok: false, error: 'Thao tác không hợp lệ.', message: null } satisfies AffiliateDetailActionData,
+    { ok: false, error: actionMessages.invalidIntent, message: null } satisfies AffiliateDetailActionData,
     { status: 400 },
   );
 }
@@ -112,7 +115,7 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
 
   return (
     <div className="space-y-6">
-      <BackLink to="/tenant/affiliates" label="Cộng tác viên" />
+      <BackLink to={dashboardPaths.tenant.affiliates} label="Cộng tác viên" />
 
       <PageHeader
         title={affiliate.userName}

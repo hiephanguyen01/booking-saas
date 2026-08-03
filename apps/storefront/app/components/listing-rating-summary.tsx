@@ -24,7 +24,7 @@ export function ListingRatingSummary({
       className="inline-flex items-center gap-1.5"
       aria-label={`${ratingAvg.toFixed(1)} / 5 · ${t('reviewCount', { count: reviewCount })}`}
     >
-      <Star className="size-4 text-amber-400" fill="currentColor" aria-hidden="true" />
+      <Star className="size-4 text-warning" fill="currentColor" aria-hidden="true" />
       <strong className="font-semibold text-foreground">{ratingAvg.toFixed(1)}</strong>
       <span aria-hidden="true">·</span>
       <span>{t('reviewCount', { count: reviewCount })}</span>

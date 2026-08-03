@@ -14,7 +14,7 @@ import { BarRow } from '~/components/stat-card';
 /** Subscription phase + soft booking-quota snapshot (§6.5). The escalation banners live in the layout. */
 export function SubscriptionStatusCard({ sub }: { sub: SubscriptionStatusResponse }) {
   const { phase, daysUntilExpiry, bookingQuota } = sub;
-  const phaseTone = phase === 'active' ? 'text-emerald-600 dark:text-emerald-400' : 'text-warning';
+  const phaseTone = phase === 'active' ? 'text-success' : 'text-warning';
   const quotaPct =
     bookingQuota && bookingQuota.limit > 0
       ? Math.min(100, Math.round((bookingQuota.used / bookingQuota.limit) * 100))
@@ -25,7 +25,7 @@ export function SubscriptionStatusCard({ sub }: { sub: SubscriptionStatusRespons
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {phase === 'active' ? (
-            <CircleCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+            <CircleCheck className="size-4 text-success" />
           ) : (
             <CalendarClock className="size-4 text-warning" />
           )}

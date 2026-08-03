@@ -32,14 +32,14 @@ import { dashboardPaths } from '~/constants/paths';
 import { BalanceCards } from '~/features/tenant/components/finance/balance-cards';
 import { CreatePayoutDialog } from '~/features/tenant/components/finance/create-payout-dialog';
 import { PayoutsTable } from '~/features/tenant/components/finance/payouts-table';
-import {
-  CommissionRulesPanel,
-  type CommissionTargetOptions,
-} from '~/features/tenant/components/finance/commission-rules-panel';
+import { CommissionRulesPanel } from '~/features/tenant/components/finance/commission-rules-panel';
+import type { CommissionTargetOptions } from '~/features/tenant/lib/commission-rules';
 import {
   readCommissionRatePatch,
   readCreateCommissionRule,
 } from '~/features/tenant/server/commission-rule-form.server';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tài chính · Tenant · BookingOS' }];
@@ -80,23 +80,23 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { toApiQuery } = readListParams(url.searchParams);
   const [summaryRes, payoutsRes, partnersRes, commissionRes, listingTypesRes, categoriesRes] =
     await Promise.all([
-      apiGet<TenantFinanceSummaryResponse>('/tenant/finance/summary', auth),
+      apiGet<TenantFinanceSummaryResponse>(apiPaths.tenant.financeSummary, auth),
       canPayouts
-        ? apiGet<Paginated<PayoutResponse>>('/tenant/finance/payouts', auth, {
+        ? apiGet<Paginated<PayoutResponse>>(apiPaths.tenant.payouts, auth, {
             query: toApiQuery(),
           })
         : Promise.resolve(null),
       can('tenant.partners.read')
-        ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth)
+        ? apiGet<Paginated<PartnerResponse>>(apiPaths.tenant.partners, auth, { query: { pageSize: FETCH_ALL_PAGE_SIZE } })
         : Promise.resolve(null),
       canCommissions
-        ? apiGet<CommissionRuleResponse[]>('/tenant/finance/commission-rules', auth)
+        ? apiGet<CommissionRuleResponse[]>(apiPaths.tenant.commissionRules, auth)
         : Promise.resolve(null),
       canCommissions && can('tenant.listings.read')
-        ? apiGet<ListingTypeResponse[]>('/tenant/listing-types?includeInactive=true', auth)
+        ? apiGet<ListingTypeResponse[]>(apiPaths.tenant.listingTypes, auth, { query: { includeInactive: true } })
         : Promise.resolve(null),
       canCommissions && can('tenant.promotions.manage')
-        ? apiGet<PromotionCategoryOption[]>('/tenant/promotions/categories', auth)
+        ? apiGet<PromotionCategoryOption[]>(apiPaths.tenant.promotionCategories, auth)
         : Promise.resolve(null),
     ]);
 
@@ -148,7 +148,7 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (intent === 'delete-commission-rule') {
       const id = String(form.get('ruleId') ?? '');
-      const res = await apiDelete(`/tenant/finance/commission-rules/${id}`, auth);
+      const res = await apiDelete(apiPaths.tenant.commissionRule(id), auth);
       if (!res.ok)
         return routeData({ error: res.error ?? 'Không xoá được quy tắc.' }, { status: 400 });
       return { ok: true, message: 'Đã xoá quy tắc riêng.' };
@@ -159,7 +159,7 @@ export async function action({ request }: Route.ActionArgs) {
       if (!parsed.success) {
         return routeData({ error: 'Kiểm tra lại phạm vi và tỷ lệ hoa hồng.' }, { status: 400 });
       }
-      const res = await apiPost('/tenant/finance/commission-rules', parsed.data, auth);
+      const res = await apiPost(apiPaths.tenant.commissionRules, parsed.data, auth);
       if (!res.ok)
         return routeData({ error: res.error ?? 'Không tạo được quy tắc.' }, { status: 400 });
       return { ok: true, message: 'Đã thêm quy tắc hoa hồng.' };
@@ -170,7 +170,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (!parsed.success) {
       return routeData({ error: 'Kiểm tra lại tỷ lệ hoa hồng.' }, { status: 400 });
     }
-    const res = await apiPatch(`/tenant/finance/commission-rules/${id}`, parsed.data, auth);
+    const res = await apiPatch(apiPaths.tenant.commissionRule(id), parsed.data, auth);
     if (!res.ok)
       return routeData({ error: res.error ?? 'Không cập nhật được quy tắc.' }, { status: 400 });
     return { ok: true, message: 'Đã cập nhật quy tắc hoa hồng.' };
@@ -188,7 +188,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (!parsed.success) {
       return routeData({ error: 'Thông tin lệnh chi không hợp lệ.' }, { status: 400 });
     }
-    const res = await apiPost('/tenant/finance/payouts', parsed.data, auth);
+    const res = await apiPost(apiPaths.tenant.payouts, parsed.data, auth);
     if (!res.ok)
       return routeData({ error: res.error ?? 'Không tạo được lệnh chi.' }, { status: 400 });
     return { ok: true };
@@ -203,7 +203,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (!parsed.success) {
       return routeData({ error: 'Cần số tham chiếu chuyển khoản.' }, { status: 400 });
     }
-    const res = await apiPost(`/tenant/finance/payouts/${id}/mark-paid`, parsed.data, auth);
+    const res = await apiPost(apiPaths.tenant.payoutMarkPaid(id), parsed.data, auth);
     if (!res.ok)
       return routeData({ error: res.error ?? 'Không cập nhật được lệnh chi.' }, { status: 400 });
     return { ok: true };
@@ -216,13 +216,13 @@ export async function action({ request }: Route.ActionArgs) {
     if (!parsed.success) {
       return routeData({ error: 'Lý do không hợp lệ.' }, { status: 400 });
     }
-    const res = await apiPost(`/tenant/finance/payouts/${id}/fail`, parsed.data, auth);
+    const res = await apiPost(apiPaths.tenant.payoutFail(id), parsed.data, auth);
     if (!res.ok)
       return routeData({ error: res.error ?? 'Không cập nhật được lệnh chi.' }, { status: 400 });
     return { ok: true };
   }
 
-  return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
+  return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
 }
 
 export default function TenantFinance({ loaderData, actionData }: Route.ComponentProps) {
@@ -256,17 +256,17 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         description="Số dư công nợ, sổ cái và chi trả thủ công cho đối tác."
         actions={
           <>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline">
               <Link to={dashboardPaths.tenant.settlements}>
                 <ShieldCheck className="size-4" /> Tiền đang giữ
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline">
               <Link to={dashboardPaths.tenant.ledger}>
                 <BookText className="size-4" /> Xem sổ cái
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline">
               <Link to={dashboardPaths.tenant.disputes}>
                 <Scale className="size-4" /> Tranh chấp
               </Link>

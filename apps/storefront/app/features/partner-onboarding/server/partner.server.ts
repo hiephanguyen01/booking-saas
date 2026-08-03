@@ -2,7 +2,7 @@
  * Server-only helpers for partner self-registration (§7.3 "signup + tenant
  * approval"). The storefront otherwise only calls public endpoints; this is the
  * one flow that needs an authenticated backend call, so we mint a session token
- * from `POST /auth/register` (or `/auth/login` for an existing account) and
+ * from `POST /auth/register` (or apiPaths.auth.login for an existing account) and
  * replay it to `POST /partners/apply` — all server-side, in one request. The
  * token is used in-memory for the single apply call and never persisted (the
  * storefront stays stateless; the partner re-authenticates on the dashboard).
@@ -10,6 +10,7 @@
 
 import { partnerResponseSchema, type PartnerApplyInput } from '@booking/contracts';
 import { apiPost, backendLogin, backendRegister } from '~/lib/server/api.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export interface RegisterCredentials {
   email: string;
@@ -72,7 +73,7 @@ export async function applyAsPartner(
   token: string,
   input: PartnerApplyPayload,
 ): Promise<{ ok: true } | { ok: false; code: ErrorCode; status: number }> {
-  const result = await apiPost(request, '/partners/apply', input, token, {
+  const result = await apiPost(request, apiPaths.partner.apply, input, token, {
     schema: partnerResponseSchema,
   });
   if (result.ok) return { ok: true };

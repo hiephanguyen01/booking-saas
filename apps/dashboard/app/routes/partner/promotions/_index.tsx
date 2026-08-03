@@ -25,6 +25,7 @@ import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
 import { PROMOTION_FILTER_SPEC } from '~/features/promotions/lib/promotion-filters';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Đối tác · BookingOS' }];
@@ -35,10 +36,10 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, PROMOTION_FILTER_SPEC);
   const [mine, pending] = await Promise.all([
-    apiGet<Paginated<PromotionResponse>>('/partner/promotions', auth, {
+    apiGet<Paginated<PromotionResponse>>(apiPaths.partner.promotions, auth, {
       query: toApiQuery(apiFilters),
     }),
-    apiGet<PromotionResponse[]>('/partner/promotions/pending-optin', auth),
+    apiGet<PromotionResponse[]>(apiPaths.partner.promotionsPendingOptin, auth),
   ]);
   return {
     result: mine.ok ? mine.data : null,
@@ -54,7 +55,7 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = String(form.get('intent'));
   const id = String(form.get('promotionId'));
   const path =
-    intent === 'opt-in' ? `/partner/promotions/${id}/opt-in` : `/partner/promotions/${id}/end`;
+    intent === 'opt-in' ? apiPaths.partner.promotionOptIn(id) : apiPaths.partner.promotionEnd(id);
   const res = await apiPost(path, {}, auth);
   if (!res.ok) return data({ error: res.error ?? 'Thao tác thất bại.' }, { status: 400 });
   return { ok: true };
@@ -81,7 +82,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
     {
       header: 'Chương trình',
       cell: (p) => (
-        <Link to={`/partner/promotions/${p.id}`} className="font-medium hover:underline">
+        <Link to={dashboardPaths.partner.promotion(p.id)} className="font-medium hover:underline">
           {p.name}
           {p.code ? (
             <span className="ml-2 text-muted-foreground">{p.code}</span>
@@ -102,7 +103,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
       header: '',
       cell: (p) => (
         <Button asChild variant="ghost" size="sm">
-          <Link to={`/partner/promotions/${p.id}`}>
+          <Link to={dashboardPaths.partner.promotion(p.id)}>
             <Pencil className="size-4" />
           </Link>
         </Button>
@@ -117,7 +118,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
         description="Tạo mã giảm giá do bạn tài trợ cho tin đăng của mình."
         actions={
           <Button asChild>
-            <Link to="/partner/promotions/new">
+            <Link to={dashboardPaths.partner.promotionNew}>
               <Plus className="size-4" /> Tạo khuyến mãi
             </Link>
           </Button>

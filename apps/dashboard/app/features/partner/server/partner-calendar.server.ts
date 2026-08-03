@@ -1,5 +1,6 @@
 import type { ListingResponse } from '@booking/contracts';
 import { apiGet, type ApiAuth } from '~/lib/api.server';
+import { apiPaths } from '~/constants/api-paths';
 
 /**
  * Map a chosen listing to its real resource id server-side. Re-fetching the
@@ -13,6 +14,6 @@ export async function resolveListingResource(
   // Fetch the single partner-scoped listing (the endpoint 404s if it isn't this
   // partner's, so ownership is still enforced) — cheaper + correct now that the
   // list feed is paginated.
-  const listingRes = await apiGet<ListingResponse>(`/partner/listings/${listingId}`, auth);
+  const listingRes = await apiGet<ListingResponse>(apiPaths.partner.listing(listingId), auth);
   return listingRes.ok && listingRes.data ? (listingRes.data.resourceId ?? null) : null;
 }

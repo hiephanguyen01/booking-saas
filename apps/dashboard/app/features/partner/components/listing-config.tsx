@@ -17,8 +17,8 @@ import { AttributeInput } from './attribute-input';
 import { CONFIGURABLE, useListingModeState } from './use-listing-mode-state';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { INVENTORY_UNIT_LABEL } from '~/constants/listing';
-import type { DynamicState } from '../lib/listing-mode-config';
-import { formErrorMessageAt, formErrorMessagesAt } from '~/features/partner/lib/form-errors';
+import type { DynamicState } from '~/features/partner/lib/listing-mode-config';
+import { formErrorMessageAt, formErrorMessagesAt } from '~/lib/form-errors';
 
 const BOOKING_MODE_HELP = {
   hourly: 'Khách chọn ngày, giờ bắt đầu và thời lượng.',

@@ -53,7 +53,7 @@ function FinancialValue({
 }) {
   const toneClass = {
     neutral: 'text-foreground',
-    positive: 'text-emerald-700',
+    positive: 'text-success',
     primary: 'text-primary',
   }[tone];
 

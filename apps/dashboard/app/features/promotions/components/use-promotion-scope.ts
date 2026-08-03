@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { PromotionResponse } from '@booking/contracts';
 import type { ScopeKey } from '~/constants/promotion';
-import type { ScopeOption, ScopeOptions } from '../server/scope-options.server';
+import type { ScopeOption, ScopeOptions } from '~/features/promotions/server/scope-options.server';
 
 const DEFAULT_CHOICES: ScopeKey[] = [
   'all',

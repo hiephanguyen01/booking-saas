@@ -6,6 +6,7 @@ import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { apiGet } from '~/lib/api.server';
 import { readListFilters } from '~/lib/list-filters';
 import { readListParams } from '~/lib/pagination';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Báo cáo nội dung · Tenant · BookingOS' }];
@@ -16,7 +17,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const list = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, CONTENT_REPORT_FILTER_SPEC);
   const status = url.searchParams.get('status') || 'all';
-  const result = await apiGet('/tenant/content-reports', auth, {
+  const result = await apiGet(apiPaths.tenant.contentReports, auth, {
     query: list.toApiQuery({ ...apiFilters, status }),
     schema: contentReportListResponseSchema,
   });

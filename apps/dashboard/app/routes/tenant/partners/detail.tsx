@@ -37,6 +37,9 @@ import {
   readCreateCommissionRule,
 } from '~/features/tenant/server/commission-rule-form.server';
 import { useTenantArea } from '~/features/tenant/lib/area-context';
+import { apiPaths } from '~/constants/api-paths';
+import { dashboardPaths } from '~/constants/paths';
+import { actionMessages } from '~/constants/messages';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết đối tác · Tenant · BookingOS' }];
@@ -46,9 +49,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.partners.read');
   const canCommissions = can('tenant.commissions.manage');
   const [res, rulesRes] = await Promise.all([
-    apiGet<PartnerResponse>(`/tenant/partners/${params.partnerId}`, auth),
+    apiGet<PartnerResponse>(apiPaths.tenant.partner(params.partnerId), auth),
     canCommissions
-      ? apiGet<CommissionRuleResponse[]>('/tenant/finance/commission-rules', auth)
+      ? apiGet<CommissionRuleResponse[]>(apiPaths.tenant.commissionRules, auth)
       : Promise.resolve(null),
   ]);
   if (!res.ok || !res.data) throw new Response('Không tìm thấy đối tác', { status: 404 });
@@ -87,7 +90,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
 
     const rulesRes = await apiGet<CommissionRuleResponse[]>(
-      '/tenant/finance/commission-rules',
+      apiPaths.tenant.commissionRules,
       auth,
     );
     if (!rulesRes.ok) {
@@ -106,7 +109,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       if (!partnerRule || partnerRule.id !== ruleId) {
         return routeData({ error: 'Quy tắc không thuộc đối tác này.' }, { status: 400 });
       }
-      const res = await apiDelete(`/tenant/finance/commission-rules/${ruleId}`, auth);
+      const res = await apiDelete(apiPaths.tenant.commissionRule(ruleId), auth);
       if (!res.ok)
         return routeData(
           { error: res.error ?? 'Không xoá được mức hoa hồng riêng.' },
@@ -126,7 +129,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           { status: 409 },
         );
       }
-      const res = await apiPost('/tenant/finance/commission-rules', parsed.data, auth);
+      const res = await apiPost(apiPaths.tenant.commissionRules, parsed.data, auth);
       if (!res.ok)
         return routeData(
           { error: res.error ?? 'Không tạo được mức hoa hồng riêng.' },
@@ -143,7 +146,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (!parsed.success) {
       return routeData({ error: 'Tỷ lệ hoa hồng không hợp lệ.' }, { status: 400 });
     }
-    const res = await apiPatch(`/tenant/finance/commission-rules/${ruleId}`, parsed.data, auth);
+    const res = await apiPatch(apiPaths.tenant.commissionRule(ruleId), parsed.data, auth);
     if (!res.ok)
       return routeData(
         { error: res.error ?? 'Không cập nhật được mức hoa hồng.' },
@@ -153,7 +156,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   const perm = PERM[intent];
-  if (!perm) return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
+  if (!perm) return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
   if (!can(perm))
     return routeData({ error: 'Bạn không có quyền thực hiện thao tác này.' }, { status: 403 });
 
@@ -162,7 +165,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     intent === 'verify' ? { note: String(form.get('note') ?? '').trim() || undefined } : {};
   const res = await apiPost<PartnerResponse>(`/tenant/partners/${id}/${intent}`, body, auth);
   if (!res.ok)
-    return routeData({ error: res.error ?? 'Thao tác không thành công.' }, { status: 400 });
+    return routeData({ error: res.error ?? actionMessages.actionFailed }, { status: 400 });
   // Surface the outcome instead of discarding it — the new verification/status
   // state drives an explicit success banner (loader revalidation refreshes the body).
   return {
@@ -185,7 +188,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
 
   return (
     <div className="space-y-6">
-      <BackLink to="/tenant/partners" label="Đối tác" />
+      <BackLink to={dashboardPaths.tenant.partners} label="Đối tác" />
 
       <PageHeader
         title={partner.name}

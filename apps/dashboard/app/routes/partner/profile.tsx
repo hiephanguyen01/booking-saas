@@ -23,6 +23,7 @@ import { CopyableCode } from '~/components/copyable-code';
 import { readString } from '~/lib/records';
 import { PARTNER_TYPE_LABEL } from '~/constants/partner';
 import { FormSurface, Section } from '~/components/form-layout';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Hồ sơ đối tác · Đối tác · BookingOS' }];
@@ -42,8 +43,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     };
   }
   const [res, agreementRes] = await Promise.all([
-    apiGet<PartnerResponse>('/partner/profile', auth),
-    apiGet<PartnerAgreementResponse[]>('/partner/profile/agreements', auth),
+    apiGet<PartnerResponse>(apiPaths.partner.profile, auth),
+    apiGet<PartnerAgreementResponse[]>(apiPaths.partner.profileAgreements, auth),
   ]);
   return {
     canManage: true as const,

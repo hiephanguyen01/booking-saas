@@ -22,7 +22,7 @@ export function SuccessBanner({ message }: { message: ReactNode | null | undefin
   return (
     <Alert>
       {/* Success semantics keep the literal emerald pair (design-rule exception). */}
-      <CircleCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+      <CircleCheck className="size-4 text-success" />
       <AlertDescription>{message}</AlertDescription>
     </Alert>
   );

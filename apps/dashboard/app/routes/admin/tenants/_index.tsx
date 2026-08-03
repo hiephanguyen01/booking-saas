@@ -14,6 +14,7 @@ import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tenant · BookingOS Admin' }];
@@ -43,7 +44,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { filters, apiFilters } = readListFilters(url.searchParams, TENANTS_FILTER_SPEC);
 
   const { auth } = await requirePlatform(request, 'platform.tenants.read');
-  const res = await apiGet<Paginated<TenantResponse>>('/admin/tenants', auth, {
+  const res = await apiGet<Paginated<TenantResponse>>(apiPaths.admin.tenants, auth, {
     query: toApiQuery(apiFilters),
   });
   return {
@@ -57,7 +58,7 @@ const columns: DataTableColumn<TenantResponse>[] = [
   {
     header: 'Tên tenant',
     cell: (t) => (
-      <Link to={`/admin/tenants/${t.id}`} className="group inline-flex flex-col gap-0.5">
+      <Link to={dashboardPaths.admin.tenant(t.id)} className="group inline-flex flex-col gap-0.5">
         <span className="font-medium underline-offset-4 group-hover:underline">{t.name}</span>
         <span className="text-xs text-muted-foreground">{t.slug}</span>
       </Link>
@@ -95,7 +96,7 @@ export default function TenantsList({ loaderData }: Route.ComponentProps) {
         description={`${total} tenant trên nền tảng.`}
         actions={
           <Button asChild>
-            <Link to="/admin/tenants/new">
+            <Link to={dashboardPaths.admin.tenantNew}>
               <Plus className="size-4" />
               Tạo tenant
             </Link>

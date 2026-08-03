@@ -10,6 +10,7 @@ import {
   toAccountBookingViewModel,
 } from '~/features/account/lib/booking-history';
 import { loadCustomerReviewsByBooking } from './customer-reviews.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export async function loadAccountBookings(
   request: Request,
@@ -18,7 +19,7 @@ export async function loadAccountBookings(
   filter: BookingHistoryFilter,
 ): Promise<{ bookings: AccountBookingViewModel[]; error: string | null }> {
   const [result, reviews] = await Promise.all([
-    apiGet<BookingResponse[]>(request, '/public/my-bookings', accessToken, {
+    apiGet<BookingResponse[]>(request, apiPaths.public.myBookings, accessToken, {
       schema: z.array(bookingResponseSchema),
     }),
     loadCustomerReviewsByBooking(request, accessToken),

@@ -14,6 +14,8 @@ import { SEARCH_SCHEDULE_LABEL, STRUCTURE_LABEL } from '~/features/tenant/consta
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 const LISTING_TYPE_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên loại…' },
@@ -26,7 +28,7 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
   const { filters, apiFilters } = readListFilters(url.searchParams, LISTING_TYPE_FILTER_SPEC);
-  const res = await apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth, {
+  const res = await apiGet<ListingTypeResponse[]>(apiPaths.tenant.listingTypes, auth, {
     query: { includeInactive: 'true', ...apiFilters },
   });
   return {
@@ -41,11 +43,11 @@ export async function action({ request }: Route.ActionArgs) {
   const { auth } = await requireTenant(request, 'tenant.listings.write');
   const form = await request.formData();
   if (String(form.get('intent')) === 'delete') {
-    const res = await apiDelete(`/tenant/listing-types/${String(form.get('id'))}`, auth);
+    const res = await apiDelete(apiPaths.tenant.listingType(String(form.get('id'))), auth);
     if (!res.ok) return routeData({ error: res.error ?? 'Không xoá được (có thể đang được dùng).' }, { status: 400 });
     return { ok: true };
   }
-  return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
+  return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
 }
 
 export default function TenantListingTypes({ loaderData, actionData }: Route.ComponentProps) {
@@ -136,8 +138,8 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
         description="Định nghĩa các loại dịch vụ của bạn (studio, model, thuê thiết bị…) và thuộc tính của chúng."
         actions={
           canWrite ? (
-            <Button asChild size="sm">
-              <Link to="/tenant/listing-types/new"><Plus className="size-4" /> Thêm loại</Link>
+            <Button asChild>
+              <Link to={dashboardPaths.tenant.listingTypeNew}><Plus className="size-4" /> Thêm loại</Link>
             </Button>
           ) : null
         }
@@ -172,7 +174,7 @@ function RowActions({ type }: { type: ListingTypeResponse }) {
   const inUse = type.listingCount > 0;
   return (
     <div className="flex justify-end gap-1.5">
-      <Button asChild size="xs" variant="ghost">
+      <Button asChild size="sm" variant="ghost">
         <Link to={`/tenant/listing-types/${type.id}/edit`}><Pencil className="size-3.5" /> Sửa</Link>
       </Button>
       <fetcher.Form
@@ -185,7 +187,7 @@ function RowActions({ type }: { type: ListingTypeResponse }) {
         <input type="hidden" name="id" value={type.id} />
         <Button
           type="submit"
-          size="xs"
+          size="sm"
           variant="ghost"
           className="text-muted-foreground hover:text-destructive"
           disabled={busy || inUse}

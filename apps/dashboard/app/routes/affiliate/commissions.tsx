@@ -13,6 +13,7 @@ import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { dashboardPaths } from '~/constants/paths';
 import { COMMISSION_STATUS_LABEL } from '~/constants/affiliate';
 import { PageHeader } from '~/components/page-header';
+import { apiPaths } from '~/constants/api-paths';
 
 const COMMISSION_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã giới thiệu hoặc mã booking…' },
@@ -30,7 +31,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, COMMISSION_FILTER_SPEC);
   const res = active
-    ? await apiGet<Paginated<AffiliateCommissionResponse>>('/affiliate/commissions', auth, {
+    ? await apiGet<Paginated<AffiliateCommissionResponse>>(apiPaths.affiliate.commissions, auth, {
         query: toApiQuery(apiFilters),
       })
     : null;

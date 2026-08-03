@@ -10,7 +10,7 @@ import { ImageUpload } from '@booking/ui/components/form/image-upload';
 import { Input } from '@booking/ui/components/ui/input';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { Field } from '~/components/form-layout';
-import type { PackageRow } from '../lib/listing-mode-config';
+import type { PackageRow } from '~/features/partner/lib/listing-mode-config';
 
 function newPackage(sortOrder: number): PackageRow {
   return {

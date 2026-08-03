@@ -11,6 +11,8 @@ import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
 import { CancellationTiers } from '~/components/cancellation-tiers';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chính sách huỷ · Đối tác · BookingOS' }];
@@ -18,7 +20,7 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.listings.read');
-  const res = await apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth);
+  const res = await apiGet<CancellationPolicyResponse[]>(apiPaths.partner.cancellationPolicies, auth);
   return {
     policies: res.ok ? (res.data ?? []) : [],
     canWrite: can('partner.listings.write'),
@@ -31,7 +33,7 @@ export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = String(form.get('intent'));
   if (intent === 'delete') {
-    const res = await apiDelete(`/partner/cancellation-policies/${String(form.get('id'))}`, auth);
+    const res = await apiDelete(apiPaths.partner.cancellationPolicy(String(form.get('id'))), auth);
     if (!res.ok) {
       return routeData(
         { error: res.error ?? 'Không xoá được (có thể đang gắn với tin đăng).' },
@@ -43,7 +45,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === 'set-default') {
     const raw = String(form.get('policyId') ?? '');
     const res = await apiPatch(
-      '/partner/profile/default-cancellation-policy',
+      apiPaths.partner.profileDefaultCancellationPolicy,
       { policyId: raw === '' ? null : raw },
       auth,
     );
@@ -52,7 +54,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     return { ok: true };
   }
-  return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
+  return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
 }
 
 export default function PartnerCancellationPolicies({
@@ -102,7 +104,7 @@ export default function PartnerCancellationPolicies({
         description="Định nghĩa các mốc hoàn tiền khi khách huỷ. Gán cho từng tin đăng, hoặc đặt một chính sách làm mặc định cho các tin đăng chưa gán."
         actions={
           canWrite ? (
-            <Button asChild size="sm">
+            <Button asChild>
               <Link to={dashboardPaths.partner.newCancellationPolicy}>
                 <Plus className="size-4" /> Thêm chính sách
               </Link>
@@ -138,7 +140,7 @@ function RowActions({ policy }: { policy: CancellationPolicyResponse }) {
         <fetcher.Form method="post">
           <input type="hidden" name="intent" value="set-default" />
           <input type="hidden" name="policyId" value="" />
-          <Button type="submit" size="xs" variant="ghost" disabled={busy}>
+          <Button type="submit" size="sm" variant="ghost" disabled={busy}>
             <Star className="size-3.5 fill-current" /> Bỏ mặc định
           </Button>
         </fetcher.Form>
@@ -146,14 +148,14 @@ function RowActions({ policy }: { policy: CancellationPolicyResponse }) {
         <fetcher.Form method="post">
           <input type="hidden" name="intent" value="set-default" />
           <input type="hidden" name="policyId" value={policy.id} />
-          <Button type="submit" size="xs" variant="ghost" disabled={busy}>
+          <Button type="submit" size="sm" variant="ghost" disabled={busy}>
             <Star className="size-3.5" /> Đặt mặc định
           </Button>
         </fetcher.Form>
       )}
       {isOwn ? (
         <>
-          <Button asChild size="xs" variant="ghost">
+          <Button asChild size="sm" variant="ghost">
             <Link to={dashboardPaths.partner.cancellationPolicy(policy.id)}>
               <Pencil className="size-3.5" /> Sửa
             </Link>
@@ -168,7 +170,7 @@ function RowActions({ policy }: { policy: CancellationPolicyResponse }) {
             <input type="hidden" name="id" value={policy.id} />
             <Button
               type="submit"
-              size="xs"
+              size="sm"
               variant="ghost"
               className="text-muted-foreground hover:text-destructive"
               disabled={busy}

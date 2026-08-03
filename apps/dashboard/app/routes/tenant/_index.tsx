@@ -28,6 +28,8 @@ import { LegalReadinessCard } from '~/features/tenant/components/overview/legal-
 import { PayablesCard } from '~/features/tenant/components/overview/payables-card';
 import { RecentBookingsCard } from '~/features/tenant/components/overview/recent-bookings-card';
 import { SubscriptionStatusCard } from '~/features/tenant/components/overview/subscription-status-card';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tổng quan · Tenant · BookingOS' }];
@@ -38,16 +40,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const [summaryRes, bookingsRes, listingsRes, subRes] = await Promise.all([
     can('tenant.finance.read')
-      ? apiGet<TenantFinanceSummaryResponse>('/tenant/finance/summary', auth)
+      ? apiGet<TenantFinanceSummaryResponse>(apiPaths.tenant.financeSummary, auth)
       : Promise.resolve(null),
     can('tenant.bookings.read')
-      ? apiGet<{ items: BookingResponse[] }>('/tenant/bookings?page=1&pageSize=100', auth)
+      ? apiGet<{ items: BookingResponse[] }>(apiPaths.tenant.bookings, auth, { query: { page: 1, pageSize: FETCH_ALL_PAGE_SIZE } })
       : Promise.resolve(null),
     can('tenant.listings.read')
-      ? apiGet<{ items: ListingResponse[]; total: number }>('/tenant/listings?page=1&pageSize=100', auth)
+      ? apiGet<{ items: ListingResponse[]; total: number }>(apiPaths.tenant.listings, auth, { query: { page: 1, pageSize: FETCH_ALL_PAGE_SIZE } })
       : Promise.resolve(null),
     can('tenant.settings.manage')
-      ? apiGet<SubscriptionStatusResponse>('/tenant/subscription/status', auth)
+      ? apiGet<SubscriptionStatusResponse>(apiPaths.tenant.subscriptionStatus, auth)
       : Promise.resolve(null),
   ]);
 
@@ -159,7 +161,7 @@ export default function TenantOverview({ loaderData }: Route.ComponentProps) {
                 </div>
                 <Separator />
                 <Button asChild variant="outline" size="sm" className="w-full">
-                  <Link to="/tenant/listings">
+                  <Link to={dashboardPaths.tenant.listings}>
                     <ClipboardList className="size-4" /> Mở hàng chờ duyệt
                   </Link>
                 </Button>
@@ -171,13 +173,13 @@ export default function TenantOverview({ loaderData }: Route.ComponentProps) {
 
       <div className="grid gap-4 sm:grid-cols-3">
         {can.listings ? (
-          <QuickLink to="/tenant/listings" icon={<Store className="size-5" />} label="Quản lý listing" />
+          <QuickLink to={dashboardPaths.tenant.listings} icon={<Store className="size-5" />} label="Quản lý listing" />
         ) : null}
         {can.bookings ? (
-          <QuickLink to="/tenant/bookings" icon={<CalendarCheck className="size-5" />} label="Xem đặt chỗ" />
+          <QuickLink to={dashboardPaths.tenant.bookings} icon={<CalendarCheck className="size-5" />} label="Xem đặt chỗ" />
         ) : null}
         {can.finance ? (
-          <QuickLink to="/tenant/finance" icon={<Wallet className="size-5" />} label="Tài chính & chi trả" />
+          <QuickLink to={dashboardPaths.tenant.finance} icon={<Wallet className="size-5" />} label="Tài chính & chi trả" />
         ) : null}
       </div>
     </div>

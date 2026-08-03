@@ -32,9 +32,15 @@ export const dashboardPaths = {
   tenant: {
     home: tenantPath(),
     listings: tenantPath('/listings'),
+    /** Moderation screen for one listing awaiting review. */
+    listingReview: (listingId: string) => tenantPath(`/listings/${segment(listingId)}/review`),
     listingGroups: tenantPath('/listing-groups'),
+    listingGroupReview: (groupId: string) =>
+      tenantPath(`/listing-groups/${segment(groupId)}/review`),
     listingTypes: tenantPath('/listing-types'),
+    listingTypeNew: tenantPath('/listing-types/new'),
     partners: tenantPath('/partners'),
+    partnerNew: tenantPath('/partners/new'),
     partner: (partnerId: string) => tenantPath(`/partners/${segment(partnerId)}`),
     bookings: tenantPath('/bookings'),
     booking: (bookingId: string) => tenantPath(`/bookings/${segment(bookingId)}`),
@@ -48,6 +54,7 @@ export const dashboardPaths = {
     contentReport: (reportId: string) => tenantPath(`/content-reports/${segment(reportId)}`),
     transactions: tenantPath('/finance/transactions'),
     promotions: tenantPath('/promotions'),
+    promotionNew: tenantPath('/promotions/new'),
     promotion: (promotionId: string) => tenantPath(`/promotions/${segment(promotionId)}`),
     affiliates: tenantPath('/affiliates'),
     affiliate: (affiliateId: string) => tenantPath(`/affiliates/${segment(affiliateId)}`),
@@ -85,6 +92,7 @@ export const dashboardPaths = {
     cancellationPolicy: (policyId: string) =>
       partnerPath(`/cancellation-policies/${segment(policyId)}/edit`),
     promotions: partnerPath('/promotions'),
+    promotionNew: partnerPath('/promotions/new'),
     promotion: (promotionId: string) => partnerPath(`/promotions/${segment(promotionId)}`),
     revenue: partnerPath('/revenue'),
     reviews: partnerPath('/reviews'),

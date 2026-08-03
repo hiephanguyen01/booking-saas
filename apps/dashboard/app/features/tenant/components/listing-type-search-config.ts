@@ -15,13 +15,6 @@ export const EMPTY_CONFIG = listingTypeSearchConfigSchema.parse({});
 /** Booking modes that can drive the storefront search calendar. */
 export const SEARCHABLE_MODES = new Set<BookingMode>(['hourly', 'daily', 'inventory']);
 
-export const CONTROL_LABEL: Record<ListingTypeSearchFacetControl, string> = {
-  checkbox: 'Checkbox',
-  radio: 'Radio',
-  range: 'Khoảng min / max',
-  buckets: 'Các khoảng định sẵn',
-};
-
 /** The facet controls a given attribute type may legally use. */
 export function controlsFor(type: AttributeField['type']): ListingTypeSearchFacetControl[] {
   if (type === 'number') return ['range', 'buckets'];

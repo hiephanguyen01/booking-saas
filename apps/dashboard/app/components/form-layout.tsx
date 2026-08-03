@@ -11,11 +11,14 @@ import { cn } from '@booking/ui/lib/utils';
 export function Section({
   title,
   description,
+  icon,
   children,
   className,
 }: {
   title: string;
   description?: string;
+  /** The same glyph the wizard shows for this section, so both tiers match. */
+  icon?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -27,6 +30,11 @@ export function Section({
       )}
     >
       <div className="space-y-1">
+        {icon ? (
+          <div className="mb-2 grid size-9 place-items-center rounded-xl border bg-background text-primary shadow-xs [&_svg]:size-4">
+            {icon}
+          </div>
+        ) : null}
         <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
         {description ? (
           <p className="text-xs leading-5 text-muted-foreground">{description}</p>
@@ -83,6 +91,12 @@ export function Field({
     </div>
   );
 }
+
+/**
+ * `GenericForm`'s `actionsClassName` for a full-page form: the submit row sits
+ * right-aligned under the surface, separated by a rule.
+ */
+export const FORM_ACTIONS_ROW = 'justify-end border-t pt-4';
 
 export function FormSurface({ children }: { children: ReactNode }) {
   return (

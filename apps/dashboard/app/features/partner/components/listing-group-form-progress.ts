@@ -1,11 +1,12 @@
 import { createListingGroupInputSchema, type CreateListingGroupInput } from '@booking/contracts';
+import type { Path } from '@booking/ui/components/form/rhf';
 import {
   createFormProgress,
-  type FormProgress,
   type FormSectionDefinition,
-} from '~/features/partner/lib/form-progress';
+  type FormSectionMap,
+} from '~/lib/form-progress';
 
-export const LISTING_GROUP_FORM_SECTIONS = [
+const SECTIONS = [
   {
     id: 'group-content',
     label: 'Nội dung & ảnh',
@@ -18,9 +19,7 @@ export const LISTING_GROUP_FORM_SECTIONS = [
   },
 ] as const satisfies ReadonlyArray<FormSectionDefinition<string>>;
 
-export type ListingGroupFormSectionId = (typeof LISTING_GROUP_FORM_SECTIONS)[number]['id'];
-
-export type ListingGroupFormProgress = FormProgress<ListingGroupFormSectionId>;
+export type ListingGroupFormSectionId = (typeof SECTIONS)[number]['id'];
 
 const FIELD_SECTION: Record<string, ListingGroupFormSectionId> = {
   partnerId: 'group-content',
@@ -29,23 +28,32 @@ const FIELD_SECTION: Record<string, ListingGroupFormSectionId> = {
   slug: 'group-content',
   description: 'group-content',
   photos: 'group-content',
+  amenities: 'group-content',
 
   provinceCode: 'group-location',
   wardCode: 'group-location',
   address: 'group-location',
   workingArea: 'group-location',
-
-  amenities: 'group-content',
 };
 
-const progress = createFormProgress<ListingGroupFormSectionId, CreateListingGroupInput>({
-  sections: LISTING_GROUP_FORM_SECTIONS,
+/** The fields a wizard step re-validates before it lets the partner continue. */
+export const LISTING_GROUP_STEP_FIELDS: Record<
+  ListingGroupFormSectionId,
+  Path<CreateListingGroupInput>[]
+> = {
+  'group-content': ['title', 'description', 'photos', 'amenities'],
+  'group-location': ['provinceCode', 'wardCode', 'address'],
+};
+
+/**
+ * The listing group form's sections and its field → section map. Stable across
+ * renders, so the wizard controller can depend on it.
+ */
+export const listingGroupSectionMap: FormSectionMap<
+  ListingGroupFormSectionId,
+  CreateListingGroupInput
+> = createFormProgress({
+  sections: SECTIONS,
   fieldSection: FIELD_SECTION,
   schema: createListingGroupInputSchema,
 });
-
-/** Derive completion from the same contract used for submission. */
-export const getListingGroupFormProgress = progress.getProgress;
-
-/** Map RHF/server field errors to the same two visual sections. */
-export const getListingGroupFormErrorSections = progress.getErrorSections;

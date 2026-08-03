@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@booking/ui/components/ui/card';
 import { ArrowRight, Percent, RotateCcw } from 'lucide-react';
-import { RateFields } from '~/features/tenant/components/finance/commission-rules-panel';
+import { RateFields } from '~/features/tenant/components/finance/commission-rule-dialog';
 
 export function PartnerCommissionCard({
   partner,

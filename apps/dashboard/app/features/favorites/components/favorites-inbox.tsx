@@ -15,7 +15,7 @@ import { BarRow, StatCard } from '~/components/stat-card';
 import { readListParams } from '~/lib/pagination';
 import { hasActiveFilters } from '~/lib/list-filters';
 import { formatDateTime } from '~/lib/format';
-import { FAVORITE_FILTER_SPEC } from '../lib/favorite-filters';
+import { FAVORITE_FILTER_SPEC } from '~/features/favorites/lib/favorite-filters';
 
 /** Who-favorited list + KPI header, shared by the partner and tenant favorites screens. */
 export function FavoritesInbox({

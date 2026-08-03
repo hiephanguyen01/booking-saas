@@ -12,27 +12,28 @@ import { requirePartner } from '~/features/partner/server/partner.server';
 import { ListingGroupForm } from '~/features/partner/components/listing-group-form';
 import { PendingChangeBanner } from '~/features/partner/components/pending-change-banner';
 import { applyRevisionDiff } from '~/features/partner/lib/listing-revision';
-import { BackLink } from '~/components/back-link';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages, notFoundMessages } from '~/constants/messages';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [groupRes, typesRes, pendingRes] = await Promise.all([
-    apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
-    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+    apiGet<ListingGroupDetailResponse>(apiPaths.partner.listingGroup(params.groupId), auth),
+    apiGet<ListingTypeResponse[]>(apiPaths.partner.listingTypes, auth),
     apiGet<ListingGroupPendingChangesResponse>(
       `/partner/listing-groups/${params.groupId}/pending-changes`,
       auth,
     ),
   ]);
   if (!groupRes.ok || !groupRes.data)
-    throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
+    throw new Response(notFoundMessages.listing, { status: groupRes.status });
   const listingType = (typesRes.data ?? []).find(
     (type) => type.id === groupRes.data?.listingTypeId,
   );
-  if (!listingType) throw new Response('Không tìm thấy loại dịch vụ.', { status: 404 });
+  if (!listingType) throw new Response(notFoundMessages.listingType, { status: 404 });
   const revision = pendingRes.ok ? (pendingRes.data?.group ?? null) : null;
   return {
     group: groupRes.data,
@@ -50,7 +51,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!request.headers.get('content-type')?.includes('application/json')) {
     const form = await request.formData();
     if (form.get('intent') === 'discard-revision') {
-      const res = await apiDelete(`/partner/listing-groups/${params.groupId}/revision`, auth);
+      const res = await apiDelete(apiPaths.partner.listingGroupRevision(params.groupId), auth);
       if (!res.ok) {
         return data(
           { error: res.error ?? 'Huỷ thay đổi không thành công.', fieldErrors: null },
@@ -59,19 +60,19 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
       return redirect(dashboardPaths.partner.listingGroupEdit(params.groupId));
     }
-    return data({ error: 'Yêu cầu không hợp lệ.', fieldErrors: null }, { status: 400 });
+    return data({ error: actionMessages.invalidRequest, fieldErrors: null }, { status: 400 });
   }
   const parsed = createListingGroupInputSchema.safeParse(await request.json());
   if (!parsed.success)
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   const res = await apiPatch(
-    `/partner/listing-groups/${params.groupId}`,
+    apiPaths.partner.listingGroup(params.groupId),
     { ...parsed.data, partnerId: membership.partnerId },
     auth,
   );
   if (!res.ok)
     return data(
-      { error: res.error ?? 'Lưu không thành công.', fieldErrors: res.errors ?? null },
+      { error: res.error ?? actionMessages.saveFailed, fieldErrors: res.errors ?? null },
       { status: 400 },
     );
   return redirect(`${dashboardPaths.partner.listingGroup(params.groupId)}?updated=1`);
@@ -81,29 +82,30 @@ export default function EditListingGroupPage({ loaderData, actionData }: Route.C
   const { group } = loaderData;
   const adminLocked = group.status === 'archived' && group.hiddenBy === 'admin';
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <BackLink
-          to={dashboardPaths.partner.listingGroup(group.id)}
-          label="Tin đăng"
-          className="mb-2"
-        />
-        <PageHeader title="Sửa thông tin chung" description={group.title} />
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
-        <ListingStatusBadge status={group.status} />
-        {adminLocked ? (
-          <span className="inline-flex items-center gap-1.5 text-warning">
-            <Lock className="size-3.5" aria-hidden />
-            Bị quản trị viên ẩn.
-          </span>
-        ) : group.hiddenBy ? (
-          <span className="text-muted-foreground">
-            Đã ẩn bởi {group.hiddenBy === 'admin' ? 'quản trị viên' : 'đối tác'}.
-          </span>
-        ) : null}
-      </div>
-      <PendingChangeBanner revision={loaderData.revision} />
+    <FormPage
+      backTo={dashboardPaths.partner.listingGroup(group.id)}
+      backLabel="Tin đăng"
+      title="Sửa thông tin chung"
+      description={group.title}
+      banner={
+        <>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+            <ListingStatusBadge status={group.status} />
+            {adminLocked ? (
+              <span className="inline-flex items-center gap-1.5 text-warning">
+                <Lock className="size-3.5" aria-hidden />
+                Bị quản trị viên ẩn.
+              </span>
+            ) : group.hiddenBy ? (
+              <span className="text-muted-foreground">
+                Đã ẩn bởi {group.hiddenBy === 'admin' ? 'quản trị viên' : 'đối tác'}.
+              </span>
+            ) : null}
+          </div>
+          <PendingChangeBanner revision={loaderData.revision} />
+        </>
+      }
+    >
       <ListingGroupForm
         partnerId={loaderData.partnerId}
         listingType={loaderData.listingType}
@@ -111,6 +113,6 @@ export default function EditListingGroupPage({ loaderData, actionData }: Route.C
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
       />
-    </div>
+    </FormPage>
   );
 }

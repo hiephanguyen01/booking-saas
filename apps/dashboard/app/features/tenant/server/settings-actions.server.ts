@@ -18,6 +18,8 @@ import {
 import { apiDelete, apiPatch, apiPost, apiPut, type ApiAuth } from '~/lib/api.server';
 import { TENANT_FLAGS_PATH, type TenantFlags } from '~/features/tenant/lib/flags';
 import { handleLegalSettingsAction, isLegalIntent } from '~/features/legal/server/legal.server';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 /**
  * The tenant settings route's multi-intent action, kept out of the route module.
@@ -55,7 +57,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
         }
         const res =
           intent === 'create-tenant-cancellation-policy'
-            ? await apiPost('/tenant/cancellation-policies', parsed.data, auth)
+            ? await apiPost(apiPaths.tenant.cancellationPolicies, parsed.data, auth)
             : await apiPatch(
                 `/tenant/cancellation-policies/${String((body as { policyId?: unknown }).policyId ?? '')}`,
                 parsed.data,
@@ -115,7 +117,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
             key2: parsed.data.key2,
           },
         };
-        const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+        const res = await apiPut<GatewayConfigResponse>(apiPaths.tenant.gatewayConfig, payload, auth, {
           schema: gatewayConfigResponseSchema,
         });
         if (!res.ok) {
@@ -149,7 +151,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
             secretKey: parsed.data.secretKey,
           },
         };
-        const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+        const res = await apiPut<GatewayConfigResponse>(apiPaths.tenant.gatewayConfig, payload, auth, {
           schema: gatewayConfigResponseSchema,
         });
         if (!res.ok) {
@@ -180,7 +182,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
           secretKey: parsed.data.secretKey,
         },
       };
-      const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+      const res = await apiPut<GatewayConfigResponse>(apiPaths.tenant.gatewayConfig, payload, auth, {
         schema: gatewayConfigResponseSchema,
       });
       if (!res.ok) {
@@ -200,7 +202,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
           { status: 400 },
         );
       }
-      const res = await apiPost<DomainResponse>('/tenant/domains', parsed.data, auth);
+      const res = await apiPost<DomainResponse>(apiPaths.tenant.domains, parsed.data, auth);
       if (!res.ok)
         return routeData(
           { form: 'domain', error: res.error ?? 'Không thêm được tên miền.' },
@@ -217,7 +219,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
       );
     }
     const res = await apiPatch<TenantThemeResponse>(
-      '/tenant/theme',
+      apiPaths.tenant.theme,
       { themeConfig: parsed.data },
       auth,
       { schema: tenantThemeResponseSchema },
@@ -260,7 +262,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
         { status: 400 },
       );
     }
-    const res = await apiPut('/tenant/gateway-config/settings', parsed.data, auth);
+    const res = await apiPut(apiPaths.tenant.gatewayConfigSettings, parsed.data, auth);
     if (!res.ok) {
       return routeData(
         { form: 'payment-settings', error: res.error ?? 'Không lưu được cài đặt thanh toán.' },
@@ -297,7 +299,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
         { status: 400 },
       );
     }
-    const res = await apiPut('/tenant/finance/payout-policy', parsed.data, auth);
+    const res = await apiPut(apiPaths.tenant.payoutPolicy, parsed.data, auth);
     if (!res.ok) {
       return routeData(
         { form: 'payout-policy', error: res.error ?? 'Không lưu được chính sách chi trả.' },
@@ -310,7 +312,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
   if (intent === 'set-default-cancellation-policy') {
     const raw = String(formData.get('policyId') ?? '');
     const res = await apiPatch(
-      '/tenant/settings/default-cancellation-policy',
+      apiPaths.tenant.defaultCancellationPolicy,
       { policyId: raw === '' ? null : raw },
       auth,
     );
@@ -324,7 +326,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
   if (intent === 'delete-tenant-cancellation-policy') {
     const id = String(formData.get('policyId') ?? '');
-    const res = await apiDelete(`/tenant/cancellation-policies/${id}`, auth);
+    const res = await apiDelete(apiPaths.tenant.cancellationPolicy(id), auth);
     if (!res.ok) {
       return routeData(
         {
@@ -341,7 +343,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
   if (intent === 'verify-domain') {
     const id = String(formData.get('domainId'));
-    const res = await apiPost<DomainResponse>(`/tenant/domains/${id}/verify`, {}, auth);
+    const res = await apiPost<DomainResponse>(apiPaths.tenant.domainVerify(id), {}, auth);
     if (!res.ok)
       return routeData(
         { form: 'domain-verify', error: res.error ?? 'Xác minh thất bại. Kiểm tra bản ghi TXT.' },
@@ -352,7 +354,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
   if (intent === 'set-primary-domain') {
     const id = String(formData.get('domainId'));
-    const res = await apiPatch<DomainResponse>(`/tenant/domains/${id}/primary`, {}, auth);
+    const res = await apiPatch<DomainResponse>(apiPaths.tenant.domainPrimary(id), {}, auth);
     if (!res.ok) {
       return routeData(
         { form: 'domain-primary', error: res.error ?? 'Không đặt được tên miền chính.' },
@@ -364,7 +366,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
   if (intent === 'delete-domain') {
     const id = String(formData.get('domainId'));
-    const res = await apiDelete(`/tenant/domains/${id}`, auth);
+    const res = await apiDelete(apiPaths.tenant.domain(id), auth);
     if (!res.ok)
       return routeData(
         { form: 'domain-delete', error: res.error ?? 'Không xoá được tên miền.' },
@@ -373,5 +375,5 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
     return { form: 'domain-delete', ok: true };
   }
 
-  return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
+  return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
 }

@@ -5,13 +5,14 @@ import {
   type AdministrativeWard,
 } from '@booking/contracts';
 import { apiGet, unwrapApiResult, type ApiAuth } from './api.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export async function loadAdministrativeProvinces(
   auth: ApiAuth,
   signal?: AbortSignal,
 ): Promise<AdministrativeProvince[]> {
   const result = await apiGet<AdministrativeProvince[]>(
-    '/public/administrative-divisions/provinces',
+    apiPaths.publicData.provinces,
     auth,
     { signal, schema: administrativeProvinceListSchema },
   );

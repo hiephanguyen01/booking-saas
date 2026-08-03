@@ -7,6 +7,7 @@ import { apiGet } from '~/lib/api.server';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đánh giá · Tenant · BookingOS' }];
@@ -15,7 +16,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.reviews.read');
   const list = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, REVIEW_FILTER_SPEC);
-  const result = await apiGet('/tenant/reviews', auth, {
+  const result = await apiGet(apiPaths.tenant.reviews, auth, {
     query: list.toApiQuery(apiFilters),
     schema: reviewListResponseSchema,
   });

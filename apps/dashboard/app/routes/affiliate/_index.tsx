@@ -25,11 +25,12 @@ import { Money } from '~/components/money';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { PageHeader } from '~/components/page-header';
+import { apiPaths } from '~/constants/api-paths';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);
   if (!active) return { stats: null, membership: null };
-  const res = await apiGet<AffiliateStatsResponse>('/affiliate/stats', auth);
+  const res = await apiGet<AffiliateStatsResponse>(apiPaths.affiliate.stats, auth);
   return {
     stats: res.ok ? res.data : null,
     membership: {
@@ -54,7 +55,7 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
   }
-  const res = await apiPatch('/affiliate/payout-info', parsed.data, auth);
+  const res = await apiPatch(apiPaths.affiliate.payoutInfo, parsed.data, auth);
   if (!res.ok) {
     return routeData(
       { fieldErrors: null, error: res.error ?? 'Không lưu được thông tin tài khoản.', ok: false },

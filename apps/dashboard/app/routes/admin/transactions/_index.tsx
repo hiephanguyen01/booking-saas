@@ -6,6 +6,7 @@ import { requirePlatform } from '~/features/admin/server/admin.server';
 import { apiGet } from '~/lib/api.server';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters } from '~/lib/list-filters';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Giao dịch · BookingOS Admin' }];
@@ -15,7 +16,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requirePlatform(request, 'platform.finance.read');
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, PAYMENT_FILTER_SPEC);
-  const response = await apiGet<Paginated<PaymentHistoryItem>>('/platform/payments', auth, {
+  const response = await apiGet<Paginated<PaymentHistoryItem>>(apiPaths.platform.payments, auth, {
     query: toApiQuery(apiFilters),
   });
   return {

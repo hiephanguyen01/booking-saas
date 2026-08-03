@@ -6,6 +6,7 @@ import { listingPriceFrom } from '~/lib/listing-price';
 import { Money } from '~/components/money';
 import { EntityRef } from '~/components/entity-ref';
 import { ListingStatusBadge } from '~/components/status-badge';
+import { dashboardPaths } from '~/constants/paths';
 
 /** One child item of a listing group on the group review page. */
 export function ChildListingCard({ listing }: { listing: ListingResponse }) {
@@ -48,7 +49,7 @@ export function ChildListingCard({ listing }: { listing: ListingResponse }) {
           {price ? <Money value={price} /> : <span className="text-muted-foreground">—</span>}
         </p>
         <EntityRef
-          to={`/tenant/listings/${listing.id}/review`}
+          to={dashboardPaths.tenant.listingReview(listing.id)}
           name="Xem chi tiết & kiểm duyệt"
           className="text-sm"
         />

@@ -19,6 +19,8 @@ import { apiGet } from '~/lib/api.server';
 import { formatDateTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, type FilterSpec } from '~/lib/list-filters';
+import { apiPaths } from '~/constants/api-paths';
+import { DISPUTE_STATUS_FILTER_OPTIONS } from '~/constants/finance';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Giám sát khiếu nại · BookingOS Admin' }];
@@ -26,16 +28,7 @@ export function meta(): Route.MetaDescriptors {
 
 const DISPUTE_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tenant, booking, dịch vụ, lý do…' },
-  {
-    kind: 'enum',
-    key: 'status',
-    label: 'Trạng thái',
-    options: [
-      { value: 'open', label: 'Đang xử lý' },
-      { value: 'accepted', label: 'Đã chấp nhận' },
-      { value: 'rejected', label: 'Đã từ chối' },
-    ],
-  },
+  { kind: 'enum', key: 'status', label: 'Trạng thái', options: DISPUTE_STATUS_FILTER_OPTIONS },
   {
     kind: 'enum',
     key: 'responseStatus',
@@ -51,7 +44,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requirePlatform(request, 'platform.disputes.read');
   const list = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, DISPUTE_FILTER_SPEC);
-  const result = await apiGet('/platform/finance/disputes', auth, {
+  const result = await apiGet(apiPaths.platform.financeDisputes, auth, {
     query: list.toApiQuery(apiFilters),
     schema: paginatedSchema(adminSettlementDisputeResponseSchema),
   });

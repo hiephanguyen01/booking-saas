@@ -9,7 +9,7 @@ import { submitContentReport } from '~/features/content-reports/server/content-r
 import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { fetchAvailability } from '~/features/booking/server/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '~/features/catalog/server/catalog.server';
-import { openDailyDates } from '~/lib/availability';
+import { openDailyDates, BOOKABLE_MODES } from '~/lib/availability';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
 import { datesInDailyRange, normalizeDailyRange } from '~/lib/daily-range';
 import { optionalData } from '~/lib/server/optional-data.server';
@@ -17,7 +17,6 @@ import { selectedPackageForListing } from '~/lib/package-options';
 import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
 import { addDays, todayInTz, zonedToUtcIso } from '~/lib/time';
 
-const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
 export async function handleListingAction(request: Request, listingSlug?: string) {
   return submitContentReport(

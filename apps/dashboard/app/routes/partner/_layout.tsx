@@ -8,7 +8,7 @@ import { dashboardPaths } from '~/constants/paths';
 /**
  * Guards the partner area; exposes the (first) partner membership to children.
  * Also redirects to the legal re-acceptance interstitial (Task 16) whenever
- * `/me/legal/pending` is non-empty — every partner screen shares this loader,
+ * apiPaths.me.legalPending is non-empty — every partner screen shares this loader,
  * so this is the one place that needs to know about it. The interstitial path
  * itself is exempt: it re-checks in its own loader and redirects away once
  * there's nothing pending, so checking here too would bounce the partner back

@@ -17,8 +17,9 @@ import {
 import { Switch } from '@booking/ui/components/ui/switch';
 import { Plus, Trash2 } from 'lucide-react';
 import { move, OrderButtons } from '~/components/order-buttons';
-import { ATTRIBUTE_FIELD_TYPE_LABEL } from '../constants';
-import { CONTROL_LABEL, controlsFor, defaultControl } from './listing-type-search-config';
+import { ATTRIBUTE_FIELD_TYPE_LABEL } from '~/features/tenant/constants';
+import { controlsFor, defaultControl } from './listing-type-search-config';
+import { FACET_CONTROL_LABEL } from '~/constants/listing';
 import { newBucket, NumericBucketEditor } from './numeric-bucket-editor';
 
 /** Enable, configure and reorder facets built from the type's filterable attributes. */
@@ -178,7 +179,7 @@ function FacetRow({
             <SelectContent>
               {controls.map((control) => (
                 <SelectItem key={control} value={control}>
-                  {CONTROL_LABEL[control]}
+                  {FACET_CONTROL_LABEL[control]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -203,7 +204,7 @@ function FacetRow({
       </div>
 
       {field.type === 'text' ? (
-        <p className="text-xs text-amber-700 dark:text-amber-400">
+        <p className="text-xs text-warning">
           Chỉ nên dùng checkbox/radio khi dữ liệu văn bản có ít giá trị lặp lại ổn định.
         </p>
       ) : null}

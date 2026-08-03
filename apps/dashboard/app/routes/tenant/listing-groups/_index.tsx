@@ -23,6 +23,8 @@ import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 const LISTING_GROUP_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên nhóm…' },
@@ -36,21 +38,21 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, LISTING_GROUP_FILTER_SPEC);
-  // NOTE: `/tenant/listing-groups` has no `status` query param (see
+  // NOTE: apiPaths.tenant.listingGroups has no `status` query param (see
   // packages/contracts/src/contracts/listing.ts: listListingGroupsQuerySchema) — this is a
   // bước-đệm (stepping-stone) task that must not touch the backend, so there are no status
   // tabs here (unlike tenant/listings, whose query does support `status` + counts).
   const [res, partnersRes, typesRes] = await Promise.all([
-    apiGet<Paginated<ListingGroupResponse>>('/tenant/listing-groups', auth, {
+    apiGet<Paginated<ListingGroupResponse>>(apiPaths.tenant.listingGroups, auth, {
       query: toApiQuery(apiFilters),
     }),
     can('tenant.partners.read')
-      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, { query: { pageSize: 100 } })
+      ? apiGet<Paginated<PartnerResponse>>(apiPaths.tenant.partners, auth, { query: { pageSize: FETCH_ALL_PAGE_SIZE } })
       : Promise.resolve(null),
-    apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
+    apiGet<ListingTypeResponse[]>(apiPaths.tenant.listingTypes, auth),
   ]);
   // Waiting edits never move a post's `status`, so surface them on the row itself.
-  const revisionsRes = await apiGet<ListingRevisionResponse[]>('/tenant/listing-revisions', auth);
+  const revisionsRes = await apiGet<ListingRevisionResponse[]>(apiPaths.tenant.listingRevisions, auth);
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
   const typeNames: Record<string, string> = {};
@@ -72,7 +74,7 @@ export async function action({ request }: Route.ActionArgs) {
   const id = String(form.get('id'));
   const intent = String(form.get('intent'));
   if (!['publish', 'hide', 'republish'].includes(intent)) {
-    return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
+    return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
   }
   const res = await apiPost(`/tenant/listing-groups/${id}/${intent}`, {}, auth);
   if (!res.ok) {
@@ -101,7 +103,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
       cell: (g) => (
         <div className="min-w-0">
           <Link
-            to={`/tenant/listing-groups/${g.id}/review`}
+            to={dashboardPaths.tenant.listingGroupReview(g.id)}
             className="truncate font-medium hover:underline"
           >
             {g.title}
@@ -222,13 +224,13 @@ function RowActions({ group }: { group: ListingGroupResponse }) {
     <div className="flex flex-col items-end gap-1.5">
       <fetcher.Form method="post" className="flex flex-wrap justify-end gap-1.5">
         <input type="hidden" name="id" value={group.id} />
-        <Button asChild size="xs" variant="ghost">
-          <Link to={`/tenant/listing-groups/${group.id}/review`}>
+        <Button asChild size="sm" variant="ghost">
+          <Link to={dashboardPaths.tenant.listingGroupReview(group.id)}>
             <Eye data-icon="inline-start" /> Xem
           </Link>
         </Button>
         {group.status === 'pending_review' ? (
-          <Button type="submit" name="intent" value="publish" size="xs" disabled={busy}>
+          <Button type="submit" name="intent" value="publish" size="sm" disabled={busy}>
             <Check data-icon="inline-start" /> Duyệt
           </Button>
         ) : null}
@@ -237,7 +239,7 @@ function RowActions({ group }: { group: ListingGroupResponse }) {
             type="submit"
             name="intent"
             value="hide"
-            size="xs"
+            size="sm"
             variant="outline"
             disabled={busy}
           >
@@ -249,7 +251,7 @@ function RowActions({ group }: { group: ListingGroupResponse }) {
             type="submit"
             name="intent"
             value="republish"
-            size="xs"
+            size="sm"
             variant="outline"
             disabled={busy}
           >

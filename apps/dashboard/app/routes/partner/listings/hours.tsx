@@ -32,6 +32,8 @@ import {
   type HoursWindow,
   type WeekWindows,
 } from '~/features/partner/lib/listing-hours';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages, notFoundMessages } from '~/constants/messages';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Giờ mở cửa · Đối tác · BookingOS' }];
@@ -40,9 +42,9 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requirePartner(request, 'partner.availability.manage');
   const id = params.listingId;
-  const listingRes = await apiGet<ListingResponse>(`/partner/listings/${id}`, auth);
+  const listingRes = await apiGet<ListingResponse>(apiPaths.partner.listing(id), auth);
   if (!listingRes.ok || !listingRes.data) {
-    throw new Response('Không tìm thấy tin đăng.', { status: 404 });
+    throw new Response(notFoundMessages.listing, { status: 404 });
   }
   const listing = listingRes.data;
 
@@ -78,7 +80,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   );
   return res.ok
     ? data({ ok: true, error: null })
-    : data({ ok: false, error: res.error ?? 'Lưu không thành công.' }, { status: 400 });
+    : data({ ok: false, error: res.error ?? actionMessages.saveFailed }, { status: 400 });
 }
 
 export default function ListingHoursPage({ loaderData, actionData }: Route.ComponentProps) {

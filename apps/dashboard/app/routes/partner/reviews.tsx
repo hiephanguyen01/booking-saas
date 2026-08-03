@@ -12,6 +12,7 @@ import { apiGet, apiPost } from '~/lib/api.server';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đánh giá khách hàng · Partner · BookingOS' }];
@@ -21,7 +22,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.reviews.read');
   const list = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, REVIEW_FILTER_SPEC);
-  const result = await apiGet('/partner/reviews', auth, {
+  const result = await apiGet(apiPaths.partner.reviews, auth, {
     query: list.toApiQuery(apiFilters),
     schema: reviewListResponseSchema,
   });

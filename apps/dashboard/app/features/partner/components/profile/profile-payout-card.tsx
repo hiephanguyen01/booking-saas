@@ -3,7 +3,7 @@ import { updatePayoutInfoInputSchema } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { SuccessBanner } from '~/components/action-feedback';
-import type { PartnerProfileActionResult } from '../../server/profile-actions.server';
+import type { PartnerProfileActionResult } from '~/features/partner/server/profile-actions.server';
 import { Section } from '~/components/form-layout';
 
 const payoutFields: FieldConfig<UpdatePayoutInfoInput>[] = [

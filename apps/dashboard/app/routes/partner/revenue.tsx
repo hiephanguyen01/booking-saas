@@ -1,21 +1,14 @@
 import { useMemo } from 'react';
-import { data as routeData, Form, useNavigation, useSearchParams } from 'react-router';
+import { Form, useNavigation, useSearchParams } from 'react-router';
 import { Clock3, HandCoins, Scale, TrendingUp, Wallet } from 'lucide-react';
 import type {
   LedgerEntryResponse,
-  Paginated,
-  PartnerFinanceResponse,
   PayoutResponse,
-  PartnerSettlementDisputeResponse,
-  SettlementSummaryResponse,
 } from '@booking/contracts';
-import { respondSettlementDisputeInputSchema } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { InfoHint } from '@booking/ui/components/ui/info-hint';
 import type { Route } from './+types/revenue';
-import { apiGet } from '~/lib/api.server';
-import { requirePartner } from '~/features/partner/server/partner.server';
 import { LEDGER_ENTRY_LABEL } from '~/constants/finance';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
@@ -27,86 +20,23 @@ import { CopyableCode } from '~/components/copyable-code';
 import { PayoutStatusBadge } from '~/components/status-badge';
 import { formatDate } from '~/lib/format';
 import { formatDateTime } from '~/lib/format';
-import { apiPost } from '~/lib/api.server';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
+import { loadPartnerRevenue, respondToSettlementDispute } from '~/features/partner/server/revenue.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Doanh thu · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  const { auth, can } = await requirePartner(request, 'partner.finance.read');
-  // Two paginated tables on one page → namespace the ledger pager so it never
-  // collides with the payout pager. `/partner/finance` stays balance + a recent
-  // ledger preview; the full journal comes from the paginated ledger endpoint.
-  const ledgerParams = readListParams(url.searchParams, {
-    pageKey: 'ledgerPage',
-    pageSizeKey: 'ledgerPageSize',
-  });
-  const payoutParams = readListParams(url.searchParams);
-  const disputeParams = readListParams(url.searchParams, {
-    pageKey: 'disputePage',
-    pageSizeKey: 'disputePageSize',
-  });
-  const [financeRes, ledgerRes, payoutsRes, settlementSummaryRes, disputesRes] = await Promise.all([
-    apiGet<PartnerFinanceResponse>('/partner/finance', auth),
-    apiGet<Paginated<LedgerEntryResponse>>('/partner/finance/ledger', auth, {
-      query: ledgerParams.toApiQuery(),
-    }),
-    apiGet<Paginated<PayoutResponse>>('/partner/finance/payouts', auth, {
-      query: payoutParams.toApiQuery(),
-    }),
-    apiGet<SettlementSummaryResponse>('/partner/finance/settlement-summary', auth),
-    apiGet<Paginated<PartnerSettlementDisputeResponse>>('/partner/finance/disputes', auth, {
-      query: disputeParams.toApiQuery(),
-    }),
-  ]);
-  const finance: PartnerFinanceResponse =
-    financeRes.ok && financeRes.data ? financeRes.data : { balance: '0', entries: [] };
-  return {
-    finance,
-    ledger: ledgerRes.ok && ledgerRes.data ? ledgerRes.data.items : [],
-    ledgerTotal: ledgerRes.ok && ledgerRes.data ? ledgerRes.data.total : 0,
-    payouts: payoutsRes.ok && payoutsRes.data ? payoutsRes.data.items : [],
-    payoutsTotal: payoutsRes.ok && payoutsRes.data ? payoutsRes.data.total : 0,
-    settlementSummary:
-      settlementSummaryRes.ok && settlementSummaryRes.data ? settlementSummaryRes.data : null,
-    disputes: disputesRes.ok && disputesRes.data ? disputesRes.data.items : [],
-    disputesTotal: disputesRes.ok && disputesRes.data ? disputesRes.data.total : 0,
-    canRespondToDisputes: can('partner.disputes.respond'),
-    financeError: financeRes.ok ? null : (financeRes.error ?? 'Không tải được dữ liệu tài chính.'),
-    ledgerError: ledgerRes.ok ? null : (ledgerRes.error ?? 'Không tải được sổ cái.'),
-    payoutsError: payoutsRes.ok ? null : (payoutsRes.error ?? 'Không tải được lịch sử chi trả.'),
-    settlementsError: settlementSummaryRes.ok
-      ? null
-      : (settlementSummaryRes.error ?? 'Không tải được trạng thái đối soát.'),
-    disputesError: disputesRes.ok
-      ? null
-      : (disputesRes.error ?? 'Không tải được tranh chấp liên quan.'),
-  };
+  return loadPartnerRevenue(request, url);
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth } = await requirePartner(request, 'partner.disputes.respond');
-  const form = await request.formData();
-  const disputeId = String(form.get('disputeId') ?? '');
-  const parsed = respondSettlementDisputeInputSchema.safeParse({ response: form.get('response') });
-  if (!parsed.success) {
-    return routeData({ error: 'Phản hồi phải có ít nhất 10 ký tự.' }, { status: 400 });
-  }
-  const result = await apiPost<PartnerSettlementDisputeResponse>(
-    `/partner/finance/disputes/${encodeURIComponent(disputeId)}/respond`,
-    parsed.data,
-    auth,
-  );
-  if (!result.ok) {
-    return routeData({ error: result.error ?? 'Không gửi được phản hồi.' }, { status: 400 });
-  }
-  return { ok: true };
+  return respondToSettlementDispute(request);
 }
 
 function sumBig(values: string[]): string {

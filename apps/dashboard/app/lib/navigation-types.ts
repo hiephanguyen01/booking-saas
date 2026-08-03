@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 
 export interface DashboardNavItem {
   title: string;
-  /** Absolute path within the area (e.g. '/admin/tenants'). */
+  /** Absolute path within the area (e.g. dashboardPaths.admin.tenants). */
   to: string;
   icon?: LucideIcon;
   /**

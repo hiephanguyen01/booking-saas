@@ -7,9 +7,8 @@ import { requestBodyFailureStatus } from '~/lib/server/request-body.server';
 import { apiFailureStatus, publicPost } from '~/lib/server/api.server';
 import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { allowedStorageUploadUrl } from '~/features/storage/server/upload-origin.server';
-import { uploadRouteJson } from './upload-route-response.server';
-
-const MAX_PRESIGN_REQUEST_BYTES = 16 * 1024;
+import { MAX_PRESIGN_REQUEST_BYTES, uploadRouteJson } from './upload-route-response.server';
+import { apiPaths } from '~/constants/api-paths';
 
 /**
  * Public partner-application upload proxy. Applicants have no dashboard
@@ -40,7 +39,7 @@ export async function handlePartnerUploadPresignAction(request: Request): Promis
 
   const result = await publicPost<PresignUploadResponse>(
     request,
-    '/uploads/partner-applications/presign',
+    apiPaths.partner.uploadPresign,
     parsed.data,
     { schema: presignUploadResponseSchema, timeoutMs: 10_000 },
   );

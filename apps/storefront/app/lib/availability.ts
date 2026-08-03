@@ -1,4 +1,11 @@
-import type { AvailabilityResponse } from '@booking/contracts';
+import type { AvailabilityMode, AvailabilityResponse } from '@booking/contracts';
+
+/**
+ * The booking modes an availability query can be issued for. Two features read
+ * this (the listing loader and the booking panel), so it lives here rather than
+ * being re-declared in each.
+ */
+export const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
 /**
  * The calendar dates a daily availability response reports as open, as a `Set` so

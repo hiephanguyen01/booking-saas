@@ -20,6 +20,8 @@ import {
 import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
 import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
 import { PartnerBookingSettlementCard } from '~/features/bookings/components/partner-booking-settlement-card';
+import { apiPaths } from '~/constants/api-paths';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết lượt đặt · Đối tác · BookingOS' }];
@@ -38,9 +40,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
   // Secondary reads degrade independently; neither may blank the booking page.
   const [historyRes, settlementRes] = await Promise.all([
-    apiGet<BookingStatusHistoryResponse[]>(`/partner/bookings/${params.bookingId}/history`, auth),
+    apiGet<BookingStatusHistoryResponse[]>(apiPaths.partner.bookingHistory(params.bookingId), auth),
     can('partner.finance.read')
-      ? apiGet<PartnerBookingSettlementResponse>(`/partner/finance/settlements/${params.bookingId}`, auth)
+      ? apiGet<PartnerBookingSettlementResponse>(apiPaths.partner.settlement(params.bookingId), auth)
       : Promise.resolve(null),
   ]);
   return {
@@ -97,7 +99,7 @@ export default function PartnerBookingDetail({ loaderData }: Route.ComponentProp
   return (
     <div className="space-y-6">
       <div>
-        <BackLink to="/partner/bookings" label="Lượt đặt" className="mb-2" />
+        <BackLink to={dashboardPaths.partner.bookings} label="Lượt đặt" className="mb-2" />
         <PageHeader
           title="Chi tiết lượt đặt"
           description="Toàn bộ thông tin và thao tác cho lượt đặt này."
@@ -142,7 +144,7 @@ function PartnerNoteEditor({ booking }: { booking: PartnerBookingResponse }) {
             Lưu ghi chú
           </Button>
           {result?.ok ? (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400">Đã lưu ghi chú.</span>
+            <span className="text-xs text-success">Đã lưu ghi chú.</span>
           ) : null}
           {result && !result.ok ? (
             <span className="text-xs text-destructive">{result.error}</span>

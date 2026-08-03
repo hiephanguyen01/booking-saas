@@ -1,11 +1,12 @@
 import { createListingTypeInputSchema } from '@booking/contracts';
 import { redirect, data as routeData } from 'react-router';
-import { BackLink } from '~/components/back-link';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
+import { dashboardPaths } from '~/constants/paths';
 import { apiPost } from '~/lib/api.server';
 import { ListingTypeForm } from '~/features/tenant/components/listing-type-form';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import type { Route } from './+types/new';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Loại dịch vụ mới · Tenant · BookingOS' }];
@@ -25,30 +26,28 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
   }
-  const res = await apiPost('/tenant/listing-types', parsed.data, auth);
+  const res = await apiPost(apiPaths.tenant.listingTypes, parsed.data, auth);
   if (!res.ok) {
     return routeData(
       { error: res.error ?? 'Tạo không thành công.', fieldErrors: res.errors ?? null },
       { status: 400 },
     );
   }
-  return redirect('/tenant/listing-types');
+  return redirect(dashboardPaths.tenant.listingTypes);
 }
 
 export default function NewListingType({ actionData }: Route.ComponentProps) {
   return (
-    <div className="space-y-5">
-      <div>
-        <BackLink to="/tenant/listing-types" label="Loại dịch vụ" className="mb-2" />
-        <PageHeader
-          title="Loại dịch vụ mới"
-          description="Tạo một loại dịch vụ với hình thức đặt và thuộc tính riêng."
-        />
-      </div>
+    <FormPage
+      backTo={dashboardPaths.tenant.listingTypes}
+      backLabel="Loại dịch vụ"
+      title="Loại dịch vụ mới"
+      description="Tạo một loại dịch vụ với hình thức đặt và thuộc tính riêng."
+    >
       <ListingTypeForm
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
       />
-    </div>
+    </FormPage>
   );
 }

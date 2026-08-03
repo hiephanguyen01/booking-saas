@@ -12,6 +12,7 @@ import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/server/api.server
 import { getOptionalAuth } from '~/lib/server/auth.server';
 import { storefrontEnv } from '~/lib/server/env.server';
 import { errorStatus } from '~/lib/http-status';
+import { apiPaths } from '~/constants/api-paths';
 
 export async function loadBookingsRoute({ request }: { request: Request }) {
   const recentPromise = readRecentCodes(request);
@@ -20,7 +21,7 @@ export async function loadBookingsRoute({ request }: { request: Request }) {
   if (auth) {
     const result = await apiGet<BookingResponse[]>(
       request,
-      '/public/my-bookings',
+      apiPaths.public.myBookings,
       auth.session.accessToken,
       {
         schema: z.array(bookingResponseSchema),

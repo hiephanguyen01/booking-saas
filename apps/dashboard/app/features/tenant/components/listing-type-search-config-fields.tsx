@@ -14,7 +14,7 @@ import {
 } from '@booking/ui/components/ui/select';
 import { Switch } from '@booking/ui/components/ui/switch';
 import { CalendarRange } from 'lucide-react';
-import { SEARCH_SCHEDULE_LABEL } from '../constants';
+import { SEARCH_SCHEDULE_LABEL } from '~/features/tenant/constants';
 import { AttributeFacetEditor } from './attribute-facet-editor';
 import { EMPTY_CONFIG, normalizeSearchConfig, SEARCHABLE_MODES } from './listing-type-search-config';
 import { SystemFacetEditor } from './system-facet-editor';

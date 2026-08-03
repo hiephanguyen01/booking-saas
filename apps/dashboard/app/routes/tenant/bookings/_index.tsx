@@ -21,6 +21,7 @@ import { fetchBookingList } from '~/features/bookings/server/booking-list.server
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
 
 interface PartnerStat {
   partnerId: string;
@@ -44,10 +45,10 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { filters, apiFilters } = readListFilters(url.searchParams, BOOKINGS_FILTER_SPEC);
   const [list, statsRes, partnersRes] = await Promise.all([
     fetchBookingList(auth, status, page, pageSize, request.signal, apiFilters),
-    apiGet<PartnerStat[]>('/tenant/bookings/partner-stats', auth, { signal: request.signal }),
+    apiGet<PartnerStat[]>(apiPaths.tenant.bookingPartnerStats, auth, { signal: request.signal }),
     can('tenant.partners.read')
-      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, {
-          query: { pageSize: 100 },
+      ? apiGet<Paginated<PartnerResponse>>(apiPaths.tenant.partners, auth, {
+          query: { pageSize: FETCH_ALL_PAGE_SIZE },
           signal: request.signal,
         })
       : Promise.resolve(null),

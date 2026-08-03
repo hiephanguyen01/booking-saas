@@ -28,7 +28,7 @@ export function StorefrontThemePreview({
           <p className="mt-0.5 text-xs text-muted-foreground">Cập nhật theo dữ liệu đang nhập.</p>
         </div>
         {storefrontUrl ? (
-          <Button asChild size="xs" variant="ghost">
+          <Button asChild size="sm" variant="ghost">
             <a href={storefrontUrl} target="_blank" rel="noreferrer">
               Mở trang thật <ExternalLink className="size-3.5" />
             </a>

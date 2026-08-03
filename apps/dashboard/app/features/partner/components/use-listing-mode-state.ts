@@ -12,7 +12,7 @@ import {
   int,
   savedModeConfig,
   type DynamicState,
-} from '../lib/listing-mode-config';
+} from '~/features/partner/lib/listing-mode-config';
 
 /** Only these modes are bookable in Phase 1 and have a config panel. */
 export const CONFIGURABLE: BookingMode[] = ['hourly', 'daily', 'inventory'];

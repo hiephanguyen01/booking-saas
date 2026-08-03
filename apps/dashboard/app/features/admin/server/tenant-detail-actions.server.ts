@@ -12,6 +12,8 @@ import { apiDelete, apiPatch, apiPost } from '~/lib/api.server';
 import { dashboardPaths } from '~/constants/paths';
 import { requirePlatform } from './admin.server';
 import { vietnamCalendarDayEndIso } from './subscription-dates.server';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 /** Which form/card an action result belongs to, so an error stays in its own card. */
 export type ActionScope = 'tenant' | 'domain' | 'subscription' | 'status';
@@ -41,7 +43,7 @@ export async function handleTenantDetailJsonAction(request: Request, id: string)
         { status: 400 },
       );
     }
-    const res = await apiPost<DomainResponse>(`/admin/tenants/${id}/domains`, parsed.data, auth);
+    const res = await apiPost<DomainResponse>(apiPaths.admin.tenantDomains(id), parsed.data, auth);
     if (!res.ok) {
       return data<ActionResult>(
         { scope: 'domain', error: res.error, fieldErrors: res.errors },
@@ -58,7 +60,7 @@ export async function handleTenantDetailJsonAction(request: Request, id: string)
       { status: 400 },
     );
   }
-  const res = await apiPatch<TenantDetailResponse>(`/admin/tenants/${id}`, parsed.data, auth);
+  const res = await apiPatch<TenantDetailResponse>(apiPaths.admin.tenant(id), parsed.data, auth);
   if (!res.ok) {
     return data<ActionResult>(
       { scope: 'tenant', error: res.error, fieldErrors: res.errors },
@@ -97,7 +99,7 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
 
   if (intent === 'remove-domain') {
     const domainId = String(form.get('domainId') ?? '');
-    const res = await apiDelete(`/admin/tenants/${id}/domains/${domainId}`, auth);
+    const res = await apiDelete(apiPaths.admin.tenantDomain(id, domainId), auth);
     if (!res.ok) {
       const message =
         res.code === 'DOMAIN_PRIMARY_REQUIRED'
@@ -110,7 +112,7 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
 
   if (intent === 'set-status') {
     const status = String(form.get('status') ?? '');
-    const res = await apiPatch<TenantDetailResponse>(`/admin/tenants/${id}`, { status }, auth);
+    const res = await apiPatch<TenantDetailResponse>(apiPaths.admin.tenant(id), { status }, auth);
     if (!res.ok) return data<ActionResult>({ scope: 'status', error: res.error }, { status: 400 });
     return data<ActionResult>({ scope: 'status', ok: true, message: 'Đã cập nhật trạng thái.' });
   }
@@ -136,7 +138,7 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
       );
     }
     const res = await apiPost<SubscriptionResponse>(
-      `/admin/tenants/${id}/subscription`,
+      apiPaths.admin.tenantSubscription(id),
       parsed.data,
       auth,
     );
@@ -145,5 +147,5 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
     return redirect(dashboardPaths.admin.tenant(id));
   }
 
-  return data<ActionResult>({ scope: 'tenant', error: 'Hành động không hợp lệ.' }, { status: 400 });
+  return data<ActionResult>({ scope: 'tenant', error: actionMessages.invalidIntent }, { status: 400 });
 }

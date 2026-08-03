@@ -23,6 +23,8 @@ import { apiGet, apiPost } from '~/lib/api.server';
 import { formatDateTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, type FilterSpec } from '~/lib/list-filters';
+import { apiPaths } from '~/constants/api-paths';
+import { DISPUTE_STATUS_FILTER_OPTIONS } from '~/constants/finance';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khiếu nại booking · Partner · BookingOS' }];
@@ -30,16 +32,7 @@ export function meta(): Route.MetaDescriptors {
 
 const DISPUTE_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã booking, dịch vụ, lý do…' },
-  {
-    kind: 'enum',
-    key: 'status',
-    label: 'Trạng thái',
-    options: [
-      { value: 'open', label: 'Đang xử lý' },
-      { value: 'accepted', label: 'Đã chấp nhận' },
-      { value: 'rejected', label: 'Đã từ chối' },
-    ],
-  },
+  { kind: 'enum', key: 'status', label: 'Trạng thái', options: DISPUTE_STATUS_FILTER_OPTIONS },
   {
     kind: 'enum',
     key: 'responseStatus',
@@ -55,7 +48,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.disputes.read');
   const list = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, DISPUTE_FILTER_SPEC);
-  const result = await apiGet('/partner/finance/disputes', auth, {
+  const result = await apiGet(apiPaths.partner.financeDisputes, auth, {
     query: list.toApiQuery(apiFilters),
     schema: paginatedSchema(partnerSettlementDisputeResponseSchema),
   });

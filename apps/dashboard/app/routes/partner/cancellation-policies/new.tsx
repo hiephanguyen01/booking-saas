@@ -1,12 +1,12 @@
 import { createCancellationPolicyInputSchema } from '@booking/contracts';
 import { redirect, data as routeData } from 'react-router';
-import { BackLink } from '~/components/back-link';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
 import { apiPost } from '~/lib/api.server';
 import { CancellationPolicyForm } from '~/features/cancellation-policies/components/cancellation-policy-form';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { dashboardPaths } from '~/constants/paths';
 import type { Route } from './+types/new';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chính sách huỷ mới · Đối tác · BookingOS' }];
@@ -26,7 +26,7 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
   }
-  const res = await apiPost('/partner/cancellation-policies', parsed.data, auth);
+  const res = await apiPost(apiPaths.partner.cancellationPolicies, parsed.data, auth);
   if (!res.ok) {
     return routeData(
       { error: res.error ?? 'Tạo không thành công.', fieldErrors: res.errors ?? null },
@@ -38,22 +38,16 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function NewCancellationPolicy({ actionData }: Route.ComponentProps) {
   return (
-    <div className="space-y-5">
-      <div>
-        <BackLink
-          to={dashboardPaths.partner.cancellationPolicies}
-          label="Chính sách huỷ"
-          className="mb-2"
-        />
-        <PageHeader
-          title="Chính sách huỷ mới"
-          description="Đặt tên và các mốc hoàn tiền cho chính sách."
-        />
-      </div>
+    <FormPage
+      backTo={dashboardPaths.partner.cancellationPolicies}
+      backLabel="Chính sách huỷ"
+      title="Chính sách huỷ mới"
+      description="Đặt tên và các mốc hoàn tiền cho chính sách."
+    >
       <CancellationPolicyForm
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
       />
-    </div>
+    </FormPage>
   );
 }

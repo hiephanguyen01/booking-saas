@@ -77,7 +77,7 @@ export function ReviewBookingCard({
 
       {review.status === 'pending' ? (
         <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
-          <p className="text-sm font-medium text-emerald-600">{t('reviews.invitation')}</p>
+          <p className="text-sm font-medium text-success">{t('reviews.invitation')}</p>
           <Button
             type="button"
             variant="outline"

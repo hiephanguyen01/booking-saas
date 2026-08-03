@@ -53,7 +53,7 @@ export function RuleRow({ rule, unit, canWrite }: Props) {
             <p
               className={cn(
                 'mt-0.5 font-semibold tabular-nums',
-                rule.salePrice && 'text-emerald-700 dark:text-emerald-300',
+                rule.salePrice && 'text-success',
               )}
             >
               <Money value={rule.salePrice ?? rule.price} />/{unit}

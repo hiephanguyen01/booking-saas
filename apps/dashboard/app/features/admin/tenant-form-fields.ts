@@ -6,6 +6,7 @@ import {
 } from '@booking/contracts';
 import type { FieldConfig, FieldOption } from '@booking/ui/components/form/types';
 import { LOCALE_LABELS, VERTICAL_LABELS } from '~/constants/tenancy';
+import { TZ } from '~/constants/time';
 
 // Select options derived from the contract enums + the shared label maps, so a
 // new vertical/locale in @booking/contracts shows up here automatically.
@@ -40,7 +41,7 @@ export const tenantCreateFields: FieldConfig<CreateTenantInput>[] = [
     name: 'defaultTimezone',
     type: 'text',
     label: 'Múi giờ mặc định',
-    placeholder: 'Asia/Ho_Chi_Minh',
+    placeholder: TZ,
   },
   {
     name: 'defaultLocale',

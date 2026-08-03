@@ -7,6 +7,7 @@ import {
 import { publicGetData } from '~/lib/server/api.server';
 import { optionalData } from '~/lib/server/optional-data.server';
 import { DEFAULT_PUBLIC_REVIEW_LIMIT, PUBLIC_REVIEW_MAX_LIMIT } from '~/lib/public-reviews';
+import { apiPaths } from '~/constants/api-paths';
 
 export interface PublicReviewData {
   reviews: ReviewListResponse | null;
@@ -38,7 +39,7 @@ export async function loadPublicReviews(
   const reviewLimit = parseReviewLimit(searchParams);
   const fetchReviews = (rating?: number, pageSize = reviewLimit) =>
     optionalData(
-      publicGetData(request, '/public/reviews', {
+      publicGetData(request, apiPaths.public.reviews, {
         query: {
           target,
           slug,

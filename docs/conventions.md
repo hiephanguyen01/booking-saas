@@ -165,10 +165,11 @@ app/
   The session cookie is `httpOnly`. Browser-reachable modules may only `import type` from `*.server`
   files. See [ADR 0001](./decisions/0001-opaque-sessions-over-jwt.md).
 - Style with **shadcn semantic tokens only** (`bg-background`, `text-foreground`,
-  `text-muted-foreground`, `border-border`, `text-primary`/`bg-primary`, `ring-ring`, `destructive`) —
-  never `text-gray-*`/`bg-white`/hardcoded palette on a themed surface. Non-primitive interactive
-  elements need a visible focus ring (`focus-visible:ring-2 focus-visible:ring-ring
-  focus-visible:ring-offset-2`). Narrow exceptions: text/scrims over a photo, universal status green.
+  `text-muted-foreground`, `border-border`, `text-primary`/`bg-primary`, `ring-ring`, plus the status
+  tokens `success`/`warning`/`destructive`/`info`) — never `text-gray-*`/`bg-white`/hardcoded palette
+  on a themed surface. Non-primitive interactive elements need a visible focus ring
+  (`focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`). Narrow exceptions:
+  text/scrims over a photo. See *Colour: semantic tokens only* below.
 - **Branch and name UI by the schema's structural enums, never by a specific listing type or vertical.**
   Which renderer, dialog, or component a listing gets is a function of its structural fields
   (`BookingSelection` = `flexible_duration` | `fixed_packages`, `BookingMode`, `ListingStructure`) —
@@ -179,6 +180,102 @@ app/
   `packages.*`). A vertical name in structural code is a bug: it silently mis-renders every other
   listing type that shares the same booking selection. Vertical-specific *content* (e.g. a photography
   attribute row) is fine only when it renders conditionally on the data being present.
+
+### Paths: route URLs and backend endpoints are two different things
+
+Each frontend owns **two** path modules under `app/constants/`, and mixing them is the mistake to
+watch for — a route and an endpoint often spell the same string today, so the compiler cannot catch a
+swap and nothing breaks until one of them moves.
+
+| Module | Holds | Consumed by |
+| --- | --- | --- |
+| `paths.ts` (`dashboardPaths` / `storefrontPaths`) | the app's **own** route URLs | `<Link to>`, `redirect()`, `navigate()`, `backTo`, `resetHref`, nav configs, same-origin proxy routes |
+| `api-paths.ts` (`apiPaths`) | **backend** endpoints | `apiGet`/`apiPost`/`apiPatch`/`apiPut`/`apiDelete`, `publicGetData`, and the `basePath` a server dispatcher appends an intent to |
+
+Rules:
+
+- Never hand-build either kind of path. A missing entry means adding one, not inlining a literal.
+- Path params are encoded **inside** the builder (`segment()` = `encodeURIComponent`). Call sites pass
+  the raw value; wrapping the argument in `encodeURIComponent` double-encodes it.
+- Never append a query string to a path. Pass the api helper's `{ query: { … } }` — it owns encoding,
+  and in the storefront the query is also part of the request-memoization key, so a query smuggled
+  into the path silently splits the cache.
+- `FETCH_ALL_PAGE_SIZE` (in each app's `api-paths.ts`) is the page size for "load every row" reads
+  that back a picker or a roll-up. It replaced ten call sites that spelled the same intent three ways.
+- A **same-origin proxy route** the browser requests directly (the upload presign endpoints) is a
+  route, not an endpoint: it belongs in `paths.ts`.
+
+Server dispatchers that post `POST {base}/{intent}` (moderation actions, listing lifecycle) still take
+a `basePath` argument — pass `apiPaths.…(id)` into them rather than a literal.
+
+### Colour: semantic tokens only, in both frontends
+
+`packages/ui/src/styles/globals.css` defines `--success`, `--warning`, `--destructive`, `--info` and
+`--muted`, each with its own light **and** dark value. Use them (`bg-success/15 text-success`,
+`text-warning`, `border-destructive/30`). Consequences worth stating:
+
+- A literal palette class on a themed surface (`text-emerald-600`, `bg-amber-100`, `text-slate-600`)
+  is a defect. Both apps are at zero; keep them there. The narrow exceptions remain text/scrims over a
+  photo and the fixed platform-landing brand.
+- A token already carries its dark value, so a hand-written `dark:` twin is redundant — and it was
+  how the two frontends drifted apart in the first place.
+- Status maps live in one place per app (`components/status-badge.tsx` in the dashboard) and map each
+  enum member to a tone; the pill, the calendar dot and the event chip of one status must all read
+  from the same tone.
+
+### Tenant brand tokens
+
+`@booking/ui/lib/brand-theme` owns channel resolution for both frontends: `sanitizeBrandColor` →
+`brandContrastForeground` → `brandSwatch(value, BRAND_DEFAULTS.x)`. Both apps therefore turn the same
+tenant config into the same brand, and an unmeasurable colour falls back to the platform default in
+both instead of being silently dropped in one.
+
+- Storefront `themeCss` emits a `:root{…}` block at SSR; dashboard `tenantBrandStyle` returns inline
+  style properties. Both set `--primary`/`--primary-foreground`/`--ring` and expose the tenant accent
+  as `--sf-accent`.
+- Focus rings follow the **primary** everywhere, sidebar included.
+- `--accent` is deliberately NOT tenant-driven — in shadcn it is the neutral hover surface.
+- The dashboard deliberately ignores the tenant **background**: an operational console keeps its
+  neutral surfaces and its dark mode. That is the one intended difference between the two.
+
+### Button size by role
+
+`Input`/`Select`/`Textarea` heights are owned by `@booking/ui` (44px) — never set one in app code.
+Buttons pick a size from their role, not from taste:
+
+| Role | Size |
+| --- | --- |
+| A page's primary action in `PageHeader actions` | `default` (h-9) — omit the prop |
+| An action inside a table row or list item | `sm` (h-8) |
+| A control in a form stack (submit, combobox/date trigger) | `control` (h-11), to match `Input` |
+| Icon-only | `icon` |
+
+`variant` follows the same logic: a list page's create CTA is the default variant; secondary actions
+on a detail page are `outline`.
+
+### Display constants and shared copy
+
+- A label map **keyed by a `@booking/contracts` enum** belongs in `app/constants/<domain>.ts`, one
+  file per domain, so adding an enum member is a compile error at one known place.
+- A map whose values are CSS classes or whose key is a UI-only union (tone, appearance, calendar
+  state) stays beside the component that renders it — it is presentation, not domain data.
+- Repeated, situation-generic failure copy lives in `app/constants/messages.ts`
+  (`actionMessages` / `notFoundMessages`). Screen-specific wording stays at its call site, where it
+  reads with the code that produced it. Dashboard UI copy remains Vietnamese-inline (see i18n policy);
+  this is about the same sentence appearing in fifteen actions, not about extracting copy.
+
+### Full-page forms: one shell, two tiers
+
+Every "tạo mới"/"sửa" screen renders inside `FormPage` (`~/components/form-page`): back link, title
+block, an optional banner slot, then the form. Create and edit of the same resource draw from the
+**same section bodies**; only the wrapper differs.
+
+- **Wizard** (`FormWizard` + `useFormWizard`) for forms with three or more sections, and for the
+  listing-creation flow. One section at a time, gated per step, with a step rail.
+- **Single surface** (`FormSurface` + `Section`) for shorter forms and for every edit screen, where
+  each section is already valid and must stay reachable in any order.
+- Per-step validation is injected, not assumed: a react-hook-form form passes
+  `form.trigger(STEP_FIELDS[id])`; a plain `<Form>` passes `validateNativeStep`.
 
 ### Forms — always `GenericForm`
 

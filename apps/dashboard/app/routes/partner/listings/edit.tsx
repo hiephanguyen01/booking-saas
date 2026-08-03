@@ -11,13 +11,14 @@ import {
 import type { Route } from './+types/edit';
 import { apiDelete, apiGet, apiPatch } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
-import { BackLink } from '~/components/back-link';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { ListingForm } from '~/features/partner/components/listing-form';
 import { PendingChangeBanner } from '~/features/partner/components/pending-change-banner';
 import { applyRevisionDiff } from '~/features/partner/lib/listing-revision';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages, notFoundMessages } from '~/constants/messages';
 
 /**
  * A read-only strip above the edit form: current publish status + who last hid or
@@ -58,18 +59,18 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [listingRes, typesRes, policiesRes, revisionRes] = await Promise.all([
-    apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
-    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
-    apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
-    apiGet<ListingRevisionResponse | null>(`/partner/listings/${params.listingId}/revision`, auth),
+    apiGet<ListingResponse>(apiPaths.partner.listing(params.listingId), auth),
+    apiGet<ListingTypeResponse[]>(apiPaths.partner.listingTypes, auth),
+    apiGet<CancellationPolicyResponse[]>(apiPaths.partner.cancellationPolicies, auth),
+    apiGet<ListingRevisionResponse | null>(apiPaths.partner.listingRevision(params.listingId), auth),
   ]);
   if (!listingRes.ok || !listingRes.data) {
-    throw new Response('Không tìm thấy tin đăng.', {
+    throw new Response(notFoundMessages.listing, {
       status: listingRes.status === 403 ? 403 : 404,
     });
   }
   const requirementRes = await apiGet<DepositRequirementResponse>(
-    '/partner/listings/deposit-requirement',
+    apiPaths.partner.listingDepositRequirement,
     auth,
     {
       query: {
@@ -102,7 +103,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!request.headers.get('content-type')?.includes('application/json')) {
     const form = await request.formData();
     if (form.get('intent') === 'discard-revision') {
-      const res = await apiDelete(`/partner/listings/${params.listingId}/revision`, auth);
+      const res = await apiDelete(apiPaths.partner.listingRevision(params.listingId), auth);
       if (!res.ok) {
         return data(
           { error: res.error ?? 'Huỷ thay đổi không thành công.', fieldErrors: null },
@@ -113,16 +114,16 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
       return redirect(dashboardPaths.partner.listingEdit(params.listingId));
     }
-    return data({ error: 'Yêu cầu không hợp lệ.', fieldErrors: null }, { status: 400 });
+    return data({ error: actionMessages.invalidRequest, fieldErrors: null }, { status: 400 });
   }
   const parsed = updateListingInputSchema.safeParse(await request.json());
   if (!parsed.success) {
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  const res = await apiPatch(`/partner/listings/${params.listingId}`, parsed.data, auth);
+  const res = await apiPatch(apiPaths.partner.listing(params.listingId), parsed.data, auth);
   if (!res.ok) {
     return data(
-      { error: res.error ?? 'Lưu không thành công.', fieldErrors: res.errors ?? null },
+      { error: res.error ?? actionMessages.saveFailed, fieldErrors: res.errors ?? null },
       { status: 400 },
     );
   }
@@ -131,17 +132,18 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function EditListingPage({ loaderData, actionData }: Route.ComponentProps) {
   return (
-    <div className="mx-auto max-w-[1440px] space-y-5">
-      <div>
-        <BackLink
-          to={dashboardPaths.partner.listing(loaderData.listing.id)}
-          label="Tin đăng"
-          className="mb-2"
-        />
-        <PageHeader title="Sửa tin đăng" description={loaderData.listing.title} />
-      </div>
-      <ListingStatusStrip listing={loaderData.listing} />
-      <PendingChangeBanner revision={loaderData.revision} />
+    <FormPage
+      backTo={dashboardPaths.partner.listing(loaderData.listing.id)}
+      backLabel="Tin đăng"
+      title="Sửa tin đăng"
+      description={loaderData.listing.title}
+      banner={
+        <>
+          <ListingStatusStrip listing={loaderData.listing} />
+          <PendingChangeBanner revision={loaderData.revision} />
+        </>
+      }
+    >
       <ListingForm
         listingTypes={loaderData.listingTypes}
         partnerId={loaderData.partnerId}
@@ -152,6 +154,6 @@ export default function EditListingPage({ loaderData, actionData }: Route.Compon
         fieldErrors={actionData?.fieldErrors ?? null}
         mode="edit-workspace"
       />
-    </div>
+    </FormPage>
   );
 }

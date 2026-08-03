@@ -23,7 +23,7 @@ import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { readListParams } from '~/lib/pagination';
 import { hasActiveFilters } from '~/lib/list-filters';
 import { formatDateTime } from '~/lib/format';
-import { REVIEW_FILTER_SPEC } from '../lib/review-filters';
+import { REVIEW_FILTER_SPEC } from '~/features/reviews/lib/review-filters';
 
 const MEDIA_VIEWER_LABELS: MediaViewerLabels = {
   close: 'Đóng trình xem',
@@ -272,7 +272,7 @@ export function ReviewInbox({
 
 function RatingStars({ rating }: { rating: number }) {
   return (
-    <span className="flex gap-0.5 text-amber-500" aria-label={`${rating}/5 sao`}>
+    <span className="flex gap-0.5 text-warning" aria-label={`${rating}/5 sao`}>
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}

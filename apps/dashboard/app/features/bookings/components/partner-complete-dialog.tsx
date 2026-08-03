@@ -13,8 +13,8 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { Money } from '~/components/money';
-import type { PartnerBookingActionResult } from '../server/partner-booking-actions.server';
-import type { PartnerActionableBooking } from '../lib/partner-booking-rules';
+import type { PartnerBookingActionResult } from '~/features/bookings/server/partner-booking-actions.server';
+import type { PartnerActionableBooking } from '~/features/bookings/lib/partner-booking-rules';
 
 type ActionFetcher = ReturnType<typeof useFetcher<PartnerBookingActionResult>>;
 
@@ -58,7 +58,7 @@ export function PartnerCompleteDialog({
         </DialogHeader>
 
         {result?.ok ? (
-          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+          <div className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
             Đã hoàn thành lượt đặt và mở thời gian tranh chấp.
           </div>
         ) : (
