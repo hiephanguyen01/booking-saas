@@ -73,11 +73,7 @@ export class CreateListingUseCase {
   async execute(tenantId: string, input: CreateListingInput): Promise<ListingRecord> {
     const slug =
       input.slug ??
-      buildPublicSlug(
-        input.title,
-        randomUUID().replaceAll('-', '').slice(0, 6),
-        'tin-dang',
-      );
+      buildPublicSlug(input.title, randomUUID().replaceAll('-', '').slice(0, 6), 'tin-dang');
     const location = await this.resolveAdministrativeAddress.execute(
       input.provinceCode,
       input.wardCode,
@@ -99,6 +95,7 @@ export class CreateListingUseCase {
           bookingSelection: type.bookingSelection,
           bookingModes: input.bookingModes,
           modeConfig: input.modeConfig,
+          validationContext: 'draft',
         });
       } catch (error) {
         if (error instanceof ListingModeConfigError) {

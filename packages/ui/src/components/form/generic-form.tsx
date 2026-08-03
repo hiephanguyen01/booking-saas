@@ -156,7 +156,6 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
     getValues,
     handleSubmit,
     reset,
-    setFocus,
   } = form;
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -263,15 +262,19 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
     const firstName = Object.keys(errors)[0] as Path<Values> | undefined;
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        const firstInvalid = document.querySelector<HTMLElement>('[aria-invalid="true"]');
+        const isVisible = (element: HTMLElement): boolean =>
+          !element.closest('[hidden]') && element.getClientRects().length > 0;
+        const firstInvalid = Array.from(
+          document.querySelectorAll<HTMLElement>('[aria-invalid="true"]'),
+        ).find(isVisible);
         const namedField = firstName
-          ? document.querySelector<HTMLElement>(`[name="${String(firstName)}"]`)
-          : null;
+          ? Array.from(
+              document.querySelectorAll<HTMLElement>(`[name="${String(firstName)}"]`),
+            ).find(isVisible)
+          : undefined;
         const field = firstInvalid ?? namedField;
         if (field) {
           field.focus();
-        } else if (firstName) {
-          setFocus(firstName);
         }
 
         const focusedElement = field ?? document.activeElement;

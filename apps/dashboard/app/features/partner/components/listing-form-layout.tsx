@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -76,6 +84,56 @@ export interface ListingWizardItem<Id extends string> {
   id: Id;
   label: string;
   shortLabel: string;
+}
+
+export function ListingStepRequirements({
+  children,
+  required = true,
+}: {
+  children: ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5">
+      <p className="font-semibold text-foreground">
+        {required ? (
+          <>
+            <span aria-hidden="true" className="text-destructive">
+              *
+            </span>{' '}
+            Bắt buộc để tiếp tục
+          </>
+        ) : (
+          'Không có thao tác bắt buộc'
+        )}
+      </p>
+      <div className="mt-0.5 text-muted-foreground">{children}</div>
+    </div>
+  );
+}
+
+export function InvalidateIncompleteWizardSteps<Id extends string>({
+  items,
+  completed,
+  setCompleted,
+}: {
+  items: ReadonlyArray<{ id: Id; complete: boolean }>;
+  completed: Set<Id>;
+  setCompleted: Dispatch<SetStateAction<Set<Id>>>;
+}) {
+  useEffect(() => {
+    const invalidated = items.flatMap((item) =>
+      completed.has(item.id) && !item.complete ? [item.id] : [],
+    );
+    if (invalidated.length === 0) return;
+    setCompleted((previous) => {
+      const next = new Set(previous);
+      for (const id of invalidated) next.delete(id);
+      return next;
+    });
+  }, [completed, items, setCompleted]);
+
+  return null;
 }
 
 export function ListingWizardNav<Id extends string>({

@@ -77,7 +77,7 @@ export function PackageEditor({
             <div className="rounded-xl border border-dashed bg-muted/20 px-5 py-6 text-center">
               <p className="text-sm font-medium">Chưa có gói dịch vụ</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Mỗi gói cần có tên, thời lượng và giá lớn hơn 0 để sẵn sàng gửi duyệt.
+                Bạn vẫn có thể lưu bản nháp. Cần ít nhất một gói đang cung cấp để gửi duyệt.
               </p>
             </div>
           ) : null}
@@ -140,11 +140,9 @@ function PackageEditorCard({
   remove: (index: number) => void;
 }) {
   const prefix = `listing-package-${row.id}`;
-  const nameError = errors?.name ?? (!row.name.trim() ? 'Vui lòng nhập tên gói' : undefined);
-  const durationError =
-    errors?.duration ?? (Number(row.duration) <= 0 ? 'Thời lượng gói phải lớn hơn 0' : undefined);
-  const validPrice = /^\d+$/.test(row.price) && BigInt(row.price) > 0n;
-  const priceError = errors?.price ?? (!validPrice ? 'Giá gói phải lớn hơn 0' : undefined);
+  const nameError = errors?.name;
+  const durationError = errors?.duration;
+  const priceError = errors?.price;
   const invalid = Boolean(nameError || durationError || priceError);
 
   return (
@@ -184,10 +182,15 @@ function PackageEditorCard({
         <p className="text-xs text-destructive">
           Hoàn tất tên, thời lượng và giá của gói hoặc xóa gói trước khi lưu.
         </p>
-      ) : null}
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Tên, thời lượng và giá là bắt buộc nếu bạn giữ gói này.
+        </p>
+      )}
       <div className="grid gap-3 md:grid-cols-2">
         <Field
-          label="Tên gói *"
+          label="Tên gói"
+          required
           htmlFor={`${prefix}-name`}
           error={nameError ? [nameError] : undefined}
           errorId={`${prefix}-name-error`}
@@ -195,13 +198,15 @@ function PackageEditorCard({
           <Input
             id={`${prefix}-name`}
             value={row.name}
+            aria-required="true"
             onChange={(event) => update(index, { name: event.target.value })}
             aria-invalid={Boolean(nameError)}
             aria-describedby={nameError ? `${prefix}-name-error` : undefined}
           />
         </Field>
         <Field
-          label={`${durationLabel} *`}
+          label={durationLabel}
+          required
           htmlFor={`${prefix}-duration`}
           error={durationError ? [durationError] : undefined}
           errorId={`${prefix}-duration-error`}
@@ -212,13 +217,15 @@ function PackageEditorCard({
             min={durationStep}
             step={durationStep}
             value={row.duration}
+            aria-required="true"
             onChange={(event) => update(index, { duration: event.target.value })}
             aria-invalid={Boolean(durationError)}
             aria-describedby={durationError ? `${prefix}-duration-error` : undefined}
           />
         </Field>
         <Field
-          label="Giá gói (VND) *"
+          label="Giá gói (VND)"
+          required
           htmlFor={`${prefix}-price`}
           error={priceError ? [priceError] : undefined}
           errorId={`${prefix}-price-error`}
@@ -228,6 +235,7 @@ function PackageEditorCard({
             type="number"
             min={1}
             value={row.price}
+            aria-required="true"
             onChange={(event) => update(index, { price: event.target.value })}
             aria-invalid={Boolean(priceError)}
             aria-describedby={priceError ? `${prefix}-price-error` : undefined}

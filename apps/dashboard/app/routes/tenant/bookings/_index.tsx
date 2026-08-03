@@ -190,7 +190,7 @@ function TenantBookingsPage({ status, bookings, total, stats, partnerNames, filt
                   <SelectItem value="confirmed">Đã xác nhận</SelectItem>
                   <SelectItem value="completed">Hoàn tất</SelectItem>
                   <SelectItem value="cancelled">Đã huỷ</SelectItem>
-                  <SelectItem value="no_show">Không đến</SelectItem>
+                  <SelectItem value="no_show">Vắng mặt</SelectItem>
                 </SelectContent>
               </Select>
             }

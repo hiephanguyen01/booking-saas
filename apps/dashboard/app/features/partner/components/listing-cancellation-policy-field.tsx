@@ -87,12 +87,12 @@ export function ListingCancellationPolicyField({
                 <div className="rounded-lg border border-dashed p-4">
                   <p className="text-sm font-medium">
                     {policies.length > 0
-                      ? 'Chưa chọn chính sách hủy'
+                      ? 'Dùng chính sách hủy kế thừa'
                       : 'Chưa có chính sách hủy để áp dụng'}
                   </p>
                   <p className="mt-1 text-sm leading-5 text-muted-foreground">
                     {policies.length > 0
-                      ? 'Chọn một chính sách ở phía trên để xem trước các mốc hoàn tiền.'
+                      ? 'Chính sách mặc định đang có hiệu lực sẽ được xác định và áp dụng sau khi lưu. Bạn vẫn có thể chọn riêng một chính sách ở phía trên.'
                       : 'Tạo chính sách với các mốc hoàn tiền cụ thể rồi quay lại chọn cho tin đăng.'}
                   </p>
                 </div>

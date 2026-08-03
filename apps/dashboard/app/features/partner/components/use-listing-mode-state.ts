@@ -37,8 +37,9 @@ export function useListingModeState(opts: {
   listing?: ListingResponse;
   listingTypeId: string;
   selectedType?: ListingTypeResponse;
+  validateOnChange?: boolean;
 }): ListingModeState {
-  const { form, listing, listingTypeId, selectedType } = opts;
+  const { form, listing, listingTypeId, selectedType, validateOnChange = false } = opts;
   const { setValue } = form;
 
   const [state, setState] = useState<DynamicState>(() =>
@@ -47,8 +48,11 @@ export function useListingModeState(opts: {
       (selectedType?.defaultModes ?? []).filter((mode) => CONFIGURABLE.includes(mode)),
     ),
   );
-  const set = <K extends keyof DynamicState>(key: K, value: DynamicState[K]): void =>
+  const pendingUserChange = useRef(false);
+  const set = <K extends keyof DynamicState>(key: K, value: DynamicState[K]): void => {
+    pendingUserChange.current = true;
     setState((s) => ({ ...s, [key]: value }));
+  };
   // The listing's stored mode_config — the base every rebuild spreads over, so a
   // key this form doesn't render survives the wholesale PATCH replace.
   const saved = useMemo(() => savedModeConfig(listing), [listing]);
@@ -57,7 +61,6 @@ export function useListingModeState(opts: {
   // Depending on the ListingType object made edit forms lose their saved
   // attributes whenever loader data was revalidated with a new object identity.
   const previousListingTypeId = useRef(listingTypeId);
-  const hasMirroredInitialState = useRef(false);
   useEffect(() => {
     if (previousListingTypeId.current === listingTypeId) return;
     previousListingTypeId.current = listingTypeId;
@@ -68,8 +71,11 @@ export function useListingModeState(opts: {
 
   // Mirror the dynamic values into RHF so the schema can validate them.
   useEffect(() => {
-    const changedByUser = hasMirroredInitialState.current;
-    const options = { shouldDirty: changedByUser, shouldValidate: changedByUser };
+    const changedByUser = pendingUserChange.current;
+    const options = {
+      shouldDirty: changedByUser,
+      shouldValidate: changedByUser && validateOnChange,
+    };
     setValue('bookingModes', state.bookingModes, options);
     setValue(
       'modeConfig',
@@ -86,8 +92,15 @@ export function useListingModeState(opts: {
       state.bookingModes.includes('inventory') ? int(state.stockQuantity, 1) : undefined,
       options,
     );
-    hasMirroredInitialState.current = true;
-  }, [state, saved, selectedType?.bookingSelection, listing?.bookingSelection, setValue]);
+    pendingUserChange.current = false;
+  }, [
+    state,
+    saved,
+    selectedType?.bookingSelection,
+    listing?.bookingSelection,
+    setValue,
+    validateOnChange,
+  ]);
 
   const toggleMode = (mode: BookingMode, on: boolean): void =>
     set(

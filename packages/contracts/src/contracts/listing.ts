@@ -419,7 +419,7 @@ export const pricingRuleInputSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['salePrice'],
-        message: 'Sale price must be lower than regular price',
+        message: 'Giá ưu đãi phải thấp hơn giá áp dụng',
       });
     }
   });
@@ -484,7 +484,7 @@ export const pricingRuleRangeInputSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['salePrice'],
-        message: 'Sale price must be lower than regular price',
+        message: 'Giá ưu đãi phải thấp hơn giá áp dụng',
       });
     }
   });
@@ -535,7 +535,7 @@ export const recurringPricingRuleInputSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['salePrice'],
-        message: 'Sale price must be lower than regular price',
+        message: 'Giá ưu đãi phải thấp hơn giá áp dụng',
       });
     }
   });

@@ -57,6 +57,8 @@ export function validateAndNormalizeModeConfig(input: {
   bookingSelection: BookingSelection;
   bookingModes: BookingMode[];
   modeConfig: unknown;
+  /** Drafts may omit fixed packages; any package row that exists still uses the strict schema. */
+  validationContext?: 'draft' | 'bookable';
 }): ModeConfig {
   const parsed = modeConfigSchema.safeParse(input.modeConfig);
   if (!parsed.success) {
@@ -90,7 +92,7 @@ export function validateAndNormalizeModeConfig(input: {
     for (const mode of input.bookingModes) {
       if (mode !== 'hourly' && mode !== 'daily') continue;
       const packages = activePackages(config, mode);
-      if (packages.length === 0) {
+      if (packages.length === 0 && input.validationContext !== 'draft') {
         throw new ListingModeConfigError(
           'PACKAGE_CONFIG_REQUIRED',
           `At least one active package is required for ${mode} mode`,

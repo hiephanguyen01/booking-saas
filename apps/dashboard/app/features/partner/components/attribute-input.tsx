@@ -45,11 +45,17 @@ export function AttributeInput({
           id={controlId}
           checked={value === true}
           onCheckedChange={(v) => onChange(v)}
+          aria-required={field.required}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
         />
         {icon ? <span className="text-muted-foreground">{icon}</span> : null}
         {field.label}
+        {field.required ? (
+          <span aria-hidden="true" className="text-destructive">
+            *
+          </span>
+        ) : null}
         {error ? (
           <span id={errorId} className="text-xs text-destructive" role="alert">
             {error}
@@ -64,6 +70,7 @@ export function AttributeInput({
         label={field.label}
         icon={icon}
         htmlFor={controlId}
+        required={field.required}
         error={error ? [error] : undefined}
         errorId={errorId}
       >
@@ -71,6 +78,7 @@ export function AttributeInput({
           <SelectTrigger
             id={controlId}
             className="w-full"
+            aria-required={field.required}
             aria-invalid={Boolean(error)}
             aria-describedby={error ? errorId : undefined}
           >
@@ -90,12 +98,19 @@ export function AttributeInput({
   if (field.type === 'multiselect') {
     const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
-      <Field label={field.label} icon={icon} error={error ? [error] : undefined} errorId={errorId}>
+      <Field
+        label={field.label}
+        icon={icon}
+        required={field.required}
+        error={error ? [error] : undefined}
+        errorId={errorId}
+      >
         <div className="flex flex-wrap gap-3">
           {(field.options ?? []).map((o) => (
             <label key={o} className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={selected.includes(o)}
+                aria-required={field.required}
                 onCheckedChange={(v) =>
                   onChange(v === true ? [...selected, o] : selected.filter((x) => x !== o))
                 }
@@ -117,6 +132,7 @@ export function AttributeInput({
         value={value}
         onChange={onChange}
         error={error}
+        required={field.required}
       />
     );
   }
@@ -125,6 +141,7 @@ export function AttributeInput({
       label={field.label}
       icon={icon}
       htmlFor={controlId}
+      required={field.required}
       error={error ? [error] : undefined}
       errorId={errorId}
     >
@@ -132,8 +149,15 @@ export function AttributeInput({
         id={controlId}
         type={field.type === 'number' ? 'number' : 'text'}
         value={value === undefined || value === null ? '' : String(value)}
+        aria-required={field.required}
         onChange={(e) =>
-          onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)
+          onChange(
+            field.type === 'number'
+              ? e.target.value === ''
+                ? undefined
+                : Number(e.target.value)
+              : e.target.value,
+          )
         }
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
@@ -153,12 +177,14 @@ function SortableListAttribute({
   value,
   onChange,
   error,
+  required = false,
 }: {
   label: string;
   icon?: React.ReactNode;
   value: unknown;
   onChange: (value: unknown) => void;
   error?: string;
+  required?: boolean;
 }) {
   const externalLines = React.useMemo(
     () =>
@@ -228,8 +254,14 @@ function SortableListAttribute({
   };
 
   return (
-    <Field label={label} icon={icon} error={error ? [error] : undefined} errorId={errorId}>
-      <div className="space-y-2">
+    <Field
+      label={label}
+      icon={icon}
+      required={required}
+      error={error ? [error] : undefined}
+      errorId={errorId}
+    >
+      <div className="space-y-2" role="group" aria-label={label} aria-required={required}>
         {rows.length === 0 ? (
           <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
             Chưa có {label.toLocaleLowerCase('vi')}. Chỉ thêm những thông tin giúp khách đưa ra
@@ -265,6 +297,7 @@ function SortableListAttribute({
                       value={row.value}
                       placeholder="Nhập giá trị"
                       aria-label={`${label} ${index + 1}`}
+                      aria-required={required}
                       className="min-w-0 rounded-xl"
                       onChange={(event) => update(index, event.target.value)}
                       aria-invalid={Boolean(error)}
@@ -292,7 +325,7 @@ function SortableListAttribute({
           variant="ghost"
           size="sm"
           onClick={add}
-          className="px-1"
+          className="px-1 text-foreground/60"
           aria-invalid={rows.length === 0 && Boolean(error)}
           aria-describedby={rows.length === 0 && error ? errorId : undefined}
         >

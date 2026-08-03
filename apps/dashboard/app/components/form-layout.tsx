@@ -47,6 +47,7 @@ export function Field({
   error,
   htmlFor,
   errorId,
+  required = false,
   children,
 }: {
   label: string;
@@ -55,6 +56,7 @@ export function Field({
   error?: string[];
   htmlFor?: string;
   errorId?: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -66,6 +68,11 @@ export function Field({
           </span>
         ) : null}
         {label}
+        {required ? (
+          <span aria-hidden="true" className="text-destructive">
+            *
+          </span>
+        ) : null}
       </Label>
       {children}
       {error?.length ? (

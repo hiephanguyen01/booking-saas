@@ -55,6 +55,7 @@ export class SaveListingEditUseCase {
       if (existing.status === 'draft') {
         const listing = await this.applyUpdate.execute(tx, tenantId, id, input, {
           requirePartnerId: ctx.partnerId,
+          modeConfigValidation: 'draft',
         });
         return { listing, parkedForReview: false };
       }

@@ -1,5 +1,16 @@
 import { useFetcher } from 'react-router';
-import { Check, Circle, EyeOff, Info, LoaderCircle, Lock, RotateCcw, Send } from 'lucide-react';
+import {
+  Check,
+  CheckCircle2,
+  Circle,
+  EyeOff,
+  FileClock,
+  Info,
+  LoaderCircle,
+  Lock,
+  RotateCcw,
+  Send,
+} from 'lucide-react';
 import type { ChecklistItem, ListingResponse, PublishStatus } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
@@ -11,20 +22,28 @@ type LifecycleActionResult = { ok: boolean; error: string | null };
 const STATUS_COPY: Record<PublishStatus, { title: string; description: string }> = {
   draft: {
     title: 'Bản nháp chưa gửi duyệt',
-    description: 'Hoàn tất checklist rồi gửi tenant duyệt để bắt đầu hiển thị.',
+    description: 'Hoàn tất danh sách kiểm tra rồi gửi duyệt để bắt đầu hiển thị.',
   },
   pending_review: {
     title: 'Tin đăng đang chờ duyệt',
-    description: 'Tenant đang xem xét nội dung. Bạn vẫn có thể sửa và cập nhật bản đang chờ.',
+    description:
+      'Đơn vị quản lý đang xem xét nội dung. Bạn vẫn có thể sửa và cập nhật bản đang chờ.',
   },
   published: {
     title: 'Tin đăng đang hiển thị',
-    description: 'Khách hàng có thể tìm thấy và đặt tin này trên storefront.',
+    description: 'Khách hàng có thể tìm thấy và đặt lịch từ tin đăng này.',
   },
   archived: {
     title: 'Tin đăng đang được ẩn',
     description: 'Tin không còn hiển thị với khách hàng. Bạn có thể chỉnh sửa trước khi đăng lại.',
   },
+};
+
+const STATUS_SURFACE: Record<PublishStatus, string> = {
+  draft: 'border-border bg-muted/20 [&>svg]:text-muted-foreground',
+  pending_review: 'border-warning/35 bg-warning/5 [&>svg]:text-warning',
+  published: 'border-success/30 bg-success/5 [&>svg]:text-success',
+  archived: 'border-destructive/25 bg-destructive/5 [&>svg]:text-destructive',
 };
 
 export function ListingLifecycleCard({
@@ -45,23 +64,98 @@ export function ListingLifecycleCard({
   const pendingIntent = String(fetcher.formData?.get('intent') ?? '');
   const adminLocked = listing.status === 'archived' && listing.hiddenBy === 'admin';
   const copy = STATUS_COPY[listing.status];
+  const StatusIcon = adminLocked
+    ? Lock
+    : listing.status === 'draft'
+      ? FileClock
+      : listing.status === 'published'
+        ? CheckCircle2
+        : listing.status === 'archived'
+          ? EyeOff
+          : Info;
+  const actionHelp =
+    listing.status === 'draft' && !canWrite
+      ? 'Bạn không có quyền gửi duyệt tin này.'
+      : listing.status === 'draft' && !ready
+        ? 'Hoàn tất các mục còn thiếu để mở thao tác gửi duyệt.'
+        : adminLocked
+          ? 'Chỉ quản trị viên mới có thể bỏ ẩn tin đăng này.'
+          : !canPublish && ['published', 'archived'].includes(listing.status)
+            ? 'Bạn không có quyền thay đổi trạng thái hiển thị của tin này.'
+            : null;
+  const hasLifecycleAction =
+    (listing.status === 'draft' && canWrite) ||
+    (listing.status === 'published' && canPublish) ||
+    (listing.status === 'archived' && canPublish && !adminLocked);
   const submit = (intent: 'submit' | 'hide' | 'republish'): void => {
     run(() => fetcher.submit({ intent }, { method: 'post' }));
   };
 
   return (
-    <Alert className="rounded-2xl bg-card">
-      {adminLocked ? <Lock /> : <Info />}
-      <AlertTitle>{adminLocked ? 'Tin đăng bị quản trị viên ẩn' : copy.title}</AlertTitle>
-      <AlertDescription className="space-y-4">
-        <p>
-          {adminLocked
-            ? 'Bạn vẫn có thể chỉnh sửa nội dung, nhưng chỉ quản trị viên mới có thể bỏ ẩn tin đăng.'
-            : copy.description}
-        </p>
+    <Alert
+      className={cn(
+        'rounded-2xl px-5 py-4 shadow-none',
+        adminLocked ? 'border-destructive/35 bg-destructive/10' : STATUS_SURFACE[listing.status],
+      )}
+    >
+      <StatusIcon aria-hidden />
+      <AlertTitle className="line-clamp-none font-semibold">
+        {adminLocked ? 'Tin đăng bị quản trị viên ẩn' : copy.title}
+      </AlertTitle>
+      <AlertDescription className="w-full gap-4">
+        <div className="flex w-full flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <p className="max-w-3xl">
+            {adminLocked
+              ? 'Bạn vẫn có thể chỉnh sửa nội dung, nhưng chỉ quản trị viên mới có thể bỏ ẩn tin đăng.'
+              : copy.description}
+          </p>
+
+          {hasLifecycleAction || actionHelp ? (
+            <div
+              className="flex shrink-0 flex-col items-start gap-2 md:items-end"
+              aria-busy={busy}
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {listing.status === 'draft' && canWrite ? (
+                <Button disabled={!ready || busy} onClick={() => submit('submit')}>
+                  {busy && pendingIntent === 'submit' ? (
+                    <LoaderCircle className="animate-spin" aria-hidden />
+                  ) : (
+                    <Send aria-hidden />
+                  )}
+                  {busy && pendingIntent === 'submit' ? 'Đang gửi duyệt…' : 'Gửi duyệt'}
+                </Button>
+              ) : null}
+              {listing.status === 'published' && canPublish ? (
+                <Button variant="outline" disabled={busy} onClick={() => submit('hide')}>
+                  {busy && pendingIntent === 'hide' ? (
+                    <LoaderCircle className="animate-spin" aria-hidden />
+                  ) : (
+                    <EyeOff aria-hidden />
+                  )}
+                  {busy && pendingIntent === 'hide' ? 'Đang ẩn…' : 'Ẩn tin đăng'}
+                </Button>
+              ) : null}
+              {listing.status === 'archived' && canPublish && !adminLocked ? (
+                <Button variant="outline" disabled={busy} onClick={() => submit('republish')}>
+                  {busy && pendingIntent === 'republish' ? (
+                    <LoaderCircle className="animate-spin" aria-hidden />
+                  ) : (
+                    <RotateCcw aria-hidden />
+                  )}
+                  {busy && pendingIntent === 'republish' ? 'Đang đăng lại…' : 'Đăng lại'}
+                </Button>
+              ) : null}
+              {actionHelp ? (
+                <p className="max-w-xs text-xs text-muted-foreground md:text-right">{actionHelp}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
 
         {listing.status === 'draft' ? (
-          <div className="grid gap-2 sm:grid-cols-2" aria-label="Kiểm tra trước khi gửi duyệt">
+          <div className="flex flex-wrap gap-2" aria-label="Kiểm tra trước khi gửi duyệt">
             {checklist.map((item) => {
               const Icon = item.passed ? Check : Circle;
               return (
@@ -85,61 +179,11 @@ export function ListingLifecycleCard({
           </div>
         ) : null}
 
-        <div
-          className="flex flex-wrap items-center gap-2"
-          aria-busy={busy}
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {listing.status === 'draft' && canWrite ? (
-            <Button disabled={!ready || busy} onClick={() => submit('submit')}>
-              {busy && pendingIntent === 'submit' ? (
-                <LoaderCircle className="animate-spin" aria-hidden />
-              ) : (
-                <Send aria-hidden />
-              )}
-              {busy && pendingIntent === 'submit' ? 'Đang gửi duyệt…' : 'Gửi duyệt'}
-            </Button>
-          ) : null}
-          {listing.status === 'published' && canPublish ? (
-            <Button variant="outline" disabled={busy} onClick={() => submit('hide')}>
-              {busy && pendingIntent === 'hide' ? (
-                <LoaderCircle className="animate-spin" aria-hidden />
-              ) : (
-                <EyeOff aria-hidden />
-              )}
-              {busy && pendingIntent === 'hide' ? 'Đang ẩn…' : 'Ẩn tin đăng'}
-            </Button>
-          ) : null}
-          {listing.status === 'archived' && canPublish && !adminLocked ? (
-            <Button variant="outline" disabled={busy} onClick={() => submit('republish')}>
-              {busy && pendingIntent === 'republish' ? (
-                <LoaderCircle className="animate-spin" aria-hidden />
-              ) : (
-                <RotateCcw aria-hidden />
-              )}
-              {busy && pendingIntent === 'republish' ? 'Đang đăng lại…' : 'Đăng lại'}
-            </Button>
-          ) : null}
-          {listing.status === 'draft' && !ready ? (
-            <p className="text-xs text-muted-foreground">
-              Hoàn tất các mục còn thiếu để mở thao tác gửi duyệt.
-            </p>
-          ) : null}
-          {!canWrite && listing.status === 'draft' ? (
-            <p className="text-xs text-muted-foreground">Bạn không có quyền gửi duyệt tin này.</p>
-          ) : null}
-          {!canPublish && ['published', 'archived'].includes(listing.status) ? (
-            <p className="text-xs text-muted-foreground">
-              Bạn không có quyền thay đổi trạng thái hiển thị của tin này.
-            </p>
-          ) : null}
-          {fetcher.data?.error ? (
-            <p className="basis-full text-sm text-destructive" role="alert">
-              {fetcher.data.error}
-            </p>
-          ) : null}
-        </div>
+        {fetcher.data?.error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {fetcher.data.error}
+          </p>
+        ) : null}
       </AlertDescription>
     </Alert>
   );

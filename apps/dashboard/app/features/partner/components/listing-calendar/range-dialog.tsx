@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
-import { CalendarRange, Tag } from 'lucide-react';
+import { CalendarRange, CalendarX2, Clock3, LoaderCircle, Tag } from 'lucide-react';
 import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -12,12 +12,14 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
+import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
+import { Tabs, TabsContent } from '@booking/ui/components/ui/tabs';
 import { cn } from '@booking/ui/lib/utils';
 import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
 import { formatDayShort, type CalendarMode } from '~/features/partner/lib/listing-calendar';
 import { BookingWarning } from './booking-warning';
+import { CalendarDialogTabs } from './calendar-dialog-tabs';
 import { WindowListField } from './window-list-field';
 import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
 
@@ -38,6 +40,21 @@ const SKIP_REASON_LABEL: Record<string, string> = {
   outside_open_hours: 'ngoài giờ mở cửa',
   overlap: 'trùng khung giá đã có',
 };
+
+const RANGE_AVAILABILITY_OPTIONS = [
+  {
+    value: 'closed',
+    label: 'Đóng cả ngày',
+    description: 'Không nhận lượt đặt mới trong toàn bộ dải ngày.',
+    icon: CalendarX2,
+  },
+  {
+    value: 'custom_hours',
+    label: 'Mở theo giờ riêng',
+    description: 'Áp cùng các khung giờ mở cửa cho mọi ngày trong dải.',
+    icon: Clock3,
+  },
+] as const;
 
 /** Summarise a partial apply so the partner knows exactly what did not land. */
 function summaryText(summary: NonNullable<SubmitResult['summary']>, total: number): string {
@@ -70,15 +87,27 @@ export function RangeDialog({
   const [setting, setSetting] = useState('closed');
   const [acknowledged, setAcknowledged] = useState(false);
   const [windowsValid, setWindowsValid] = useState(true);
+  const lastSelection = useRef({ range, dates, bookings });
+
+  const displayedRange = range ?? lastSelection.current.range;
+  const displayedDates = range ? dates : lastSelection.current.dates;
+  const displayedBookings = range ? bookings : lastSelection.current.bookings;
 
   useEffect(() => {
+    if (range) lastSelection.current = { range, dates, bookings };
+  }, [bookings, dates, range]);
+
+  useEffect(() => {
+    if (!range) return;
     setNotice(null);
     setSetting('closed');
     setAcknowledged(false);
     setWindowsValid(true);
-  }, [range?.from, range?.to]);
+  }, [range]);
 
-  useSubmitSuccess(availabilityFetcher, () => onSaved(`Đã lưu lịch mở cửa cho ${dates.length} ngày.`));
+  useSubmitSuccess(availabilityFetcher, () =>
+    onSaved(`Đã lưu lịch mở cửa cho ${dates.length} ngày.`),
+  );
   useSubmitSuccess(priceFetcher, (result) => {
     // A range apply is routinely partial, so its own outcome stays in the
     // dialog where the partner can read which dates were skipped and why.
@@ -86,47 +115,55 @@ export function RangeDialog({
     else onSaved('Đã lưu giá.');
   });
 
-  const needsAck = setting === 'closed' && bookings.length > 0;
+  const needsAck = setting === 'closed' && displayedBookings.length > 0;
 
   return (
     <Dialog open={range !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarRange className="size-5 text-primary" aria-hidden />
-            {dates.length} ngày
+            Chỉnh {displayedDates.length} ngày
           </DialogTitle>
           <DialogDescription>
-            {range ? `${formatDayShort(range.from)} – ${formatDayShort(range.to)}` : ''} · Giá mặc
-            định {basePrice ? <Money value={basePrice} /> : 'chưa có'}/
-            {mode === 'hourly' ? 'giờ' : 'ngày'}
+            Thiết lập được áp lần lượt cho từng ngày đủ điều kiện trong dải đã chọn.
           </DialogDescription>
         </DialogHeader>
 
+        <div className="grid grid-cols-2 gap-2 rounded-xl border bg-muted/25 p-3 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground">Dải ngày</p>
+            <p className="mt-0.5 font-medium tabular-nums">
+              {displayedRange
+                ? `${formatDayShort(displayedRange.from)} – ${formatDayShort(displayedRange.to)}`
+                : '—'}
+            </p>
+          </div>
+          <div className="border-l pl-3">
+            <p className="text-xs text-muted-foreground">Giá cơ bản</p>
+            <p className="mt-0.5 font-medium tabular-nums">
+              {basePrice ? <Money value={basePrice} /> : 'Chưa thiết lập'}
+              {basePrice ? `/${mode === 'hourly' ? 'giờ' : 'ngày'}` : null}
+            </p>
+          </div>
+        </div>
+
         <SuccessBanner message={notice} />
 
-        {range && (canAvailability || canPricing) ? (
+        {displayedRange && (canAvailability || canPricing) ? (
           <Tabs defaultValue={canAvailability ? 'availability' : 'price'} className="pt-2">
-            <TabsList
-              className={cn(
-                'grid w-full',
-                canAvailability && canPricing ? 'grid-cols-2' : 'grid-cols-1',
-              )}
-            >
-              {canAvailability ? <TabsTrigger value="availability">Lịch mở cửa</TabsTrigger> : null}
-              {canPricing ? <TabsTrigger value="price">Giá</TabsTrigger> : null}
-            </TabsList>
+            <CalendarDialogTabs canAvailability={canAvailability} canPricing={canPricing} />
 
             {canAvailability ? (
               <TabsContent value="availability" className="mt-4">
                 <availabilityFetcher.Form
-                  key={`range-availability:${range.from}:${range.to}`}
+                  key={`range-availability:${displayedRange.from}:${displayedRange.to}`}
                   method="post"
                   className="space-y-4"
                 >
                   <input type="hidden" name="intent" value="save_availability_range" />
-                  <input type="hidden" name="from" value={range.from} />
-                  <input type="hidden" name="to" value={range.to} />
+                  <input type="hidden" name="from" value={displayedRange.from} />
+                  <input type="hidden" name="to" value={displayedRange.to} />
                   <div>
                     <h3 className="text-sm font-semibold">Áp cho cả dải</h3>
                     <p className="text-xs text-muted-foreground">
@@ -135,22 +172,53 @@ export function RangeDialog({
                     </p>
                   </div>
                   <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="range-availability-setting">Trạng thái</Label>
-                      <select
-                        id="range-availability-setting"
-                        name="availabilitySetting"
+                    <input type="hidden" name="availabilitySetting" value={setting} />
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Trạng thái</legend>
+                      <RadioGroup
                         value={setting}
-                        onChange={(event) => setSetting(event.target.value)}
-                        className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+                        onValueChange={setSetting}
+                        className="gap-2"
+                        aria-label="Trạng thái áp dụng cho dải ngày"
                       >
-                        <option value="closed">Đóng cả ngày</option>
-                        <option value="custom_hours">Mở theo giờ riêng</option>
-                      </select>
-                    </div>
+                        {RANGE_AVAILABILITY_OPTIONS.map((option) => {
+                          const Icon = option.icon;
+                          const active = setting === option.value;
+                          return (
+                            <Label
+                              key={option.value}
+                              htmlFor={`range-availability-${option.value}`}
+                              className={cn(
+                                'flex min-h-16 cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors hover:bg-muted/40',
+                                active && 'border-primary/50 bg-primary/5',
+                              )}
+                            >
+                              <RadioGroupItem
+                                id={`range-availability-${option.value}`}
+                                value={option.value}
+                                className="mt-0.5"
+                              />
+                              <Icon
+                                className={cn(
+                                  'mt-0.5 size-4 shrink-0 text-muted-foreground',
+                                  active && 'text-primary',
+                                )}
+                                aria-hidden
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-sm font-medium">{option.label}</span>
+                                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                                  {option.description}
+                                </span>
+                              </span>
+                            </Label>
+                          );
+                        })}
+                      </RadioGroup>
+                    </fieldset>
                     {setting === 'custom_hours' ? (
                       <WindowListField
-                        key={`range-windows:${range.from}:${range.to}`}
+                        key={`range-windows:${displayedRange.from}:${displayedRange.to}`}
                         idPrefix="range"
                         initial={[]}
                         onValidityChange={setWindowsValid}
@@ -160,30 +228,44 @@ export function RangeDialog({
 
                   {needsAck ? (
                     <BookingWarning
-                      bookings={bookings}
+                      bookings={displayedBookings}
                       acknowledged={acknowledged}
                       onAcknowledgedChange={setAcknowledged}
                     />
                   ) : null}
 
                   {availabilityFetcher.data?.error ? (
-                    <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <p
+                      className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                      role="alert"
+                    >
                       {availabilityFetcher.data.error}
                     </p>
                   ) : null}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={
-                      availabilityFetcher.state !== 'idle' ||
-                      (needsAck && !acknowledged) ||
-                      (setting === 'custom_hours' && !windowsValid)
-                    }
-                  >
-                    {availabilityFetcher.state === 'idle'
-                      ? `Áp cho ${dates.length} ngày`
-                      : 'Đang lưu...'}
-                  </Button>
+                  <div className="sticky bottom-0 z-10 -mx-1 bg-background/95 px-1 pt-2 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        availabilityFetcher.state !== 'idle' ||
+                        (needsAck && !acknowledged) ||
+                        (setting === 'custom_hours' && !windowsValid)
+                      }
+                    >
+                      {availabilityFetcher.state === 'idle' ? (
+                        `Áp cho ${displayedDates.length} ngày`
+                      ) : (
+                        <>
+                          <LoaderCircle className="size-4 animate-spin" aria-hidden /> Đang lưu…
+                        </>
+                      )}
+                    </Button>
+                    <span className="sr-only" aria-live="polite">
+                      {availabilityFetcher.state === 'idle'
+                        ? ''
+                        : `Đang lưu lịch cho ${displayedDates.length} ngày`}
+                    </span>
+                  </div>
                 </availabilityFetcher.Form>
               </TabsContent>
             ) : null}
@@ -191,17 +273,17 @@ export function RangeDialog({
             {canPricing ? (
               <TabsContent value="price" className="mt-4">
                 <priceFetcher.Form
-                  key={`range-price:${range.from}:${range.to}:${mode}`}
+                  key={`range-price:${displayedRange.from}:${displayedRange.to}:${mode}`}
                   method="post"
                   className="space-y-4"
                 >
                   <input type="hidden" name="intent" value="save_price_range" />
-                  <input type="hidden" name="from" value={range.from} />
-                  <input type="hidden" name="to" value={range.to} />
+                  <input type="hidden" name="from" value={displayedRange.from} />
+                  <input type="hidden" name="to" value={displayedRange.to} />
                   <input type="hidden" name="mode" value={mode} />
                   <div>
                     <h3 className="flex items-center gap-2 text-sm font-semibold">
-                      <Tag className="size-4" /> Giá cho cả dải
+                      <Tag className="size-4 text-primary" aria-hidden /> Giá riêng cho cả dải
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {mode === 'hourly'
@@ -235,7 +317,7 @@ export function RangeDialog({
                       </div>
                     ) : null}
                     <div className="space-y-2">
-                      <Label htmlFor="range-regular-price">Giá thường (VND)</Label>
+                      <Label htmlFor="range-regular-price">Giá áp dụng (VND)</Label>
                       <Input
                         id="range-regular-price"
                         name="price"
@@ -245,7 +327,7 @@ export function RangeDialog({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="range-sale-price">Giá sale (VND)</Label>
+                      <Label htmlFor="range-sale-price">Giá ưu đãi (VND)</Label>
                       <Input
                         id="range-sale-price"
                         name="salePrice"
@@ -255,19 +337,33 @@ export function RangeDialog({
                     </div>
                   </div>
                   {priceFetcher.data?.error ? (
-                    <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <p
+                      className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                      role="alert"
+                    >
                       {priceFetcher.data.error}
                     </p>
                   ) : null}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={priceFetcher.state !== 'idle'}
-                  >
-                    {priceFetcher.state === 'idle'
-                      ? `Áp giá cho ${dates.length} ngày`
-                      : 'Đang lưu...'}
-                  </Button>
+                  <div className="sticky bottom-0 z-10 -mx-1 bg-background/95 px-1 pt-2 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={priceFetcher.state !== 'idle'}
+                    >
+                      {priceFetcher.state === 'idle' ? (
+                        `Áp giá cho ${displayedDates.length} ngày`
+                      ) : (
+                        <>
+                          <LoaderCircle className="size-4 animate-spin" aria-hidden /> Đang lưu…
+                        </>
+                      )}
+                    </Button>
+                    <span className="sr-only" aria-live="polite">
+                      {priceFetcher.state === 'idle'
+                        ? ''
+                        : `Đang áp giá cho ${displayedDates.length} ngày`}
+                    </span>
+                  </div>
                 </priceFetcher.Form>
               </TabsContent>
             ) : null}

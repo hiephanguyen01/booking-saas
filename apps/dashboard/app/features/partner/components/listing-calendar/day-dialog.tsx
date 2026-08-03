@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
-import { Plus, Tag, Trash2 } from 'lucide-react';
-import type { AvailabilityExceptionResponse, PartnerCalendarBookingResponse, PricingRuleResponse } from '@booking/contracts';
+import { CalendarDays, Clock3, LoaderCircle, Plus, RotateCcw, Tag, Trash2 } from 'lucide-react';
+import type {
+  AvailabilityExceptionResponse,
+  PartnerCalendarBookingResponse,
+  PricingRuleResponse,
+} from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -13,12 +17,15 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
+import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
+import { Tabs, TabsContent } from '@booking/ui/components/ui/tabs';
 import { cn } from '@booking/ui/lib/utils';
 import { SuccessBanner } from '~/components/action-feedback';
+import { ConfirmButton } from '~/components/confirm-button';
 import { Money } from '~/components/money';
 import { formatDayLong, type CalendarMode } from '~/features/partner/lib/listing-calendar';
 import { BookingWarning } from './booking-warning';
+import { CalendarDialogTabs } from './calendar-dialog-tabs';
 import { WindowListField } from './window-list-field';
 import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
 
@@ -36,6 +43,27 @@ interface Props {
   onClose: () => void;
   onSaved: (message: string, closeDialog: boolean) => void;
 }
+
+const AVAILABILITY_OPTIONS = [
+  {
+    value: 'default',
+    label: 'Dùng lịch tuần',
+    description: 'Bỏ thiết lập riêng và dùng giờ mở cửa của thứ tương ứng.',
+    icon: RotateCcw,
+  },
+  {
+    value: 'custom_hours',
+    label: 'Mở theo giờ riêng',
+    description: 'Chỉ ngày này dùng những khung giờ được nhập bên dưới.',
+    icon: Clock3,
+  },
+  {
+    value: 'closed',
+    label: 'Đóng cả ngày',
+    description: 'Không nhận lượt đặt mới trong ngày này.',
+    icon: CalendarDays,
+  },
+] as const;
 
 /** Availability + price for a single date. */
 export function DayDialog({
@@ -59,17 +87,39 @@ export function DayDialog({
   const [setting, setSetting] = useState<string>(exception?.type ?? 'default');
   const [acknowledged, setAcknowledged] = useState(false);
   const [windowsValid, setWindowsValid] = useState(true);
+  const lastSelection = useRef({
+    date,
+    weekdayOpen,
+    openWindows,
+    exception,
+    rules,
+    bookings,
+  });
+
+  const displayedDate = date ?? lastSelection.current.date;
+  const displayedWeekdayOpen = date ? weekdayOpen : lastSelection.current.weekdayOpen;
+  const displayedOpenWindows = date ? openWindows : lastSelection.current.openWindows;
+  const displayedException = date ? exception : lastSelection.current.exception;
+  const displayedRules = date ? rules : lastSelection.current.rules;
+  const displayedBookings = date ? bookings : lastSelection.current.bookings;
+
+  useEffect(() => {
+    if (date) {
+      lastSelection.current = { date, weekdayOpen, openWindows, exception, rules, bookings };
+    }
+  }, [bookings, date, exception, openWindows, rules, weekdayOpen]);
 
   // A new date is a new decision: never carry the previous day's confirmation
   // or its "closed" choice into it.
   useEffect(() => {
+    if (!date) return;
     setNotice(null);
     setSetting(exception?.type ?? 'default');
     setAcknowledged(false);
     setWindowsValid(true);
   }, [date, exception?.type]);
 
-  const exceptionWindows = (exception?.windows ?? []).map((window) => ({
+  const exceptionWindows = (displayedException?.windows ?? []).map((window) => ({
     open: window.openTime,
     close: window.closeTime,
   }));
@@ -83,85 +133,121 @@ export function DayDialog({
   });
   useSubmitSuccess(deletePriceFetcher, () => setNotice('Đã xoá khung giá.'));
 
-  const firstRule = rules[0];
+  const firstRule = displayedRules[0];
   // Only a closure needs the acknowledgement — narrowing to custom hours or
   // just repricing does not take the day off the market.
-  const needsAck = setting === 'closed' && bookings.length > 0;
+  const needsAck = setting === 'closed' && displayedBookings.length > 0;
 
   return (
     <Dialog open={date !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{date ? formatDayLong(date) : ''}</DialogTitle>
+          <DialogTitle className="text-xl">
+            {displayedDate ? formatDayLong(displayedDate) : ''}
+          </DialogTitle>
           <DialogDescription>
-            Theo lịch tuần: {weekdayOpen ? 'mở cửa' : 'đóng cửa'} · Giá mặc định{' '}
-            {basePrice ? <Money value={basePrice} /> : 'chưa có'}/
-            {mode === 'hourly' ? 'giờ' : 'ngày'}
+            Thiết lập riêng cho ngày này luôn được ưu tiên hơn lịch tuần và giá cơ bản.
           </DialogDescription>
         </DialogHeader>
 
+        <div className="grid grid-cols-2 gap-2 rounded-xl border bg-muted/25 p-3 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground">Theo lịch tuần</p>
+            <p className="mt-0.5 font-medium">{displayedWeekdayOpen ? 'Mở cửa' : 'Đóng cửa'}</p>
+          </div>
+          <div className="border-l pl-3">
+            <p className="text-xs text-muted-foreground">Giá cơ bản</p>
+            <p className="mt-0.5 font-medium tabular-nums">
+              {basePrice ? <Money value={basePrice} /> : 'Chưa thiết lập'}
+              {basePrice ? `/${mode === 'hourly' ? 'giờ' : 'ngày'}` : null}
+            </p>
+          </div>
+        </div>
+
         <SuccessBanner message={notice} />
 
-        {date && (canAvailability || canPricing) ? (
+        {displayedDate && (canAvailability || canPricing) ? (
           <Tabs defaultValue={canAvailability ? 'availability' : 'price'} className="pt-2">
-            <TabsList
-              className={cn(
-                'grid w-full',
-                canAvailability && canPricing ? 'grid-cols-2' : 'grid-cols-1',
-              )}
-            >
-              {canAvailability ? <TabsTrigger value="availability">Lịch mở cửa</TabsTrigger> : null}
-              {canPricing ? <TabsTrigger value="price">Giá</TabsTrigger> : null}
-            </TabsList>
+            <CalendarDialogTabs canAvailability={canAvailability} canPricing={canPricing} />
 
             {canAvailability ? (
               <TabsContent value="availability" className="mt-4">
                 <availabilityFetcher.Form
-                  key={`availability:${date}`}
+                  key={`availability:${displayedDate}`}
                   method="post"
                   className="space-y-4"
                 >
                   <input type="hidden" name="intent" value="save_availability" />
-                  <input type="hidden" name="date" value={date} />
-                  <input type="hidden" name="exceptionId" value={exception?.id ?? ''} />
+                  <input type="hidden" name="date" value={displayedDate} />
+                  <input type="hidden" name="exceptionId" value={displayedException?.id ?? ''} />
                   <div>
                     <h3 className="text-sm font-semibold">Mở cửa / đóng cửa</h3>
                     <p className="text-xs text-muted-foreground">
-                      Chọn lịch tuần để bỏ thiết lập riêng của ngày này.
+                      Chọn cách ngày này kế thừa hoặc ghi đè lịch tuần.
                     </p>
                     {mode === 'hourly' ? (
                       <p
                         className={cn(
                           'mt-1 text-xs',
-                          openWindows.length
+                          displayedOpenWindows.length
                             ? 'text-muted-foreground'
                             : 'font-medium text-destructive',
                         )}
                       >
-                        {openWindows.length
-                          ? `Khung hợp lệ: ${openWindows.map((w) => `${w.from}–${w.to}`).join(', ')}`
+                        {displayedOpenWindows.length
+                          ? `Khung hợp lệ: ${displayedOpenWindows.map((w) => `${w.from}–${w.to}`).join(', ')}`
                           : 'Ngày này đang đóng cửa, không thể thêm khung giá.'}
                       </p>
                     ) : null}
                   </div>
                   <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="availability-setting">Trạng thái</Label>
-                      <select
-                        id="availability-setting"
-                        name="availabilitySetting"
+                    <input type="hidden" name="availabilitySetting" value={setting} />
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium">Trạng thái</legend>
+                      <RadioGroup
                         value={setting}
-                        onChange={(event) => setSetting(event.target.value)}
-                        className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+                        onValueChange={setSetting}
+                        className="gap-2"
+                        aria-label="Trạng thái mở cửa của ngày"
                       >
-                        <option value="default">Dùng lịch tuần</option>
-                        <option value="custom_hours">Mở theo giờ riêng</option>
-                        <option value="closed">Đóng cả ngày</option>
-                      </select>
-                    </div>
+                        {AVAILABILITY_OPTIONS.map((option) => {
+                          const Icon = option.icon;
+                          const active = setting === option.value;
+                          return (
+                            <Label
+                              key={option.value}
+                              htmlFor={`availability-${option.value}`}
+                              className={cn(
+                                'flex min-h-16 cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors hover:bg-muted/40',
+                                active && 'border-primary/50 bg-primary/5',
+                              )}
+                            >
+                              <RadioGroupItem
+                                id={`availability-${option.value}`}
+                                value={option.value}
+                                className="mt-0.5"
+                              />
+                              <Icon
+                                className={cn(
+                                  'mt-0.5 size-4 shrink-0 text-muted-foreground',
+                                  active && 'text-primary',
+                                )}
+                                aria-hidden
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-sm font-medium">{option.label}</span>
+                                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                                  {option.description}
+                                </span>
+                              </span>
+                            </Label>
+                          );
+                        })}
+                      </RadioGroup>
+                    </fieldset>
                     {setting === 'custom_hours' ? (
                       <WindowListField
-                        key={`windows:${date}`}
+                        key={`windows:${displayedDate}`}
                         idPrefix="day"
                         initial={exceptionWindows}
                         onValidityChange={setWindowsValid}
@@ -171,75 +257,119 @@ export function DayDialog({
 
                   {needsAck ? (
                     <BookingWarning
-                      bookings={bookings}
+                      bookings={displayedBookings}
                       acknowledged={acknowledged}
                       onAcknowledgedChange={setAcknowledged}
                     />
                   ) : null}
 
                   {availabilityFetcher.data?.error ? (
-                    <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <p
+                      className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                      role="alert"
+                    >
                       {availabilityFetcher.data.error}
                     </p>
                   ) : null}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={
-                      availabilityFetcher.state !== 'idle' ||
-                      (needsAck && !acknowledged) ||
-                      (setting === 'custom_hours' && !windowsValid)
-                    }
-                  >
-                    {availabilityFetcher.state === 'idle' ? 'Lưu lịch mở cửa' : 'Đang lưu...'}
-                  </Button>
+                  <div className="sticky bottom-0 z-10 -mx-1 bg-background/95 px-1 pt-2 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        availabilityFetcher.state !== 'idle' ||
+                        (needsAck && !acknowledged) ||
+                        (setting === 'custom_hours' && !windowsValid)
+                      }
+                    >
+                      {availabilityFetcher.state === 'idle' ? (
+                        'Lưu lịch mở cửa'
+                      ) : (
+                        <>
+                          <LoaderCircle className="size-4 animate-spin" aria-hidden /> Đang lưu…
+                        </>
+                      )}
+                    </Button>
+                    <span className="sr-only" aria-live="polite">
+                      {availabilityFetcher.state === 'idle' ? '' : 'Đang lưu lịch mở cửa'}
+                    </span>
+                  </div>
                 </availabilityFetcher.Form>
               </TabsContent>
             ) : null}
 
             {canPricing ? (
               <TabsContent value="price" className="mt-4">
-                {mode === 'hourly' && rules.length > 0 ? (
-                  <div className="mb-4 space-y-2">
+                {mode === 'hourly' && displayedRules.length > 0 ? (
+                  <div className="mb-5 space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">Các khung giá đã lưu</p>
-                      <Badge variant="secondary">{rules.length} khung</Badge>
+                      <div>
+                        <p className="text-sm font-medium">Các khung giá đã lưu</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Giá riêng chỉ áp dụng trong đúng khung giờ bên dưới.
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{displayedRules.length} khung</Badge>
                     </div>
                     <div className="space-y-2">
-                      {rules.map((rule) => (
+                      {displayedRules.map((rule) => (
                         <div
                           key={rule.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2.5"
+                          className="flex items-center justify-between gap-3 rounded-xl border bg-muted/20 px-3 py-3"
                         >
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">
-                              {String(rule.params.from)}–{String(rule.params.to)}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2 text-xs">
-                              <span className={cn(rule.salePrice && 'font-medium text-emerald-700')}>
-                                <Money value={rule.salePrice ?? rule.price} />/giờ
-                              </span>
-                              {rule.salePrice ? (
-                                <span className="text-muted-foreground line-through">
-                                  <Money value={rule.price} />
+                          <div className="flex min-w-0 items-start gap-3">
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                              <Clock3 className="size-4" aria-hidden />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">
+                                {String(rule.params.from)}–{String(rule.params.to)}
+                              </p>
+                              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs">
+                                <span
+                                  className={cn(
+                                    rule.salePrice &&
+                                      'font-medium text-emerald-700 dark:text-emerald-300',
+                                  )}
+                                >
+                                  <Money value={rule.salePrice ?? rule.price} />
+                                  /giờ
                                 </span>
-                              ) : null}
+                                {rule.salePrice ? (
+                                  <span className="text-muted-foreground line-through">
+                                    <Money value={rule.price} />
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
-                          <deletePriceFetcher.Form method="post">
-                            <input type="hidden" name="intent" value="delete_price" />
-                            <input type="hidden" name="date" value={date} />
-                            <input type="hidden" name="ruleId" value={rule.id} />
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`Xoá khung giá ${String(rule.params.from)} đến ${String(rule.params.to)}`}
-                              disabled={deletePriceFetcher.state !== 'idle'}
-                            >
-                              <Trash2 className="size-4 text-destructive" />
-                            </Button>
-                          </deletePriceFetcher.Form>
+                          <ConfirmButton
+                            trigger={
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Xoá khung giá ${String(rule.params.from)} đến ${String(rule.params.to)}`}
+                                disabled={deletePriceFetcher.state !== 'idle'}
+                              >
+                                {deletePriceFetcher.state === 'idle' ? (
+                                  <Trash2 className="size-4 text-destructive" aria-hidden />
+                                ) : (
+                                  <LoaderCircle className="size-4 animate-spin" aria-hidden />
+                                )}
+                              </Button>
+                            }
+                            title="Xoá khung giá?"
+                            description={`Khung ${String(rule.params.from)}–${String(rule.params.to)} sẽ quay lại dùng giá cơ bản hoặc quy tắc giá lặp lại đang có.`}
+                            confirmLabel="Xoá khung giá"
+                            destructive
+                            busy={deletePriceFetcher.state !== 'idle'}
+                            onConfirm={() =>
+                              deletePriceFetcher.submit(
+                                { intent: 'delete_price', date: displayedDate, ruleId: rule.id },
+                                { method: 'post' },
+                              )
+                            }
+                          />
                         </div>
                       ))}
                     </div>
@@ -247,16 +377,16 @@ export function DayDialog({
                 ) : null}
 
                 <priceFetcher.Form
-                  key={`price:${date}:${mode}:${rules.map((rule) => rule.id).join(',')}`}
+                  key={`price:${displayedDate}:${mode}:${displayedRules.map((rule) => rule.id).join(',')}`}
                   method="post"
                   className="space-y-4"
                 >
                   <input type="hidden" name="intent" value="save_price" />
-                  <input type="hidden" name="date" value={date} />
+                  <input type="hidden" name="date" value={displayedDate} />
                   <input type="hidden" name="mode" value={mode} />
                   <div>
                     <h3 className="flex items-center gap-2 text-sm font-semibold">
-                      <Tag className="size-4" /> Giá
+                      <Tag className="size-4 text-primary" aria-hidden /> Thêm giá riêng
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {mode === 'hourly'
@@ -272,7 +402,7 @@ export function DayDialog({
                     </p>
                   </div>
                   {mode === 'daily'
-                    ? rules.map((rule) => (
+                    ? displayedRules.map((rule) => (
                         <input key={rule.id} type="hidden" name="ruleId" value={rule.id} />
                       ))
                     : null}
@@ -285,7 +415,7 @@ export function DayDialog({
                             id="price-from"
                             name="from"
                             type="time"
-                            defaultValue={openWindows[0]?.from ?? '08:00'}
+                            defaultValue={displayedOpenWindows[0]?.from ?? '08:00'}
                             required
                           />
                         </div>
@@ -295,14 +425,14 @@ export function DayDialog({
                             id="price-to"
                             name="to"
                             type="time"
-                            defaultValue={openWindows[0]?.to ?? '09:00'}
+                            defaultValue={displayedOpenWindows[0]?.to ?? '09:00'}
                             required
                           />
                         </div>
                       </div>
                     ) : null}
                     <div className="space-y-2">
-                      <Label htmlFor="regular-price">Giá thường (VND)</Label>
+                      <Label htmlFor="regular-price">Giá áp dụng (VND)</Label>
                       <Input
                         id="regular-price"
                         name="price"
@@ -313,7 +443,7 @@ export function DayDialog({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="sale-price">Giá sale (VND)</Label>
+                      <Label htmlFor="sale-price">Giá ưu đãi (VND)</Label>
                       <Input
                         id="sale-price"
                         name="salePrice"
@@ -324,35 +454,48 @@ export function DayDialog({
                     </div>
                   </div>
                   {priceFetcher.data?.error ? (
-                    <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <p
+                      className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                      role="alert"
+                    >
                       {priceFetcher.data.error}
                     </p>
                   ) : null}
                   {deletePriceFetcher.data?.error ? (
-                    <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <p
+                      className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                      role="alert"
+                    >
                       {deletePriceFetcher.data.error}
                     </p>
                   ) : null}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={
-                      priceFetcher.state !== 'idle' ||
-                      (mode === 'hourly' && canAvailability && openWindows.length === 0)
-                    }
-                  >
-                    {priceFetcher.state === 'idle' ? (
-                      mode === 'hourly' ? (
-                        <>
-                          <Plus className="size-4" /> Thêm khung giá
-                        </>
+                  <div className="sticky bottom-0 z-10 -mx-1 bg-background/95 px-1 pt-2 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        priceFetcher.state !== 'idle' ||
+                        (mode === 'hourly' && canAvailability && displayedOpenWindows.length === 0)
+                      }
+                    >
+                      {priceFetcher.state === 'idle' ? (
+                        mode === 'hourly' ? (
+                          <>
+                            <Plus className="size-4" aria-hidden /> Thêm khung giá
+                          </>
+                        ) : (
+                          'Lưu giá riêng'
+                        )
                       ) : (
-                        'Lưu giá'
-                      )
-                    ) : (
-                      'Đang lưu...'
-                    )}
-                  </Button>
+                        <>
+                          <LoaderCircle className="size-4 animate-spin" aria-hidden /> Đang lưu…
+                        </>
+                      )}
+                    </Button>
+                    <span className="sr-only" aria-live="polite">
+                      {priceFetcher.state === 'idle' ? '' : 'Đang lưu giá riêng'}
+                    </span>
+                  </div>
                 </priceFetcher.Form>
               </TabsContent>
             ) : null}

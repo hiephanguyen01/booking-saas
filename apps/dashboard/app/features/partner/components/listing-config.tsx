@@ -36,11 +36,13 @@ export function ListingConfig({
   listingTypes,
   listing,
   embedded = false,
+  validateOnChange = false,
 }: {
   form: UseFormReturn<CreateListingInput>;
   listingTypes: ListingTypeResponse[];
   listing?: ListingResponse;
   embedded?: boolean;
+  validateOnChange?: boolean;
 }) {
   const listingTypeId = useWatch({ control: form.control, name: 'listingTypeId' });
   const selectedType = useMemo(
@@ -54,6 +56,7 @@ export function ListingConfig({
     listing,
     listingTypeId,
     selectedType,
+    validateOnChange,
   });
   const { errors } = form.formState;
   const bookingModeErrors = formErrorMessagesAt(errors, ['bookingModes']);
@@ -83,13 +86,19 @@ export function ListingConfig({
       <ConfigSection
         title="Cách khách đặt chỗ"
         description="Chọn một hoặc nhiều hình thức. Phần giá tương ứng sẽ xuất hiện ngay bên dưới."
+        required
       >
         {allowedModes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Chọn loại dịch vụ để xem hình thức khả dụng.
           </p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div
+            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            role="group"
+            aria-label="Hình thức đặt chỗ"
+            aria-required="true"
+          >
             {allowedModes.map((m) => (
               <label
                 key={m}
@@ -473,12 +482,12 @@ function InventoryConfigSection({
       description="Thiết lập đơn vị tính, giá thuê, tồn kho và các khoản bảo đảm."
     >
       <Grid>
-        <Field label="Đơn vị" htmlFor="listing-inventory-unit">
+        <Field label="Đơn vị" htmlFor="listing-inventory-unit" required>
           <Select
             value={value.unit}
             onValueChange={(v) => onChange({ ...value, unit: v as 'hour' | 'day' })}
           >
-            <SelectTrigger id="listing-inventory-unit" className="w-full">
+            <SelectTrigger id="listing-inventory-unit" className="w-full" aria-required="true">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -490,14 +499,16 @@ function InventoryConfigSection({
         <Field
           label="Giá / đơn vị (VND)"
           htmlFor="listing-inventory-base-price"
+          required
           error={fieldError('basePrice') ? [fieldError('basePrice')!] : undefined}
           errorId="listing-inventory-base-price-error"
         >
           <Input
             id="listing-inventory-base-price"
             type="number"
-            min={0}
+            min={1}
             value={value.basePrice}
+            aria-required="true"
             onChange={(e) => onChange({ ...value, basePrice: e.target.value })}
             aria-invalid={Boolean(fieldError('basePrice'))}
             aria-describedby={
@@ -526,6 +537,7 @@ function InventoryConfigSection({
         <Field
           label="Số lượng trong kho"
           htmlFor="listing-inventory-stock"
+          required
           error={stockError}
           errorId="listing-inventory-stock-error"
         >
@@ -534,6 +546,7 @@ function InventoryConfigSection({
             type="number"
             min={1}
             value={stockQuantity}
+            aria-required="true"
             onChange={(e) => onStockQuantityChange(e.target.value)}
             aria-invalid={Boolean(stockError?.length)}
             aria-describedby={stockError?.length ? 'listing-inventory-stock-error' : undefined}
@@ -606,10 +619,12 @@ const ListingConfigLayoutContext = createContext(false);
 function ConfigSection({
   title,
   description,
+  required = false,
   children,
 }: {
   title: string;
   description?: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   const embedded = useContext(ListingConfigLayoutContext);
@@ -625,7 +640,14 @@ function ConfigSection({
   return (
     <div className="rounded-xl border bg-muted/10 p-4 sm:p-5">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+        <h3 className="text-sm font-semibold tracking-tight">
+          {title}
+          {required ? (
+            <span aria-hidden="true" className="ml-1 text-destructive">
+              *
+            </span>
+          ) : null}
+        </h3>
         {description ? (
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
         ) : null}

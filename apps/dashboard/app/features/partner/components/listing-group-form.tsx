@@ -19,8 +19,10 @@ import {
   ListingFormMobileNav,
   ListingFormRail,
   ListingFormSection,
+  ListingStepRequirements,
   ListingWizardActions,
   ListingWizardNav,
+  InvalidateIncompleteWizardSteps,
   useActiveListingFormSection,
 } from './listing-form-layout';
 import {
@@ -105,6 +107,9 @@ export function ListingGroupForm({
   const [completedSteps, setCompletedSteps] = useState<Set<ListingGroupFormSectionId>>(
     () => new Set(),
   );
+  const [attemptedSteps, setAttemptedSteps] = useState<Set<ListingGroupFormSectionId>>(
+    () => new Set(),
+  );
 
   useEffect(() => {
     if (!isCreate) return;
@@ -117,6 +122,8 @@ export function ListingGroupForm({
     if (index < 0) return;
     setWizardIndex(index);
     setFurthestWizardIndex((current) => Math.max(current, index));
+    const section = index === 1 ? LISTING_GROUP_FORM_SECTIONS[1] : LISTING_GROUP_FORM_SECTIONS[0];
+    setAttemptedSteps((previous) => new Set(previous).add(section.id));
     window.requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(`[name="${firstField}"]`)?.focus();
     });
@@ -171,6 +178,8 @@ export function ListingGroupForm({
       warnOnUnsavedChanges
       onInvalid={(errors) => {
         if (!isCreate) return;
+        const invalidSections = getListingGroupFormErrorSections(errors);
+        setAttemptedSteps((previous) => new Set([...previous, ...invalidSections]));
         const section = firstGroupErrorSection(errors);
         const index = LISTING_GROUP_FORM_SECTIONS.findIndex((item) => item.id === section);
         if (index < 0) return;
@@ -180,12 +189,15 @@ export function ListingGroupForm({
       renderFields={(renderedFields, values, form) => {
         const progress = getListingGroupFormProgress(values);
         const errorSections = getListingGroupFormErrorSections(form.formState.errors);
+        const visibleErrorSections = new Set(
+          [...errorSections].filter((section) => attemptedSteps.has(section)),
+        );
         const complete = (id: ListingGroupFormSectionId) =>
           (progress.items.find((item) => item.id === id)?.complete ?? false) &&
           !errorSections.has(id);
         const visualComplete = (id: ListingGroupFormSectionId) =>
           isCreate ? completedSteps.has(id) && complete(id) : complete(id);
-        const hasError = (id: ListingGroupFormSectionId) => errorSections.has(id);
+        const hasError = (id: ListingGroupFormSectionId) => visibleErrorSections.has(id);
 
         const sections = {
           'group-content': (
@@ -199,6 +211,12 @@ export function ListingGroupForm({
               error={hasError('group-content')}
               contentClassName="space-y-7"
             >
+              {isCreate ? (
+                <ListingStepRequirements>
+                  Nhập tên tin đăng. Mô tả, album chung và tiện ích có thể bổ sung sau; tiện ích đã
+                  thêm phải có tên hoặc được xóa.
+                </ListingStepRequirements>
+              ) : null}
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]">
                 <div className="min-w-0 space-y-4">
                   {fieldNode(renderedFields, 'title')}
@@ -227,6 +245,11 @@ export function ListingGroupForm({
               complete={visualComplete('group-location')}
               error={hasError('group-location')}
             >
+              {isCreate ? (
+                <ListingStepRequirements>
+                  Chọn tỉnh/thành phố, phường/xã và nhập địa chỉ cụ thể.
+                </ListingStepRequirements>
+              ) : null}
               <AdministrativeAddressFields form={form} embedded />
             </ListingFormSection>
           ),
@@ -244,14 +267,17 @@ export function ListingGroupForm({
             );
           const goNext = async () => {
             if (!current) return;
+            setAttemptedSteps((previous) => new Set(previous).add(current.id));
             const valid = await form.trigger(GROUP_STEP_FIELDS[current.id], { shouldFocus: true });
             if (!valid) {
               window.requestAnimationFrame(() => {
-                const firstInvalid = document
-                  .getElementById(current.id)
-                  ?.querySelector<HTMLElement>('[aria-invalid="true"]');
-                firstInvalid?.focus();
-                firstInvalid?.scrollIntoView({ block: 'center' });
+                window.requestAnimationFrame(() => {
+                  const firstInvalid = document
+                    .getElementById(current.id)
+                    ?.querySelector<HTMLElement>('[aria-invalid="true"]');
+                  firstInvalid?.focus();
+                  firstInvalid?.scrollIntoView({ block: 'center' });
+                });
               });
               return;
             }
@@ -263,67 +289,76 @@ export function ListingGroupForm({
           };
 
           return (
-            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start">
-              <div className="order-2 min-w-0 space-y-5 xl:order-1">
-                <ListingContextStrip
-                  typeName={listingType.name}
-                  itemContext={`Nhiều ${itemLabel}`}
-                  dirty={form.formState.isDirty}
-                />
-                {current && hasError(current.id) ? (
-                  <div
-                    role="alert"
-                    className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-                  >
-                    <p className="font-medium">Kiểm tra phần này trước khi tiếp tục:</p>
-                    {currentErrorMessages.length > 0 ? (
-                      <ul className="mt-1 list-disc space-y-0.5 pl-5">
-                        {currentErrorMessages.map((message) => (
-                          <li key={message}>{message}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-1">Có trường chưa hợp lệ.</p>
-                    )}
-                  </div>
-                ) : null}
-                {LISTING_GROUP_FORM_SECTIONS.map((section, index) => (
-                  <div
-                    key={section.id}
-                    hidden={index !== wizardIndex}
-                    className="animate-in fade-in-0 slide-in-from-bottom-1 duration-150 motion-reduce:animate-none"
-                  >
-                    {sections[section.id]}
-                  </div>
-                ))}
-                <ListingWizardActions
-                  currentIndex={wizardIndex}
-                  total={LISTING_GROUP_FORM_SECTIONS.length}
-                  busy={isSubmitting}
-                  finalLabel={submitLabel}
-                  onBack={() => {
-                    setWizardIndex((index) => Math.max(0, index - 1));
-                    scrollToWizardTop();
-                  }}
-                  onNext={() => void goNext()}
-                />
-              </div>
-              <div className="order-1 xl:order-2">
-                <ListingWizardNav
-                  items={LISTING_GROUP_FORM_SECTIONS}
-                  currentIndex={wizardIndex}
-                  furthestIndex={furthestWizardIndex}
-                  completed={completedSteps}
-                  canNavigate={(index) => index <= furthestWizardIndex && prerequisitesValid(index)}
-                  onNavigate={(index) => {
-                    if (index <= furthestWizardIndex && prerequisitesValid(index)) {
-                      setWizardIndex(index);
+            <>
+              <InvalidateIncompleteWizardSteps
+                items={progress.items}
+                completed={completedSteps}
+                setCompleted={setCompletedSteps}
+              />
+              <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start">
+                <div className="order-2 min-w-0 space-y-5 xl:order-1">
+                  <ListingContextStrip
+                    typeName={listingType.name}
+                    itemContext={`Nhiều ${itemLabel}`}
+                    dirty={form.formState.isDirty}
+                  />
+                  {current && hasError(current.id) ? (
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                    >
+                      <p className="font-medium">Kiểm tra phần này trước khi tiếp tục:</p>
+                      {currentErrorMessages.length > 0 ? (
+                        <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                          {currentErrorMessages.map((message) => (
+                            <li key={message}>{message}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-1">Có trường chưa hợp lệ.</p>
+                      )}
+                    </div>
+                  ) : null}
+                  {LISTING_GROUP_FORM_SECTIONS.map((section, index) => (
+                    <div
+                      key={section.id}
+                      hidden={index !== wizardIndex}
+                      className="animate-in fade-in-0 slide-in-from-bottom-1 duration-150 motion-reduce:animate-none"
+                    >
+                      {sections[section.id]}
+                    </div>
+                  ))}
+                  <ListingWizardActions
+                    currentIndex={wizardIndex}
+                    total={LISTING_GROUP_FORM_SECTIONS.length}
+                    busy={isSubmitting}
+                    finalLabel={submitLabel}
+                    onBack={() => {
+                      setWizardIndex((index) => Math.max(0, index - 1));
                       scrollToWizardTop();
+                    }}
+                    onNext={() => void goNext()}
+                  />
+                </div>
+                <div className="order-1 xl:order-2">
+                  <ListingWizardNav
+                    items={LISTING_GROUP_FORM_SECTIONS}
+                    currentIndex={wizardIndex}
+                    furthestIndex={furthestWizardIndex}
+                    completed={completedSteps}
+                    canNavigate={(index) =>
+                      index <= furthestWizardIndex && prerequisitesValid(index)
                     }
-                  }}
-                />
+                    onNavigate={(index) => {
+                      if (index <= furthestWizardIndex && prerequisitesValid(index)) {
+                        setWizardIndex(index);
+                        scrollToWizardTop();
+                      }
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            </>
           );
         }
 

@@ -22,8 +22,10 @@ import {
   ListingFormMobileNav,
   ListingFormRail,
   ListingFormSection,
+  ListingStepRequirements,
   ListingWizardActions,
   ListingWizardNav,
+  InvalidateIncompleteWizardSteps,
   useActiveListingFormSection,
 } from './listing-form-layout';
 import {
@@ -131,22 +133,37 @@ export function ListingForm({
   const [completedWizardSteps, setCompletedWizardSteps] = useState<Set<ListingFormSectionId>>(
     () => new Set(),
   );
+  const [attemptedWizardSteps, setAttemptedWizardSteps] = useState<Set<ListingFormSectionId>>(
+    () => new Set(),
+  );
   const [useGroupAddress, setUseGroupAddress] = useState(Boolean(inheritedAddress && !listing));
   const nextAfterCreateRef = useRef<'group' | 'add-another'>('group');
   const listingFormSchema = useMemo(
     () =>
       createListingInputSchema.superRefine((values, context) => {
         const type = listingTypes.find((item) => item.id === values.listingTypeId);
-        if (!type) return;
-        for (const issue of validateListingAttributes(type.attributeSchema, values.attributes)) {
+        if (type) {
+          for (const issue of validateListingAttributes(type.attributeSchema, values.attributes)) {
+            context.addIssue({
+              code: 'custom',
+              path: ['attributes', issue.key],
+              message: issue.message,
+            });
+          }
+        }
+        if (
+          minimumDepositPercent !== null &&
+          minimumDepositPercent !== undefined &&
+          values.depositPercent < minimumDepositPercent
+        ) {
           context.addIssue({
             code: 'custom',
-            path: ['attributes', issue.key],
-            message: issue.message,
+            path: ['depositPercent'],
+            message: `Tỷ lệ đặt cọc phải từ ${minimumDepositPercent}% trở lên`,
           });
         }
       }),
-    [listingTypes],
+    [listingTypes, minimumDepositPercent],
   );
 
   useEffect(() => {
@@ -157,6 +174,9 @@ export function ListingForm({
     if (index < 0) return;
     setWizardIndex(index);
     setFurthestWizardIndex((current) => Math.max(current, index));
+    if (section) {
+      setAttemptedWizardSteps((previous) => new Set(previous).add(section));
+    }
     window.requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(`[name="${firstField}"]`)?.focus();
     });
@@ -189,6 +209,8 @@ export function ListingForm({
       warnOnUnsavedChanges
       onInvalid={(errors) => {
         if (experience !== 'create-wizard') return;
+        const invalidSections = getListingFormErrorSections(errors);
+        setAttemptedWizardSteps((previous) => new Set([...previous, ...invalidSections]));
         const section = firstListingErrorSection(errors);
         const index = LISTING_FORM_SECTIONS.findIndex((item) => item.id === section);
         if (index < 0) return;
@@ -198,8 +220,11 @@ export function ListingForm({
       renderFields={(renderedFields, values, form) => {
         const selectedType =
           listingTypes.find((type) => type.id === values.listingTypeId) ?? listingTypes[0];
-        const progress = getListingFormProgress(values);
+        const progress = getListingFormProgress(values, listingFormSchema);
         const errorSections = getListingFormErrorSections(form.formState.errors);
+        const visibleErrorSections = new Set(
+          [...errorSections].filter((section) => attemptedWizardSteps.has(section)),
+        );
         const complete = (id: ListingFormSectionId) =>
           (progress.items.find((item) => item.id === id)?.complete ?? false) &&
           !errorSections.has(id);
@@ -207,11 +232,16 @@ export function ListingForm({
           experience === 'create-wizard'
             ? completedWizardSteps.has(id) && complete(id)
             : complete(id);
-        const hasError = (id: ListingFormSectionId) => errorSections.has(id);
+        const hasError = (id: ListingFormSectionId) => visibleErrorSections.has(id);
         const inventoryOnly =
           selectedType?.allowedModes.length === 1 && selectedType.allowedModes[0] === 'inventory';
         const capacityNotApplicable =
           inventoryOnly || ['photography', 'makeup', 'model'].includes(selectedType?.slug ?? '');
+        const requiredAttributeLabels =
+          selectedType?.attributeSchema
+            .filter((attribute) => attribute.required)
+            .map((attribute) => attribute.label) ?? [];
+        const itemLabel = selectedType?.itemLabel || 'hạng mục';
 
         const sectionNodes: Record<ListingFormSectionId, ReactNode> = {
           'listing-content': (
@@ -223,14 +253,21 @@ export function ListingForm({
               icon={<FileText aria-hidden />}
               complete={visualComplete('listing-content')}
               error={hasError('listing-content')}
-              contentClassName="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]"
+              contentClassName="space-y-5"
             >
-              <div className="min-w-0 space-y-4">
-                {fieldNode(renderedFields, 'listingTypeId')}
-                {fieldNode(renderedFields, 'title')}
-                {fieldNode(renderedFields, 'description')}
+              {experience === 'create-wizard' ? (
+                <ListingStepRequirements>
+                  Nhập tên {itemLabel}. Mô tả và hình ảnh có thể bổ sung sau khi lưu bản nháp.
+                </ListingStepRequirements>
+              ) : null}
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]">
+                <div className="min-w-0 space-y-4">
+                  {fieldNode(renderedFields, 'listingTypeId')}
+                  {fieldNode(renderedFields, 'title')}
+                  {fieldNode(renderedFields, 'description')}
+                </div>
+                <div className="min-w-0">{fieldNode(renderedFields, 'photos')}</div>
               </div>
-              <div className="min-w-0">{fieldNode(renderedFields, 'photos')}</div>
             </ListingFormSection>
           ),
           'listing-location': (
@@ -243,6 +280,11 @@ export function ListingForm({
               complete={visualComplete('listing-location')}
               error={hasError('listing-location')}
             >
+              {experience === 'create-wizard' ? (
+                <ListingStepRequirements>
+                  Chọn tỉnh/thành phố, phường/xã và nhập địa chỉ cụ thể.
+                </ListingStepRequirements>
+              ) : null}
               {inheritedAddress && !listing ? (
                 <div className="mb-5 flex items-start justify-between gap-4 rounded-xl border bg-muted/30 px-4 py-3">
                   <div>
@@ -284,7 +326,29 @@ export function ListingForm({
               complete={visualComplete('listing-pricing')}
               error={hasError('listing-pricing')}
             >
-              <ListingConfig form={form} listingTypes={listingTypes} listing={listing} embedded />
+              {experience === 'create-wizard' ? (
+                <ListingStepRequirements>
+                  {requiredAttributeLabels.length > 0
+                    ? `Điền ${requiredAttributeLabels.join(', ')}; `
+                    : ''}
+                  giữ ít nhất một hình thức đặt và hoàn tất cấu hình đang bật.
+                  {selectedType?.bookingSelection === 'fixed_packages'
+                    ? ' Có thể lưu nháp chưa có gói; gói đã thêm phải đủ tên, thời lượng và giá.'
+                    : inventoryOnly
+                      ? ' Giá thuê và số lượng cho thuê phải lớn hơn 0.'
+                      : ' Giá 0 vẫn được lưu nháp nhưng chưa đủ điều kiện gửi duyệt.'}
+                </ListingStepRequirements>
+              ) : null}
+              <ListingConfig
+                form={form}
+                listingTypes={listingTypes}
+                listing={listing}
+                embedded
+                validateOnChange={
+                  attemptedWizardSteps.has('listing-pricing') ||
+                  completedWizardSteps.has('listing-pricing')
+                }
+              />
             </ListingFormSection>
           ),
           'listing-operations': (
@@ -302,6 +366,12 @@ export function ListingForm({
               error={hasError('listing-operations')}
             >
               <div className="space-y-4">
+                {experience === 'create-wizard' ? (
+                  <ListingStepRequirements required={false}>
+                    Không cần thao tác nếu các giá trị mặc định phù hợp. Trường đã nhập phải là số
+                    hợp lệ.
+                  </ListingStepRequirements>
+                ) : null}
                 {!inventoryOnly ? (
                   <Grid>
                     {!capacityNotApplicable ? fieldNode(renderedFields, 'capacity') : null}
@@ -324,6 +394,12 @@ export function ListingForm({
               error={hasError('listing-payment')}
             >
               <div className="space-y-6">
+                {experience === 'create-wizard' ? (
+                  <ListingStepRequirements>
+                    Có thể giữ hình thức thanh toán và chính sách mặc định. Tỷ lệ đặt cọc phải từ{' '}
+                    {minimumDepositPercent ?? 0}% trở lên.
+                  </ListingStepRequirements>
+                ) : null}
                 <div>
                   <h3 className="mb-3 text-sm font-semibold">Điều kiện thanh toán</h3>
                   <Grid>
@@ -357,16 +433,19 @@ export function ListingForm({
             LISTING_FORM_SECTIONS.slice(0, targetIndex).every((section) => complete(section.id));
           const goNext = async () => {
             if (!current) return;
+            setAttemptedWizardSteps((previous) => new Set(previous).add(current.id));
             const valid = await form.trigger(CREATE_STEP_FIELDS[current.id], {
               shouldFocus: true,
             });
             if (!valid) {
               window.requestAnimationFrame(() => {
-                const firstInvalid = document
-                  .getElementById(current.id)
-                  ?.querySelector<HTMLElement>('[aria-invalid="true"]');
-                firstInvalid?.focus();
-                firstInvalid?.scrollIntoView({ block: 'center' });
+                window.requestAnimationFrame(() => {
+                  const firstInvalid = document
+                    .getElementById(current.id)
+                    ?.querySelector<HTMLElement>('[aria-invalid="true"]');
+                  firstInvalid?.focus();
+                  firstInvalid?.scrollIntoView({ block: 'center' });
+                });
               });
               return;
             }
@@ -378,81 +457,90 @@ export function ListingForm({
           };
 
           return (
-            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start">
-              <div className="order-2 min-w-0 space-y-5 xl:order-1">
-                <ListingContextStrip
-                  typeName={selectedType?.name ?? 'Chưa chọn'}
-                  itemContext={groupId ? 'Hạng mục trong tin đăng' : 'Một hạng mục độc lập'}
-                  dirty={form.formState.isDirty}
-                />
-                {currentHasError ? (
-                  <div
-                    role="alert"
-                    className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-                  >
-                    <p className="font-medium">Kiểm tra phần này trước khi tiếp tục:</p>
-                    {currentErrorMessages.length > 0 ? (
-                      <ul className="mt-1 list-disc space-y-0.5 pl-5">
-                        {currentErrorMessages.map((message) => (
-                          <li key={message}>{message}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-1">Có trường chưa hợp lệ.</p>
-                    )}
-                  </div>
-                ) : null}
-                {LISTING_FORM_SECTIONS.map((section, index) => (
-                  <div
-                    key={section.id}
-                    hidden={index !== wizardIndex}
-                    className="animate-in fade-in-0 slide-in-from-bottom-1 duration-150 motion-reduce:animate-none"
-                  >
-                    {sectionNodes[section.id]}
-                  </div>
-                ))}
-                {groupId && wizardIndex === LISTING_FORM_SECTIONS.length - 1 ? (
-                  <p className="text-xs text-muted-foreground">
-                    Cả hai lựa chọn bên dưới đều lưu hạng mục trước khi chuyển trang.
-                  </p>
-                ) : null}
-                <ListingWizardActions
-                  currentIndex={wizardIndex}
-                  total={LISTING_FORM_SECTIONS.length}
-                  busy={isSubmitting}
-                  finalLabel={submitLabel}
-                  secondaryFinalLabel={
-                    groupId ? `Thêm ${selectedType?.itemLabel || 'hạng mục'} khác` : undefined
-                  }
-                  onSecondaryFinal={() => {
-                    nextAfterCreateRef.current = 'add-another';
-                  }}
-                  onFinal={() => {
-                    nextAfterCreateRef.current = 'group';
-                  }}
-                  onBack={() => {
-                    setWizardIndex((index) => Math.max(0, index - 1));
-                    scrollToWizardTop();
-                  }}
-                  onNext={() => void goNext()}
-                />
-              </div>
-              <div className="order-1 xl:order-2">
-                <ListingWizardNav
-                  items={LISTING_FORM_SECTIONS}
-                  currentIndex={wizardIndex}
-                  furthestIndex={furthestWizardIndex}
-                  completed={completedWizardSteps}
-                  canNavigate={(index) => index <= furthestWizardIndex && prerequisitesValid(index)}
-                  onNavigate={(index) => {
-                    if (index <= furthestWizardIndex && prerequisitesValid(index)) {
-                      setWizardIndex(index);
-                      scrollToWizardTop();
+            <>
+              <InvalidateIncompleteWizardSteps
+                items={progress.items}
+                completed={completedWizardSteps}
+                setCompleted={setCompletedWizardSteps}
+              />
+              <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start">
+                <div className="order-2 min-w-0 space-y-5 xl:order-1">
+                  <ListingContextStrip
+                    typeName={selectedType?.name ?? 'Chưa chọn'}
+                    itemContext={groupId ? 'Hạng mục trong tin đăng' : 'Một hạng mục độc lập'}
+                    dirty={form.formState.isDirty}
+                  />
+                  {currentHasError ? (
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                    >
+                      <p className="font-medium">Kiểm tra phần này trước khi tiếp tục:</p>
+                      {currentErrorMessages.length > 0 ? (
+                        <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                          {currentErrorMessages.map((message) => (
+                            <li key={message}>{message}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-1">Có trường chưa hợp lệ.</p>
+                      )}
+                    </div>
+                  ) : null}
+                  {LISTING_FORM_SECTIONS.map((section, index) => (
+                    <div
+                      key={section.id}
+                      hidden={index !== wizardIndex}
+                      className="animate-in fade-in-0 slide-in-from-bottom-1 duration-150 motion-reduce:animate-none"
+                    >
+                      {sectionNodes[section.id]}
+                    </div>
+                  ))}
+                  {groupId && wizardIndex === LISTING_FORM_SECTIONS.length - 1 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Cả hai lựa chọn bên dưới đều lưu hạng mục trước khi chuyển trang.
+                    </p>
+                  ) : null}
+                  <ListingWizardActions
+                    currentIndex={wizardIndex}
+                    total={LISTING_FORM_SECTIONS.length}
+                    busy={isSubmitting}
+                    finalLabel={submitLabel}
+                    secondaryFinalLabel={
+                      groupId ? `Thêm ${selectedType?.itemLabel || 'hạng mục'} khác` : undefined
                     }
-                  }}
-                />
+                    onSecondaryFinal={() => {
+                      nextAfterCreateRef.current = 'add-another';
+                    }}
+                    onFinal={() => {
+                      nextAfterCreateRef.current = 'group';
+                    }}
+                    onBack={() => {
+                      setWizardIndex((index) => Math.max(0, index - 1));
+                      scrollToWizardTop();
+                    }}
+                    onNext={() => void goNext()}
+                  />
+                </div>
+                <div className="order-1 xl:order-2">
+                  <ListingWizardNav
+                    items={LISTING_FORM_SECTIONS}
+                    currentIndex={wizardIndex}
+                    furthestIndex={furthestWizardIndex}
+                    completed={completedWizardSteps}
+                    canNavigate={(index) =>
+                      index <= furthestWizardIndex && prerequisitesValid(index)
+                    }
+                    onNavigate={(index) => {
+                      if (index <= furthestWizardIndex && prerequisitesValid(index)) {
+                        setWizardIndex(index);
+                        scrollToWizardTop();
+                      }
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            </>
           );
         }
 
