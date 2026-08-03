@@ -12,9 +12,9 @@ export type StatTone = 'default' | 'positive' | 'negative' | 'critical' | 'warni
 
 const TONE_TEXT: Record<StatTone, string> = {
   default: 'text-foreground',
-  positive: 'text-emerald-600 dark:text-emerald-400',
-  negative: 'text-rose-600 dark:text-rose-400',
-  critical: 'text-rose-600 dark:text-rose-400',
+  positive: 'text-success',
+  negative: 'text-destructive',
+  critical: 'text-destructive',
   warning: 'text-warning',
   muted: 'text-muted-foreground',
 };
@@ -54,10 +54,10 @@ export type BarTone = 'primary' | 'emerald' | 'warning' | 'rose' | 'sky';
 
 const BAR_FILL: Record<BarTone, string> = {
   primary: 'bg-primary',
-  emerald: 'bg-emerald-500',
+  emerald: 'bg-success',
   warning: 'bg-warning',
-  rose: 'bg-rose-500',
-  sky: 'bg-sky-500',
+  rose: 'bg-destructive',
+  sky: 'bg-info',
 };
 
 export interface BarRowProps {

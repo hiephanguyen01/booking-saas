@@ -12,19 +12,20 @@ import type { Route } from './+types/listings.edit';
 import { ListingForm } from '~/features/partner/components/listing-form';
 import { PendingChangeBanner } from '~/features/partner/components/pending-change-banner';
 import { applyRevisionDiff } from '~/features/partner/lib/listing-revision';
-import { BackLink } from '~/components/back-link';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages, notFoundMessages } from '~/constants/messages';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [groupRes, listingRes, typesRes, policiesRes, revisionRes] = await Promise.all([
-    apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
-    apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
-    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
-    apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
-    apiGet<ListingRevisionResponse | null>(`/partner/listings/${params.listingId}/revision`, auth),
+    apiGet<ListingGroupDetailResponse>(apiPaths.partner.listingGroup(params.groupId), auth),
+    apiGet<ListingResponse>(apiPaths.partner.listing(params.listingId), auth),
+    apiGet<ListingTypeResponse[]>(apiPaths.partner.listingTypes, auth),
+    apiGet<CancellationPolicyResponse[]>(apiPaths.partner.cancellationPolicies, auth),
+    apiGet<ListingRevisionResponse | null>(apiPaths.partner.listingRevision(params.listingId), auth),
   ]);
   if (
     !groupRes.ok ||
@@ -37,7 +38,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const listingType = (typesRes.data ?? []).find(
     (type) => type.id === groupRes.data?.listingTypeId,
   );
-  if (!listingType) throw new Response('Không tìm thấy loại dịch vụ.', { status: 404 });
+  if (!listingType) throw new Response(notFoundMessages.listingType, { status: 404 });
   const revision = revisionRes.ok ? (revisionRes.data ?? null) : null;
   return {
     group: groupRes.data,
@@ -55,7 +56,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!request.headers.get('content-type')?.includes('application/json')) {
     const form = await request.formData();
     if (form.get('intent') === 'discard-revision') {
-      const res = await apiDelete(`/partner/listings/${params.listingId}/revision`, auth);
+      const res = await apiDelete(apiPaths.partner.listingRevision(params.listingId), auth);
       if (!res.ok) {
         return data(
           { error: res.error ?? 'Huỷ thay đổi không thành công.', fieldErrors: null },
@@ -66,15 +67,15 @@ export async function action({ request, params }: Route.ActionArgs) {
         dashboardPaths.partner.listingGroupItemEdit(params.groupId, params.listingId),
       );
     }
-    return data({ error: 'Yêu cầu không hợp lệ.', fieldErrors: null }, { status: 400 });
+    return data({ error: actionMessages.invalidRequest, fieldErrors: null }, { status: 400 });
   }
   const parsed = updateListingInputSchema.safeParse(await request.json());
   if (!parsed.success)
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
-  const res = await apiPatch(`/partner/listings/${params.listingId}`, parsed.data, auth);
+  const res = await apiPatch(apiPaths.partner.listing(params.listingId), parsed.data, auth);
   if (!res.ok)
     return data(
-      { error: res.error ?? 'Lưu không thành công.', fieldErrors: res.errors ?? null },
+      { error: res.error ?? actionMessages.saveFailed, fieldErrors: res.errors ?? null },
       { status: 400 },
     );
   return redirect(`${dashboardPaths.partner.listingGroup(params.groupId)}?updated=1`);
@@ -83,16 +84,13 @@ export async function action({ request, params }: Route.ActionArgs) {
 export default function EditGroupedListingPage({ loaderData, actionData }: Route.ComponentProps) {
   const label = loaderData.group.itemLabel;
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <BackLink
-          to={dashboardPaths.partner.listingGroup(loaderData.group.id)}
-          label={loaderData.group.title}
-          className="mb-2"
-        />
-        <PageHeader title={`Sửa ${label}`} description={loaderData.listing.title} />
-      </div>
-      <PendingChangeBanner revision={loaderData.revision} targetLabel={label} />
+    <FormPage
+      backTo={dashboardPaths.partner.listingGroup(loaderData.group.id)}
+      backLabel={loaderData.group.title}
+      title={`Sửa ${label}`}
+      description={loaderData.listing.title}
+      banner={<PendingChangeBanner revision={loaderData.revision} targetLabel={label} />}
+    >
       <ListingForm
         listingTypes={[loaderData.listingType]}
         partnerId={loaderData.partnerId}
@@ -104,6 +102,6 @@ export default function EditGroupedListingPage({ loaderData, actionData }: Route
         fieldErrors={actionData?.fieldErrors ?? null}
         mode="edit-workspace"
       />
-    </div>
+    </FormPage>
   );
 }

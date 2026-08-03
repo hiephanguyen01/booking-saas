@@ -13,8 +13,8 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { Money } from '~/components/money';
-import type { PartnerBookingActionResult } from '../server/partner-booking-actions.server';
-import type { PartnerActionableBooking } from '../lib/partner-booking-rules';
+import type { PartnerBookingActionResult } from '~/features/bookings/server/partner-booking-actions.server';
+import type { PartnerActionableBooking } from '~/features/bookings/lib/partner-booking-rules';
 
 type ActionFetcher = ReturnType<typeof useFetcher<PartnerBookingActionResult>>;
 

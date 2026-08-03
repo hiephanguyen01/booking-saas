@@ -26,7 +26,7 @@ import { PAYOUT_INELIGIBLE_REASON } from '~/constants/finance';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { formatVnd } from '~/lib/format';
 import { Money } from '~/components/money';
-import { PAYEE_TYPE_LABEL } from './constants';
+import { PAYEE_TYPE_LABEL } from '~/constants/finance';
 
 /**
  * The slice of the finance route's loader data the payable preview reads.

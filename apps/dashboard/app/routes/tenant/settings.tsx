@@ -1,10 +1,3 @@
-import {
-  gatewayConfigsResponseSchema,
-  type CancellationPolicyResponse,
-  type DomainResponse,
-  type PayoutPolicyDto,
-  type TenantThemeResponse,
-} from '@booking/contracts';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
@@ -21,15 +14,8 @@ import {
 } from 'lucide-react';
 import { useSearchParams } from 'react-router';
 import type { Route } from './+types/settings';
-import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { handleSettingsAction } from '~/features/tenant/server/settings-actions.server';
-import { fetchTenantLegalOverview } from '~/features/legal/server/legal.server';
-import {
-  TENANT_FLAGS_PATH,
-  toPartnerPromotionsState,
-  type TenantFlags,
-} from '~/features/tenant/lib/flags';
 import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { PageHeader } from '~/components/page-header';
 import { LegalDocumentsCard } from '~/features/tenant/components/settings/legal-documents-card';
@@ -41,6 +27,7 @@ import { PaymentGatewayCard } from '~/features/tenant/components/settings/paymen
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
 import { PaymentMethodSettingsCard } from '~/features/tenant/components/settings/payment-method-settings-card';
 import { SettingsOverview } from '~/features/tenant/components/settings/settings-overview';
+import { loadTenantSettings } from '~/features/tenant/server/settings-loader.server';
 
 const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   theme: 'brand',
@@ -69,49 +56,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { auth, can } = await requireTenant(request);
-  const canTheme = can('tenant.theme.manage');
-  const canSettings = can('tenant.settings.manage');
-  const canFinance = can('tenant.finance.read');
-  const canLegal = can('tenant.legal.manage');
-
-  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes, legalRes] =
-    await Promise.all([
-      canTheme ? apiGet<TenantThemeResponse>('/tenant/theme', auth) : Promise.resolve(null),
-      canSettings ? apiGet<DomainResponse[]>('/tenant/domains', auth) : Promise.resolve(null),
-      canSettings ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth) : Promise.resolve(null),
-      canSettings
-        ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
-        : Promise.resolve(null),
-      canSettings
-        ? apiGet('/tenant/gateway-config', auth, { schema: gatewayConfigsResponseSchema })
-        : Promise.resolve(null),
-      canFinance
-        ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
-        : Promise.resolve(null),
-      canLegal ? fetchTenantLegalOverview(auth) : Promise.resolve(null),
-    ]);
-
-  return {
-    theme: themeRes?.ok ? themeRes.data : null,
-    themeError: apiError(themeRes, 'Không tải được cấu hình thương hiệu.'),
-    domains: domainsRes?.ok ? (domainsRes.data ?? []) : null,
-    domainsError: apiError(domainsRes, 'Không tải được danh sách tên miền.'),
-    canTheme,
-    canSettings,
-    canFinance,
-    canLegal,
-    partnerPromotions: toPartnerPromotionsState(flagsRes),
-    cancellationPolicies: policiesRes?.ok ? (policiesRes.data ?? []) : null,
-    cancellationPoliciesError: apiError(policiesRes, 'Không tải được chính sách huỷ.'),
-    gatewayConfigs: gatewayRes?.ok ? (gatewayRes.data ?? []) : null,
-    gatewayError: apiError(gatewayRes, 'Không tải được cấu hình thanh toán.'),
-    payoutPolicy: payoutPolicyRes?.ok ? (payoutPolicyRes.data ?? null) : null,
-    payoutPolicyError: apiError(payoutPolicyRes, 'Không tải được chính sách chi trả.'),
-    canManagePayoutPolicy: can('tenant.payouts.manage'),
-    legal: legalRes?.ok ? legalRes.data : null,
-    legalError: apiError(legalRes, 'Không tải được dữ liệu pháp lý.'),
-  };
+  return loadTenantSettings(request);
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -228,7 +173,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
         description="Quản lý nhận diện, vận hành và dòng tiền của storefront tại một nơi."
         actions={
           publicUrl ? (
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline">
               <a href={publicUrl} target="_blank" rel="noreferrer">
                 Mở storefront <ExternalLink className="size-4" />
               </a>
@@ -447,10 +392,6 @@ function SettingsLoadError({ message }: { message: string }) {
       <AlertDescription>{message} Hãy tải lại trang hoặc thử lại sau.</AlertDescription>
     </Alert>
   );
-}
-
-function apiError(result: { ok: boolean; error?: string } | null, fallback: string): string | null {
-  return result && !result.ok ? (result.error ?? fallback) : null;
 }
 
 function storefrontUrl(hostname: string): string {

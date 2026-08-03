@@ -8,9 +8,10 @@ import {
 import { localeTranslator } from '~/lib/translator';
 import { publicGetData } from './api.server';
 import { resolveLocale } from './i18n.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export function loadAdministrativeProvinces(request: Request): Promise<AdministrativeProvince[]> {
-  return publicGetData(request, '/public/administrative-divisions/provinces', {
+  return publicGetData(request, apiPaths.public.provinces, {
     schema: administrativeProvinceListSchema,
   });
 }
@@ -19,11 +20,10 @@ export function loadAdministrativeWards(
   request: Request,
   provinceCode: string,
 ): Promise<AdministrativeWard[]> {
-  return publicGetData(
-    request,
-    `/public/administrative-divisions/wards?provinceCode=${encodeURIComponent(provinceCode)}`,
-    { schema: administrativeWardListSchema },
-  );
+  return publicGetData(request, apiPaths.public.wards, {
+    query: { provinceCode },
+    schema: administrativeWardListSchema,
+  });
 }
 
 /**

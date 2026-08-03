@@ -7,16 +7,16 @@ import { createSubmissionLock } from '@booking/ui/lib/submission-lock';
 import { Button } from '@booking/ui/components/ui/button';
 import { Money } from '~/components/money';
 import { ReasonDialog } from '~/components/reason-dialog';
-import type { PartnerBookingActionResult } from '../server/partner-booking-actions.server';
+import type { PartnerBookingActionResult } from '~/features/bookings/server/partner-booking-actions.server';
 import {
   availablePartnerBookingActions,
   type PartnerActionableBooking,
   type PartnerBookingActionKind,
-} from '../lib/partner-booking-rules';
+} from '~/features/bookings/lib/partner-booking-rules';
 import { PartnerReturnDialog } from './partner-return-dialog';
 import { PartnerCompleteDialog } from './partner-complete-dialog';
 
-export type { PartnerActionableBooking } from '../lib/partner-booking-rules';
+export type { PartnerActionableBooking } from '~/features/bookings/lib/partner-booking-rules';
 
 type DialogKind = 'reject' | 'no-show' | 'cancel' | 'return' | 'complete';
 
@@ -244,7 +244,7 @@ export function PartnerBookingActions({
       ) : null}
 
       {completionSuccess ? (
-        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+        <p className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-xs text-success">
           Đã hoàn thành dịch vụ và mở thời gian tranh chấp.
         </p>
       ) : null}

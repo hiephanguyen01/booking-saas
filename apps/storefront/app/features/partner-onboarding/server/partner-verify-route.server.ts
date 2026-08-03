@@ -18,6 +18,7 @@ import {
   requirePartnerPhase,
   requirePartnerView,
 } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export function loadPartnerVerifyRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
@@ -38,7 +39,7 @@ export async function submitPartnerVerifyRoute(request: Request, localeParam?: s
 
     const result = await publicPost<AuthChallengeResponse>(
       request,
-      '/auth/registration/resend',
+      apiPaths.auth.registrationResend,
       { challengeId: flow.record.challengeId },
       { schema: authChallengeResponseSchema },
     );
@@ -61,7 +62,7 @@ export async function submitPartnerVerifyRoute(request: Request, localeParam?: s
 
   const result = await publicPost<AuthOtpVerifiedResponse>(
     request,
-    '/auth/registration/verify',
+    apiPaths.auth.registrationVerify,
     parsed.data,
     { schema: authOtpVerifiedResponseSchema },
   );

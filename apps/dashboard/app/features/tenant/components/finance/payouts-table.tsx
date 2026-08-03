@@ -2,7 +2,7 @@ import type { PayoutResponse } from '@booking/contracts';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Money } from '~/components/money';
 import { PayoutStatusBadge } from '~/components/status-badge';
-import { PAYEE_TYPE_LABEL } from './constants';
+import { PAYEE_TYPE_LABEL } from '~/constants/finance';
 import { MarkFailedDialog, MarkPaidDialog } from './payout-action-dialogs';
 
 /** The payout runs table, with settle/fail actions on in-flight rows. */

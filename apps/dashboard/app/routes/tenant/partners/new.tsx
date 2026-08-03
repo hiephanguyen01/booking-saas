@@ -6,12 +6,14 @@ import {
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
+import { Store } from 'lucide-react';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { BackLink } from '~/components/back-link';
-import { fieldNode, FormSurface, Section } from '~/components/form-layout';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
+import { fieldNode, FORM_ACTIONS_ROW, FormSurface, Section } from '~/components/form-layout';
+import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối tác nội bộ mới · Tenant · BookingOS' }];
@@ -28,14 +30,14 @@ export async function action({ request }: Route.ActionArgs) {
   if (!parsed.success) {
     return routeData({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  const res = await apiPost<PartnerResponse>('/tenant/partners/house', parsed.data, auth);
+  const res = await apiPost<PartnerResponse>(apiPaths.tenant.housePartners, parsed.data, auth);
   if (!res.ok || !res.data) {
     return routeData(
       { error: res.error ?? 'Không tạo được đối tác.', fieldErrors: res.errors ?? null },
       { status: 400 },
     );
   }
-  return redirect(`/tenant/partners/${res.data.id}`);
+  return redirect(dashboardPaths.tenant.partner(res.data.id));
 }
 
 const fields: FieldConfig<CreateHousePartnerInput>[] = [
@@ -59,15 +61,12 @@ const fields: FieldConfig<CreateHousePartnerInput>[] = [
 
 export default function NewHousePartner({ actionData }: Route.ComponentProps) {
   return (
-    <div className="space-y-6">
-      <div>
-        <BackLink to="/tenant/partners" label="Đối tác" className="mb-2" />
-        <PageHeader
-          title="Đối tác nội bộ mới"
-          description="Tạo đối tác nội bộ (house) để tenant tự bán inventory của mình — được duyệt sẵn, không cần xác minh danh tính."
-        />
-      </div>
-
+    <FormPage
+      backTo={dashboardPaths.tenant.partners}
+      backLabel="Đối tác"
+      title="Đối tác nội bộ mới"
+      description="Tạo đối tác nội bộ (house) để tenant tự bán inventory của mình — được duyệt sẵn, không cần xác minh danh tính."
+    >
       <GenericForm
         schema={createHousePartnerInputSchema}
         fields={fields}
@@ -76,13 +75,14 @@ export default function NewHousePartner({ actionData }: Route.ComponentProps) {
         defaultValues={{ name: '', slug: '', description: '' }}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
-        actionsClassName="justify-end border-t pt-4"
+        actionsClassName={FORM_ACTIONS_ROW}
         warnOnUnsavedChanges
         renderFields={(renderedFields) => (
           <FormSurface>
             <Section
               title="Thông tin đối tác"
               description="Đối tác nội bộ được duyệt sẵn và thuộc quyền vận hành của tenant."
+              icon={<Store aria-hidden />}
             >
               {fieldNode(renderedFields, 'name')}
               {fieldNode(renderedFields, 'slug')}
@@ -91,6 +91,6 @@ export default function NewHousePartner({ actionData }: Route.ComponentProps) {
           </FormSurface>
         )}
       />
-    </div>
+    </FormPage>
   );
 }

@@ -6,6 +6,8 @@ import {
   updatePayoutInfoInputSchema,
 } from '@booking/contracts';
 import { apiGet, apiPatch, apiPost, type ApiAuth } from '~/lib/api.server';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 export type PartnerProfileIntent = 'payout' | 'identity' | 'documents' | 'deleteDoc';
 
@@ -59,7 +61,7 @@ export async function runPartnerProfileAction(
       if (!parsed.success) {
         return fail(intent, null, parsed.error.flatten().fieldErrors);
       }
-      const res = await apiPatch('/partner/profile/payout', parsed.data, auth);
+      const res = await apiPatch(apiPaths.partner.profilePayout, parsed.data, auth);
       if (!res.ok) return fail(intent, res.error ?? 'Không lưu được tài khoản nhận tiền.');
       return succeed(intent);
     }
@@ -69,7 +71,7 @@ export async function runPartnerProfileAction(
       if (!parsed.success) {
         return fail(intent, null, parsed.error.flatten().fieldErrors);
       }
-      const res = await apiPost('/partner/profile/identity', parsed.data, auth);
+      const res = await apiPost(apiPaths.partner.profileIdentity, parsed.data, auth);
       if (!res.ok) return fail(intent, res.error ?? 'Không gửi được thông tin định danh.');
       return succeed(intent);
     }
@@ -84,17 +86,17 @@ export async function runPartnerProfileAction(
       const payload: UpdatePartnerDocumentsInput = {};
       if (parsed.data.logoUrl) payload.logoUrl = parsed.data.logoUrl;
       if (parsed.data.licenseDocs && parsed.data.licenseDocs.length > 0) {
-        const current = await apiGet<PartnerResponse>('/partner/profile', auth);
+        const current = await apiGet<PartnerResponse>(apiPaths.partner.profile, auth);
         const existing =
           current.ok && current.data ? readStringArray(current.data.businessInfo.licenseDocs) : [];
         payload.licenseDocs = [...existing, ...parsed.data.licenseDocs].slice(0, 20);
       }
-      const res = await apiPatch('/partner/profile/documents', payload, auth);
+      const res = await apiPatch(apiPaths.partner.profileDocuments, payload, auth);
       if (!res.ok) return fail(intent, res.error ?? 'Không lưu được giấy tờ.');
       return succeed(intent);
     }
 
-    return fail('', 'Hành động không hợp lệ.');
+    return fail('', actionMessages.invalidIntent);
   }
 
   // Plain form posts: deleting a single license document.
@@ -102,15 +104,15 @@ export async function runPartnerProfileAction(
   const intent = String(form.get('intent') ?? '');
   if (intent === 'deleteDoc') {
     const url = String(form.get('url') ?? '');
-    const current = await apiGet<PartnerResponse>('/partner/profile', auth);
+    const current = await apiGet<PartnerResponse>(apiPaths.partner.profile, auth);
     if (!current.ok || !current.data) {
       return fail(intent, 'Không tải được hồ sơ.');
     }
     const next = readStringArray(current.data.businessInfo.licenseDocs).filter((d) => d !== url);
-    const res = await apiPatch('/partner/profile/documents', { licenseDocs: next }, auth);
+    const res = await apiPatch(apiPaths.partner.profileDocuments, { licenseDocs: next }, auth);
     if (!res.ok) return fail(intent, res.error ?? 'Không xoá được giấy tờ.');
     return succeed(intent);
   }
 
-  return fail('', 'Hành động không hợp lệ.');
+  return fail('', actionMessages.invalidIntent);
 }

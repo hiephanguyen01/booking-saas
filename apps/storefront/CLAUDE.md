@@ -40,7 +40,13 @@ route-config/navigation exceptions; storefront currently has no equivalent excep
 - `features/**`, `components/**`, `hooks/**`, and `constants/**` never import from `routes/**`.
 - Browser-reachable modules may only `import type` from `*.server` files (never a runtime import).
 - Route URLs come from `~/constants/paths` (`storefrontPaths.account.booking(code)` …), never
-  string-built.
+  string-built. The same-origin presign proxies (`storefrontPaths.uploadPresign`,
+  `reviewUploadPresign`) live there too: the upload widget requests them directly, so they are
+  storefront routes, not backend endpoints.
+- **Backend endpoints come from `~/constants/api-paths`** (`apiPaths.public.listing(slug)` …). Only
+  `*.server.ts` modules consume it. Builders encode their params — do not wrap arguments in
+  `encodeURIComponent`. Never append a query string to a path: pass the helper's `query` option, which
+  is also part of the read-memoization key, so a query hidden in the path splits the cache.
 - Use the **`~/` alias** for every import that crosses a directory boundary; keep `./sibling` for files
   in the same directory. Do not use `../`.
 
@@ -67,7 +73,10 @@ SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--prim
 - Tenant color strings are **untrusted** (tenant jsonb). Always pass them through `sanitizeColor()`
   before they enter CSS — it rejects anything but hex / a safe color function and defeats
   `</style>`/CSS injection. Never interpolate a raw tenant value into a style.
-- Derive readable text with `contrastToken()` (WCAG luminance pick); never hardcode a foreground.
+- Channel resolution is shared with the dashboard: `brandSwatch(value, BRAND_DEFAULTS.x)` from
+  `@booking/ui/lib/brand-theme` sanitizes, derives a readable foreground and falls back to the
+  platform colour. Never hardcode a foreground, and do not re-implement the fallback locally — the
+  two frontends must turn one tenant config into one brand.
 - Override the **base** token (`--primary`), not `--color-primary`. `--accent` is deliberately NOT
   tenant-driven (it's shadcn's neutral hover surface). Legacy `--sf-primary` / `--sf-accent` /
   `--sf-background` are still emitted for hand-rolled classNames — prefer semantic tokens for new work.

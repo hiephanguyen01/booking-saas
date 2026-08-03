@@ -3,6 +3,7 @@ import { apiGet } from '~/lib/server/api.server';
 import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { submitCustomerReview } from '~/features/account/server/customer-reviews.server';
 import { parseAccountReviewFilter } from '~/features/account/lib/review-filter';
+import { apiPaths } from '~/constants/api-paths';
 
 const REVIEW_PAGE_SIZE = 10;
 
@@ -11,7 +12,7 @@ export async function loadAccountReviewsRoute(request: Request, locale: 'vi' | '
   const auth = requireCustomerAuth(request, locale);
   const status = parseAccountReviewFilter(url.searchParams.get('status'));
   const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
-  const result = await apiGet(request, '/customer/reviews', auth.session.accessToken, {
+  const result = await apiGet(request, apiPaths.customer.reviews, auth.session.accessToken, {
     query: { status, page, pageSize: REVIEW_PAGE_SIZE },
     schema: customerReviewListResponseSchema,
   });

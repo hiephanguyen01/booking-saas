@@ -152,7 +152,7 @@ function DomainRow({
               variant="outline"
               className={
                 verified
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                  ? 'border-success/30 bg-success/10 text-success'
                   : 'border-warning/35 bg-warning/10 text-warning-foreground'
               }
             >
@@ -162,7 +162,7 @@ function DomainRow({
           {verified ? (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CheckCircle2
-                className="size-3.5 text-emerald-600 dark:text-emerald-400"
+                className="size-3.5 text-success"
                 aria-hidden="true"
               />
               Xác minh ngày {formatDate(domain.verifiedAt)}

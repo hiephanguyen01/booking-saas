@@ -3,6 +3,7 @@ import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Path } from 'react-hook-form';
 import type { NsI18n, ScopedI18n, ScopedTranslationKey } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
 
 export const PARTNER_PROFILE_BANKS = [
   'Vietcombank',
@@ -73,7 +74,7 @@ const partnerDocumentField = (
   type: 'file',
   required: true,
   target: 'partners',
-  presignEndpoint: '/uploads/presign',
+  presignEndpoint: storefrontPaths.uploadPresign,
   variant: 'document',
 });
 

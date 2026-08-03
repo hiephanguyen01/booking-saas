@@ -4,7 +4,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { SuccessBanner } from '~/components/action-feedback';
 import { IDENTITY_DOCUMENT_LABEL } from '~/constants/partner';
-import type { PartnerProfileActionResult } from '../../server/profile-actions.server';
+import type { PartnerProfileActionResult } from '~/features/partner/server/profile-actions.server';
 import { Section } from '~/components/form-layout';
 
 const identityFields: FieldConfig<SubmitIdentityInput>[] = [

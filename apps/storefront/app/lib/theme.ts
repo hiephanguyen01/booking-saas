@@ -1,9 +1,5 @@
 import type { ThemeConfigInput } from '@booking/contracts';
-import {
-  brandContrastForeground,
-  sanitizeBrandColor,
-  sanitizeBrandFont,
-} from '@booking/ui/lib/brand-theme';
+import { BRAND_DEFAULTS, brandSwatch, sanitizeBrandFont } from '@booking/ui/lib/brand-theme';
 
 /**
  * Tenant theming via CSS variables (TONG-QUAN.md §16.2). The tenant's
@@ -15,34 +11,22 @@ import {
  * `--accent` is deliberately NOT tenant-driven: in shadcn it is the neutral
  * hover/focus surface (dropdown-menu, select, command, calendar, sidebar, …), not
  * a brand token. The tenant accent stays available as `--sf-accent`.
+ *
+ * Channel resolution (sanitize → contrast → platform fallback) lives in
+ * `@booking/ui/lib/brand-theme`, so the dashboard resolves an identical brand
+ * from the same tenant config instead of keeping its own copy of the rules.
  */
 
-const DEFAULTS = { primary: '#0ea5e9', accent: '#f97316', background: '#ffffff' } as const;
 const DEFAULT_FONT = "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif";
-/** Foreground tokens reused verbatim from `@booking/ui` globals.css. */
-const FG_DARK = 'oklch(0.145 0 0)'; // near-black — on light brand colors
-
-/**
- * Resolve one untrusted tenant channel to a color plus its readable foreground.
- * A color we cannot measure is treated as invalid — falling back to the platform
- * default keeps the pair readable instead of shipping an unreadable brand.
- */
-function swatch(value: unknown, fallback: string): { color: string; foreground: string } {
-  const color = sanitizeBrandColor(value);
-  const foreground = color === null ? null : brandContrastForeground(color);
-  if (color !== null && foreground !== null) return { color, foreground };
-  // DEFAULTS are hex, so contrastToken always measures them.
-  return { color: fallback, foreground: brandContrastForeground(fallback) ?? FG_DARK };
-}
 
 /**
  * Build the `:root { … }` CSS that overrides the shadcn base tokens per tenant.
  * Each channel is sanitized after the shared contract validates the payload shape.
  */
 export function themeCss(theme: ThemeConfigInput): string {
-  const primary = swatch(theme.colors?.primary, DEFAULTS.primary);
-  const accent = swatch(theme.colors?.accent, DEFAULTS.accent);
-  const background = swatch(theme.colors?.background, DEFAULTS.background);
+  const primary = brandSwatch(theme.colors?.primary, BRAND_DEFAULTS.primary);
+  const accent = brandSwatch(theme.colors?.accent, BRAND_DEFAULTS.accent);
+  const background = brandSwatch(theme.colors?.background, BRAND_DEFAULTS.background);
   const font = sanitizeBrandFont(theme.font) ?? DEFAULT_FONT;
   const decls = [
     `--background:${background.color}`,

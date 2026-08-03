@@ -19,20 +19,19 @@ import { COMMISSION_STATUS_LABEL } from '~/constants/affiliate';
  * from `@booking/contracts`, so adding a status member is a COMPILE error here
  * — a status can never leak to the UI as a raw slug.
  *
- * Colours: `emerald`/`rose`/`sky`/`slate` are status semantics (kept as literal
- * palette per the design rules' success-colour exception); the amber "pending"
- * tone uses the themeable `--warning` token instead of hardcoded amber.
+ * Colours come from the themeable semantic tokens in `@booking/ui` globals.css
+ * (`--success`/`--warning`/`--destructive`/`--info`/`--muted`), each of which
+ * already carries its own dark-mode value — so a tone needs no hand-written
+ * `dark:` pair, and a palette change lands in one file for both frontends.
  */
-type StatusTone = 'green' | 'warning' | 'rose' | 'sky' | 'slate';
+type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 const TONE: Record<StatusTone, string> = {
-  green:
-    'border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
-  warning:
-    'border-transparent bg-warning/15 text-warning-foreground dark:bg-warning/20 dark:text-warning',
-  rose: 'border-transparent bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
-  sky: 'border-transparent bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300',
-  slate: 'border-transparent bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300',
+  success: 'border-transparent bg-success/15 text-success',
+  warning: 'border-transparent bg-warning/15 text-warning',
+  danger: 'border-transparent bg-destructive/15 text-destructive',
+  info: 'border-transparent bg-info/15 text-info',
+  neutral: 'border-transparent bg-muted text-muted-foreground',
 };
 
 function Pill({ tone, children }: { tone: StatusTone; children: string }) {
@@ -61,7 +60,7 @@ export interface BookingStatusMeta {
 const BOOKING: Record<BookingStatus, BookingStatusMeta> = {
   draft: {
     label: 'Nháp',
-    tone: 'slate',
+    tone: 'neutral',
     dot: 'bg-muted-foreground',
     event: 'border-border bg-muted text-muted-foreground',
   },
@@ -69,55 +68,56 @@ const BOOKING: Record<BookingStatus, BookingStatusMeta> = {
     label: 'Chờ duyệt',
     tone: 'warning',
     dot: 'bg-warning',
-    event: 'border-warning/30 bg-warning/10 text-warning-foreground dark:text-warning',
+    event: 'border-warning/30 bg-warning/10 text-warning',
   },
   pending_payment: {
     label: 'Chờ thanh toán',
     tone: 'warning',
-    dot: 'bg-sky-500',
-    event: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+    dot: 'bg-warning',
+    event: 'border-warning/30 bg-warning/10 text-warning',
   },
   confirmed: {
     label: 'Đã xác nhận',
-    tone: 'sky',
-    dot: 'bg-emerald-500',
-    event: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+    tone: 'info',
+    dot: 'bg-info',
+    event: 'border-info/30 bg-info/10 text-info',
   },
   completed: {
     label: 'Hoàn tất',
-    tone: 'green',
-    dot: 'bg-teal-500',
-    event: 'border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300',
+    tone: 'success',
+    dot: 'bg-success',
+    event: 'border-success/30 bg-success/10 text-success',
   },
   cancelled: {
     label: 'Đã huỷ',
-    tone: 'rose',
+    tone: 'danger',
     dot: 'bg-muted-foreground',
     event: 'border-border bg-muted/60 text-muted-foreground line-through',
   },
   no_show: {
     label: 'Vắng mặt',
-    tone: 'rose',
-    dot: 'bg-rose-500',
-    event: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300',
+    tone: 'danger',
+    dot: 'bg-destructive',
+    event: 'border-destructive/30 bg-destructive/10 text-destructive',
   },
   rejected: {
     label: 'Từ chối',
-    tone: 'rose',
-    dot: 'bg-rose-500',
-    event: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300',
+    tone: 'danger',
+    dot: 'bg-destructive',
+    event: 'border-destructive/30 bg-destructive/10 text-destructive',
   },
   expired: {
     label: 'Hết hạn',
-    tone: 'slate',
+    tone: 'neutral',
     dot: 'bg-muted-foreground',
     event: 'border-border bg-muted text-muted-foreground',
   },
   refunded: {
     label: 'Đã hoàn tiền',
-    tone: 'slate',
-    dot: 'bg-violet-500',
-    event: 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300',
+    tone: 'neutral',
+    dot: 'bg-muted-foreground',
+    // Distinguished from `expired` by the ring, not a bespoke hue.
+    event: 'border-muted-foreground/40 bg-muted text-muted-foreground',
   },
 };
 
@@ -133,14 +133,14 @@ export function BookingStatusBadge({ status }: { status: BookingStatus }) {
 // ── Listing / publish ───────────────────────────────────────────────────────
 
 const PUBLISH: Record<PublishStatus, { label: string; tone: StatusTone }> = {
-  draft: { label: 'Nháp', tone: 'slate' },
+  draft: { label: 'Nháp', tone: 'neutral' },
   pending_review: { label: 'Chờ duyệt', tone: 'warning' },
-  published: { label: 'Đang hiển thị', tone: 'green' },
-  archived: { label: 'Đã ẩn', tone: 'rose' },
+  published: { label: 'Đang hiển thị', tone: 'success' },
+  archived: { label: 'Đã ẩn', tone: 'danger' },
 };
 
 export function ListingStatusBadge({ status }: { status: PublishStatus }) {
-  const s = PUBLISH[status] ?? { label: 'Không xác định', tone: 'slate' as const };
+  const s = PUBLISH[status] ?? { label: 'Không xác định', tone: 'neutral' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -148,38 +148,38 @@ export function ListingStatusBadge({ status }: { status: PublishStatus }) {
 
 const PARTNER: Record<PartnerStatus, { label: string; tone: StatusTone }> = {
   pending: { label: 'Chờ duyệt', tone: 'warning' },
-  approved: { label: 'Đã duyệt', tone: 'green' },
-  suspended: { label: 'Tạm ngưng', tone: 'rose' },
+  approved: { label: 'Đã duyệt', tone: 'success' },
+  suspended: { label: 'Tạm ngưng', tone: 'danger' },
 };
 
 export function PartnerStatusBadge({ status }: { status: PartnerStatus }) {
-  const s = PARTNER[status] ?? { label: 'Không xác định', tone: 'slate' as const };
+  const s = PARTNER[status] ?? { label: 'Không xác định', tone: 'neutral' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
 const VERIFICATION: Record<PartnerVerificationStatus, { label: string; tone: StatusTone }> = {
-  unsubmitted: { label: 'Chưa gửi', tone: 'slate' },
+  unsubmitted: { label: 'Chưa gửi', tone: 'neutral' },
   pending: { label: 'Chờ xác minh', tone: 'warning' },
-  verified: { label: 'Đã xác minh', tone: 'green' },
-  rejected: { label: 'Bị từ chối', tone: 'rose' },
+  verified: { label: 'Đã xác minh', tone: 'success' },
+  rejected: { label: 'Bị từ chối', tone: 'danger' },
 };
 
 export function PartnerVerificationBadge({ status }: { status: PartnerVerificationStatus }) {
-  const s = VERIFICATION[status] ?? { label: 'Không xác định', tone: 'slate' as const };
+  const s = VERIFICATION[status] ?? { label: 'Không xác định', tone: 'neutral' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
 // ── Promotion ───────────────────────────────────────────────────────────────
 
 const PROMO: Record<PromotionStatusDto, { label: string; tone: StatusTone }> = {
-  draft: { label: 'Nháp', tone: 'slate' },
-  active: { label: 'Đang chạy', tone: 'green' },
+  draft: { label: 'Nháp', tone: 'neutral' },
+  active: { label: 'Đang chạy', tone: 'success' },
   paused: { label: 'Tạm dừng', tone: 'warning' },
-  ended: { label: 'Đã kết thúc', tone: 'slate' },
+  ended: { label: 'Đã kết thúc', tone: 'neutral' },
 };
 
 export function PromotionStatusBadge({ status }: { status: PromotionStatusDto }) {
-  const s = PROMO[status] ?? { label: 'Không xác định', tone: 'slate' as const };
+  const s = PROMO[status] ?? { label: 'Không xác định', tone: 'neutral' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -187,13 +187,13 @@ export function PromotionStatusBadge({ status }: { status: PromotionStatusDto })
 
 const PAYOUT: Record<PayoutStatusDto, { label: string; tone: StatusTone }> = {
   pending: { label: 'Chờ chi', tone: 'warning' },
-  processing: { label: 'Đang xử lý', tone: 'sky' },
-  paid: { label: 'Đã chi', tone: 'green' },
-  failed: { label: 'Thất bại', tone: 'rose' },
+  processing: { label: 'Đang xử lý', tone: 'info' },
+  paid: { label: 'Đã chi', tone: 'success' },
+  failed: { label: 'Thất bại', tone: 'danger' },
 };
 
 export function PayoutStatusBadge({ status }: { status: PayoutStatusDto }) {
-  const s = PAYOUT[status] ?? { label: 'Không xác định', tone: 'slate' as const };
+  const s = PAYOUT[status] ?? { label: 'Không xác định', tone: 'neutral' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -207,7 +207,7 @@ export function PayoutStatusBadge({ status }: { status: PayoutStatusDto }) {
 export function CommissionStatusBadge({ status }: { status: AffiliateCommissionStatusDto }) {
   const tone =
     status === 'paid'
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'text-success'
       : status === 'confirmed'
         ? 'text-foreground'
         : status === 'pending'
@@ -226,30 +226,30 @@ export function CommissionStatusBadge({ status }: { status: AffiliateCommissionS
 // and labels come from `format.ts`.
 
 const TENANT: Record<TenantStatus, StatusTone> = {
-  active: 'green',
-  suspended: 'rose',
+  active: 'success',
+  suspended: 'danger',
   expired: 'warning',
 };
 
 export function TenantStatusBadge({ status }: { status: string }) {
   return (
-    <Pill tone={TENANT[status as TenantStatus] ?? 'slate'}>
+    <Pill tone={TENANT[status as TenantStatus] ?? 'neutral'}>
       {TENANT_STATUS_LABELS[status] ?? 'Không xác định'}
     </Pill>
   );
 }
 
 const SUBSCRIPTION: Record<SubscriptionStatus, StatusTone> = {
-  trial: 'slate',
-  active: 'green',
+  trial: 'neutral',
+  active: 'success',
   past_due: 'warning',
   expired: 'warning',
-  cancelled: 'rose',
+  cancelled: 'danger',
 };
 
 export function SubscriptionStatusBadge({ status }: { status: string }) {
   return (
-    <Pill tone={SUBSCRIPTION[status as SubscriptionStatus] ?? 'slate'}>
+    <Pill tone={SUBSCRIPTION[status as SubscriptionStatus] ?? 'neutral'}>
       {SUBSCRIPTION_STATUS_LABELS[status] ?? 'Không xác định'}
     </Pill>
   );

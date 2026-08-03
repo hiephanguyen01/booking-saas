@@ -37,9 +37,13 @@ Area features map to the four dashboard areas; **cross-area domain features** (`
 - `features/**` and `components/**` never import from `routes/**`.
 - Browser-reachable modules may only `import type` from `*.server` files (never a runtime import).
 - Route URLs come from `~/constants/paths` (`dashboardPaths.tenant.booking(id)` …), never string-built.
-- New and changed code uses the **`~/` alias** across directory boundaries and `./sibling` within one
-  directory, matching the storefront. Existing dashboard `../` imports are migration debt, not a
-  precedent.
+- **Backend endpoints come from `~/constants/api-paths`** (`apiPaths.partner.listingRevision(id)` …).
+  Keep the two apart: `dashboardPaths` is where the *browser* goes, `apiPaths` is what a loader/action
+  *calls*. They often spell the same string, so a swap compiles and passes tests — check which one a
+  value is used as, not what it looks like. Builders encode their params; do not wrap arguments in
+  `encodeURIComponent`. Never append a query string — pass `{ query }`.
+- The **`~/` alias** across directory boundaries and `./sibling` within one directory. There are no
+  `../` imports left; do not reintroduce one.
 
 ## Data & auth
 
@@ -54,6 +58,23 @@ filter/paginate via the URL + a loader re-run.)
 
 Forms use `GenericForm` with a `@booking/contracts` zod schema (see
 [`../../docs/conventions.md`](../../docs/conventions.md) → Forms). UI is Vietnamese-hardcoded.
+
+## Full-page forms
+
+Every create/edit screen sits in `FormPage` (`~/components/form-page`). Create surfaces with ≥3
+sections step through `FormWizard` (`~/components/form-wizard` + `~/hooks/use-form-wizard`); shorter
+creates and **all** edit screens lay the sections out on one `FormSurface`. Create and edit of one
+resource render the *same* section bodies — a form takes a `mode`/`experience` prop rather than
+growing a second copy. Full rationale in [`../../docs/conventions.md`](../../docs/conventions.md)
+→ *Full-page forms*.
+
+## Constants
+
+`constants/` holds display maps keyed by a `@booking/contracts` enum (one file per domain), the two
+path modules, and `messages.ts` for repeated situation-generic failure copy. A map whose values are
+CSS classes, or whose key is a UI-only union (`StatTone`, `ClosureState`), stays beside its component.
+`status-badge.tsx` is the one place a domain status becomes a colour — a status' pill, calendar dot
+and event chip all read the same tone from it.
 
 ## Scripts (verified)
 

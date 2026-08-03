@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@booking/ui/components/ui/sidebar';
+import { dashboardPaths } from '~/constants/paths';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -29,7 +30,7 @@ export function NavUser({ user }: { user: CurrentUser }) {
   const submit = useSubmit();
   const { isMobile } = useSidebar();
 
-  const logout = () => submit(null, { method: 'post', action: '/auth/logout' });
+  const logout = () => submit(null, { method: 'post', action: dashboardPaths.auth.logout });
 
   return (
     <SidebarMenu>

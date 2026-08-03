@@ -24,6 +24,7 @@ import { StatCard } from '~/components/stat-card';
 import { formatDateTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
 import type { FilterSpec } from '~/lib/list-filters';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tiền đang giữ · Tài chính · Tenant · BookingOS' }];
@@ -41,15 +42,15 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const partnerParsed = uuidSchema.safeParse(url.searchParams.get('partnerId'));
   const partnerId = partnerParsed.success ? partnerParsed.data : '';
   const [result, summary, partners] = await Promise.all([
-    apiGet<Paginated<BookingSettlementResponse>>('/tenant/finance/settlements', auth, {
+    apiGet<Paginated<BookingSettlementResponse>>(apiPaths.tenant.settlements, auth, {
       query: list.toApiQuery({ status: status || undefined, partnerId: partnerId || undefined }),
     }),
-    apiGet<SettlementSummaryResponse>('/tenant/finance/settlement-summary', auth, {
+    apiGet<SettlementSummaryResponse>(apiPaths.tenant.settlementSummary, auth, {
       query: { partnerId: partnerId || undefined },
     }),
     can('tenant.partners.read')
-      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, {
-          query: { page: 1, pageSize: 100 },
+      ? apiGet<Paginated<PartnerResponse>>(apiPaths.tenant.partners, auth, {
+          query: { page: 1, pageSize: FETCH_ALL_PAGE_SIZE },
         })
       : Promise.resolve(null),
   ]);
@@ -170,7 +171,7 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
         title="Tiền đang giữ"
         description="Theo dõi tiền khách trả Tenant từ lúc cổng thanh toán xác nhận đến khi ghi nhận công nợ Partner."
         actions={
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline">
             <Link to={dashboardPaths.tenant.finance}>
               <ArrowLeft className="size-4" /> Về tài chính
             </Link>

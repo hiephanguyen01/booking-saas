@@ -33,6 +33,8 @@ import { PageHeader } from '~/components/page-header';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { notFoundMessages } from '~/constants/messages';
 
 function ReadinessItem({
   label,
@@ -63,15 +65,15 @@ function ReadinessItem({
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request);
   const [groupRes, typesRes, pendingRes] = await Promise.all([
-    apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
-    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+    apiGet<ListingGroupDetailResponse>(apiPaths.partner.listingGroup(params.groupId), auth),
+    apiGet<ListingTypeResponse[]>(apiPaths.partner.listingTypes, auth),
     apiGet<ListingGroupPendingChangesResponse>(
       `/partner/listing-groups/${params.groupId}/pending-changes`,
       auth,
     ),
   ]);
   if (!groupRes.ok || !groupRes.data)
-    throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
+    throw new Response(notFoundMessages.listing, { status: groupRes.status });
   const pending = pendingRes.ok ? pendingRes.data : null;
   return {
     group: groupRes.data,
@@ -123,7 +125,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
           <>
             <ListingStatusBadge status={group.status} />
             {canWrite ? (
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline">
                 <Link to={dashboardPaths.partner.listingGroupEdit(group.id)}>
                   <Pencil data-icon="inline-start" /> Sửa thông tin chung
                 </Link>

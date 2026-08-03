@@ -12,6 +12,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { formatDateTime, formatVnd } from '~/lib/format';
 import { BookingStatusBadge } from '~/components/status-badge';
 import { EmptyLine } from './empty-line';
+import { dashboardPaths } from '~/constants/paths';
 
 /** The overview's "recent bookings" feed — the 6 newest orders tenant-wide. */
 export function RecentBookingsCard({
@@ -32,7 +33,7 @@ export function RecentBookingsCard({
         </div>
         {canView ? (
           <Button asChild variant="ghost" size="sm">
-            <Link to="/tenant/bookings">
+            <Link to={dashboardPaths.tenant.bookings}>
               Tất cả <ArrowUpRight className="size-4" />
             </Link>
           </Button>

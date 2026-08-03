@@ -76,7 +76,7 @@ export function FilterPanel({
             <OptionLabel key={rating}>
               <RadioGroupItem value={String(rating)} />
               <span className="flex items-center gap-1.5">
-                <Star className="size-4 text-amber-400" fill="currentColor" aria-hidden="true" />
+                <Star className="size-4 text-warning" fill="currentColor" aria-hidden="true" />
                 <span>{t('filters.ratingAtLeast', { rating })}</span>
               </span>
             </OptionLabel>

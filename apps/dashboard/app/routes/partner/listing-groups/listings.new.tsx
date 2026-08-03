@@ -10,26 +10,31 @@ import type { Route } from './+types/listings.new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ListingForm } from '~/features/partner/components/listing-form';
-import { BackLink } from '~/components/back-link';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
 import { dashboardPaths } from '~/constants/paths';
 import { SuccessBanner } from '~/components/action-feedback';
+import { apiPaths } from '~/constants/api-paths';
+import { notFoundMessages } from '~/constants/messages';
+
+export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
+  return [{ title: `Thêm ${loaderData?.group?.itemLabel ?? 'hạng mục'} · Đối tác · BookingOS` }];
+}
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [groupRes, typesRes, policiesRes] = await Promise.all([
-    apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
-    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
-    apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
+    apiGet<ListingGroupDetailResponse>(apiPaths.partner.listingGroup(params.groupId), auth),
+    apiGet<ListingTypeResponse[]>(apiPaths.partner.listingTypes, auth),
+    apiGet<CancellationPolicyResponse[]>(apiPaths.partner.cancellationPolicies, auth),
   ]);
   if (!groupRes.ok || !groupRes.data)
-    throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
+    throw new Response(notFoundMessages.listing, { status: groupRes.status });
   if (groupRes.data.status !== 'draft')
     throw new Response('Chỉ có thể thêm hạng mục vào tin đăng nháp.', { status: 409 });
   const listingType = (typesRes.data ?? []).find(
     (type) => type.id === groupRes.data?.listingTypeId,
   );
-  if (!listingType) throw new Response('Không tìm thấy loại dịch vụ.', { status: 404 });
+  if (!listingType) throw new Response(notFoundMessages.listingType, { status: 404 });
   return {
     group: groupRes.data,
     listingType,
@@ -47,7 +52,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!parsed.success)
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   const res = await apiPost<ListingResponse>(
-    '/partner/listings',
+    apiPaths.partner.listings,
     { ...parsed.data, partnerId: membership.partnerId, groupId: params.groupId },
     auth,
   );
@@ -66,21 +71,17 @@ export async function action({ request, params }: Route.ActionArgs) {
 export default function NewGroupedListingPage({ loaderData, actionData }: Route.ComponentProps) {
   const label = loaderData.group.itemLabel;
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <BackLink
-          to={dashboardPaths.partner.listingGroup(loaderData.group.id)}
-          label={loaderData.group.title}
-          className="mb-2"
+    <FormPage
+      backTo={dashboardPaths.partner.listingGroup(loaderData.group.id)}
+      backLabel={loaderData.group.title}
+      title={`Thêm ${label}`}
+      description={`Tạo một ${label} mà khách hàng có thể chọn và đặt.`}
+      banner={
+        <SuccessBanner
+          message={loaderData.created ? `Đã lưu ${label}. Tiếp tục thêm ${label} khác.` : null}
         />
-        <PageHeader
-          title={`Thêm ${label}`}
-          description={`Tạo một ${label} mà khách hàng có thể chọn và đặt.`}
-        />
-      </div>
-      <SuccessBanner
-        message={loaderData.created ? `Đã lưu ${label}. Tiếp tục thêm ${label} khác.` : null}
-      />
+      }
+    >
       <ListingForm
         listingTypes={[loaderData.listingType]}
         partnerId={loaderData.partnerId}
@@ -95,6 +96,6 @@ export default function NewGroupedListingPage({ loaderData, actionData }: Route.
           address: loaderData.group.address ?? '',
         }}
       />
-    </div>
+    </FormPage>
   );
 }

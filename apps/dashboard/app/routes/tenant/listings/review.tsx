@@ -30,6 +30,8 @@ import {
 import { ListingPricingCard } from '~/features/tenant/components/listing-review/listing-pricing-card';
 import { ListingPolicyCard } from '~/features/tenant/components/listing-review/listing-policy-card';
 import { ListingAttributesCard } from '~/features/tenant/components/listing-review/listing-attributes-card';
+import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Kiểm duyệt tin đăng · Tenant · BookingOS' }];
@@ -38,9 +40,9 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.listings.publish');
   const [listingRes, reviewRes, revisionRes] = await Promise.all([
-    apiGet<ListingResponse>(`/tenant/listings/${params.listingId}`, auth),
-    apiGet<ListingReviewResponse>(`/tenant/listings/${params.listingId}/review`, auth),
-    apiGet<ListingRevisionResponse | null>(`/tenant/listings/${params.listingId}/revision`, auth),
+    apiGet<ListingResponse>(apiPaths.tenant.listing(params.listingId), auth),
+    apiGet<ListingReviewResponse>(apiPaths.tenant.listingReview(params.listingId), auth),
+    apiGet<ListingRevisionResponse | null>(apiPaths.tenant.listingRevision(params.listingId), auth),
   ]);
   if (!reviewRes.ok || !reviewRes.data) {
     throw new Response(reviewRes.error ?? 'Không tìm thấy tin đăng', { status: reviewRes.status });
@@ -54,7 +56,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   let listingTypeFailed = false;
   if (listing) {
     const typeRes = await apiGet<ListingTypeResponse>(
-      `/tenant/listing-types/${listing.listingTypeId}`,
+      apiPaths.tenant.listingType(listing.listingTypeId),
       auth,
     );
     if (typeRes.ok && typeRes.data) listingType = typeRes.data;
@@ -99,17 +101,17 @@ export async function action({ request, params }: Route.ActionArgs) {
         ),
       });
     }
-    return redirect(`/tenant/listings/${params.listingId}/review`);
+    return redirect(dashboardPaths.tenant.listingReview(params.listingId));
   }
 
   return runModerationAction({
     form,
     auth,
-    basePath: `/tenant/listings/${params.listingId}`,
+    basePath: apiPaths.tenant.listing(params.listingId),
     intents: ['publish', 'republish', 'hide'],
     contactLeakMessage:
       'Tin đăng còn lộ thông tin liên hệ. Tích “Bỏ qua kiểm tra” để xuất bản bất chấp cảnh báo.',
-    redirectTo: '/tenant/listings',
+    redirectTo: dashboardPaths.tenant.listings,
   });
 }
 
@@ -122,7 +124,7 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
 
   return (
     <div className="space-y-6">
-      <BackLink to="/tenant/listings" label="Danh sách tin đăng" />
+      <BackLink to={dashboardPaths.tenant.listings} label="Danh sách tin đăng" />
 
       <PageHeader
         title={listing?.title ?? 'Kiểm duyệt tin đăng'}
@@ -173,7 +175,7 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
         status={review.status}
         hiddenBy={listing?.hiddenBy ?? null}
         managedByGroupHref={
-          listing?.groupId ? `/tenant/listing-groups/${listing.groupId}/review` : null
+          listing?.groupId ? dashboardPaths.tenant.listingGroupReview(listing.groupId) : null
         }
         canPublish={canPublish}
         hasContactLeak={hasContactLeak}

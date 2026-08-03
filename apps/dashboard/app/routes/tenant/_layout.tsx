@@ -9,6 +9,7 @@ import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import type { TenantAreaContext } from '~/features/tenant/lib/area-context';
 import { formatDate } from '~/lib/format';
+import { apiPaths } from '~/constants/api-paths';
 
 /** Show the pre-expiry nudge once the subscription is this close to lapsing. */
 const EXPIRY_WARNING_DAYS = 7;
@@ -27,7 +28,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   let sub: SubscriptionStatusResponse | null = null;
   if (can('tenant.settings.manage')) {
-    const res = await apiGet<SubscriptionStatusResponse>('/tenant/subscription/status', auth);
+    const res = await apiGet<SubscriptionStatusResponse>(apiPaths.tenant.subscriptionStatus, auth);
     // 403 (permission) or any transport error → leave null (status unknown → no banner).
     if (res.ok) sub = res.data;
   }

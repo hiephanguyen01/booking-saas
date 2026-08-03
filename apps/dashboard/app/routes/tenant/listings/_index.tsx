@@ -28,6 +28,7 @@ import { listingPriceFrom } from '~/lib/listing-price';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng · Tenant · BookingOS' }];
@@ -46,17 +47,17 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const status = STATUS_VALUES.includes(statusRaw as PublishStatus) ? statusRaw : '';
   const { filters, apiFilters } = readListFilters(url.searchParams, LISTINGS_FILTER_SPEC);
   const [res, partnersRes, typesRes] = await Promise.all([
-    apiGet<PaginatedWithCounts<ListingResponse>>('/tenant/listings', auth, {
+    apiGet<PaginatedWithCounts<ListingResponse>>(apiPaths.tenant.listings, auth, {
       query: toApiQuery({ status, ...apiFilters }),
     }),
     can('tenant.partners.read')
-      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, { query: { pageSize: 100 } })
+      ? apiGet<Paginated<PartnerResponse>>(apiPaths.tenant.partners, auth, { query: { pageSize: FETCH_ALL_PAGE_SIZE } })
       : Promise.resolve(null),
-    apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
+    apiGet<ListingTypeResponse[]>(apiPaths.tenant.listingTypes, auth),
   ]);
   // Edits waiting on already-published listings — they never change `status`, so
   // the status tabs alone would hide them from the reviewer.
-  const revisionsRes = await apiGet<ListingRevisionResponse[]>('/tenant/listing-revisions', auth);
+  const revisionsRes = await apiGet<ListingRevisionResponse[]>(apiPaths.tenant.listingRevisions, auth);
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
   const typeNames: Record<string, string> = {};
@@ -106,7 +107,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
           {l.groupId && (
             <div className="truncate text-xs">
               <EntityRef
-                to={`/tenant/listing-groups/${l.groupId}/review`}
+                to={dashboardPaths.tenant.listingGroupReview(l.groupId)}
                 name="Thuộc tin đăng nhiều hạng mục"
                 className="font-normal text-muted-foreground"
               />
@@ -172,7 +173,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
       cell: (l) =>
         canModerate ? (
           <Button asChild variant={l.status === 'pending_review' ? 'default' : 'ghost'} size="sm">
-            <Link to={`/tenant/listings/${l.id}/review`}>
+            <Link to={dashboardPaths.tenant.listingReview(l.id)}>
               {l.status === 'pending_review' ? (
                 <>
                   <ClipboardCheck className="size-4" /> Duyệt

@@ -13,6 +13,7 @@ import {
 import type { Route } from './+types/uploads.presign';
 import { requireUser } from '~/lib/auth.server';
 import { apiPost, type ApiAuth } from '~/lib/api.server';
+import { apiPaths } from '~/constants/api-paths';
 
 /** Native JSON Response — this route is fetched directly by the browser's
  *  ImageUpload (not via an RR fetcher), so the body must be plain JSON. */
@@ -35,7 +36,7 @@ export async function action({ request }: Route.ActionArgs): Promise<Response> {
     token: user.accessToken,
   };
 
-  const res = await apiPost<PresignUploadResponse>('/uploads/presign', parsed.data, auth, {
+  const res = await apiPost<PresignUploadResponse>(apiPaths.uploads.presign, parsed.data, auth, {
     signal: request.signal,
     schema: presignUploadResponseSchema,
   });

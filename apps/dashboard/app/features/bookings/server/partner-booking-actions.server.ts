@@ -9,9 +9,11 @@ import {
 } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
 import { apiPatch, apiPost } from '~/lib/api.server';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 /**
- * Result of a partner booking action, shared by the list (`/partner/bookings`)
+ * Result of a partner booking action, shared by the list (apiPaths.partner.bookings)
  * and the detail (`/partner/bookings/:id`) routes so both drive the exact same
  * button set + dialogs. `settlement` is populated only by `return`; `refund` only
  * by `cancel`; `intent` echoes which action ran so the UI can target its result.
@@ -85,7 +87,7 @@ export async function runPartnerBookingAction(opts: {
           status: 400,
         });
       }
-      const res = await apiPost(`/partner/bookings/${id}/complete`, parsed.data, auth);
+      const res = await apiPost(apiPaths.partner.bookingAction(id, 'complete'), parsed.data, auth);
       return res.ok
         ? data(ok(intent))
         : data(fail(res.error ?? 'Không thể hoàn thành dịch vụ.', intent), { status: 400 });
@@ -93,7 +95,7 @@ export async function runPartnerBookingAction(opts: {
 
     case 'approve': {
       if (!canApprove) return data(fail('Không có quyền duyệt lượt đặt.', intent), { status: 403 });
-      const res = await apiPost(`/partner/bookings/${id}/approve`, {}, auth);
+      const res = await apiPost(apiPaths.partner.bookingAction(id, 'approve'), {}, auth);
       return res.ok
         ? data(ok(intent))
         : data(fail(res.error ?? 'Duyệt không thành công.', intent), { status: 400 });
@@ -106,7 +108,7 @@ export async function runPartnerBookingAction(opts: {
       if (!parsed.success)
         return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).', intent), { status: 400 });
       const body = parsed.data.reason ? { reason: parsed.data.reason } : {};
-      const res = await apiPost(`/partner/bookings/${id}/reject`, body, auth);
+      const res = await apiPost(apiPaths.partner.bookingAction(id, 'reject'), body, auth);
       return res.ok
         ? data(ok(intent))
         : data(fail(res.error ?? 'Từ chối không thành công.', intent), { status: 400 });
@@ -119,7 +121,7 @@ export async function runPartnerBookingAction(opts: {
       if (!parsed.success)
         return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).', intent), { status: 400 });
       const body = parsed.data.reason ? { reason: parsed.data.reason } : {};
-      const res = await apiPost(`/partner/bookings/${id}/no-show`, body, auth);
+      const res = await apiPost(apiPaths.partner.bookingAction(id, 'no-show'), body, auth);
       return res.ok
         ? data(ok(intent))
         : data(fail(res.error ?? 'Đánh dấu vắng mặt không thành công.', intent), { status: 400 });
@@ -150,7 +152,7 @@ export async function runPartnerBookingAction(opts: {
 
     case 'pick-up': {
       if (!canManage) return data(fail('Không có quyền nhận thiết bị.', intent), { status: 403 });
-      const res = await apiPost(`/partner/bookings/${id}/pick-up`, {}, auth);
+      const res = await apiPost(apiPaths.partner.bookingAction(id, 'pick-up'), {}, auth);
       return res.ok
         ? data(ok(intent))
         : data(fail(res.error ?? 'Đánh dấu giao thiết bị không thành công.', intent), {
@@ -191,13 +193,13 @@ export async function runPartnerBookingAction(opts: {
       const parsed = partnerNoteInputSchema.safeParse({ note: readOptional(form, 'note') });
       if (!parsed.success)
         return data(fail('Ghi chú không hợp lệ (tối đa 1000 ký tự).', intent), { status: 400 });
-      const res = await apiPatch(`/partner/bookings/${id}/note`, parsed.data, auth);
+      const res = await apiPatch(apiPaths.partner.bookingAction(id, 'note'), parsed.data, auth);
       return res.ok
         ? data(ok(intent))
         : data(fail(res.error ?? 'Lưu ghi chú không thành công.', intent), { status: 400 });
     }
 
     default:
-      return data(fail('Hành động không hợp lệ.'), { status: 400 });
+      return data(fail(actionMessages.invalidIntent), { status: 400 });
   }
 }

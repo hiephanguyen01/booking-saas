@@ -13,6 +13,7 @@ import { PartnerStatusBadge } from '~/components/status-badge';
 import { ErrorBanner } from '~/components/action-feedback';
 import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { readListParams } from '~/lib/pagination';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · Tenant · BookingOS' }];
@@ -25,7 +26,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { toApiQuery } = readListParams(url.searchParams);
   const statusRaw = url.searchParams.get('status') ?? '';
   const status = STATUS_VALUES.includes(statusRaw as AffiliateStatusDto) ? statusRaw : '';
-  const res = await apiGet<PaginatedWithCounts<AffiliateListItem>>('/tenant/affiliates', auth, {
+  const res = await apiGet<PaginatedWithCounts<AffiliateListItem>>(apiPaths.tenant.affiliates, auth, {
     query: toApiQuery({ status }),
   });
   return {
@@ -43,7 +44,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (status !== 'approved' && status !== 'suspended') {
     return routeData({ error: 'Trạng thái không hợp lệ.' }, { status: 400 });
   }
-  const res = await apiPost(`/tenant/affiliates/${id}/status`, { status }, auth);
+  const res = await apiPost(apiPaths.tenant.affiliateStatus(id), { status }, auth);
   if (!res.ok) return routeData({ error: res.error ?? 'Không cập nhật được trạng thái.' }, { status: 400 });
   return { ok: true };
 }

@@ -34,6 +34,8 @@ import { BookingDetailCard } from '~/features/bookings/components/booking-detail
 import { Money } from '~/components/money';
 import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
 import { BookingSettlementCard } from '~/features/bookings/components/booking-settlement-card';
+import { apiPaths } from '~/constants/api-paths';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết đặt chỗ · Tenant · BookingOS' }];
@@ -55,12 +57,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   // All are secondary reads and degrade independently; none may blank the booking page.
   const [historyRes, partnerRes, settlementRes] = await Promise.all([
-    apiGet<BookingStatusHistoryResponse[]>(`/tenant/bookings/${params.bookingId}/history`, auth),
+    apiGet<BookingStatusHistoryResponse[]>(apiPaths.tenant.bookingHistory(params.bookingId), auth),
     canReadPartners
-      ? apiGet<PartnerResponse>(`/tenant/partners/${booking.partnerId}`, auth)
+      ? apiGet<PartnerResponse>(apiPaths.tenant.partner(booking.partnerId), auth)
       : Promise.resolve(null),
     can('tenant.finance.read')
-      ? apiGet<BookingSettlementResponse>(`/tenant/finance/settlements/${params.bookingId}`, auth)
+      ? apiGet<BookingSettlementResponse>(apiPaths.tenant.settlement(params.bookingId), auth)
       : Promise.resolve(null),
   ]);
 
@@ -69,7 +71,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     history: historyRes.ok && historyRes.data ? toTimelineEntries(historyRes.data) : undefined,
     historyFailed: !historyRes.ok,
     partnerName: partnerRes?.ok ? (partnerRes.data?.name ?? null) : null,
-    partnerHref: canReadPartners ? `/tenant/partners/${booking.partnerId}` : null,
+    partnerHref: canReadPartners ? dashboardPaths.tenant.partner(booking.partnerId) : null,
     settlement: settlementRes?.ok ? (settlementRes.data ?? null) : null,
     canCancel: can('tenant.bookings.cancel'),
   };
@@ -107,7 +109,7 @@ export default function TenantBookingDetail({ loaderData, actionData }: Route.Co
   return (
     <div className="space-y-6">
       <div>
-        <BackLink to="/tenant/bookings" label="Đặt chỗ" className="mb-2" />
+        <BackLink to={dashboardPaths.tenant.bookings} label="Đặt chỗ" className="mb-2" />
         <PageHeader title="Chi tiết đặt chỗ" description="Toàn bộ thông tin của đơn đặt." />
       </div>
 

@@ -73,9 +73,9 @@ export function CancelBookingDialog({
           <CancellationPolicyList booking={booking} locale={locale} />
         </div>
 
-        <Alert className="rounded-lg border-0 bg-amber-100 px-4 py-3 text-amber-600">
+        <Alert className="rounded-lg border-0 bg-warning/15 px-4 py-3 text-warning">
           <CircleAlert />
-          <AlertDescription className="text-sm leading-5 text-amber-600">
+          <AlertDescription className="text-sm leading-5 text-warning">
             {t('bookings.cancelDialog.warning')}
           </AlertDescription>
         </Alert>

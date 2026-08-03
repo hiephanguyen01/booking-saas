@@ -10,6 +10,7 @@ import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { EntityRef } from '~/components/entity-ref';
 import { PartnerVerificationBadge } from '~/components/status-badge';
+import { dashboardPaths } from '~/constants/paths';
 
 /**
  * "Đối tác" card on the moderation review pages: who owns the entity under
@@ -36,7 +37,7 @@ export function PartnerSummaryCard({
           <DetailField
             label="Tên đối tác"
             value={
-              <EntityRef to={`/tenant/partners/${partnerId}`} name={partner?.name ?? 'Xem đối tác'} />
+              <EntityRef to={dashboardPaths.tenant.partner(partnerId)} name={partner?.name ?? 'Xem đối tác'} />
             }
           />
           <DetailField

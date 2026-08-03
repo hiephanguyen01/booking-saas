@@ -40,7 +40,7 @@ function DomainListItem({
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">Chính</span>
           ) : null}
           <span
-            className={domain.verifiedAt ? 'text-emerald-600 dark:text-emerald-400' : 'text-warning'}
+            className={domain.verifiedAt ? 'text-success' : 'text-warning'}
           >
             {domain.verifiedAt ? 'Đã xác minh' : 'Chờ xác minh'}
           </span>

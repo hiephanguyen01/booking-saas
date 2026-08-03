@@ -11,8 +11,8 @@ import { packagesForMode } from '~/lib/package-options';
 import { nightsBetween } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
 import { getInventorySelection } from '~/features/booking-widget/lib/inventory-selection';
+import { BOOKABLE_MODES } from '~/lib/availability';
 
-const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
 export function useBookingPanelController({
   listing,

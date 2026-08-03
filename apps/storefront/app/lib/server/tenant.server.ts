@@ -1,6 +1,7 @@
 import { publicTenantResponseSchema, type PublicTenantResponse } from '@booking/contracts';
 import { publicGetData } from './api.server';
 import { storefrontEnv } from './env.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export type StorefrontTenant = PublicTenantResponse;
 
@@ -54,7 +55,7 @@ export async function resolveStorefront(request: Request): Promise<StorefrontRes
   if (hostname && isPlatformHostname(hostname)) return { kind: 'platform' };
 
   try {
-    const dto = await publicGetData(request, '/public/tenant', {
+    const dto = await publicGetData(request, apiPaths.public.tenant, {
       schema: publicTenantResponseSchema,
     });
     return { kind: 'tenant', tenant: dto };

@@ -10,6 +10,7 @@ import {
   type TenantLegalOverview,
 } from '@booking/contracts';
 import { apiDelete, apiGet, apiPost, apiPut, type ApiAuth, type ApiResult } from '~/lib/api.server';
+import { apiPaths } from '~/constants/api-paths';
 
 /**
  * Cross-area legal-document server helpers. Legal spans three areas (tenant
@@ -20,7 +21,7 @@ import { apiDelete, apiGet, apiPost, apiPut, type ApiAuth, type ApiResult } from
 
 /** `GET /tenant/legal` — the authoring overview behind the "Pháp lý" tab (`tenant.legal.manage`). */
 export function fetchTenantLegalOverview(auth: ApiAuth): Promise<ApiResult<TenantLegalOverview>> {
-  return apiGet<TenantLegalOverview>('/tenant/legal', auth, { schema: tenantLegalOverviewSchema });
+  return apiGet<TenantLegalOverview>(apiPaths.tenant.legal, auth, { schema: tenantLegalOverviewSchema });
 }
 
 /**
@@ -30,12 +31,12 @@ export function fetchTenantLegalOverview(auth: ApiAuth): Promise<ApiResult<Tenan
  * the interstitial when this is non-empty.
  */
 export function fetchPendingLegalAcceptances(auth: ApiAuth): Promise<ApiResult<PendingAcceptance[]>> {
-  return apiGet<PendingAcceptance[]>('/me/legal/pending', auth);
+  return apiGet<PendingAcceptance[]>(apiPaths.me.legalPending, auth);
 }
 
 /** `POST /me/legal/accept` — the interstitial's single "Tôi đồng ý" action. */
 export function acceptLegalDocuments(auth: ApiAuth, input: AcceptLegalInput) {
-  return apiPost('/me/legal/accept', input, auth);
+  return apiPost(apiPaths.me.legalAccept, input, auth);
 }
 
 const LEGAL_INTENTS = ['save-legal-draft', 'publish-legal-document', 'withdraw-legal-document'] as const;
@@ -73,7 +74,7 @@ export async function handleLegalSettingsAction(intent: LegalIntent, body: unkno
         { status: 400 },
       );
     }
-    const res = await apiPut(`/tenant/legal/${docType}/draft`, parsed.data, auth);
+    const res = await apiPut(apiPaths.tenant.legalDraft(docType), parsed.data, auth);
     if (!res.ok) {
       return routeData(
         { form: 'legal-draft', error: res.error ?? 'Không lưu được bản nháp.' },
@@ -91,7 +92,7 @@ export async function handleLegalSettingsAction(intent: LegalIntent, body: unkno
         { status: 400 },
       );
     }
-    const res = await apiPost(`/tenant/legal/${docType}/publish`, parsed.data, auth);
+    const res = await apiPost(apiPaths.tenant.legalPublish(docType), parsed.data, auth);
     if (!res.ok) {
       return routeData(
         { form: 'legal-publish', error: res.error ?? 'Không công bố được tài liệu.' },
@@ -102,7 +103,7 @@ export async function handleLegalSettingsAction(intent: LegalIntent, body: unkno
   }
 
   // intent === 'withdraw-legal-document'
-  const res = await apiDelete(`/tenant/legal/${docType}/publish`, auth);
+  const res = await apiDelete(apiPaths.tenant.legalPublish(docType), auth);
   if (!res.ok) {
     return routeData(
       { form: 'legal-withdraw', error: res.error ?? 'Không rút công bố được tài liệu.' },

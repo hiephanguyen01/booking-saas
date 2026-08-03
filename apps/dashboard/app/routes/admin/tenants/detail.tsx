@@ -45,6 +45,7 @@ import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { TenantStatusBadge } from '~/components/status-badge';
 import { readListParams } from '~/lib/pagination';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   return [{ title: `${loaderData?.tenant?.name ?? 'Tenant'} · BookingOS Admin` }];
@@ -61,15 +62,15 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     pageSizeKey: 'subPageSize',
   });
   const [tenantRes, subRes, historyRes, domainsRes, plansRes] = await Promise.all([
-    apiGet<TenantDetailResponse>(`/admin/tenants/${id}`, auth),
-    apiGet(`/admin/tenants/${id}/subscription`, auth, {
+    apiGet<TenantDetailResponse>(apiPaths.admin.tenant(id), auth),
+    apiGet(apiPaths.admin.tenantSubscription(id), auth, {
       schema: currentSubscriptionResponseSchema.nullable(),
     }),
-    apiGet<Paginated<SubscriptionHistoryItem>>(`/admin/tenants/${id}/subscriptions`, auth, {
+    apiGet<Paginated<SubscriptionHistoryItem>>(apiPaths.admin.tenantSubscriptions(id), auth, {
       query: toApiQuery(),
     }),
-    apiGet<DomainResponse[]>(`/admin/tenants/${id}/domains`, auth),
-    apiGet<PlanResponse[]>('/admin/plans', auth),
+    apiGet<DomainResponse[]>(apiPaths.admin.tenantDomains(id), auth),
+    apiGet<PlanResponse[]>(apiPaths.admin.plans, auth),
   ]);
   if (!tenantRes.ok || !tenantRes.data) {
     throw new Response('Không tìm thấy tenant', { status: tenantRes.status || 404 });
@@ -130,7 +131,7 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
             <div className="flex flex-wrap items-center gap-3">
               <TenantStatusBadge status={tenant.status} />
               {storefrontUrl ? (
-                <Button asChild variant="outline" size="sm">
+                <Button asChild variant="outline">
                   <a href={storefrontUrl} target="_blank" rel="noreferrer">
                     <ExternalLink className="size-4" />
                     Mở storefront

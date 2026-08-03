@@ -8,15 +8,15 @@ import {
   CardTitle,
 } from '@booking/ui/components/ui/card';
 import { ScrollText } from 'lucide-react';
-import { dashboardPaths } from '~/constants/paths';
 import { WarningCallout } from '~/components/warning-callout';
+import { dashboardPaths } from '~/constants/paths';
 
 /**
  * A dark storefront outranks a subscription snapshot (Task 15): rendered above
  * `SubscriptionStatusCard` whenever the tenant hasn't published all four
  * required legal documents in its default language. No fetch of its own — the
  * loader already reads `legalReady`/`legalDocumentsReady` off
- * `/tenant/subscription/status` for the subscription card.
+ * apiPaths.tenant.subscriptionStatus for the subscription card.
  */
 export function LegalReadinessCard({
   published,

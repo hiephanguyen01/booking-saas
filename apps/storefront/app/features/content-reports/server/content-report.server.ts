@@ -8,6 +8,7 @@ import { data } from 'react-router';
 import { apiPost } from '~/lib/server/api.server';
 import { getOptionalAuth } from '~/lib/server/auth.server';
 import { errorStatus } from '~/lib/http-status';
+import { apiPaths } from '~/constants/api-paths';
 
 export async function submitContentReport(
   request: Request,
@@ -35,7 +36,7 @@ export async function submitContentReport(
   }
   const result = await apiPost(
     request,
-    '/customer/content-reports',
+    apiPaths.customer.contentReports,
     parsed.data,
     auth.session.accessToken,
     {

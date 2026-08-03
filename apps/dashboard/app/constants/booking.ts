@@ -30,3 +30,15 @@ export const PENDING_BOOKING_STATUSES: readonly BookingStatus[] = [
   'pending_approval',
   'pending_payment',
 ];
+
+/**
+ * Booking mode → one-line explanation of what the customer does. Sibling of
+ * {@link BOOKING_MODE_LABEL}; the tenant listing-type editor shows both.
+ */
+export const BOOKING_MODE_DESCRIPTION: Record<BookingMode, string> = {
+  hourly: 'Khách chọn giờ bắt đầu và thời lượng sử dụng.',
+  daily: 'Khách đặt theo một hoặc nhiều ngày.',
+  inventory: 'Khách chọn số lượng sản phẩm hoặc thiết bị.',
+  appointment: 'Khách chọn một lịch hẹn còn trống.',
+  class: 'Khách đăng ký một buổi học hoặc sự kiện có lịch cố định.',
+};

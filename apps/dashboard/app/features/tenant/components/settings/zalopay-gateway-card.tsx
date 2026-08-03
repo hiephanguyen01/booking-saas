@@ -21,7 +21,7 @@ export function ZalopayGatewayBody({
   return (
     <div>
       {saved ? (
-        <Alert className="mb-4 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
+        <Alert className="mb-4 border-success/40 text-success">
           <CheckCircle2 className="size-4" />
           <AlertDescription>Đã lưu cấu hình ZaloPay.</AlertDescription>
         </Alert>

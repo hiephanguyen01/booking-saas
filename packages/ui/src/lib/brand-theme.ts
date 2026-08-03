@@ -226,3 +226,30 @@ export function brandContrastForeground(color: string): string | null {
   const luminance = 0.2126 * linear(rgb[0]) + 0.7152 * linear(rgb[1]) + 0.0722 * linear(rgb[2]);
   return luminance > FG_BREAK_EVEN ? FG_DARK : FG_LIGHT;
 }
+
+/** Platform brand colors, used when a tenant channel is absent or unmeasurable. */
+export const BRAND_DEFAULTS = {
+  primary: '#0ea5e9',
+  accent: '#f97316',
+  background: '#ffffff',
+} as const;
+
+export interface BrandSwatch {
+  color: string;
+  foreground: string;
+}
+
+/**
+ * Resolve one untrusted tenant color channel to a color plus its readable
+ * foreground. A color we cannot measure is treated as invalid — falling back to
+ * the platform default keeps the pair readable instead of shipping an
+ * unreadable brand. Both frontends resolve through this, so the same bad input
+ * behaves the same way in the storefront and the dashboard.
+ */
+export function brandSwatch(value: unknown, fallback: string): BrandSwatch {
+  const color = sanitizeBrandColor(value);
+  const foreground = color === null ? null : brandContrastForeground(color);
+  if (color !== null && foreground !== null) return { color, foreground };
+  // BRAND_DEFAULTS are hex, so the fallback always measures.
+  return { color: fallback, foreground: brandContrastForeground(fallback) ?? FG_DARK };
+}

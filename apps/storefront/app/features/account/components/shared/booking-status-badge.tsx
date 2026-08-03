@@ -5,9 +5,9 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 
 /** Statuses that read as inactive or as money returned; every other status is live red. */
 const STATUS_TONE: Partial<Record<BookingStatus, string>> = {
-  draft: 'text-slate-600',
-  expired: 'text-slate-600',
-  refunded: 'text-violet-700',
+  draft: 'text-muted-foreground',
+  expired: 'text-muted-foreground',
+  refunded: 'text-muted-foreground',
 };
 
 const DEFAULT_TONE = 'text-destructive';

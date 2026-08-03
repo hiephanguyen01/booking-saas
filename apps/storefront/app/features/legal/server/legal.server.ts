@@ -10,6 +10,7 @@ import type { Locale } from '@booking/i18n';
 import { z } from 'zod';
 import { publicGetData } from '~/lib/server/api.server';
 import { optionalData } from '~/lib/server/optional-data.server';
+import { apiPaths } from '~/constants/api-paths';
 
 const legalSummaryListSchema = z.array(legalDocumentSummarySchema);
 
@@ -18,7 +19,7 @@ export function fetchLegalDocumentSummaries(
   request: Request,
   locale: Locale,
 ): Promise<LegalDocumentSummary[]> {
-  return publicGetData(request, '/public/legal', {
+  return publicGetData(request, apiPaths.public.legal, {
     query: { locale },
     schema: legalSummaryListSchema,
   });
@@ -30,7 +31,7 @@ export function fetchLegalDocument(
   docType: LegalDocumentType,
   locale: Locale,
 ): Promise<LegalDocumentResponse | null> {
-  return publicGetData(request, `/public/legal/${docType}`, {
+  return publicGetData(request, apiPaths.public.legalDocument(docType), {
     query: { locale },
     schema: legalDocumentResponseSchema,
     allowNotFound: true,
@@ -44,7 +45,7 @@ export function fetchLegalDocumentVersion(
   versionNo: number,
   locale: Locale,
 ): Promise<LegalDocumentResponse | null> {
-  return publicGetData(request, `/public/legal/${docType}/versions/${versionNo}`, {
+  return publicGetData(request, apiPaths.public.legalDocumentVersion(docType, versionNo), {
     query: { locale },
     schema: legalDocumentResponseSchema,
     allowNotFound: true,

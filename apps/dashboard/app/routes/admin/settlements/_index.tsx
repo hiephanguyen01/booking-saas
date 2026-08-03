@@ -16,6 +16,7 @@ import { PageHeader } from '~/components/page-header';
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, type FilterSpec } from '~/lib/list-filters';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối soát giữ tiền · BookingOS Admin' }];
@@ -38,7 +39,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const list = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, SETTLEMENT_FILTER_SPEC);
   const result = await apiGet<Paginated<BookingSettlementResponse>>(
-    '/platform/finance/settlements',
+    apiPaths.platform.financeSettlements,
     auth,
     { query: list.toApiQuery(apiFilters) },
   );

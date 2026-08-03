@@ -32,26 +32,12 @@ import { apiGet, apiPost } from '~/lib/api.server';
 import { formatDateTime, formatVnd } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, type FilterSpec } from '~/lib/list-filters';
-
-const STATUS_LABEL: Record<SettlementDisputeResponse['status'], string> = {
-  open: 'Chờ xử lý',
-  accepted: 'Chấp nhận',
-  rejected: 'Từ chối',
-  resolved: 'Đã giải quyết',
-};
+import { apiPaths } from '~/constants/api-paths';
+import { DISPUTE_STATUS_LABEL, DISPUTE_STATUS_FILTER_OPTIONS } from '~/constants/finance';
 
 const DISPUTE_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã booking, dịch vụ, lý do…' },
-  {
-    kind: 'enum',
-    key: 'status',
-    label: 'Trạng thái',
-    options: [
-      { value: 'open', label: 'Chờ xử lý' },
-      { value: 'accepted', label: 'Đã chấp nhận' },
-      { value: 'rejected', label: 'Đã từ chối' },
-    ],
-  },
+  { kind: 'enum', key: 'status', label: 'Trạng thái', options: DISPUTE_STATUS_FILTER_OPTIONS },
   {
     kind: 'enum',
     key: 'responseStatus',
@@ -72,7 +58,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const list = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, DISPUTE_FILTER_SPEC);
   const result = await apiGet<Paginated<SettlementDisputeResponse>>(
-    '/tenant/finance/disputes',
+    apiPaths.tenant.financeDisputes,
     auth,
     {
       query: list.toApiQuery(apiFilters),
@@ -133,7 +119,7 @@ export default function TenantDisputes({ loaderData, actionData }: Route.Compone
         title="Tranh chấp thanh toán"
         description="Mỗi tranh chấp đang mở sẽ khóa khoản đối soát tương ứng cho đến khi Tenant ra quyết định."
         actions={
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline">
             <Link to={dashboardPaths.tenant.finance}>
               <ArrowLeft className="size-4" /> Về tài chính
             </Link>
@@ -184,7 +170,7 @@ export default function TenantDisputes({ loaderData, actionData }: Route.Compone
                     </p>
                   ) : null}
                   <Badge variant={dispute.status === 'open' ? 'destructive' : 'secondary'}>
-                    {STATUS_LABEL[dispute.status]}
+                    {DISPUTE_STATUS_LABEL[dispute.status]}
                   </Badge>
                 </div>
               </CardHeader>

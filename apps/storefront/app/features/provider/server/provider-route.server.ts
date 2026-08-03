@@ -2,11 +2,12 @@ import { publicPartnerProfileResponseSchema } from '@booking/contracts';
 import { publicGetData } from '~/lib/server/api.server';
 import { fetchListings } from '~/features/catalog/server/catalog.server';
 import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export async function loadProviderRoute(request: Request, partnerSlug: string, url: URL) {
   const profile = await publicGetData(
     request,
-    `/public/partners/${encodeURIComponent(partnerSlug)}`,
+    apiPaths.public.partner(partnerSlug),
     { schema: publicPartnerProfileResponseSchema, allowNotFound: true },
   );
   if (!profile) throw new Response('Provider not found', { status: 404 });

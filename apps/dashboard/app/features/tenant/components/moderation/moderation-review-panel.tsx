@@ -54,7 +54,7 @@ export function ModerationReviewPanel({
                 <span
                   className={
                     item.passed
-                      ? 'flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                      ? 'flex size-6 shrink-0 items-center justify-center rounded-full bg-success/15 text-success'
                       : 'flex size-6 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive'
                   }
                 >
@@ -95,7 +95,7 @@ export function ModerationReviewPanel({
               </ul>
             </>
           ) : (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+            <div className="flex items-center gap-2 rounded-md border border-success/15 bg-success/15 p-3 text-sm text-success">
               <CircleCheck className="size-4 shrink-0" /> Không phát hiện thông tin liên hệ bị lộ.
             </div>
           )}

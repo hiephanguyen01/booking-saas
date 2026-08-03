@@ -8,9 +8,8 @@ import { apiPost } from '~/lib/server/api.server';
 import { getOptionalAuth } from '~/lib/server/auth.server';
 import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { allowedStorageUploadUrl } from '~/features/storage/server/upload-origin.server';
-import { uploadRouteJson } from './upload-route-response.server';
-
-const MAX_PRESIGN_REQUEST_BYTES = 16 * 1024;
+import { MAX_PRESIGN_REQUEST_BYTES, uploadRouteJson } from './upload-route-response.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export async function handleReviewMediaUploadPresignAction(request: Request): Promise<Response> {
   const auth = getOptionalAuth();
@@ -36,7 +35,7 @@ export async function handleReviewMediaUploadPresignAction(request: Request): Pr
 
   const result = await apiPost<PresignUploadResponse>(
     request,
-    '/customer/reviews/media/presign',
+    apiPaths.customer.reviewMediaPresign,
     parsed.data,
     auth.session.accessToken,
     { schema: presignUploadResponseSchema },

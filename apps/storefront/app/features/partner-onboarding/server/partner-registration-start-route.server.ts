@@ -18,6 +18,7 @@ import {
   partnerFormFields,
   readPartnerFormData,
 } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export async function submitPartnerRegistrationStartRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
@@ -51,7 +52,7 @@ export async function submitPartnerRegistrationStartRoute(request: Request, loca
 
   const result = await publicPost<AuthChallengeResponse>(
     request,
-    '/auth/registration/start',
+    apiPaths.auth.registrationStart,
     { email, fullName: inferredPartnerName(email), locale },
     { schema: authChallengeResponseSchema },
   );

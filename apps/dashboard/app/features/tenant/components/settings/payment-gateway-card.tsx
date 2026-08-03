@@ -194,7 +194,7 @@ function WalletStatusLine({ enabled, label }: { enabled: boolean; label: string 
     <p className="mb-3 flex items-center gap-1.5 text-sm font-medium">
       {enabled ? (
         <>
-          <span className="text-emerald-500">●</span> Đang bật {label}
+          <span className="text-success">●</span> Đang bật {label}
         </>
       ) : (
         <span className="text-muted-foreground">Chưa bật {label}</span>

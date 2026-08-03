@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { BookingStatusBadge } from './booking-status-badge';
+import { DEFAULT_TZ } from '~/lib/time';
 
 export function BookingCardHeader({
   partnerName,
@@ -55,7 +56,7 @@ export function BookingCardHeader({
         {createdAt ? (
           <span className="sr-only">
             {t('bookings.placedAt', {
-              date: formatDateTime(createdAt, locale, 'Asia/Ho_Chi_Minh'),
+              date: formatDateTime(createdAt, locale, DEFAULT_TZ),
             })}
           </span>
         ) : null}

@@ -15,6 +15,7 @@ import { BOOKINGS_FILTER_SPEC } from '~/features/bookings/lib/booking-filters';
 import { dashboardPaths } from '~/constants/paths';
 import { runPartnerBookingAction } from '~/features/bookings/server/partner-booking-actions.server';
 import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Lượt đặt · Đối tác · BookingOS' }];
@@ -46,7 +47,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, PARTNER_BOOKINGS_FILTER_SPEC);
   // No fixed window any more: `from`/`to` come from the filters (unbounded when unset).
-  const feed = await apiGet<PartnerCalendarBookingResponse[]>('/partner/bookings', auth, {
+  const feed = await apiGet<PartnerCalendarBookingResponse[]>(apiPaths.partner.bookings, auth, {
     query: toApiQuery(apiFilters),
     signal: request.signal,
   });

@@ -27,8 +27,14 @@ Theme tokens live in `src/styles/globals.css` (apps `@import '@booking/ui/global
 `tailwind-preset.ts` and **no** per-app `tailwind.config.ts` / `components.json` in the apps (Tailwind
 v4 via `@tailwindcss/vite`; `globals.css` is the only shared base). Style with **shadcn
 semantic tokens only** (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`,
-`text-primary`/`bg-primary`, `ring-ring`, `destructive`) — never `text-gray-*`/`bg-white`/hardcoded
-palette on a themed surface (narrow exceptions: text/scrims over a photo, universal status green).
+`text-primary`/`bg-primary`, `ring-ring`) — never `text-gray-*`/`bg-white`/hardcoded
+palette on a themed surface (narrow exception: text/scrims over a photo).
+
+**Status colours are tokens too.** `--success`, `--warning`, `--destructive` and `--info` each carry a
+light *and* a dark value, so `bg-success/15 text-success` needs no hand-written `dark:` twin — writing
+one is how the two frontends drifted apart before. `--info` was added for the "in progress / upcoming"
+states that previously hardcoded `sky-*`. Both apps are at zero hardcoded palette classes; a new one
+is a defect, not an exception.
 
 ## Adding / editing primitives
 
@@ -65,6 +71,11 @@ regenerating any of these, re-apply:
 Never re-introduce a per-call-site height/radius/text-size on a form control: radius tracks `--radius`,
 and `text-base md:text-sm` keeps mobile text at 16px so iOS Safari doesn't zoom on focus. A height on an
 `Input`/`Select`/`Textarea`/`InputGroup` in app code is a defect; use `data-[size=sm]` for compact cases.
+
+`Button` picks its size from its **role**, not from taste — a page's primary action in `PageHeader`
+is `default`, a table-row action is `sm`, a control in a form stack is `control` (h-11, matching
+`Input`), icon-only is `icon`. `xs` is unused by both apps; reach for `sm`. Full table in
+[`../../docs/conventions.md`](../../docs/conventions.md) → *Button size by role*.
 
 ## Unused primitives
 

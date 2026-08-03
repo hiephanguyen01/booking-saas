@@ -12,6 +12,7 @@ import { TenantHealthTable } from '~/features/admin/components/tenant-health-tab
 import { dashboardPaths } from '~/constants/paths';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tổng quan nền tảng · BookingOS Admin' }];
@@ -19,7 +20,7 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth } = await requirePlatform(request, 'platform.tenants.read');
-  const res = await apiGet<PlatformHealthResponse>('/platform/health', auth);
+  const res = await apiGet<PlatformHealthResponse>(apiPaths.platform.health, auth);
   return { health: res.ok ? res.data : null, error: res.ok ? null : res.error };
 }
 

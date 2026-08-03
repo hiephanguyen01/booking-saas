@@ -1,3 +1,4 @@
+import { apiPaths } from '~/constants/api-paths';
 /**
  * Tenant feature flags (§12.2) — path + read-state derivation, kept out of the
  * route module so both are unit-testable without a server.
@@ -13,7 +14,7 @@
  * tenant had actually set, and every write 404'd in silence — the marketplace flag
  * was inert in both directions. Read and write MUST use this one constant.
  */
-export const TENANT_FLAGS_PATH = '/tenant/flags';
+export const TENANT_FLAGS_PATH = apiPaths.tenant.flags;
 
 export interface TenantFlags {
   partnerPromotionsEnabled: boolean;

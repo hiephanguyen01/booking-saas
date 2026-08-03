@@ -12,6 +12,7 @@ import {
   type StorefrontSessionService,
 } from './session.server';
 import type { StorefrontTenant } from './tenant.server';
+import { apiPaths } from '~/constants/api-paths';
 
 type AuthResult =
   | {
@@ -41,7 +42,7 @@ async function checkAccess(
     ...identity,
     accessToken: data.accessToken,
     probe: () =>
-      apiGet<SessionInfoResponse>(probeRequest, '/auth/session', data.accessToken, {
+      apiGet<SessionInfoResponse>(probeRequest, apiPaths.auth.session, data.accessToken, {
         schema: sessionInfoResponseSchema,
       }),
   });

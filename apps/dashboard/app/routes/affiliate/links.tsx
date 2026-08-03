@@ -18,6 +18,8 @@ import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 import { PageHeader } from '~/components/page-header';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 const LINK_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã hoặc nhãn liên kết…' },
@@ -46,7 +48,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, LINK_FILTER_SPEC);
   const links = active
-    ? await apiGet<Paginated<ReferralLinkResponse>>('/affiliate/links', auth, {
+    ? await apiGet<Paginated<ReferralLinkResponse>>(apiPaths.affiliate.links, auth, {
         query: toApiQuery(apiFilters),
       })
     : null;
@@ -65,17 +67,17 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = String(form.get('intent'));
 
   if (intent === 'create') {
-    const res = await apiPost('/affiliate/links', { target: 'tenant_home' }, auth);
+    const res = await apiPost(apiPaths.affiliate.links, { target: 'tenant_home' }, auth);
     if (!res.ok) return routeData({ error: res.error ?? 'Không tạo được link.' }, { status: 400 });
     return { ok: true, error: null };
   }
   if (intent === 'delete') {
     const id = String(form.get('id'));
-    const res = await apiDelete(`/affiliate/links/${id}`, auth);
+    const res = await apiDelete(apiPaths.affiliate.link(id), auth);
     if (!res.ok) return routeData({ error: res.error ?? 'Không xoá được link.' }, { status: 400 });
     return { ok: true, error: null };
   }
-  return routeData({ error: 'Thao tác không hợp lệ.' }, { status: 400 });
+  return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
 }
 
 /** Full referral URL for a link — origin from the tenant's own hostname, never a shared env var. */
@@ -99,7 +101,7 @@ export default function AffiliateLinks({ loaderData, actionData }: Route.Compone
         actions={
           <createFetcher.Form method="post">
             <input type="hidden" name="intent" value="create" />
-            <Button type="submit" size="sm" disabled={createFetcher.state !== 'idle'}>
+            <Button type="submit" disabled={createFetcher.state !== 'idle'}>
               <Plus className="size-4" /> Tạo link mới
             </Button>
           </createFetcher.Form>

@@ -328,7 +328,7 @@ export function DayDialog({
                                 <span
                                   className={cn(
                                     rule.salePrice &&
-                                      'font-medium text-emerald-700 dark:text-emerald-300',
+                                      'font-medium text-success',
                                   )}
                                 >
                                   <Money value={rule.salePrice ?? rule.price} />

@@ -2,6 +2,8 @@ import { data } from 'react-router';
 import { createPlanInputSchema, updatePlanInputSchema, type PlanResponse } from '@booking/contracts';
 import { apiDelete, apiPatch, apiPost } from '~/lib/api.server';
 import { requirePlatform } from './admin.server';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 /** Which form/action a result belongs to, so an error stays in its own surface. */
 export interface PlansActionResult {
@@ -14,7 +16,7 @@ export interface PlansActionResult {
 }
 
 /**
- * The full `/admin/plans` action: create/update submit JSON (the edit form
+ * The full apiPaths.admin.plans action: create/update submit JSON (the edit form
  * injects the plan `id`, which discriminates update from create); delete
  * submits urlencoded FormData with `intent=delete`.
  */
@@ -35,7 +37,7 @@ export async function handlePlansAction(request: Request) {
           { status: 400 },
         );
       }
-      const res = await apiPatch<PlanResponse>(`/admin/plans/${id}`, parsed.data, auth);
+      const res = await apiPatch<PlanResponse>(apiPaths.admin.plan(id), parsed.data, auth);
       if (!res.ok) {
         return data<PlansActionResult>(
           { scope: 'update', id, error: res.error, fieldErrors: res.errors },
@@ -57,7 +59,7 @@ export async function handlePlansAction(request: Request) {
         { status: 400 },
       );
     }
-    const res = await apiPost<PlanResponse>('/admin/plans', parsed.data, auth);
+    const res = await apiPost<PlanResponse>(apiPaths.admin.plans, parsed.data, auth);
     if (!res.ok) {
       return data<PlansActionResult>(
         { scope: 'create', error: res.error, fieldErrors: res.errors },
@@ -75,7 +77,7 @@ export async function handlePlansAction(request: Request) {
   const form = await request.formData();
   if (String(form.get('intent')) === 'delete') {
     const id = String(form.get('id') ?? '');
-    const res = await apiDelete(`/admin/plans/${id}`, auth);
+    const res = await apiDelete(apiPaths.admin.plan(id), auth);
     if (!res.ok) {
       const message =
         res.code === 'PLAN_HAS_SUBSCRIBERS' || res.code === 'PLAN_HAS_SUBSCRIPTION_HISTORY'
@@ -87,7 +89,7 @@ export async function handlePlansAction(request: Request) {
   }
 
   return data<PlansActionResult>(
-    { scope: 'create', error: 'Hành động không hợp lệ.' },
+    { scope: 'create', error: actionMessages.invalidIntent },
     { status: 400 },
   );
 }

@@ -1,6 +1,9 @@
 import { data, redirect } from 'react-router';
 import type { ListingResponse } from '@booking/contracts';
 import { apiDelete, apiGet, apiPost, type ApiAuth } from '~/lib/api.server';
+import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 /**
  * Result shape every listing-group workspace intent resolves to. Feature
@@ -27,7 +30,7 @@ async function duplicateChildListing(
   groupId: string,
   listingId: string,
 ): Promise<GroupActionResponse> {
-  const source = await apiGet<ListingResponse>(`/partner/listings/${listingId}`, auth);
+  const source = await apiGet<ListingResponse>(apiPaths.partner.listing(listingId), auth);
   if (!source.ok || !source.data || source.data.groupId !== groupId) {
     return groupResult({ ok: false, error: 'Không tìm thấy hạng mục cần nhân bản.' }, 404);
   }
@@ -40,7 +43,7 @@ async function duplicateChildListing(
     );
   }
   const res = await apiPost(
-    '/partner/listings',
+    apiPaths.partner.listings,
     {
       partnerId: listing.partnerId,
       listingTypeId: listing.listingTypeId,
@@ -97,7 +100,7 @@ export async function runListingGroupAction(args: {
     return groupResult({ ok: false, error: 'Không có quyền hiển thị hoặc ẩn tin đăng.' }, 403);
   }
   if (intent === 'submit') {
-    const res = await apiPost(`/partner/listing-groups/${groupId}/submit`, {}, auth);
+    const res = await apiPost(apiPaths.partner.listingGroupSubmit(groupId), {}, auth);
     return res.ok
       ? groupResult({ ok: true, error: null })
       : groupResult({ ok: false, error: res.error ?? 'Gửi duyệt không thành công.' }, 400);
@@ -106,17 +109,17 @@ export async function runListingGroupAction(args: {
     const res = await apiPost(`/partner/listing-groups/${groupId}/${intent}`, {}, auth);
     return res.ok
       ? groupResult({ ok: true, error: null })
-      : groupResult({ ok: false, error: res.error ?? 'Thao tác không thành công.' }, 400);
+      : groupResult({ ok: false, error: res.error ?? actionMessages.actionFailed }, 400);
   }
   if (intent === 'delete-group') {
-    const res = await apiDelete(`/partner/listing-groups/${groupId}`, auth);
+    const res = await apiDelete(apiPaths.partner.listingGroup(groupId), auth);
     if (!res.ok) {
       return groupResult({ ok: false, error: res.error ?? 'Xóa tin đăng không thành công.' }, 400);
     }
-    return redirect('/partner/listings');
+    return redirect(dashboardPaths.partner.listings);
   }
   if (intent === 'delete-child') {
-    const res = await apiDelete(`/partner/listings/${String(form.get('listingId') ?? '')}`, auth);
+    const res = await apiDelete(apiPaths.partner.listing(String(form.get('listingId') ?? '')), auth);
     return res.ok
       ? groupResult({ ok: true, error: null })
       : groupResult({ ok: false, error: res.error ?? 'Xóa hạng mục không thành công.' }, 400);
@@ -124,5 +127,5 @@ export async function runListingGroupAction(args: {
   if (intent === 'duplicate-child') {
     return duplicateChildListing(auth, groupId, String(form.get('listingId') ?? ''));
   }
-  return groupResult({ ok: false, error: 'Hành động không hợp lệ.' }, 400);
+  return groupResult({ ok: false, error: actionMessages.invalidIntent }, 400);
 }

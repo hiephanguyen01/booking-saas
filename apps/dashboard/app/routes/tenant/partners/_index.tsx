@@ -17,6 +17,7 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối tác · Tenant · BookingOS' }];
@@ -34,7 +35,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const statusRaw = url.searchParams.get('status') ?? '';
   const status = STATUS_VALUES.includes(statusRaw as PartnerStatus) ? statusRaw : '';
   const { filters, apiFilters } = readListFilters(url.searchParams, PARTNERS_FILTER_SPEC);
-  const res = await apiGet<PaginatedWithCounts<PartnerResponse>>('/tenant/partners', auth, {
+  const res = await apiGet<PaginatedWithCounts<PartnerResponse>>(apiPaths.tenant.partners, auth, {
     query: toApiQuery({ status, ...apiFilters }),
   });
   return {
@@ -53,7 +54,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
   const form = await request.formData();
   const id = String(form.get('id'));
-  const res = await apiPost(`/tenant/partners/${id}/approve`, {}, auth);
+  const res = await apiPost(apiPaths.tenant.partnerApprove(id), {}, auth);
   if (!res.ok) return routeData({ error: res.error ?? 'Không duyệt được đối tác.' }, { status: 400 });
   return { ok: true };
 }
@@ -82,7 +83,7 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
       cell: (p) => (
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Link to={`/tenant/partners/${p.id}`} className="truncate font-medium hover:underline">
+            <Link to={dashboardPaths.tenant.partner(p.id)} className="truncate font-medium hover:underline">
               {p.name}
             </Link>
             {p.isHouse ? (
@@ -137,8 +138,8 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
         description="Duyệt, xác minh danh tính và quản lý các đối tác trong marketplace của bạn."
         actions={
           canManage ? (
-            <Button asChild size="sm">
-              <Link to="/tenant/partners/new">
+            <Button asChild>
+              <Link to={dashboardPaths.tenant.partnerNew}>
                 <Plus className="size-4" /> Thêm đối tác nội bộ
               </Link>
             </Button>
@@ -200,7 +201,7 @@ function RowActions({ partner, canApprove }: { partner: PartnerResponse; canAppr
 
   return (
     <Button asChild variant="ghost" size="sm">
-      <Link to={`/tenant/partners/${partner.id}`}>
+      <Link to={dashboardPaths.tenant.partner(partner.id)}>
         <Eye className="size-4" /> Xem
       </Link>
     </Button>

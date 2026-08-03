@@ -1,5 +1,6 @@
 import { data, redirect } from 'react-router';
 import { apiPost, type ApiAuth, type ApiResult } from '~/lib/api.server';
+import { actionMessages } from '~/constants/messages';
 
 /**
  * The one moderation action pipeline for the tenant review pages
@@ -21,13 +22,13 @@ export function moderationErrorMessage(
   contactLeakMessage: string,
 ): string {
   if (res.code === 'LISTING_HAS_CONTACT_INFO') return contactLeakMessage;
-  return res.error ?? 'Thao tác không thành công.';
+  return res.error ?? actionMessages.actionFailed;
 }
 
 export interface RunModerationActionOptions {
   form: FormData;
   auth: ApiAuth;
-  /** Backend endpoint prefix, e.g. `/tenant/listings/${id}` or `/tenant/listing-groups/${id}`. */
+  /** Backend endpoint prefix, e.g. apiPaths.tenant.listing(id) or apiPaths.tenant.listingGroup(id). */
   basePath: string;
   /**
    * Intents this page exposes — anything else (including a hand-crafted POST)
@@ -56,7 +57,7 @@ export async function runModerationAction({
 }: RunModerationActionOptions) {
   const intent = String(form.get('intent') ?? '');
   if (!(intents as readonly string[]).includes(intent)) {
-    return data({ error: 'Hành động không hợp lệ.' }, { status: 400 });
+    return data({ error: actionMessages.invalidIntent }, { status: 400 });
   }
 
   let body: Record<string, unknown> = {};

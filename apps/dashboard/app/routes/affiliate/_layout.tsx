@@ -5,8 +5,8 @@ import { Share2 } from 'lucide-react';
 import type { Route } from './+types/_layout';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { fetchPendingLegalAcceptances } from '~/features/legal/server/legal.server';
-import { dashboardPaths } from '~/constants/paths';
 import { affiliateTabs } from './nav';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · BookingOS' }];
@@ -15,7 +15,7 @@ export function meta(): Route.MetaDescriptors {
 /**
  * Every affiliate screen shares this loader, so it is the one place that
  * redirects to the legal re-acceptance interstitial (Task 16) whenever
- * `/me/legal/pending` is non-empty for the active membership. Skipped when
+ * apiPaths.me.legalPending is non-empty for the active membership. Skipped when
  * there is no approved `active` membership (nothing to accept terms for) and
  * on the interstitial path itself — that route re-checks in its own loader
  * and redirects away once nothing is pending, so checking here too would

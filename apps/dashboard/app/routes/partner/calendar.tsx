@@ -21,6 +21,7 @@ import { PageHeader } from '~/components/page-header';
 import { ErrorBanner } from '~/components/action-feedback';
 import { dayKey } from '~/lib/format';
 import { addDays, mondayOf, parseDay, startOfDayUtc, todayString, toDayString, weekDays } from '~/lib/calendar-dates';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Lịch tổng · Đối tác · BookingOS' }];
@@ -47,7 +48,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       auth,
     ),
     canReadListings
-      ? apiGet<{ items: ListingResponse[] }>('/partner/listings?page=1&pageSize=100', auth)
+      ? apiGet<{ items: ListingResponse[] }>(apiPaths.partner.listings, auth, { query: { page: 1, pageSize: FETCH_ALL_PAGE_SIZE } })
       : Promise.resolve(null),
   ]);
 
@@ -150,7 +151,7 @@ export default function PartnerCalendarPage({ loaderData, actionData }: Route.Co
           canBlock ? (
             <Button
               variant="outline"
-              size="sm"
+
               onClick={() => openBlock(view === 'day' ? days[0] : today)}
               disabled={listings.length === 0}
             >

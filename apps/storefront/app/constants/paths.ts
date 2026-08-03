@@ -36,6 +36,13 @@ export function isStorefrontAuthPath(value: string): boolean {
 export type PartnerOnboardingStep = 'verify' | 'password' | 'profile' | 'done';
 
 export const storefrontPaths = {
+  /**
+   * Same-origin presign proxies. Locale-free because the upload widget requests
+   * them directly rather than navigating to them — these are storefront routes,
+   * not backend endpoints, so they belong here and not in `api-paths.ts`.
+   */
+  uploadPresign: '/uploads/presign',
+  reviewUploadPresign: '/uploads/reviews/presign',
   home: (locale: Locale) => `/${locale}`,
   catalog: (locale: Locale, typeSlug: string) => `/${locale}/t/${segment(typeSlug)}`,
   listing: (locale: Locale, listingSlug: string) => `/${locale}/l/${segment(listingSlug)}`,

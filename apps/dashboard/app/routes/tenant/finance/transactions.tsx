@@ -15,6 +15,8 @@ import { apiPost } from '~/lib/api.server';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters } from '~/lib/list-filters';
 import { RefundsPanel } from '~/features/payments/components/refunds-panel';
+import { apiPaths, FETCH_ALL_PAGE_SIZE } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Giao dịch · Tài chính · Tenant · BookingOS' }];
@@ -25,11 +27,11 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, PAYMENT_FILTER_SPEC);
   const [response, refundsResponse] = await Promise.all([
-    apiGet<Paginated<PaymentHistoryItem>>('/tenant/payments', auth, {
+    apiGet<Paginated<PaymentHistoryItem>>(apiPaths.tenant.payments, auth, {
       query: toApiQuery(apiFilters),
     }),
-    apiGet<Paginated<RefundHistoryItem>>('/tenant/payments/refunds', auth, {
-      query: { page: 1, pageSize: 100 },
+    apiGet<Paginated<RefundHistoryItem>>(apiPaths.tenant.paymentRefunds, auth, {
+      query: { page: 1, pageSize: FETCH_ALL_PAGE_SIZE },
     }),
   ]);
   return {
@@ -48,7 +50,7 @@ export async function action({ request }: Route.ActionArgs) {
   const { auth } = await requireTenant(request, 'tenant.payouts.manage');
   const form = await request.formData();
   if (form.get('intent') !== 'confirm-refund') {
-    return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
+    return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
   }
   const refundId = String(form.get('refundId') ?? '');
   const parsed = confirmManualRefundInputSchema.safeParse({

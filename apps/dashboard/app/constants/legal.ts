@@ -1,4 +1,4 @@
-import type { LegalDocumentType } from '@booking/contracts';
+import type { LegalDocumentType, Locale } from '@booking/contracts';
 
 // Tenant legal-document display constants (tenant "Pháp lý" tab + the
 // partner/affiliate re-acceptance interstitial). Keyed from the shared
@@ -19,3 +19,6 @@ export const LEGAL_DOCUMENT_HINTS: Record<LegalDocumentType, string> = {
   partner_terms: 'Đối tác phải đồng ý trước khi đăng tin hoặc nhận đặt chỗ.',
   affiliate_terms: 'Cộng tác viên phải đồng ý trước khi tạo liên kết giới thiệu.',
 };
+
+/** Locale → Vietnamese prose name, for inline sentences about a translation. */
+export const LOCALE_PROSE_LABEL: Record<Locale, string> = { vi: 'tiếng Việt', en: 'tiếng Anh' };

@@ -1,12 +1,13 @@
 import type { BookingResponse, Paginated } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
 import { apiGet, unwrapApiResult } from '~/lib/api.server';
-import type { BookingListData, BookingStatusFilter } from '../lib/booking-list';
+import type { BookingListData, BookingStatusFilter } from '~/features/bookings/lib/booking-list';
+import { apiPaths } from '~/constants/api-paths';
 
 /**
  * One page of the tenant booking overview. `status`/`page`/`pageSize` are honoured
  * SERVER-side (the backend counts + filters the whole dataset) — the returned
- * `total` drives the pager. The KPI tiles come from `/tenant/bookings/partner-stats`
+ * `total` drives the pager. The KPI tiles come from apiPaths.tenant.bookingPartnerStats
  * (a tenant-wide aggregate), never derived from this page.
  */
 export async function fetchBookingList(
@@ -21,7 +22,7 @@ export async function fetchBookingList(
   for (const [key, value] of Object.entries(apiFilters)) {
     if (value) cleanFilters[key] = value;
   }
-  const result = await apiGet<Paginated<BookingResponse>>('/tenant/bookings', auth, {
+  const result = await apiGet<Paginated<BookingResponse>>(apiPaths.tenant.bookings, auth, {
     signal,
     query: { page, pageSize, ...cleanFilters, ...(status === 'all' ? {} : { status }) },
   });

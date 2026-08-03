@@ -40,12 +40,11 @@ import { LEGAL_DOCUMENT_HINTS, LEGAL_DOCUMENT_LABELS } from '~/constants/legal';
 import { LOCALE_LABELS } from '~/constants/tenancy';
 import { formatDate } from '~/lib/format';
 import { LegalPublishDialog } from './legal-publish-dialog';
+import { LOCALE_PROSE_LABEL } from '~/constants/legal';
 
 const LOCALES: Locale[] = ['vi', 'en'];
 
 /** Prose form ("tiếng Anh") — distinct from the toggle's chrome labels ("English"). */
-const LOCALE_PROSE_LABELS: Record<Locale, string> = { vi: 'tiếng Việt', en: 'tiếng Anh' };
-
 type TranslationDraft = Record<Locale, { title: string; bodyMd: string }>;
 
 function buildInitialTranslations(doc: TenantLegalDocument): TranslationDraft {
@@ -272,7 +271,7 @@ function LegalDocumentEditor({
             <p className="text-xs text-muted-foreground">
               {locale === defaultLocale
                 ? 'Bắt buộc — đây là ngôn ngữ mặc định của cửa hàng.'
-                : `Chưa có bản ${LOCALE_PROSE_LABELS[locale]} — khách xem ${LOCALE_PROSE_LABELS[locale]} sẽ thấy bản ${LOCALE_PROSE_LABELS[defaultLocale]}.`}
+                : `Chưa có bản ${LOCALE_PROSE_LABEL[locale]} — khách xem ${LOCALE_PROSE_LABEL[locale]} sẽ thấy bản ${LOCALE_PROSE_LABEL[defaultLocale]}.`}
             </p>
           ) : null}
 

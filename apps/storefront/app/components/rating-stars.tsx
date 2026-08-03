@@ -10,13 +10,13 @@ export function RatingStars({ rating, className }: { rating: number; className?:
         const fillPercent = Math.min(100, Math.max(0, (normalized - index) * 100));
         return (
           <span key={index} className="relative size-4 shrink-0" aria-hidden="true">
-            <Star className="absolute inset-0 size-4 text-amber-500" />
+            <Star className="absolute inset-0 size-4 text-warning" />
             {fillPercent > 0 ? (
               <span
                 className="absolute inset-0 overflow-hidden"
                 style={{ width: `${fillPercent}%` }}
               >
-                <Star className="size-4 min-w-4 text-amber-500" fill="currentColor" />
+                <Star className="size-4 min-w-4 text-warning" fill="currentColor" />
               </span>
             ) : null}
           </span>

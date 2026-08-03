@@ -78,7 +78,7 @@ export function PublicReviewsSection({
             )}
           >
             <span className="font-medium">{item.rating}</span>
-            <Star className="size-3.5 text-amber-500" fill="currentColor" aria-hidden="true" />
+            <Star className="size-3.5 text-warning" fill="currentColor" aria-hidden="true" />
             <span>({item.count})</span>
           </Link>
         ))}
@@ -100,7 +100,7 @@ export function PublicReviewsSection({
         <Link
           to={model.moreHref}
           preventScrollReset
-          className="mx-auto inline-flex items-center gap-1 text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mx-auto inline-flex items-center gap-1 text-sm font-medium text-success transition-colors hover:text-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {t('reviews.showMore')}
           <ChevronDown className="size-4" aria-hidden="true" />

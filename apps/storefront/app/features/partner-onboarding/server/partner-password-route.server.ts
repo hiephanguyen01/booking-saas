@@ -19,6 +19,7 @@ import {
   requirePartnerPhase,
   requirePartnerPhaseOnly,
 } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export function loadPartnerPasswordRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
@@ -49,7 +50,7 @@ export async function submitPartnerPasswordRoute(request: Request, localeParam?:
 
   const completed = await publicPost<AuthFlowCompleteResponse>(
     request,
-    '/auth/registration/complete',
+    apiPaths.auth.registrationComplete,
     parsed.data,
     { schema: authFlowCompleteResponseSchema },
   );

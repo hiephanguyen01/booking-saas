@@ -25,6 +25,8 @@ import { apiDelete, apiGet, apiPost } from '~/lib/api.server';
 import { hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { readListParams } from '~/lib/pagination';
 import type { Route } from './+types/_index';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Quản lý bài đăng · Đối tác · BookingOS' }];
@@ -103,18 +105,18 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 
   const listingsRequest =
     filters.view === 'all'
-      ? apiGet<Paginated<PartnerListingFeedItemResponse>>('/partner/listings/feed', auth, { query })
+      ? apiGet<Paginated<PartnerListingFeedItemResponse>>(apiPaths.partner.listingFeed, auth, { query })
       : filters.view === 'single'
-        ? apiGet<PaginatedWithCounts<ListingResponse>>('/partner/listings', auth, {
+        ? apiGet<PaginatedWithCounts<ListingResponse>>(apiPaths.partner.listings, auth, {
             query: { ...query, standaloneOnly: true },
           })
-        : apiGet<Paginated<ListingGroupResponse>>('/partner/listing-groups', auth, { query });
+        : apiGet<Paginated<ListingGroupResponse>>(apiPaths.partner.listingGroups, auth, { query });
 
   const [listingsRes, listingTypesRes, revisionsRes] = await Promise.all([
     listingsRequest,
-    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+    apiGet<ListingTypeResponse[]>(apiPaths.partner.listingTypes, auth),
     // One call for the whole table: which rows have an edit waiting for review.
-    apiGet<ListingRevisionResponse[]>('/partner/listing-revisions', auth),
+    apiGet<ListingRevisionResponse[]>(apiPaths.partner.listingRevisions, auth),
   ]);
 
   if (listingsRes.ok) {
@@ -158,7 +160,7 @@ export async function action({ request }: Route.ActionArgs) {
   const id = String(form.get('id') ?? '');
   const intent = String(form.get('intent') ?? '');
   const target = form.get('target') === 'group' ? 'group' : 'listing';
-  const endpoint = target === 'group' ? '/partner/listing-groups' : '/partner/listings';
+  const endpoint = target === 'group' ? apiPaths.partner.listingGroups : apiPaths.partner.listings;
 
   if (!id) {
     return data<ListingsActionResult>({ ok: false, error: 'Thiếu mã bài đăng.' }, { status: 400 });
@@ -212,13 +214,13 @@ export async function action({ request }: Route.ActionArgs) {
     return res.ok
       ? data<ListingsActionResult>({ ok: true, error: null })
       : data<ListingsActionResult>(
-          { ok: false, error: res.error ?? 'Thao tác không thành công.' },
+          { ok: false, error: res.error ?? actionMessages.actionFailed },
           { status: 400 },
         );
   }
 
   return data<ListingsActionResult>(
-    { ok: false, error: 'Hành động không hợp lệ.' },
+    { ok: false, error: actionMessages.invalidIntent },
     { status: 400 },
   );
 }

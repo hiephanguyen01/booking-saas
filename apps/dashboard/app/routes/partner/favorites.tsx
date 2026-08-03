@@ -7,6 +7,7 @@ import { apiGet } from '~/lib/api.server';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Yêu thích · Partner · BookingOS' }];
@@ -17,11 +18,11 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const list = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, FAVORITE_FILTER_SPEC);
   const [result, summary] = await Promise.all([
-    apiGet('/partner/favorites', auth, {
+    apiGet(apiPaths.partner.favorites, auth, {
       query: list.toApiQuery(apiFilters),
       schema: favoriteListResponseSchema,
     }),
-    apiGet('/partner/favorites/summary', auth, { schema: favoriteSummaryResponseSchema }),
+    apiGet(apiPaths.partner.favoritesSummary, auth, { schema: favoriteSummaryResponseSchema }),
   ]);
   return {
     result: result.ok ? result.data : null,

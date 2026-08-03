@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { cn } from '@booking/ui/lib/utils';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { intlLocale } from '~/lib/intl';
+import { DEFAULT_TZ } from '~/lib/time';
 
-const MARKET_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 const DAY_MS = 86_400_000;
 const MARKET_DAY_FORMATTER = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
-  timeZone: MARKET_TIME_ZONE,
+  timeZone: DEFAULT_TZ,
 });
 
 type ReviewTimeVariant = 'day' | 'precise';
@@ -48,7 +48,7 @@ export function ReviewTime({
 function formatAbsoluteDate(value: string, locale: 'vi' | 'en'): string {
   return new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
     dateStyle: 'long',
-    timeZone: MARKET_TIME_ZONE,
+    timeZone: DEFAULT_TZ,
   }).format(new Date(value));
 }
 

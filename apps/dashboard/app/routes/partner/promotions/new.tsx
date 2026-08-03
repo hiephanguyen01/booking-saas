@@ -4,14 +4,15 @@ import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ErrorBanner } from '~/components/action-feedback';
-import { BackLink } from '~/components/back-link';
-import { PageHeader } from '~/components/page-header';
+import { FormPage } from '~/components/form-page';
+import { dashboardPaths } from '~/constants/paths';
 import { PromotionForm } from '~/features/promotions/components/promotion-form';
 import {
   readPromotionForm,
   zodFirstIssueMessage,
 } from '~/features/promotions/server/promotion-form.server';
 import { loadPartnerScopeOptions } from '~/features/promotions/server/scope-options.server';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tạo khuyến mãi · Đối tác · BookingOS' }];
@@ -30,21 +31,21 @@ export async function action({ request }: Route.ActionArgs) {
   if (!parsed.success) {
     return routeData({ error: zodFirstIssueMessage(parsed.error) }, { status: 400 });
   }
-  const res = await apiPost('/partner/promotions', parsed.data, auth);
+  const res = await apiPost(apiPaths.partner.promotions, parsed.data, auth);
   if (!res.ok) return routeData({ error: res.error ?? 'Không tạo được khuyến mãi.' }, { status: 400 });
-  return redirect('/partner/promotions');
+  return redirect(dashboardPaths.partner.promotions);
 }
 
 export default function NewPartnerPromotion({ loaderData, actionData }: Route.ComponentProps) {
   const error = actionData && 'error' in actionData ? actionData.error : null;
   return (
-    <div className="space-y-6">
-      <BackLink to="/partner/promotions" label="Khuyến mãi" />
-      <PageHeader
-        title="Tạo khuyến mãi"
-        description="Thiết lập ưu đãi, phạm vi áp dụng và thời gian chạy trong một luồng duy nhất."
-      />
-      <ErrorBanner error={error} />
+    <FormPage
+      backTo={dashboardPaths.partner.promotions}
+      backLabel="Khuyến mãi"
+      title="Tạo khuyến mãi"
+      description="Thiết lập ưu đãi, phạm vi áp dụng và thời gian chạy trong một luồng duy nhất."
+      banner={<ErrorBanner error={error} />}
+    >
       <PromotionForm
         mode="create"
         submitLabel="Tạo khuyến mãi"
@@ -53,6 +54,6 @@ export default function NewPartnerPromotion({ loaderData, actionData }: Route.Co
         restrictPartnerFunded
         selfPartnerId={loaderData.partnerId}
       />
-    </div>
+    </FormPage>
   );
 }

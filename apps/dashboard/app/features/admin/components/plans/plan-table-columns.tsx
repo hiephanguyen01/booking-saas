@@ -21,7 +21,7 @@ import { DateTimeValue } from '~/components/date-time-value';
 
 const Bool = ({ on }: { on: boolean }) =>
   on ? (
-    <Check className="size-4 text-emerald-600 dark:text-emerald-400" aria-label="Có" />
+    <Check className="size-4 text-success" aria-label="Có" />
   ) : (
     <Minus className="size-4 text-muted-foreground" aria-label="Không" />
   );

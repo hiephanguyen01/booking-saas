@@ -26,6 +26,8 @@ import { PromotionHeader } from '~/features/promotions/components/promotion-head
 import { PromotionSummarySection } from '~/features/promotions/components/promotion-summary-section';
 import { EndPromotionDialog } from '~/features/promotions/components/end-promotion-dialog';
 import { loadPartnerScopeOptions } from '~/features/promotions/server/scope-options.server';
+import { dashboardPaths } from '~/constants/paths';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết khuyến mãi · Đối tác · BookingOS' }];
@@ -35,7 +37,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.promotions.manage');
   // Read-one endpoint — survives pagination and carries the resolved display names.
   const [promoRes, scopeOptions] = await Promise.all([
-    apiGet<PromotionDetailResponse>(`/partner/promotions/${params.promotionId}`, auth),
+    apiGet<PromotionDetailResponse>(apiPaths.partner.promotion(params.promotionId), auth),
     loadPartnerScopeOptions(auth),
   ]);
   if (!promoRes.ok || !promoRes.data) throw new Response('Không tìm thấy khuyến mãi', { status: 404 });
@@ -47,17 +49,17 @@ export async function action({ request, params }: Route.ActionArgs) {
   const form = await request.formData();
   const id = params.promotionId;
   if (String(form.get('intent')) === 'end') {
-    const res = await apiPost(`/partner/promotions/${id}/end`, {}, auth);
+    const res = await apiPost(apiPaths.partner.promotionEnd(id), {}, auth);
     if (!res.ok) return routeData({ error: res.error ?? 'Không kết thúc được.' }, { status: 400 });
-    return redirect('/partner/promotions');
+    return redirect(dashboardPaths.partner.promotions);
   }
   const parsed = updatePartnerPromotionInputSchema.safeParse(readPromotionForm(form));
   if (!parsed.success) {
     return routeData({ error: zodFirstIssueMessage(parsed.error) }, { status: 400 });
   }
-  const res = await apiPatch(`/partner/promotions/${id}`, parsed.data, auth);
+  const res = await apiPatch(apiPaths.partner.promotion(id), parsed.data, auth);
   if (!res.ok) return routeData({ error: res.error ?? 'Không cập nhật được.' }, { status: 400 });
-  return redirect('/partner/promotions');
+  return redirect(dashboardPaths.partner.promotions);
 }
 
 export default function PartnerPromotionDetail({ loaderData, actionData }: Route.ComponentProps) {
@@ -68,7 +70,7 @@ export default function PartnerPromotionDetail({ loaderData, actionData }: Route
 
   return (
     <div className="space-y-6">
-      <BackLink to="/partner/promotions" label="Khuyến mãi" />
+      <BackLink to={dashboardPaths.partner.promotions} label="Khuyến mãi" />
 
       <PromotionHeader promotion={promotion} />
 

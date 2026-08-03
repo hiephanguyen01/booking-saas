@@ -21,6 +21,7 @@ import {
 import { submitBookingCancellation } from '~/features/account/server/booking-cancellation.server';
 import { loadAccountBooking } from '~/features/account/server/booking-history.server';
 import { submitCustomerReview } from '~/features/account/server/customer-reviews.server';
+import { apiPaths } from '~/constants/api-paths';
 
 const bookingActionSchema = z.discriminatedUnion('intent', [
   z.object({ intent: z.literal('pay') }),
@@ -115,7 +116,7 @@ export async function handleAccountBookingDetailAction(
 
     const result = await apiPost<SettlementDisputeResponse>(
       request,
-      '/customer/finance/disputes',
+      apiPaths.customer.financeDisputes,
       dispute.data,
       auth.session.accessToken,
       { schema: settlementDisputeResponseSchema },

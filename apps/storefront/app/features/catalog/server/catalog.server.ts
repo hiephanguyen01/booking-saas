@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { publicGetData } from '~/lib/server/api.server';
 import { mapWithConcurrency } from '~/lib/server/concurrency.server';
 import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
+import { apiPaths } from '~/constants/api-paths';
 
 const listingTypesSchema = z.array(publicListingTypeResponseSchema);
 const LISTING_TYPES_CACHE_TTL_MS = 60_000;
@@ -41,7 +42,7 @@ function rememberListingTypes(tenantId: string, data: PublicListingTypeResponse[
 
 /**
  * Server-only catalog fetches (BFF). The storefront menu + filters are generated
- * entirely from `/public/listing-types`, so adding a type on the API surfaces it
+ * entirely from apiPaths.public.listingTypes, so adding a type on the API surfaces it
  * with no storefront code change (Task 1.3 DoD). Upstream failures remain
  * distinguishable from a legitimate empty catalog.
  */
@@ -54,7 +55,7 @@ export async function fetchListingTypes(request: Request): Promise<PublicListing
   const existingRead = listingTypesReads.get(tenantId);
   if (existingRead) return existingRead;
 
-  const pending = publicGetData(request, '/public/listing-types', {
+  const pending = publicGetData(request, apiPaths.public.listingTypes, {
     schema: listingTypesSchema,
   })
     .then((data) => {
@@ -72,7 +73,7 @@ export function fetchListingGroup(
   request: Request,
   slug: string,
 ): Promise<PublicListingGroupDetailResponse | null> {
-  return publicGetData(request, `/public/listings/groups/${encodeURIComponent(slug)}`, {
+  return publicGetData(request, apiPaths.public.listingGroup(slug), {
     schema: publicListingGroupDetailResponseSchema,
     allowNotFound: true,
   });
@@ -121,8 +122,8 @@ export function searchListings(
   request: Request,
   search: URLSearchParams,
 ): Promise<PublicCatalogSearchResponse> {
-  const query = search.toString();
-  return publicGetData(request, `/public/listings${query ? `?${query}` : ''}`, {
+  return publicGetData(request, apiPaths.public.listings, {
+    query: Object.fromEntries(search),
     schema: publicCatalogSearchResponseSchema,
   });
 }
@@ -131,7 +132,7 @@ export function fetchListing(
   request: Request,
   slug: string,
 ): Promise<PublicListingDetailWithTimezoneResponse | null> {
-  return publicGetData(request, `/public/listings/${encodeURIComponent(slug)}`, {
+  return publicGetData(request, apiPaths.public.listing(slug), {
     schema: publicListingDetailWithTimezoneResponseSchema,
     allowNotFound: true,
   });
@@ -142,9 +143,9 @@ export function fetchQuote(
   slug: string,
   query: URLSearchParams,
 ): Promise<QuoteResponse | null> {
-  return publicGetData(
-    request,
-    `/public/listings/${encodeURIComponent(slug)}/quote?${query.toString()}`,
-    { schema: quoteResponseSchema, allowNotFound: true },
-  );
+  return publicGetData(request, apiPaths.public.listingQuote(slug), {
+    query: Object.fromEntries(query),
+    schema: quoteResponseSchema,
+    allowNotFound: true,
+  });
 }

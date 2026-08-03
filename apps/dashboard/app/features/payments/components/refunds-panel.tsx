@@ -11,13 +11,7 @@ import { Form, Link, useNavigation, useSubmit } from 'react-router';
 import { dashboardPaths } from '~/constants/paths';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { formatDateTime, formatVnd } from '~/lib/format';
-
-const STATUS_LABEL: Record<RefundHistoryItem['status'], string> = {
-  pending: 'Đang xử lý',
-  manual_required: 'Cần chuyển thủ công',
-  succeeded: 'Đã hoàn',
-  failed: 'Thất bại',
-};
+import { REFUND_STATUS_LABEL } from '~/constants/payments';
 
 /** A gateway refund id means the provider (MoMo) pushed the money back automatically. */
 function isAuto(refund: RefundHistoryItem): boolean {
@@ -82,7 +76,7 @@ export function RefundsPanel({
         {refunds.map((refund) => {
           const auto = isAuto(refund);
           const statusLabel =
-            refund.status === 'succeeded' && auto ? 'Đã hoàn tự động' : STATUS_LABEL[refund.status];
+            refund.status === 'succeeded' && auto ? 'Đã hoàn tự động' : REFUND_STATUS_LABEL[refund.status];
           return (
             <div key={refund.id} className="rounded-md border p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

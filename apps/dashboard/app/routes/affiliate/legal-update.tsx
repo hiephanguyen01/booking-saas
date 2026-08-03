@@ -13,7 +13,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 // Mirrors routes/partner/legal-update.tsx. This route's own loader re-checks
-// `/me/legal/pending` rather than trusting the layout's redirect, and the
+// apiPaths.me.legalPending rather than trusting the layout's redirect, and the
 // affiliate _layout.tsx loader skips its own pending check on this exact
 // path — so there is no redirect loop between the two.
 export async function loader({ request }: Route.LoaderArgs) {

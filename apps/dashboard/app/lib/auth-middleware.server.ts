@@ -10,6 +10,8 @@ import {
   runWithDashboardRequestAuth,
   type DashboardRequestAuthState,
 } from './request-auth.server';
+import { apiPaths } from '~/constants/api-paths';
+import { dashboardPaths } from '~/constants/paths';
 
 export type DashboardAuthenticationResult =
   | {
@@ -41,7 +43,7 @@ type DashboardMiddleware = (
 ) => Promise<Response>;
 
 function isLoginMutation(request: Request, url: URL): boolean {
-  return url.pathname === '/auth/login' && request.method !== 'GET';
+  return url.pathname === dashboardPaths.auth.login && request.method !== 'GET';
 }
 
 function sessionServiceUnavailable(): Response {
@@ -148,7 +150,7 @@ export function createDashboardSessionAuthenticator({ session, refresh }: Dashbo
 
 export const authenticateDashboardSession = createDashboardSessionAuthenticator({
   session: (accessToken, signal) =>
-    apiGet<SessionInfoResponse>('/auth/session', accessToken, {
+    apiGet<SessionInfoResponse>(apiPaths.auth.session, accessToken, {
       signal,
       schema: sessionInfoResponseSchema,
     }),

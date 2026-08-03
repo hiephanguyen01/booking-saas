@@ -1,12 +1,13 @@
 import { createListingInputSchema, type CreateListingInput } from '@booking/contracts';
+import type { Path } from '@booking/ui/components/form/rhf';
 import {
   createFormProgress,
   type FormProgress,
-  type FormProgressItem,
   type FormSectionDefinition,
-} from '~/features/partner/lib/form-progress';
+  type FormSectionMap,
+} from '~/lib/form-progress';
 
-export const LISTING_FORM_SECTIONS = [
+const SECTIONS = [
   {
     id: 'listing-content',
     label: 'Nội dung & đặc điểm',
@@ -34,9 +35,8 @@ export const LISTING_FORM_SECTIONS = [
   },
 ] as const satisfies ReadonlyArray<FormSectionDefinition<string>>;
 
-export type ListingFormSectionId = (typeof LISTING_FORM_SECTIONS)[number]['id'];
+export type ListingFormSectionId = (typeof SECTIONS)[number]['id'];
 
-export type ListingFormProgressItem = FormProgressItem<ListingFormSectionId>;
 export type ListingFormProgress = FormProgress<ListingFormSectionId>;
 
 const FIELD_SECTION: Record<string, ListingFormSectionId> = {
@@ -69,6 +69,15 @@ const FIELD_SECTION: Record<string, ListingFormSectionId> = {
   cancellationPolicyId: 'listing-payment',
 };
 
+/** The fields a wizard step re-validates before it lets the partner continue. */
+export const LISTING_STEP_FIELDS: Record<ListingFormSectionId, Path<CreateListingInput>[]> = {
+  'listing-content': ['title', 'description', 'photos'],
+  'listing-location': ['provinceCode', 'wardCode', 'address'],
+  'listing-pricing': ['bookingModes', 'modeConfig', 'stockQuantity', 'attributes'],
+  'listing-operations': ['capacity', 'bufferBefore', 'bufferAfter', 'approvalRequired'],
+  'listing-payment': ['depositPercent', 'balanceDue', 'cancellationPolicyId'],
+};
+
 interface ListingProgressSchema {
   safeParse: (values: unknown) => {
     success: boolean;
@@ -76,24 +85,30 @@ interface ListingProgressSchema {
   };
 }
 
-const progressFor = (schema: ListingProgressSchema) =>
+const mapFor = (schema: ListingProgressSchema) =>
   createFormProgress<ListingFormSectionId, CreateListingInput>({
-    sections: LISTING_FORM_SECTIONS,
+    sections: SECTIONS,
     fieldSection: FIELD_SECTION,
     schema,
   });
 
-const progress = progressFor(createListingInputSchema);
+/**
+ * The listing form's sections and its field → section map. Stable across
+ * renders, so the wizard controller can depend on it.
+ */
+export const listingSectionMap: FormSectionMap<ListingFormSectionId, CreateListingInput> =
+  mapFor(createListingInputSchema);
 
-/** Derive completion from the same contract used for submission. */
+/**
+ * Derive completion from the same contract used for submission. The create
+ * form passes its `superRefine`d schema so attribute and deposit rules count
+ * towards a section being complete.
+ */
 export function getListingFormProgress(
   values: CreateListingInput,
   schema: ListingProgressSchema = createListingInputSchema,
 ): ListingFormProgress {
   return schema === createListingInputSchema
-    ? progress.getProgress(values)
-    : progressFor(schema).getProgress(values);
+    ? listingSectionMap.getProgress(values)
+    : mapFor(schema).getProgress(values);
 }
-
-/** Map RHF/server field errors to the same five visual sections. */
-export const getListingFormErrorSections = progress.getErrorSections;

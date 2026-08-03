@@ -15,6 +15,7 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
+import { apiPaths } from '~/constants/api-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Gói dịch vụ · BookingOS Admin' }];
@@ -22,7 +23,7 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth } = await requirePlatform(request, 'platform.plans.manage');
-  const res = await apiGet<PlanResponse[]>('/admin/plans', auth);
+  const res = await apiGet<PlanResponse[]>(apiPaths.admin.plans, auth);
   return { plans: res.ok ? (res.data ?? []) : [], error: res.ok ? null : res.error };
 }
 
