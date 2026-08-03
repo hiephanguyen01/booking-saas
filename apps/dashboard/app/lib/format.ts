@@ -198,16 +198,10 @@ export function subtractMoney(a: string, b: string): string | null {
 // ── Numbers & percents ───────────────────────────────────────────────────────
 
 const numberFmt = new Intl.NumberFormat('vi-VN');
-const percentFmt = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 });
 
 /** Whole number with vi grouping, e.g. `1.250`. */
 export function formatNumber(n: number): string {
   return numberFmt.format(n);
-}
-
-/** A percentage number (already `0–100`) as vi-VN comma-decimal, e.g. `12,5%`. */
-export function formatPercent(n: number): string {
-  return Number.isFinite(n) ? `${percentFmt.format(n)}%` : '—';
 }
 
 /** A `0–1` fraction as a whole-percent string, e.g. `0.1234 → "12%"`. */

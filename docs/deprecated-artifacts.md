@@ -38,3 +38,27 @@ in an older doc, ticket, or snippet is recognisable as history rather than somet
 - `TONG-QUAN.md` and `tasks/phase-0-foundation/02-shared-packages.md` still describe
   `@booking/query` / `@booking/config` / `@booking/shared` as planned packages. They are historical
   planning docs — the code above is what shipped.
+
+## Removed on 2026-08-03
+
+Verified to have zero consumers anywhere in either frontend, and **deleted**.
+
+| Artifact | What it was |
+| --- | --- |
+| `requireData` / `unwrapList` (`dashboard/lib/api.server.ts`) | Sibling helpers of `unwrapApiResult`, documented alongside it in `conventions.md` and the dashboard `CLAUDE.md`. Only `unwrapApiResult` was ever called (5 sites); the other two never were. Docs updated to match. |
+| `ListingGroupOverviewCard` (`partner/components/listing-groups/listing-group-summary.tsx`) | Orphaned by the listing-creation rework (`2645d680`). `ListingGroupContentCard`, in the same file, is still live. |
+| `findTenantMembership` / `findPartnerMembership` (`dashboard/lib/workspace.ts`) | Superseded by `firstTenantMembership` / `firstPartnerMembership`, which every caller uses. |
+| `createMemoryDashboardSessionStore` (`dashboard/lib/session-store.server.ts`) | An in-memory session store. Sessions are Redis-backed; the memory variant had no wiring and no consumer. |
+| `formatPercent` (`dashboard/lib/format.ts`) | Plus its module-local `percentFmt`. `formatRate` covers the live case. |
+| `firstFormErrorField` (`dashboard/lib/form-errors.ts`) | Replaced by `FormSectionMap.getFirstErrorSection`, which maps the field to its section in one step. |
+| `withSearchContext` (`storefront/features/search/lib/search-state.ts`) | Callers build the URL from `searchContextParams` directly. |
+
+### Not removed, but over-exported
+
+These are **live** (used inside their own module) yet exported with no external consumer, so the
+`export` keyword overstates the module's surface: `listing-mode-config.ts` (`num`, `optInt`, `optVnd`,
+`ModeConfigMap`, `readPackages`, `writePackages`), `lib/pagination.ts` (`FilterPatch`, `parsePage`,
+`patchSearchParams`, `ListParams`, `ReadListParamsOptions`). Narrowing them is safe — the compiler
+catches any real use — but it is an API-surface change, not dead-code removal.
+
+The 17 unused `packages/ui` primitives listed above remain deliberate.

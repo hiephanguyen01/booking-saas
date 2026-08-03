@@ -48,7 +48,7 @@ Area features map to the four dashboard areas; **cross-area domain features** (`
 ## Data & auth
 
 BFF pattern: `app/lib/api.server.ts` re-exports `apiGet`/`apiPost`/`apiPatch`/`apiPut`/`apiDelete`
-(and `unwrapApiResult`/`requireData`/`unwrapList`) bound to `BACKEND_URL`. A root `middleware`
+(and `unwrapApiResult`) bound to `BACKEND_URL`. A root `middleware`
 authenticates every request into an AsyncLocalStorage context that `requireTenant`/area guards read.
 Sessions are Redis-backed; the cookie holds only a signed id. **Never fetch the backend from the
 browser** — all data goes through loaders/actions. (The one prior browser-side react-query fetch was

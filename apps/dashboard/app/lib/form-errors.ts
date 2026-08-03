@@ -43,8 +43,3 @@ export function formErrorMessageAt(
 ): string | undefined {
   return formErrorMessagesAt(errors, path)[0];
 }
-
-export function firstFormErrorField(errors: unknown): string | undefined {
-  if (!errors || typeof errors !== 'object') return undefined;
-  return Object.keys(errors)[0];
-}
