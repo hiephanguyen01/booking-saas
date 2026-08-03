@@ -165,10 +165,22 @@ The next engineering cycle should be a single end-to-end pilot slice:
 5. Complete the tenant booking inbox and confirm/reject/cancel actions.
 6. Complete the simplest deposit/payment-status path.
 7. Add the minimum confirmation notification.
-8. Add one end-to-end test for the exact pilot journey.
-9. Run the journey with the real pilot studio before improving visual polish.
+8. Run the repository's required static gates.
+9. Perform and record a focused runtime smoke of the exact pilot journey against real local infrastructure.
+10. Run the journey with the real pilot studio before improving visual polish.
 
-### Pilot journey acceptance test
+### Required verification
+
+ADR 0005 forbids automated tests and test-runner dependencies in this repository. Verification for the pilot must therefore use the accepted static and operational process:
+
+```bash
+pnpm turbo lint typecheck build
+pnpm --filter=@booking/api check:rls
+```
+
+Then start the affected applications against PostgreSQL/Redis and record the runtime smoke results, including the tenant, listing, selected slot, booking code, status transitions, payment/deposit status, and whether a competing booking was correctly rejected.
+
+### Pilot journey runtime smoke
 
 Given a published studio room with available hourly slots:
 
