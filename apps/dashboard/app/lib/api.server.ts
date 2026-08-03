@@ -81,28 +81,6 @@ export function unwrapApiResult<T>(result: ApiResult<T>, fallbackMessage: string
   return result.data;
 }
 
-/** Like {@link unwrapApiResult} but for detail pages: a miss is a 404. */
-export function requireData<T>(result: ApiResult<T>, notFoundMessage: string): T {
-  if (!result.ok || result.data === null) {
-    throw new Response(notFoundMessage, { status: result.status || 404 });
-  }
-  return result.data;
-}
-
-/**
- * Unwrap a list call into `{ items, error }` — the degrade-gracefully idiom for
- * list pages that render an error banner instead of an ErrorBoundary.
- */
-export function unwrapList<T>(
-  result: ApiResult<T[]>,
-  fallbackError: string,
-): { items: T[]; error: string | null } {
-  return {
-    items: result.ok ? (result.data ?? []) : [],
-    error: result.ok ? null : (result.error ?? fallbackError),
-  };
-}
-
 export function backendLogin(credentials: { email: string; password: string }) {
   return client().login(credentials);
 }

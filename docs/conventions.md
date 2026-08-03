@@ -161,7 +161,7 @@ app/
 - **BFF: never fetch the backend from the browser.** All authenticated data goes through
   loaders/actions calling `@booking/api-client` (via storefront
   `app/lib/server/api.server.ts` and dashboard `app/lib/api.server.ts`:
-  `apiGet`/`apiPost`/`apiPatch`/`apiPut`/`apiDelete` + `unwrapApiResult`/`requireData`/`unwrapList`).
+  `apiGet`/`apiPost`/`apiPatch`/`apiPut`/`apiDelete` + `unwrapApiResult`).
   The session cookie is `httpOnly`. Browser-reachable modules may only `import type` from `*.server`
   files. See [ADR 0001](./decisions/0001-opaque-sessions-over-jwt.md).
 - Style with **shadcn semantic tokens only** (`bg-background`, `text-foreground`,

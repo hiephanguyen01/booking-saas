@@ -45,33 +45,6 @@ export function parseDashboardSessionRecord(value: unknown): DashboardSessionRec
   };
 }
 
-export function createMemoryDashboardSessionStore(): DashboardSessionStore {
-  const records = new Map<string, { record: DashboardSessionRecord; expiresAt: number }>();
-
-  return {
-    async get(id) {
-      const stored = records.get(id);
-      if (!stored) return null;
-      if (stored.expiresAt <= Date.now()) {
-        records.delete(id);
-        return null;
-      }
-      return { ...stored.record };
-    },
-
-    async set(id, record, ttlSeconds) {
-      records.set(id, {
-        record: { ...record },
-        expiresAt: Date.now() + ttlSeconds * 1_000,
-      });
-    },
-
-    async delete(id) {
-      records.delete(id);
-    },
-  };
-}
-
 export function createRedisDashboardSessionStore({
   getClient,
   prefix = 'bookingos:dashboard:session:',

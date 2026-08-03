@@ -203,11 +203,6 @@ export function searchContextParams(state: StorefrontSearchState): URLSearchPara
   return params;
 }
 
-export function withSearchContext(path: string, state: StorefrontSearchState): string {
-  const params = searchContextParams(state);
-  return `${path}?${params.toString()}`;
-}
-
 /**
  * Everything a result card needs from the current search — all of it identical
  * for every card on the page.
