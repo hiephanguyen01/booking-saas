@@ -70,7 +70,10 @@ export class ApplyListingUpdateUseCase {
     tenantId: string,
     id: string,
     input: UpdateListingInput,
-    opts?: { requirePartnerId?: string },
+    opts?: {
+      requirePartnerId?: string;
+      modeConfigValidation?: 'draft' | 'bookable';
+    },
   ): Promise<ListingRecord> {
     const hasLocationCodes = input.provinceCode !== undefined || input.wardCode !== undefined;
     if (hasLocationCodes && (!input.provinceCode || !input.wardCode)) {
@@ -159,6 +162,7 @@ export class ApplyListingUpdateUseCase {
           bookingSelection: type.bookingSelection,
           bookingModes,
           modeConfig: input.modeConfig ?? existing.modeConfig,
+          validationContext: opts?.modeConfigValidation,
         }) as Record<string, unknown>;
       } catch (error) {
         if (error instanceof ListingModeConfigError) {

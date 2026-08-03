@@ -37,8 +37,10 @@ export function useListingModeState(opts: {
   listing?: ListingResponse;
   listingTypeId: string;
   selectedType?: ListingTypeResponse;
+  validateOnChange?: boolean;
 }): ListingModeState {
-  const { form, listing, listingTypeId, selectedType } = opts;
+  const { form, listing, listingTypeId, selectedType, validateOnChange = false } = opts;
+  const { setValue } = form;
 
   const [state, setState] = useState<DynamicState>(() =>
     initialDynamic(
@@ -46,8 +48,11 @@ export function useListingModeState(opts: {
       (selectedType?.defaultModes ?? []).filter((mode) => CONFIGURABLE.includes(mode)),
     ),
   );
-  const set = <K extends keyof DynamicState>(key: K, value: DynamicState[K]): void =>
+  const pendingUserChange = useRef(false);
+  const set = <K extends keyof DynamicState>(key: K, value: DynamicState[K]): void => {
+    pendingUserChange.current = true;
     setState((s) => ({ ...s, [key]: value }));
+  };
   // The listing's stored mode_config — the base every rebuild spreads over, so a
   // key this form doesn't render survives the wholesale PATCH replace.
   const saved = useMemo(() => savedModeConfig(listing), [listing]);
@@ -66,21 +71,36 @@ export function useListingModeState(opts: {
 
   // Mirror the dynamic values into RHF so the schema can validate them.
   useEffect(() => {
-    form.setValue('bookingModes', state.bookingModes);
-    form.setValue(
+    const changedByUser = pendingUserChange.current;
+    const options = {
+      shouldDirty: changedByUser,
+      shouldValidate: changedByUser && validateOnChange,
+    };
+    setValue('bookingModes', state.bookingModes, options);
+    setValue(
       'modeConfig',
       buildModeConfig(
         state,
         saved,
         selectedType?.bookingSelection ?? listing?.bookingSelection ?? 'flexible_duration',
       ) as CreateListingInput['modeConfig'],
+      options,
     );
-    form.setValue('attributes', state.attributes);
-    form.setValue(
+    setValue('attributes', state.attributes, options);
+    setValue(
       'stockQuantity',
       state.bookingModes.includes('inventory') ? int(state.stockQuantity, 1) : undefined,
+      options,
     );
-  }, [state, form, saved, selectedType?.bookingSelection, listing?.bookingSelection]);
+    pendingUserChange.current = false;
+  }, [
+    state,
+    saved,
+    selectedType?.bookingSelection,
+    listing?.bookingSelection,
+    setValue,
+    validateOnChange,
+  ]);
 
   const toggleMode = (mode: BookingMode, on: boolean): void =>
     set(

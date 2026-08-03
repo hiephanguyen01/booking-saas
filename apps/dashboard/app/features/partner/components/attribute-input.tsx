@@ -25,29 +25,63 @@ export function AttributeInput({
   field,
   value,
   onChange,
+  error,
 }: {
   field: AttributeField;
   value: unknown;
   onChange: (value: unknown) => void;
+  error?: string;
 }) {
   // The attribute schema carries its own glyph (same allowlist as the listing
   // type's icon); label it here exactly as the storefront spec cards do.
   const icon = field.icon ? <ListingTypeIcon name={field.icon} className="size-4" /> : null;
+  const controlId = React.useId();
+  const errorId = `${controlId}-error`;
 
   if (field.type === 'boolean') {
     return (
-      <label className="flex items-center gap-2 text-sm">
-        <Switch checked={value === true} onCheckedChange={(v) => onChange(v)} />
+      <label htmlFor={controlId} className="flex items-center gap-2 text-sm">
+        <Switch
+          id={controlId}
+          checked={value === true}
+          onCheckedChange={(v) => onChange(v)}
+          aria-required={field.required}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+        />
         {icon ? <span className="text-muted-foreground">{icon}</span> : null}
         {field.label}
+        {field.required ? (
+          <span aria-hidden="true" className="text-destructive">
+            *
+          </span>
+        ) : null}
+        {error ? (
+          <span id={errorId} className="text-xs text-destructive" role="alert">
+            {error}
+          </span>
+        ) : null}
       </label>
     );
   }
   if (field.type === 'select') {
     return (
-      <Field label={field.label} icon={icon}>
+      <Field
+        label={field.label}
+        icon={icon}
+        htmlFor={controlId}
+        required={field.required}
+        error={error ? [error] : undefined}
+        errorId={errorId}
+      >
         <Select value={typeof value === 'string' ? value : ''} onValueChange={onChange}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger
+            id={controlId}
+            className="w-full"
+            aria-required={field.required}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+          >
             <SelectValue placeholder="—" />
           </SelectTrigger>
           <SelectContent>
@@ -64,15 +98,24 @@ export function AttributeInput({
   if (field.type === 'multiselect') {
     const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
-      <Field label={field.label} icon={icon}>
+      <Field
+        label={field.label}
+        icon={icon}
+        required={field.required}
+        error={error ? [error] : undefined}
+        errorId={errorId}
+      >
         <div className="flex flex-wrap gap-3">
           {(field.options ?? []).map((o) => (
             <label key={o} className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={selected.includes(o)}
+                aria-required={field.required}
                 onCheckedChange={(v) =>
                   onChange(v === true ? [...selected, o] : selected.filter((x) => x !== o))
                 }
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? errorId : undefined}
               />
               {o}
             </label>
@@ -83,17 +126,41 @@ export function AttributeInput({
   }
   if (field.type === 'list') {
     return (
-      <SortableListAttribute label={field.label} icon={icon} value={value} onChange={onChange} />
+      <SortableListAttribute
+        label={field.label}
+        icon={icon}
+        value={value}
+        onChange={onChange}
+        error={error}
+        required={field.required}
+      />
     );
   }
   return (
-    <Field label={field.label} icon={icon}>
+    <Field
+      label={field.label}
+      icon={icon}
+      htmlFor={controlId}
+      required={field.required}
+      error={error ? [error] : undefined}
+      errorId={errorId}
+    >
       <Input
+        id={controlId}
         type={field.type === 'number' ? 'number' : 'text'}
         value={value === undefined || value === null ? '' : String(value)}
+        aria-required={field.required}
         onChange={(e) =>
-          onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)
+          onChange(
+            field.type === 'number'
+              ? e.target.value === ''
+                ? undefined
+                : Number(e.target.value)
+              : e.target.value,
+          )
         }
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
       />
     </Field>
   );
@@ -109,11 +176,15 @@ function SortableListAttribute({
   icon,
   value,
   onChange,
+  error,
+  required = false,
 }: {
   label: string;
   icon?: React.ReactNode;
   value: unknown;
   onChange: (value: unknown) => void;
+  error?: string;
+  required?: boolean;
 }) {
   const externalLines = React.useMemo(
     () =>
@@ -122,35 +193,24 @@ function SortableListAttribute({
   );
   const externalSignature = JSON.stringify(externalLines);
   const idSeed = React.useId();
+  const errorId = `${idSeed}-error`;
   const nextId = React.useRef(0);
   const inputRefs = React.useRef(new Map<string, HTMLInputElement>());
   const lastEmitted = React.useRef(externalSignature);
   const createId = React.useCallback(() => `${idSeed}-list-row-${nextId.current++}`, [idSeed]);
-  /**
-   * The editor always shows at least one row: an empty list would otherwise
-   * render as a bare "Thêm giá trị" button, hiding that the attribute is
-   * editable. A blank row emits nothing, so the submitted value stays empty.
-   */
-  const withLeadingRow = React.useCallback(
-    (nextRows: EditableListRow[]) =>
-      nextRows.length > 0 ? nextRows : [{ id: createId(), value: '' }],
-    [createId],
-  );
   const [rows, setRows] = React.useState<EditableListRow[]>(() =>
-    withLeadingRow(externalLines.map((line) => ({ id: createId(), value: line }))),
+    externalLines.map((line) => ({ id: createId(), value: line })),
   );
 
   React.useEffect(() => {
     if (externalSignature === lastEmitted.current) return;
     lastEmitted.current = externalSignature;
     setRows((current) =>
-      withLeadingRow(
-        externalLines.map((line, index) =>
-          current[index]?.value === line ? current[index] : { id: createId(), value: line },
-        ),
+      externalLines.map((line, index) =>
+        current[index]?.value === line ? current[index] : { id: createId(), value: line },
       ),
     );
-  }, [createId, externalLines, externalSignature, withLeadingRow]);
+  }, [createId, externalLines, externalSignature]);
 
   const emit = (nextRows: EditableListRow[]) => {
     const nextValue = nextRows.map((row) => row.value).filter((line) => line.trim() !== '');
@@ -167,7 +227,7 @@ function SortableListAttribute({
   };
 
   const remove = (index: number) => {
-    const nextRows = withLeadingRow(rows.filter((_, current) => current !== index));
+    const nextRows = rows.filter((_, current) => current !== index);
     setRows(nextRows);
     emit(nextRows);
   };
@@ -194,8 +254,20 @@ function SortableListAttribute({
   };
 
   return (
-    <Field label={label} icon={icon}>
-      <div className="space-y-2">
+    <Field
+      label={label}
+      icon={icon}
+      required={required}
+      error={error ? [error] : undefined}
+      errorId={errorId}
+    >
+      <div className="space-y-2" role="group" aria-label={label} aria-required={required}>
+        {rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
+            Chưa có {label.toLocaleLowerCase('vi')}. Chỉ thêm những thông tin giúp khách đưa ra
+            quyết định.
+          </div>
+        ) : null}
         <SortableCollection onMove={move} announcementLabel="Giá trị">
           <div className="space-y-2">
             {rows.map((row, index) => (
@@ -225,8 +297,11 @@ function SortableListAttribute({
                       value={row.value}
                       placeholder="Nhập giá trị"
                       aria-label={`${label} ${index + 1}`}
+                      aria-required={required}
                       className="min-w-0 rounded-xl"
                       onChange={(event) => update(index, event.target.value)}
+                      aria-invalid={Boolean(error)}
+                      aria-describedby={error ? errorId : undefined}
                     />
                     <Button
                       type="button"
@@ -245,7 +320,15 @@ function SortableListAttribute({
           </div>
         </SortableCollection>
 
-        <Button type="button" variant="ghost" size="sm" onClick={add} className="px-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={add}
+          className="px-1 text-foreground/60"
+          aria-invalid={rows.length === 0 && Boolean(error)}
+          aria-describedby={rows.length === 0 && error ? errorId : undefined}
+        >
           <CirclePlus className="size-4" />
           Thêm giá trị
         </Button>

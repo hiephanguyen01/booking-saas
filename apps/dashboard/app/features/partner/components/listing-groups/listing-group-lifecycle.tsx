@@ -1,5 +1,5 @@
 import { useFetcher } from 'react-router';
-import { EyeOff, Info, Lock, RotateCcw, Send, Trash2 } from 'lucide-react';
+import { EyeOff, Info, LoaderCircle, Lock, RotateCcw, Send, Trash2 } from 'lucide-react';
 import type { ListingGroupDetailResponse, PublishStatus } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
@@ -20,8 +20,7 @@ export const GROUP_STATUS_COPY: Record<
   pending_review: {
     label: 'Chờ duyệt',
     title: 'Tin đăng đang chờ duyệt',
-    description:
-      'Bạn vẫn sửa được nội dung — mỗi lần lưu sẽ cập nhật bản đang chờ tenant xem xét.',
+    description: 'Bạn vẫn sửa được nội dung — mỗi lần lưu sẽ cập nhật bản đang chờ tenant xem xét.',
   },
   published: {
     label: 'Đang hiển thị',
@@ -62,7 +61,7 @@ export function GroupStatusAlert({
       <AlertDescription>
         <p>
           {adminLocked
-            ? 'Bạn có thể xem nội dung và quản lý giờ hoạt động, nhưng chỉ quản trị viên mới có thể bỏ ẩn tin đăng.'
+            ? 'Bạn vẫn có thể chỉnh sửa nội dung và giờ hoạt động, nhưng chỉ quản trị viên mới có thể bỏ ẩn tin đăng.'
             : statusMeta.description}
         </p>
         <GroupLifecycleActions
@@ -89,21 +88,47 @@ export function GroupLifecycleActions({
 }) {
   const fetcher = useFetcher<GroupActionResult>();
   const { busy, run } = useSubmissionGuard(fetcher.state);
+  const pendingIntent = String(fetcher.formData?.get('intent') ?? '');
   const submit = (intent: string): void => {
     run(() => fetcher.submit({ intent }, { method: 'post' }));
   };
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2" aria-busy={busy}>
+    <div
+      className="mt-2 flex flex-wrap gap-2"
+      aria-busy={busy}
+      aria-live="polite"
+      aria-atomic="true"
+    >
       {group.status === 'published' && canPublish ? (
         <Button size="sm" variant="outline" disabled={busy} onClick={() => submit('hide')}>
-          <EyeOff /> Ẩn tin đăng
+          {busy && pendingIntent === 'hide' ? (
+            <LoaderCircle className="animate-spin" aria-hidden />
+          ) : (
+            <EyeOff aria-hidden />
+          )}
+          {busy && pendingIntent === 'hide' ? 'Đang ẩn…' : 'Ẩn tin đăng'}
         </Button>
       ) : null}
       {group.status === 'archived' && canPublish && !adminLocked ? (
         <Button size="sm" variant="outline" disabled={busy} onClick={() => submit('republish')}>
-          <RotateCcw /> Đăng lại
+          {busy && pendingIntent === 'republish' ? (
+            <LoaderCircle className="animate-spin" aria-hidden />
+          ) : (
+            <RotateCcw aria-hidden />
+          )}
+          {busy && pendingIntent === 'republish' ? 'Đang đăng lại…' : 'Đăng lại'}
         </Button>
+      ) : null}
+      {!canPublish && ['published', 'archived'].includes(group.status) ? (
+        <p className="basis-full text-xs text-muted-foreground">
+          Bạn không có quyền thay đổi trạng thái hiển thị của tin đăng này.
+        </p>
+      ) : null}
+      {adminLocked ? (
+        <p className="basis-full text-xs text-muted-foreground">
+          Tin đăng chỉ có thể được bỏ ẩn bởi quản trị viên.
+        </p>
       ) : null}
       {['draft', 'archived'].includes(group.status) &&
       canWrite &&
@@ -137,17 +162,36 @@ export function GroupLifecycleActions({
 }
 
 /** "Gửi duyệt" — submits the whole group for tenant review. */
-export function SubmitGroupButton({ disabled }: { disabled: boolean }) {
+export function SubmitGroupButton({
+  disabled,
+  disabledReason,
+}: {
+  disabled: boolean;
+  disabledReason?: string;
+}) {
   const fetcher = useFetcher<GroupActionResult>();
   const { busy, run } = useSubmissionGuard(fetcher.state);
   return (
-    <div className="flex flex-col items-start gap-1" aria-busy={busy}>
+    <div
+      className="flex flex-col items-start gap-1"
+      aria-busy={busy}
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <Button
         disabled={disabled || busy}
         onClick={() => run(() => fetcher.submit({ intent: 'submit' }, { method: 'post' }))}
       >
-        <Send data-icon="inline-start" /> Gửi duyệt
+        {busy ? (
+          <LoaderCircle className="animate-spin" data-icon="inline-start" aria-hidden />
+        ) : (
+          <Send data-icon="inline-start" aria-hidden />
+        )}
+        {busy ? 'Đang gửi duyệt…' : 'Gửi duyệt'}
       </Button>
+      {disabled && disabledReason ? (
+        <p className="max-w-56 text-xs leading-4 text-muted-foreground">{disabledReason}</p>
+      ) : null}
       {fetcher.data?.error ? (
         <p className="text-xs text-destructive" role="alert">
           {fetcher.data.error}

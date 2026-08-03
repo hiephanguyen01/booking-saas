@@ -44,6 +44,7 @@ export const partnerNavSections: DashboardNavSection[] = [
       {
         title: 'Tin đăng',
         to: dashboardPaths.partner.listings,
+        activePrefixes: [dashboardPaths.partner.listingGroups],
         icon: Store,
         permission: 'partner.listings.read',
       },

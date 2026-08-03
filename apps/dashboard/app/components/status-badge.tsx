@@ -96,7 +96,7 @@ const BOOKING: Record<BookingStatus, BookingStatusMeta> = {
     event: 'border-border bg-muted/60 text-muted-foreground line-through',
   },
   no_show: {
-    label: 'Không đến',
+    label: 'Vắng mặt',
     tone: 'rose',
     dot: 'bg-rose-500',
     event: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300',

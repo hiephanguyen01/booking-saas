@@ -1,24 +1,28 @@
 import { data, Link } from 'react-router';
-import { CalendarDays, FileText, Pencil, Repeat } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import {
   availabilityExceptionInputSchema,
   availabilityExceptionRangeInputSchema,
   pricingRuleInputSchema,
   pricingRuleRangeInputSchema,
   recurringPricingRuleInputSchema,
+  submitListingResponseSchema,
   PRICING_RULE_PRIORITY,
   type AvailabilityExceptionResponse,
   type AvailabilityRuleResponse,
   type ListingResponse,
+  type ListingRevisionResponse,
   type ListingTypeResponse,
   type Paginated,
   type PartnerCalendarBookingResponse,
   type PricingRuleBulkResult,
   type PricingRuleResponse,
+  type SubmitListingResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -35,7 +39,6 @@ import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EntityRef } from '~/components/entity-ref';
-import { WarningCallout } from '~/components/warning-callout';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { CANCELLATION_SOURCE_LABEL, CancellationTiers } from '~/components/cancellation-tiers';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
@@ -54,6 +57,14 @@ import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { ListingCalendarPricing } from '~/features/partner/components/listing-calendar';
 import { EXCEPTION_WINDOW_FIELD } from '~/features/partner/components/listing-calendar/window-list-field';
 import { RecurringPricing } from '~/features/partner/components/recurring-pricing';
+import { ListingLifecycleCard } from '~/features/partner/components/listings/listing-lifecycle-card';
+import { listingSubmissionReadiness } from '~/features/partner/lib/listing-readiness';
+import { PendingChangeBanner } from '~/features/partner/components/pending-change-banner';
+import {
+  ListingWorkspaceNav,
+  type ListingWorkspaceTab,
+} from '~/features/partner/components/listings/listing-workspace-nav';
+import { PhotoAndDescriptionSections } from '~/components/media-detail-sections';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết tin đăng · Đối tác · BookingOS' }];
@@ -94,9 +105,10 @@ function submittedWindows(form: FormData): { openTime: string; closeTime: string
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.listings.read');
-  const [res, listingTypesRes] = await Promise.all([
+  const [res, listingTypesRes, revisionRes] = await Promise.all([
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+    apiGet<ListingRevisionResponse | null>(`/partner/listings/${params.listingId}/revision`, auth),
   ]);
   if (!res.ok || !res.data) {
     throw new Response('Không tìm thấy tin đăng.', { status: res.status === 403 ? 403 : 404 });
@@ -107,7 +119,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       (type) => type.id === listing.listingTypeId,
     ) ?? null;
   const requestedTab = url.searchParams.get('tab');
-  const tab: 'detail' | 'calendar' | 'pricing' =
+  const tab: ListingWorkspaceTab =
     requestedTab === 'calendar' || requestedTab === 'pricing' ? requestedTab : 'detail';
   const requestedMonth = url.searchParams.get('month');
   const month =
@@ -165,10 +177,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   // Recurring rules belong to no month, so this read is deliberately unwindowed.
   const recurringRes =
     tab === 'pricing'
-      ? await apiGet<PricingRuleResponse[]>(
-          `/partner/listings/${listing.id}/pricing-rules`,
-          auth,
-        )
+      ? await apiGet<PricingRuleResponse[]>(`/partner/listings/${listing.id}/pricing-rules`, auth)
       : null;
   // Only bookings that still hold the resource matter: a cancelled one neither
   // blocks the calendar nor deserves a warning.
@@ -178,6 +187,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   return {
     listing,
     listingType,
+    revision: revisionRes.ok ? (revisionRes.data ?? null) : null,
     tab,
     month,
     mode,
@@ -196,7 +206,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     calendarError:
       pricingRes && !pricingRes.ok ? (pricingRes.error ?? 'Không tải được lịch giá.') : null,
     canWrite: can('partner.listings.write'),
+    canPublish: can('partner.listings.publish'),
     canAvailability,
+    created: url.searchParams.get('created') === '1',
+    updated: url.searchParams.get('updated') === '1',
   };
 }
 
@@ -208,6 +221,44 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!listingRes.ok || !listingRes.data)
     return data({ ok: false, error: 'Không tìm thấy tin đăng.' }, { status: 404 });
   const listing = listingRes.data;
+
+  if (intent === 'discard-revision') {
+    if (!can('partner.listings.write')) {
+      return data({ ok: false, error: 'Không có quyền hủy thay đổi.' }, { status: 403 });
+    }
+    const result = await apiDelete(`/partner/listings/${listing.id}/revision`, auth);
+    return result.ok
+      ? data({ ok: true, error: null })
+      : data(
+          { ok: false, error: result.error ?? 'Hủy thay đổi không thành công.' },
+          { status: 400 },
+        );
+  }
+
+  if (intent === 'submit') {
+    if (!can('partner.listings.write')) {
+      return data({ ok: false, error: 'Không có quyền gửi duyệt.' }, { status: 403 });
+    }
+    const result = await apiPost<SubmitListingResponse>(
+      `/partner/listings/${listing.id}/submit`,
+      {},
+      auth,
+      { schema: submitListingResponseSchema },
+    );
+    return result.ok
+      ? data({ ok: true, error: null })
+      : data({ ok: false, error: result.error ?? 'Gửi duyệt không thành công.' }, { status: 400 });
+  }
+
+  if (intent === 'hide' || intent === 'republish') {
+    if (!can('partner.listings.publish')) {
+      return data({ ok: false, error: 'Không có quyền thay đổi hiển thị.' }, { status: 403 });
+    }
+    const result = await apiPost(`/partner/listings/${listing.id}/${intent}`, {}, auth);
+    return result.ok
+      ? data({ ok: true, error: null })
+      : data({ ok: false, error: result.error ?? 'Thao tác không thành công.' }, { status: 400 });
+  }
 
   if (intent === 'save_recurring_price' || intent === 'delete_recurring_price') {
     if (!can('partner.listings.write'))
@@ -222,10 +273,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       );
       return result.ok
         ? data({ ok: true, error: null })
-        : data(
-            { ok: false, error: result.error ?? 'Không xoá được quy tắc.' },
-            { status: 400 },
-          );
+        : data({ ok: false, error: result.error ?? 'Không xoá được quy tắc.' }, { status: 400 });
     }
 
     const kind = String(form.get('kind')) === 'time_range' ? 'time_range' : 'day_of_week';
@@ -269,17 +317,17 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
     return result.ok
       ? data({ ok: true, error: null })
-      : data(
-          { ok: false, error: pricingErrorMessage(result.code, result.error) },
-          { status: 400 },
-        );
+      : data({ ok: false, error: pricingErrorMessage(result.code, result.error) }, { status: 400 });
   }
 
   if (intent === 'save_availability_range' || intent === 'save_price_range') {
     const from = String(form.get('from') ?? '');
     const to = String(form.get('to') ?? '');
     if (from < todayString())
-      return data({ ok: false, error: 'Dải ngày không được bắt đầu trước hôm nay.' }, { status: 400 });
+      return data(
+        { ok: false, error: 'Dải ngày không được bắt đầu trước hôm nay.' },
+        { status: 400 },
+      );
 
     if (intent === 'save_availability_range') {
       if (!can('partner.availability.manage'))
@@ -292,7 +340,10 @@ export async function action({ request, params }: Route.ActionArgs) {
         ...(setting === 'custom_hours' ? { windows: submittedWindows(form) } : {}),
       });
       if (!parsed.success)
-        return data({ ok: false, error: 'Dải ngày hoặc giờ mở cửa không hợp lệ.' }, { status: 400 });
+        return data(
+          { ok: false, error: 'Dải ngày hoặc giờ mở cửa không hợp lệ.' },
+          { status: 400 },
+        );
       const result = await apiPost(
         `/partner/resources/${listing.resourceId}/availability-exceptions/bulk`,
         parsed.data,
@@ -326,9 +377,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       price,
       ...(salePrice ? { salePrice } : {}),
       priority:
-        mode === 'hourly'
-          ? PRICING_RULE_PRIORITY.dateTimeRange
-          : PRICING_RULE_PRIORITY.dateRange,
+        mode === 'hourly' ? PRICING_RULE_PRIORITY.dateTimeRange : PRICING_RULE_PRIORITY.dateRange,
     });
     if (!parsed.success)
       return data(
@@ -381,9 +430,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         const input = {
           date,
           type: availabilitySetting === 'closed' ? ('closed' as const) : ('custom_hours' as const),
-          ...(availabilitySetting === 'custom_hours'
-            ? { windows: submittedWindows(form) }
-            : {}),
+          ...(availabilitySetting === 'custom_hours' ? { windows: submittedWindows(form) } : {}),
         };
         const parsed = availabilityExceptionInputSchema.safeParse(input);
         if (!parsed.success)
@@ -405,8 +452,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       if (!can('partner.listings.write'))
         return data({ ok: false, error: 'Không có quyền sửa giá.' }, { status: 403 });
       const ruleId = String(form.get('ruleId') ?? '');
-      if (!ruleId)
-        return data({ ok: false, error: 'Không tìm thấy khung giá.' }, { status: 400 });
+      if (!ruleId) return data({ ok: false, error: 'Không tìm thấy khung giá.' }, { status: 400 });
       const result = await apiDelete(
         `/partner/listings/${listing.id}/pricing-rules/${ruleId}`,
         auth,
@@ -447,10 +493,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         const input = {
           bookingMode: mode,
           ruleType: mode === 'hourly' ? 'date_time_range' : 'date_range',
-          params:
-            mode === 'hourly'
-              ? { date, from, to }
-              : { from: date, to: date },
+          params: mode === 'hourly' ? { date, from, to } : { from: date, to: date },
           price,
           ...(salePrice ? { salePrice } : {}),
           priority:
@@ -497,49 +540,56 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
   const price = listingPriceFrom(listing);
   const source = listing.effectiveCancellationPolicySource;
   const inherited = source !== null && source !== 'listing';
-  const adminLocked = listing.status === 'archived' && listing.hiddenBy === 'admin';
+  const readiness = listingSubmissionReadiness(listing);
 
   return (
-    <div className="space-y-5">
-      <div>
-        <BackLink to={dashboardPaths.partner.listings} label="Tin đăng" className="mb-2" />
-        <PageHeader
-          title={listing.title}
-          description={`/${listing.slug}`}
-          actions={
-            canWrite ? (
-              <Button asChild size="sm" variant="outline">
-                <Link to={dashboardPaths.partner.listing(listing.id) + '/edit'}>
-                  <Pencil className="size-4" /> Sửa
-                </Link>
-              </Button>
-            ) : null
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div>
+          <BackLink to={dashboardPaths.partner.listings} label="Tin đăng" className="mb-2" />
+          <PageHeader
+            title={listing.title}
+            description={`/${listing.slug}`}
+            titleAdornment={<ListingStatusBadge status={listing.status} />}
+            actions={
+              canWrite ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link to={dashboardPaths.partner.listingEdit(listing.id)}>
+                    <Pencil className="size-4" /> Sửa
+                  </Link>
+                </Button>
+              ) : null
+            }
+          />
+        </div>
+
+        <ListingWorkspaceNav listingId={listing.id} activeTab={tab} />
+      </div>
+
+      <div className="space-y-4">
+        <SuccessBanner
+          message={
+            actionData?.ok
+              ? 'Đã cập nhật.'
+              : loaderData.created
+                ? 'Đã lưu bản nháp. Kiểm tra các mục còn thiếu trước khi gửi duyệt.'
+                : loaderData.updated
+                  ? 'Đã lưu thay đổi.'
+                  : null
           }
         />
+        <ErrorBanner
+          error={actionData?.error ?? loaderData.calendarError ?? loaderData.recurringError}
+        />
+        <PendingChangeBanner revision={loaderData.revision} />
+        <ListingLifecycleCard
+          listing={listing}
+          checklist={readiness.checklist}
+          ready={readiness.ready}
+          canWrite={loaderData.canWrite}
+          canPublish={loaderData.canPublish}
+        />
       </div>
-
-      <div className="flex w-fit rounded-lg border bg-muted/30 p-1">
-        <Button asChild size="sm" variant={tab === 'detail' ? 'secondary' : 'ghost'}>
-          <Link to={dashboardPaths.partner.listing(listing.id)}>
-            <FileText className="size-4" /> Chi tiết
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant={tab === 'calendar' ? 'secondary' : 'ghost'}>
-          <Link to={`${dashboardPaths.partner.listing(listing.id)}?tab=calendar`}>
-            <CalendarDays className="size-4" /> Lịch và giá
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant={tab === 'pricing' ? 'secondary' : 'ghost'}>
-          <Link to={`${dashboardPaths.partner.listing(listing.id)}?tab=pricing`}>
-            <Repeat className="size-4" /> Giá lặp lại
-          </Link>
-        </Button>
-      </div>
-
-      <SuccessBanner message={actionData?.ok ? 'Đã lưu thay đổi.' : null} />
-      <ErrorBanner
-        error={actionData?.error ?? loaderData.calendarError ?? loaderData.recurringError}
-      />
 
       {tab === 'pricing' ? (
         <RecurringPricing
@@ -562,21 +612,32 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
           canAvailability={loaderData.canAvailability}
         />
       ) : (
-        <>
-          {adminLocked ? (
-            <WarningCallout>Bị quản trị viên ẩn — liên hệ tenant để mở lại.</WarningCallout>
-          ) : null}
-
-          <Card>
+        <div className="space-y-4">
+          <Card className="rounded-2xl shadow-none">
             <CardHeader>
+              <CardTitle>Nội dung bài đăng</CardTitle>
+              <CardDescription>Hình ảnh và mô tả khách hàng nhìn thấy khi xem tin.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <PhotoAndDescriptionSections
+                photos={listing.photos}
+                alt={listing.title}
+                description={listing.description ?? null}
+                photoEmptyMessage="Chưa có hình ảnh cho tin đăng này."
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl shadow-none">
+            <CardHeader className="border-b">
               <CardTitle>Thông tin</CardTitle>
+              <CardAction className="text-right text-xs text-muted-foreground">
+                <span className="mr-1">Cập nhật</span>
+                <DateTimeValue iso={listing.updatedAt} relative />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <DetailGrid columns={3}>
-                <DetailField
-                  label="Trạng thái"
-                  value={<ListingStatusBadge status={listing.status} />}
-                />
+              <DetailGrid columns={1} className="sm:grid-cols-2 xl:grid-cols-4">
                 <DetailField label="Loại dịch vụ" value={listingType?.name ?? '—'} />
                 <DetailField
                   label="Hình thức"
@@ -587,10 +648,6 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
                   value={price ? <Money value={price} /> : 'Chưa có giá'}
                 />
                 <DetailField label="Đặt cọc" value={`${listing.depositPercent}%`} />
-                <DetailField
-                  label="Cập nhật"
-                  value={<DateTimeValue iso={listing.updatedAt} relative />}
-                />
                 {listing.groupId ? (
                   <DetailField
                     label="Thuộc tin đăng"
@@ -606,12 +663,12 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl shadow-none">
             <CardHeader>
               <CardTitle>Chính sách huỷ</CardTitle>
               <CardDescription>
-                Chính sách hoàn tiền đang áp dụng cho tin đăng này (ưu tiên: riêng listing → mặc
-                định của bạn → mặc định hệ thống).
+                Chính sách hoàn tiền được ưu tiên theo thứ tự: chính sách riêng của tin đăng, chính
+                sách mặc định của đối tác, sau đó là chính sách mặc định của hệ thống.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -635,13 +692,13 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
               </DetailSection>
               {inherited ? (
                 <p className="text-xs text-muted-foreground">
-                  Tin đăng này chưa gắn chính sách riêng — đang dùng{' '}
+                  Tin đăng này chưa gắn chính sách riêng. Hiện đang dùng{' '}
                   {CANCELLATION_SOURCE_LABEL[source]}. Sửa tin đăng để gắn một chính sách riêng.
                 </p>
               ) : null}
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </div>
   );

@@ -35,6 +35,7 @@ export function ListingCancellationPolicyField({
         render={({ field, fieldState }) => {
           const explicitlySelected = policies.find((policy) => policy.id === field.value) ?? null;
           const preview = explicitlySelected ?? defaultPolicy;
+          const errorId = 'listing-cancellation-policy-error';
 
           return (
             <div className="space-y-4">
@@ -45,7 +46,11 @@ export function ListingCancellationPolicyField({
                     field.onChange(value === USE_DEFAULT ? undefined : value)
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger
+                    className="w-full"
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={fieldState.invalid ? errorId : undefined}
+                  >
                     <SelectValue placeholder="Chọn chính sách hủy" />
                   </SelectTrigger>
                   <SelectContent>
@@ -61,7 +66,9 @@ export function ListingCancellationPolicyField({
               ) : null}
 
               {fieldState.error?.message ? (
-                <p className="text-xs text-destructive">{fieldState.error.message}</p>
+                <p id={errorId} className="text-xs text-destructive" role="alert">
+                  {fieldState.error.message}
+                </p>
               ) : null}
 
               {preview ? (
@@ -80,12 +87,12 @@ export function ListingCancellationPolicyField({
                 <div className="rounded-lg border border-dashed p-4">
                   <p className="text-sm font-medium">
                     {policies.length > 0
-                      ? 'Chưa chọn chính sách hủy'
+                      ? 'Dùng chính sách hủy kế thừa'
                       : 'Chưa có chính sách hủy để áp dụng'}
                   </p>
                   <p className="mt-1 text-sm leading-5 text-muted-foreground">
                     {policies.length > 0
-                      ? 'Chọn một chính sách ở phía trên để xem trước các mốc hoàn tiền.'
+                      ? 'Chính sách mặc định đang có hiệu lực sẽ được xác định và áp dụng sau khi lưu. Bạn vẫn có thể chọn riêng một chính sách ở phía trên.'
                       : 'Tạo chính sách với các mốc hoàn tiền cụ thể rồi quay lại chọn cho tin đăng.'}
                   </p>
                 </div>

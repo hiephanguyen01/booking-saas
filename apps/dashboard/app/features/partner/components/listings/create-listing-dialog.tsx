@@ -24,10 +24,8 @@ function structureHint(type: ListingTypeResponse): string {
   return 'Một hạng mục độc lập.';
 }
 
-const standaloneHref = (typeId: string) => `/partner/listings/new?type=${typeId}&mode=standalone`;
-
 /**
- * "Thêm tin đăng" trigger + modal that handles only the *selection* steps
+ * "Tạo bài đăng" trigger + modal that handles only the *selection* steps
  * (pick a listing type, and for `flexible` types pick single vs. multi-item),
  * then navigates straight to the appropriate create-form page with the type
  * (and mode) pre-set. This replaces the old intermediate type-picker/mode
@@ -44,7 +42,8 @@ export function CreateListingDialog({ listingTypes }: { listingTypes: ListingTyp
   }
 
   function pickType(type: ListingTypeResponse) {
-    if (type.structure === 'standalone') return go(standaloneHref(type.id));
+    if (type.structure === 'standalone')
+      return go(dashboardPaths.partner.listingNew(type.id, 'standalone'));
     if (type.structure === 'grouped') return go(dashboardPaths.partner.newListingGroup(type.id));
     setFlexibleType(type); // flexible → choose structure in step 2
   }
@@ -59,7 +58,7 @@ export function CreateListingDialog({ listingTypes }: { listingTypes: ListingTyp
     >
       <DialogTrigger asChild>
         <Button size="control">
-          <Plus className="size-4" aria-hidden /> Tạo mới
+          <Plus className="size-4" aria-hidden /> Tạo bài đăng
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[43rem]">
@@ -73,13 +72,13 @@ export function CreateListingDialog({ listingTypes }: { listingTypes: ListingTyp
             </DialogHeader>
             <div className="grid gap-4 sm:grid-cols-2">
               <ChoiceCard
-                title="Một hạng mục"
-                description="Tạo một lựa chọn có thể đặt độc lập."
-                onClick={() => go(standaloneHref(flexibleType.id))}
+                title={`Một ${flexibleType.itemLabel || 'hạng mục'} độc lập`}
+                description="Khách mở và đặt trực tiếp một lựa chọn duy nhất."
+                onClick={() => go(dashboardPaths.partner.listingNew(flexibleType.id, 'standalone'))}
               />
               <ChoiceCard
-                title={`Nhiều ${flexibleType.itemLabel || 'hạng mục'}`}
-                description="Một tin đăng chung chứa nhiều lựa chọn có thể đặt."
+                title={`Tin đăng nhiều ${flexibleType.itemLabel || 'hạng mục'}`}
+                description="Tạo thông tin chung trước, sau đó thêm giá và lịch cho từng lựa chọn."
                 onClick={() => go(dashboardPaths.partner.newListingGroup(flexibleType.id))}
               />
             </div>
@@ -93,7 +92,9 @@ export function CreateListingDialog({ listingTypes }: { listingTypes: ListingTyp
           <>
             <DialogHeader>
               <DialogTitle className="text-2xl">Tạo bài đăng</DialogTitle>
-              <DialogDescription>Vui lòng chọn danh mục để bắt đầu.</DialogDescription>
+              <DialogDescription>
+                Chọn loại dịch vụ. BookingOS sẽ mở đúng biểu mẫu và cách tính giá tương ứng.
+              </DialogDescription>
             </DialogHeader>
             {listingTypes.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -103,12 +104,12 @@ export function CreateListingDialog({ listingTypes }: { listingTypes: ListingTyp
                     type="button"
                     onClick={() => pickType(type)}
                     className={cn(
-                      'flex min-h-24 items-center gap-4 rounded-md border bg-card p-4 text-left shadow-sm transition-all',
-                      'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
+                      'flex min-h-24 items-center gap-4 rounded-2xl border bg-card p-4 text-left transition-colors',
+                      'hover:border-primary/40 hover:bg-muted/20',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     )}
                   >
-                    <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-primary">
+                    <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-primary">
                       <ListingTypeIcon
                         imageUrl={type.iconImageUrl}
                         name={type.icon}
@@ -154,8 +155,8 @@ function ChoiceCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'min-h-28 rounded-md border bg-card p-5 text-left shadow-sm transition-all',
-        'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
+        'min-h-28 rounded-2xl border bg-card p-5 text-left transition-colors',
+        'hover:border-primary/40 hover:bg-muted/20',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       )}
     >

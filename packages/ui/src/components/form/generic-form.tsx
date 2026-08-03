@@ -10,7 +10,7 @@ import {
   type UseFormReturn,
 } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigation, useSubmit } from 'react-router';
+import { useBlocker, useNavigation, useSubmit, type BlockerFunction } from 'react-router';
 import { AlertCircle } from 'lucide-react';
 import type { z } from 'zod';
 
@@ -20,6 +20,16 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Form } from '@booking/ui/components/ui/form';
 import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
 import type { FieldConfig } from '@booking/ui/components/form/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@booking/ui/components/ui/alert-dialog';
 
 export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   /** Zod schema from `@booking/contracts` — validates on the client and (again) in the action. */
@@ -77,10 +87,12 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
    * Defaults to `true`.
    */
   showActions?: boolean;
-  /** Warn before closing/reloading a page that contains unsaved changes. */
+  /** Warn before browser unload or in-app navigation when the form has unsaved changes. */
   warnOnUnsavedChanges?: boolean;
   /** Reset react-hook-form's dirty state after the parent confirms a successful save. */
   resetDirtyOnSuccess?: boolean;
+  /** Let composed forms reveal the section containing an invalid field before focus moves. */
+  onInvalid?: (errors: FieldErrors<z.infer<TSchema>>) => void;
 }
 
 const COLS: Record<1 | 2 | 3 | 4, string> = {
@@ -130,6 +142,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   showActions = true,
   warnOnUnsavedChanges,
   resetDirtyOnSuccess,
+  onInvalid: onInvalidProp,
 }: GenericFormProps<TSchema>) {
   type Values = z.infer<TSchema>;
   const form = useForm<Values>({
@@ -138,14 +151,35 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
     resolver: zodResolver(schema as never),
     defaultValues,
   });
+  const {
+    formState: { isDirty },
+    getValues,
+    handleSubmit,
+    reset,
+  } = form;
   const submit = useSubmit();
   const navigation = useNavigation();
   const submitLockRef = React.useRef(createSubmissionLock());
+  const submittingRef = React.useRef(false);
   const navigationWasBusyRef = React.useRef(false);
   const [locked, setLocked] = React.useState(false);
   const isSubmitting = locked || navigation.state === 'submitting';
 
   const values = form.watch();
+  const blocker = useBlocker(
+    React.useCallback<BlockerFunction>(
+      ({ currentLocation, nextLocation }) =>
+        Boolean(
+          warnOnUnsavedChanges &&
+          isDirty &&
+          !submittingRef.current &&
+          (currentLocation.pathname !== nextLocation.pathname ||
+            currentLocation.search !== nextLocation.search ||
+            currentLocation.hash !== nextLocation.hash),
+        ),
+      [isDirty, warnOnUnsavedChanges],
+    ),
+  );
 
   React.useEffect(() => {
     if (locked && navigation.state !== 'idle') {
@@ -155,24 +189,25 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
 
     if (navigation.state === 'idle' && navigationWasBusyRef.current) {
       navigationWasBusyRef.current = false;
+      submittingRef.current = false;
       submitLockRef.current.release();
       setLocked(false);
     }
   }, [locked, navigation.state]);
 
   React.useEffect(() => {
-    if (resetDirtyOnSuccess) form.reset(form.getValues());
-  }, [form, resetDirtyOnSuccess]);
+    if (resetDirtyOnSuccess) reset(getValues());
+  }, [getValues, reset, resetDirtyOnSuccess]);
 
   React.useEffect(() => {
-    if (!warnOnUnsavedChanges || !form.formState.isDirty || isSubmitting) return;
+    if (!warnOnUnsavedChanges || !isDirty || isSubmitting) return;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = true;
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [form.formState.isDirty, isSubmitting, warnOnUnsavedChanges]);
+  }, [isDirty, isSubmitting, warnOnUnsavedChanges]);
 
   // Map server-side field errors onto the inputs.
   const { setError } = form;
@@ -191,6 +226,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
     if (!submitLockRef.current.tryAcquire()) return;
 
     setLocked(true);
+    submittingRef.current = true;
     let submitted = false;
     try {
       let payload: Record<string, unknown> = { ...data };
@@ -214,6 +250,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
       submitted = true;
     } finally {
       if (!submitted) {
+        submittingRef.current = false;
         submitLockRef.current.release();
         setLocked(false);
       }
@@ -221,21 +258,34 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   };
 
   const onInvalid = (errors: FieldErrors<Values>) => {
+    onInvalidProp?.(errors);
     const firstName = Object.keys(errors)[0] as Path<Values> | undefined;
-    if (!firstName) return;
-
-    form.setFocus(firstName);
     window.requestAnimationFrame(() => {
-      const field = document.querySelector<HTMLElement>(`[name="${String(firstName)}"]`);
-      if (field && document.activeElement !== field) field.focus();
-      const focusedElement = field ?? document.activeElement;
+      window.requestAnimationFrame(() => {
+        const isVisible = (element: HTMLElement): boolean =>
+          !element.closest('[hidden]') && element.getClientRects().length > 0;
+        const firstInvalid = Array.from(
+          document.querySelectorAll<HTMLElement>('[aria-invalid="true"]'),
+        ).find(isVisible);
+        const namedField = firstName
+          ? Array.from(
+              document.querySelectorAll<HTMLElement>(`[name="${String(firstName)}"]`),
+            ).find(isVisible)
+          : undefined;
+        const field = firstInvalid ?? namedField;
+        if (field) {
+          field.focus();
+        }
 
-      if (focusedElement instanceof HTMLElement) {
-        focusedElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      }
+        const focusedElement = field ?? document.activeElement;
+        if (focusedElement instanceof HTMLElement) {
+          const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          focusedElement.scrollIntoView({
+            behavior: reducedMotion ? 'auto' : 'smooth',
+            block: 'center',
+          });
+        }
+      });
     });
   };
 
@@ -275,11 +325,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
 
       {showActions ? (
         <div
-          className={cn(
-            'flex items-center gap-3',
-            submitFullWidth && 'flex-col',
-            actionsClassName,
-          )}
+          className={cn('flex items-center gap-3', submitFullWidth && 'flex-col', actionsClassName)}
         >
           <Button
             type="submit"
@@ -296,30 +342,55 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   );
 
   return (
-    <Form {...form}>
-      {/* Native POST prevents pre-hydration/no-JS fallback from serializing values
-          into the URL. Hydrated submissions still use the caller's method via useSubmit. */}
-      <form
-        method="post"
-        action={action}
-        onSubmit={form.handleSubmit(onValid, onInvalid)}
-        className={cn(renderFields ? undefined : 'space-y-6', className)}
-        noValidate
-        aria-busy={isSubmitting}
-      >
-        {serverError ? (
-          <div
-            role="alert"
-            className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          >
-            <AlertCircle className="size-4 shrink-0" />
-            {serverError}
-          </div>
-        ) : null}
+    <>
+      <Form {...form}>
+        {/* Native POST prevents pre-hydration/no-JS fallback from serializing values
+            into the URL. Hydrated submissions still use the caller's method via useSubmit. */}
+        <form
+          method="post"
+          action={action}
+          onSubmit={handleSubmit(onValid, onInvalid)}
+          className={cn(renderFields ? undefined : 'space-y-6', className)}
+          noValidate
+          aria-busy={isSubmitting}
+        >
+          {serverError ? (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+              <AlertCircle className="size-4 shrink-0" />
+              {serverError}
+            </div>
+          ) : null}
 
-        {content}
-      </form>
-    </Form>
+          {content}
+        </form>
+      </Form>
+
+      <AlertDialog open={blocker.state === 'blocked'}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rời trang và bỏ thay đổi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Những nội dung chưa lưu trong biểu mẫu sẽ bị mất. Bạn có thể ở lại để lưu bản nháp
+              trước.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => blocker.state === 'blocked' && blocker.reset()}>
+              Ở lại
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => blocker.state === 'blocked' && blocker.proceed()}
+            >
+              Rời trang
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

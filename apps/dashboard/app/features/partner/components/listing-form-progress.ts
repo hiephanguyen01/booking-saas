@@ -69,14 +69,31 @@ const FIELD_SECTION: Record<string, ListingFormSectionId> = {
   cancellationPolicyId: 'listing-payment',
 };
 
-const progress = createFormProgress<ListingFormSectionId, CreateListingInput>({
-  sections: LISTING_FORM_SECTIONS,
-  fieldSection: FIELD_SECTION,
-  schema: createListingInputSchema,
-});
+interface ListingProgressSchema {
+  safeParse: (values: unknown) => {
+    success: boolean;
+    error?: { issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey> }> };
+  };
+}
+
+const progressFor = (schema: ListingProgressSchema) =>
+  createFormProgress<ListingFormSectionId, CreateListingInput>({
+    sections: LISTING_FORM_SECTIONS,
+    fieldSection: FIELD_SECTION,
+    schema,
+  });
+
+const progress = progressFor(createListingInputSchema);
 
 /** Derive completion from the same contract used for submission. */
-export const getListingFormProgress = progress.getProgress;
+export function getListingFormProgress(
+  values: CreateListingInput,
+  schema: ListingProgressSchema = createListingInputSchema,
+): ListingFormProgress {
+  return schema === createListingInputSchema
+    ? progress.getProgress(values)
+    : progressFor(schema).getProgress(values);
+}
 
 /** Map RHF/server field errors to the same five visual sections. */
 export const getListingFormErrorSections = progress.getErrorSections;

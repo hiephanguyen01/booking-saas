@@ -19,38 +19,44 @@ export function validateAttributes(
 
   for (const key of Object.keys(values)) {
     if (!byKey.has(key)) {
-      errors.push({ key, message: `Unknown attribute "${key}"` });
+      errors.push({ key, message: `Thuộc tính “${key}” không còn được hỗ trợ` });
     }
   }
 
   for (const field of schema) {
     const value = values[field.key];
-    const present = value !== undefined && value !== null && value !== '';
+    const present =
+      value !== undefined &&
+      value !== null &&
+      value !== '' &&
+      (!Array.isArray(value) || value.length > 0);
     if (!present) {
-      if (field.required) errors.push({ key: field.key, message: `"${field.label}" is required` });
+      if (field.required) {
+        errors.push({ key: field.key, message: `Vui lòng nhập ${field.label}` });
+      }
       continue;
     }
     switch (field.type) {
       case 'text':
         if (typeof value !== 'string') {
-          errors.push({ key: field.key, message: `"${field.label}" must be text` });
+          errors.push({ key: field.key, message: `${field.label} phải là văn bản` });
         }
         break;
       case 'number':
         if (typeof value !== 'number' || Number.isNaN(value)) {
-          errors.push({ key: field.key, message: `"${field.label}" must be a number` });
+          errors.push({ key: field.key, message: `${field.label} phải là một số` });
         }
         break;
       case 'boolean':
         if (typeof value !== 'boolean') {
-          errors.push({ key: field.key, message: `"${field.label}" must be true or false` });
+          errors.push({ key: field.key, message: `Vui lòng chọn trạng thái cho ${field.label}` });
         }
         break;
       case 'select':
         if (typeof value !== 'string' || !field.options?.includes(value)) {
           errors.push({
             key: field.key,
-            message: `"${field.label}" must be one of: ${(field.options ?? []).join(', ')}`,
+            message: `Vui lòng chọn ${field.label}`,
           });
         }
         break;
@@ -61,7 +67,7 @@ export function validateAttributes(
         if (!ok) {
           errors.push({
             key: field.key,
-            message: `"${field.label}" must be a subset of: ${options.join(', ')}`,
+            message: `${field.label} chứa lựa chọn không hợp lệ`,
           });
         }
         break;
@@ -70,7 +76,7 @@ export function validateAttributes(
         const ok =
           Array.isArray(value) && value.every((v) => typeof v === 'string' && v.trim() !== '');
         if (!ok) {
-          errors.push({ key: field.key, message: `"${field.label}" must be a list of text lines` });
+          errors.push({ key: field.key, message: `${field.label} phải là danh sách văn bản` });
         }
         break;
       }

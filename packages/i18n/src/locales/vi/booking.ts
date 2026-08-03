@@ -23,7 +23,7 @@ export const viBooking = {
     confirmed: 'Đã xác nhận',
     cancelled: 'Đã hủy',
     completed: 'Hoàn tất',
-    no_show: 'Không đến',
+    no_show: 'Vắng mặt',
     rejected: 'Bị từ chối',
     expired: 'Hết hạn',
     refunded: 'Đã hoàn tiền',

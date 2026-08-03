@@ -1,6 +1,16 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import {
   AlertCircle,
+  ArrowLeft,
+  ArrowRight,
   Check,
   ChevronRight,
   Circle,
@@ -8,7 +18,6 @@ import {
   Save,
 } from 'lucide-react';
 import { Button } from '@booking/ui/components/ui/button';
-import { Progress } from '@booking/ui/components/ui/progress';
 import { cn } from '@booking/ui/lib/utils';
 import type { FormProgress } from '~/features/partner/lib/form-progress';
 
@@ -30,7 +39,7 @@ export function ListingFormSection<Id extends string>({
   contentClassName,
 }: {
   id: Id;
-  step: number;
+  step?: number;
   title: string;
   description: string;
   icon: ReactNode;
@@ -54,9 +63,11 @@ export function ListingFormSection<Id extends string>({
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Bước {step}
-          </p>
+          {step ? (
+            <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Phần {step}
+            </p>
+          ) : null}
           <h2 id={`${id}-title`} className="text-base font-semibold tracking-tight">
             {title}
           </h2>
@@ -66,6 +77,224 @@ export function ListingFormSection<Id extends string>({
       </header>
       <div className={cn('p-5 sm:p-6', contentClassName)}>{children}</div>
     </section>
+  );
+}
+
+export interface ListingWizardItem<Id extends string> {
+  id: Id;
+  label: string;
+  shortLabel: string;
+}
+
+export function ListingStepRequirements({
+  children,
+  required = true,
+}: {
+  children: ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5">
+      <p className="font-semibold text-foreground">
+        {required ? (
+          <>
+            <span aria-hidden="true" className="text-destructive">
+              *
+            </span>{' '}
+            Bắt buộc để tiếp tục
+          </>
+        ) : (
+          'Không có thao tác bắt buộc'
+        )}
+      </p>
+      <div className="mt-0.5 text-muted-foreground">{children}</div>
+    </div>
+  );
+}
+
+export function InvalidateIncompleteWizardSteps<Id extends string>({
+  items,
+  completed,
+  setCompleted,
+}: {
+  items: ReadonlyArray<{ id: Id; complete: boolean }>;
+  completed: Set<Id>;
+  setCompleted: Dispatch<SetStateAction<Set<Id>>>;
+}) {
+  useEffect(() => {
+    const invalidated = items.flatMap((item) =>
+      completed.has(item.id) && !item.complete ? [item.id] : [],
+    );
+    if (invalidated.length === 0) return;
+    setCompleted((previous) => {
+      const next = new Set(previous);
+      for (const id of invalidated) next.delete(id);
+      return next;
+    });
+  }, [completed, items, setCompleted]);
+
+  return null;
+}
+
+export function ListingWizardNav<Id extends string>({
+  items,
+  currentIndex,
+  furthestIndex,
+  completed,
+  canNavigate,
+  onNavigate,
+}: {
+  items: ReadonlyArray<ListingWizardItem<Id>>;
+  currentIndex: number;
+  furthestIndex: number;
+  completed: Set<Id>;
+  canNavigate: (index: number) => boolean;
+  onNavigate: (index: number) => void;
+}) {
+  const current = items[currentIndex];
+  return (
+    <>
+      <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur xl:hidden">
+        <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground">
+            Phần {currentIndex + 1}/{items.length}
+          </span>
+          <select
+            value={String(currentIndex)}
+            onChange={(event) => onNavigate(Number(event.target.value))}
+            className="h-10 min-w-0 rounded-xl border bg-background px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Chọn phần của biểu mẫu"
+          >
+            {items.map((item, index) => (
+              <option key={item.id} value={index} disabled={!canNavigate(index)}>
+                {item.shortLabel}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <aside className="hidden xl:block">
+        <div className="sticky top-20 overflow-hidden rounded-2xl border bg-card">
+          <div className="border-b px-5 py-4">
+            <p className="text-sm font-semibold">Tạo bản nháp</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Hoàn thành từng phần. Bạn có thể sửa lại trước khi gửi duyệt.
+            </p>
+          </div>
+          <nav className="p-2" aria-label="Các phần tạo bài đăng">
+            {items.map((item, index) => {
+              const active = index === currentIndex;
+              const done = completed.has(item.id);
+              const available = index <= furthestIndex && canNavigate(index);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={!available}
+                  aria-current={active ? 'step' : undefined}
+                  onClick={() => onNavigate(index)}
+                  className={cn(
+                    'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm outline-none transition-colors',
+                    'focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45',
+                    active
+                      ? 'bg-primary/10 font-semibold text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/50',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'grid size-6 shrink-0 place-items-center rounded-full border text-[10px] font-semibold',
+                      done
+                        ? 'border-primary/20 bg-primary text-primary-foreground'
+                        : active
+                          ? 'border-primary/40 text-primary'
+                          : 'bg-background',
+                    )}
+                  >
+                    {done ? <Check className="size-3.5" aria-hidden /> : index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <div className="border-t px-5 py-4 text-xs leading-5 text-muted-foreground">
+            {current?.label ?? 'Biểu mẫu bài đăng'}
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+export function ListingWizardActions({
+  currentIndex,
+  total,
+  busy,
+  finalLabel,
+  secondaryFinalLabel,
+  onSecondaryFinal,
+  onFinal,
+  onBack,
+  onNext,
+}: {
+  currentIndex: number;
+  total: number;
+  busy: boolean;
+  finalLabel: string;
+  secondaryFinalLabel?: string;
+  onSecondaryFinal?: () => void;
+  onFinal?: () => void;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const last = currentIndex === total - 1;
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur xl:static xl:z-auto xl:rounded-2xl xl:border xl:bg-card xl:p-4 xl:shadow-none">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 xl:flex-nowrap xl:gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="control"
+          disabled={currentIndex === 0 || busy}
+          onClick={onBack}
+        >
+          <ArrowLeft aria-hidden /> Quay lại
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Phần {currentIndex + 1}/{total}
+        </p>
+        {last ? (
+          <div
+            className={cn(
+              'order-last grid w-full gap-2 xl:order-none xl:flex xl:w-auto xl:justify-end',
+              secondaryFinalLabel ? 'grid-cols-2' : 'grid-cols-1',
+            )}
+          >
+            {secondaryFinalLabel ? (
+              <Button
+                type="submit"
+                size="control"
+                variant="outline"
+                disabled={busy}
+                onClick={onSecondaryFinal}
+              >
+                {secondaryFinalLabel}
+              </Button>
+            ) : null}
+            <Button type="submit" size="control" disabled={busy} onClick={onFinal}>
+              {busy ? <LoaderCircle className="animate-spin" aria-hidden /> : <Save aria-hidden />}
+              {busy ? 'Đang lưu…' : finalLabel}
+            </Button>
+          </div>
+        ) : (
+          <Button type="button" size="control" disabled={busy} onClick={onNext}>
+            Tiếp tục <ArrowRight aria-hidden />
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -144,24 +373,13 @@ export function ListingFormRail<Id extends string>({
   hint = 'Tin đăng được lưu ở trạng thái nháp để bạn kiểm tra.',
 }: ListingNavigationProps<Id> & { hint?: ReactNode }) {
   return (
-    <aside className="hidden self-stretch lg:block">
+    <aside className="hidden self-stretch xl:block">
       <div className="sticky top-20 space-y-4">
         <div className="overflow-hidden rounded-2xl border bg-card shadow-[0_12px_36px_-28px_hsl(var(--foreground)/0.35)]">
           <div className="border-b p-5">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Mức độ hoàn thiện</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">
-                  {progress.percentage}%
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {progress.completedCount}/{progress.items.length} mục
-              </p>
-            </div>
-            <Progress value={progress.percentage} className="mt-4 h-1.5" />
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Chỉ tính những thông tin bắt buộc để có thể lưu tin đăng.
+            <p className="text-sm font-semibold">Các phần chỉnh sửa</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Di chuyển nhanh giữa các phần. Bạn có thể lưu lại khi nội dung hợp lệ.
             </p>
           </div>
 
@@ -191,9 +409,7 @@ export function ListingFormRail<Id extends string>({
               )}
               {isSubmitting ? 'Đang lưu…' : submitLabel}
             </Button>
-            <p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">
-              {hint}
-            </p>
+            <p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">{hint}</p>
           </div>
         </div>
       </div>
@@ -211,56 +427,42 @@ export function ListingFormMobileNav<Id extends string>({
   'progress' | 'errorSections' | 'activeSection' | 'onNavigate'
 >) {
   return (
-    <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
-      <nav
-        className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        aria-label="Các phần của biểu mẫu"
-      >
-        {progress.items.map((item) => {
-          const active = activeSection === item.id;
-          const error = errorSections.has(item.id);
-          return (
-            <button
-              key={item.id}
-              type="button"
-              aria-current={active ? 'step' : undefined}
-              onClick={() => onNavigate(item.id)}
-              className={cn(
-                'flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium outline-none transition-colors',
-                'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                active
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'bg-card text-muted-foreground',
-                error && !active && 'border-destructive/40 text-destructive',
-              )}
-            >
-              {error ? (
-                <AlertCircle className="size-3.5" aria-hidden />
-              ) : item.complete ? (
-                <Check className="size-3.5" aria-hidden />
-              ) : null}
+    <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur xl:hidden">
+      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+        <span className="text-xs font-medium text-muted-foreground">
+          Phần{' '}
+          {Math.max(
+            0,
+            progress.items.findIndex((item) => item.id === activeSection),
+          ) + 1}
+          /{progress.items.length}
+        </span>
+        <select
+          value={activeSection}
+          onChange={(event) => onNavigate(event.target.value as Id)}
+          className="h-10 min-w-0 rounded-xl border bg-background px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Chọn phần của biểu mẫu"
+        >
+          {progress.items.map((item) => (
+            <option key={item.id} value={item.id}>
+              {errorSections.has(item.id) ? 'Cần kiểm tra: ' : ''}
               {item.shortLabel}
-            </button>
-          );
-        })}
-      </nav>
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
 
 export function ListingFormMobileActions<Id extends string>({
-  progress,
   isSubmitting,
   submitLabel,
 }: Pick<ListingNavigationProps<Id>, 'progress' | 'isSubmitting' | 'submitLabel'>) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur lg:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur xl:hidden">
       <div className="mx-auto flex max-w-2xl items-center gap-3">
-        <div className="min-w-20">
-          <p className="text-[11px] text-muted-foreground">Hoàn thiện</p>
-          <p className="text-sm font-semibold tabular-nums">{progress.percentage}%</p>
-        </div>
-        <Progress value={progress.percentage} className="hidden h-1.5 flex-1 sm:block" />
+        <p className="text-xs text-muted-foreground">Lưu toàn bộ thay đổi trên trang</p>
         <Button type="submit" size="control" disabled={isSubmitting} className="ml-auto px-5">
           {isSubmitting ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
           {isSubmitting ? 'Đang lưu…' : submitLabel}
@@ -305,7 +507,9 @@ function SectionNavigationButton<Id extends string>({
       className={cn(
         'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm outline-none transition-colors',
         'focus-visible:ring-2 focus-visible:ring-ring',
-        active ? 'bg-primary/10 font-semibold text-foreground' : 'text-muted-foreground hover:bg-muted/50',
+        active
+          ? 'bg-primary/10 font-semibold text-foreground'
+          : 'text-muted-foreground hover:bg-muted/50',
       )}
     >
       <span
@@ -377,36 +581,48 @@ export function useActiveListingFormSection<Id extends string>(
       clearTimeout(navigationReleaseTimerRef.current);
     }
 
-    navigationReleaseTimerRef.current = setTimeout(() => {
-      navigationTargetRef.current = null;
-      updateActiveSection();
-    }, 160);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    navigationReleaseTimerRef.current = setTimeout(
+      () => {
+        navigationTargetRef.current = null;
+        updateActiveSection();
+      },
+      reducedMotion ? 0 : 450,
+    );
   }, [updateActiveSection]);
 
   useEffect(() => {
-    let animationFrame: number | null = null;
-
-    const handleViewportChange = () => {
-      if (navigationTargetRef.current) {
-        scheduleNavigationRelease();
-        return;
-      }
-
-      if (animationFrame !== null) return;
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = null;
-        updateActiveSection();
-      });
-    };
-
+    const visibleSections = new Map<Element, IntersectionObserverEntry>();
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-listing-form-section]'),
+    );
     updateActiveSection();
-    window.addEventListener('scroll', handleViewportChange, { passive: true });
-    window.addEventListener('resize', handleViewportChange);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visibleSections.set(entry.target, entry);
+          else visibleSections.delete(entry.target);
+        }
+        if (navigationTargetRef.current) return;
+
+        const active = Array.from(visibleSections.values()).sort(
+          (left, right) =>
+            Math.abs(left.boundingClientRect.top - 132) -
+            Math.abs(right.boundingClientRect.top - 132),
+        )[0]?.target as HTMLElement | undefined;
+        if (active?.id) setActiveSection(active.id as Id);
+      },
+      {
+        rootMargin: '-132px 0px -55% 0px',
+        threshold: [0, 0.01, 0.25, 0.5, 1],
+      },
+    );
+
+    for (const section of sections) observer.observe(section);
 
     return () => {
-      window.removeEventListener('scroll', handleViewportChange);
-      window.removeEventListener('resize', handleViewportChange);
-      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
       if (navigationReleaseTimerRef.current) {
         clearTimeout(navigationReleaseTimerRef.current);
       }
@@ -417,7 +633,10 @@ export function useActiveListingFormSection<Id extends string>(
     (id: Id) => {
       navigationTargetRef.current = id;
       setActiveSection(id);
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      document
+        .getElementById(id)
+        ?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
       scheduleNavigationRelease();
     },
     [scheduleNavigationRelease],

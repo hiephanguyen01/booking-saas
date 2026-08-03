@@ -5,9 +5,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  ExternalLink,
   Repeat,
   SquareDashedMousePointer,
   Users,
+  X,
 } from 'lucide-react';
 import type {
   AvailabilityExceptionResponse,
@@ -20,6 +22,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
+import { dashboardPaths } from '~/constants/paths';
 import { todayString } from '~/lib/calendar-dates';
 import { dayKey } from '~/lib/format';
 import {
@@ -55,6 +58,48 @@ interface Props {
   canAvailability: boolean;
 }
 
+function calendarUrl(listingId: string, month: string, mode: CalendarMode): string {
+  const params = new URLSearchParams({ tab: 'calendar', month, mode });
+  return `${dashboardPaths.partner.listing(listingId)}?${params.toString()}`;
+}
+
+const LEGEND_ITEMS = [
+  { label: 'Mở theo lịch tuần', className: 'bg-card' },
+  { label: 'Mở theo giờ riêng', className: 'bg-primary/10' },
+  { label: 'Có giá ưu đãi', className: 'bg-emerald-100 dark:bg-emerald-950/60' },
+  { label: 'Nghỉ theo lịch tuần', className: 'bg-muted' },
+  { label: 'Đóng riêng', className: 'bg-destructive/15' },
+] as const;
+
+function CalendarLegend() {
+  const items = (
+    <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+      {LEGEND_ITEMS.map((item) => (
+        <span key={item.label} className="flex items-center gap-2 whitespace-nowrap">
+          <span className={cn('size-3 rounded-sm border', item.className)} aria-hidden />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+
+  return (
+    <>
+      <div className="hidden border-b px-4 py-3 sm:block">{items}</div>
+      <details className="group border-b sm:hidden">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 text-xs font-medium [&::-webkit-details-marker]:hidden">
+          Chú thích lịch
+          <ChevronRight
+            className="size-4 text-muted-foreground transition-transform group-open:rotate-90 motion-reduce:transition-none"
+            aria-hidden
+          />
+        </summary>
+        <div className="border-t bg-muted/15 px-4 py-3">{items}</div>
+      </details>
+    </>
+  );
+}
+
 export function ListingCalendarPricing({
   listing,
   month,
@@ -82,10 +127,13 @@ export function ListingCalendarPricing({
   const bookingsByDay = useMemo(() => bucketBookingsByDay(bookings, dayKey), [bookings]);
   const basePrice = defaultPrice(listing, mode);
   const canPricing = canWrite && listing.bookingSelection === 'flexible_duration';
+  const canEditCalendar = canAvailability || canPricing;
   const enabledModes = listing.bookingModes.filter(
     (item): item is CalendarMode => item === 'hourly' || item === 'daily',
   );
   const rangeDates = range ? datesBetween(range.from, range.to) : [];
+  const currentMonth = today.slice(0, 7);
+  const listingPath = dashboardPaths.partner.listing(listing.id);
 
   /**
    * A plain click edits one day; shift-click (or the explicit range toggle, for
@@ -116,6 +164,7 @@ export function ListingCalendarPricing({
   const closeRange = (): void => {
     setRange(null);
     setAnchor(null);
+    setRangeMode(false);
   };
 
   const selectedRules = selected
@@ -151,53 +200,127 @@ export function ListingCalendarPricing({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border bg-muted/20 p-4">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <CalendarDays className="size-4 text-primary" /> Lịch vận hành
+    <div className="space-y-4">
+      <section
+        className="rounded-2xl border bg-card p-5 shadow-none"
+        aria-labelledby="calendar-overview-title"
+      >
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CalendarDays className="size-5" aria-hidden />
+            </span>
+            <div>
+              <h2 id="calendar-overview-title" className="font-semibold">
+                Lịch vận hành
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Chọn một ngày để thay đổi giờ mở cửa hoặc giá riêng. Ngày chưa chỉnh sẽ dùng lịch
+                tuần và giá cơ bản.
+              </p>
+            </div>
           </div>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Ngày không có thiết lập riêng sẽ dùng lịch tuần và giá mặc định của tin đăng. Giữ Shift
-            khi bấm để chọn một dải ngày.
+
+          <div className="flex flex-wrap items-center gap-2">
+            {enabledModes.length > 1 ? (
+              <nav
+                aria-label="Hình thức đặt"
+                className="inline-flex min-h-9 items-center rounded-lg border bg-muted/30 p-1"
+              >
+                {enabledModes.map((item) => (
+                  <Button
+                    key={item}
+                    asChild
+                    size="sm"
+                    variant="ghost"
+                    className={cn(
+                      'h-7 px-3 text-muted-foreground shadow-none',
+                      item === mode && 'bg-background font-semibold text-foreground shadow-xs',
+                    )}
+                  >
+                    <Link
+                      to={calendarUrl(listing.id, month, item)}
+                      aria-current={item === mode ? 'page' : undefined}
+                    >
+                      {item === 'hourly' ? 'Theo giờ' : 'Theo ngày'}
+                    </Link>
+                  </Button>
+                ))}
+              </nav>
+            ) : (
+              <span className="inline-flex min-h-9 items-center gap-2 px-2 text-sm font-medium">
+                <Clock3 className="size-4 text-primary" aria-hidden />
+                {mode === 'hourly' ? 'Theo giờ' : 'Theo ngày'}
+              </span>
+            )}
+
+            {canEditCalendar ? (
+              <Button
+                size="sm"
+                variant={rangeMode ? 'secondary' : 'default'}
+                aria-pressed={rangeMode}
+                onClick={() => {
+                  setRangeMode((on) => !on);
+                  setAnchor(null);
+                  setRange(null);
+                }}
+              >
+                <SquareDashedMousePointer className="size-4" aria-hidden /> Chọn nhiều ngày
+              </Button>
+            ) : null}
+
+            {canAvailability ? (
+              <Button asChild size="sm" variant="outline">
+                <Link to={dashboardPaths.partner.listingHours(listing.id)}>
+                  <Clock3 className="size-4" aria-hidden /> Lịch tuần
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {!canEditCalendar ? (
+          <p className="mt-4 border-t pt-4 text-sm text-muted-foreground">
+            Bạn đang xem lịch ở chế độ chỉ đọc vì không có quyền thay đổi lịch hoặc giá.
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {enabledModes.map((item) => (
-            <Button key={item} asChild size="sm" variant={item === mode ? 'default' : 'outline'}>
-              <Link to={`?tab=calendar&month=${month}&mode=${item}`}>
-                {item === 'hourly' ? 'Theo giờ' : 'Theo ngày'}
-              </Link>
-            </Button>
-          ))}
-          <Button
-            size="sm"
-            variant={rangeMode ? 'default' : 'outline'}
-            aria-pressed={rangeMode}
-            onClick={() => {
-              setRangeMode((on) => !on);
-              setAnchor(null);
-            }}
-          >
-            <SquareDashedMousePointer className="size-4" /> Chọn nhiều ngày
-          </Button>
-          {canAvailability ? (
-            <Button asChild size="sm" variant="outline">
-              <Link to={`/partner/listings/${listing.id}/hours`}>
-                <Clock3 className="size-4" /> Lịch tuần
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      </div>
+        ) : null}
+      </section>
 
       <SuccessBanner message={notice} />
 
       {rangeMode ? (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-          {anchor
-            ? `Đã chọn ngày đầu ${anchor.slice(8)}/${anchor.slice(5, 7)} — bấm ngày cuối để chốt dải.`
-            : 'Bấm ngày đầu rồi bấm ngày cuối của dải.'}
+        <div
+          className="flex flex-col gap-3 rounded-xl border bg-muted/30 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-start gap-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+              {anchor ? '2' : '1'}
+            </span>
+            <div>
+              <p className="font-medium">
+                {anchor ? 'Chọn ngày cuối của dải' : 'Chọn ngày bắt đầu'}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {anchor
+                  ? `Ngày đầu: ${anchor.slice(8)}/${anchor.slice(5, 7)}. Bấm ngày cuối để tiếp tục.`
+                  : 'Bạn có thể chọn một dải ngày liên tiếp để cập nhật cùng lúc.'}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="self-start sm:self-center"
+            onClick={() => {
+              setRangeMode(false);
+              setAnchor(null);
+              setRange(null);
+            }}
+          >
+            <X className="size-4" aria-hidden /> Hủy chọn
+          </Button>
         </div>
       ) : null}
 
@@ -236,58 +359,90 @@ export function ListingCalendarPricing({
         </div>
       ) : null}
 
-      {recurringRules.length > 0 ? (
-        <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          <p className="flex items-center gap-2 font-medium text-foreground">
-            <Repeat className="size-4" /> {recurringRules.length} quy tắc giá lặp lại đang áp dụng
-          </p>
-          <p className="mt-1">
-            {mode === 'hourly'
-              ? 'Ô ngày có dấu ↻ chịu ảnh hưởng của các quy tắc này, nên giá hiển thị chưa phải giá cuối.'
-              : 'Ô ngày đã tính các quy tắc này; giá riêng đặt cho một ngày cụ thể vẫn đè lên.'}
-          </p>
-          <ul className="mt-2 space-y-1">
-            {recurringRules.map((rule) => (
-              <li key={rule.id} className="text-xs">
-                {rule.ruleType === 'time_range'
-                  ? `Khung giờ ${String(rule.params.from)}–${String(rule.params.to)}`
-                  : `Theo thứ trong tuần`}{' '}
-                · <Money value={rule.salePrice ?? rule.price} />
-                {mode === 'hourly' ? '/giờ' : '/ngày'}
-              </li>
-            ))}
-          </ul>
-          <Button asChild size="sm" variant="outline" className="mt-3">
-            <Link to="?tab=pricing">Quản lý giá lặp lại</Link>
-          </Button>
-        </div>
-      ) : null}
-
       {listing.bookingSelection === 'fixed_packages' ? (
         <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          Giá của tin đăng này được quản lý trong mục “Các gói dịch vụ”. Lịch giá riêng không áp dụng cho gói cố định.
+          Giá của tin đăng này được quản lý trong mục “Các gói dịch vụ”. Lịch giá riêng không áp
+          dụng cho gói cố định.
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <Button asChild variant="ghost" size="icon" aria-label="Tháng trước">
-            <Link to={`?tab=calendar&month=${monthShift(month, -1)}&mode=${mode}`}>
-              <ChevronLeft />
-            </Link>
-          </Button>
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">Lịch và giá</p>
-            <p className="font-semibold">
-              Tháng {Number(month.slice(5))}/{month.slice(0, 4)}
-            </p>
+      <section className="overflow-hidden rounded-2xl border bg-card" aria-label="Lịch tháng">
+        <div className="flex flex-col gap-3 border-b px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <nav className="flex items-center justify-between gap-2" aria-label="Điều hướng tháng">
+            <Button asChild variant="ghost" size="icon" aria-label="Tháng trước">
+              <Link to={calendarUrl(listing.id, monthShift(month, -1), mode)}>
+                <ChevronLeft aria-hidden />
+              </Link>
+            </Button>
+            <div className="min-w-36 text-center sm:min-w-40">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Lịch và giá
+              </p>
+              <h2 className="mt-0.5 font-semibold tabular-nums">
+                Tháng {Number(month.slice(5))}/{month.slice(0, 4)}
+              </h2>
+            </div>
+            <Button asChild variant="ghost" size="icon" aria-label="Tháng sau">
+              <Link to={calendarUrl(listing.id, monthShift(month, 1), mode)}>
+                <ChevronRight aria-hidden />
+              </Link>
+            </Button>
+          </nav>
+
+          <div className="flex items-center justify-between gap-3 sm:justify-end">
+            <div className="text-left sm:text-right">
+              <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                Giá cơ bản
+              </p>
+              <p className="text-sm font-semibold tabular-nums">
+                {basePrice ? <Money value={basePrice} /> : 'Chưa thiết lập'}
+                {basePrice ? (
+                  <span className="font-normal text-muted-foreground">
+                    /{mode === 'hourly' ? 'giờ' : 'ngày'}
+                  </span>
+                ) : null}
+              </p>
+            </div>
+            {month !== currentMonth ? (
+              <Button asChild size="sm" variant="outline">
+                <Link to={calendarUrl(listing.id, currentMonth, mode)}>Hôm nay</Link>
+              </Button>
+            ) : null}
           </div>
-          <Button asChild variant="ghost" size="icon" aria-label="Tháng sau">
-            <Link to={`?tab=calendar&month=${monthShift(month, 1)}&mode=${mode}`}>
-              <ChevronRight />
-            </Link>
-          </Button>
         </div>
+
+        {recurringRules.length > 0 ? (
+          <div className="flex flex-col gap-3 border-b bg-primary/[0.035] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Repeat className="size-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="font-medium">
+                  {recurringRules.length} quy tắc giá lặp lại đang áp dụng
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {mode === 'hourly'
+                    ? 'Ô có biểu tượng lặp hiển thị giá cơ bản; giá cuối phụ thuộc khung giờ.'
+                    : 'Giá riêng của một ngày vẫn được ưu tiên hơn quy tắc theo tuần.'}
+                </p>
+              </div>
+            </div>
+            <Button
+              asChild
+              size="sm"
+              variant="ghost"
+              className="self-start text-primary sm:self-center"
+            >
+              <Link to={`${listingPath}?tab=pricing&mode=${mode}`}>
+                Quản lý <ExternalLink className="size-3.5" aria-hidden />
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+
+        <CalendarLegend />
+
         <div className="grid grid-cols-7 border-b bg-muted/30">
           {WEEKDAY_HEADS.map((label) => (
             <div
@@ -313,34 +468,21 @@ export function ListingCalendarPricing({
                 // only hourly needs the "this is not the final price" marker.
                 hasRecurring={mode === 'hourly' && hasRecurringOn(date, mode, rules)}
                 isPast={date < today}
+                isToday={date === today}
                 isSelected={date === anchor || (rangeDates.length > 0 && rangeDates.includes(date))}
+                canEdit={canEditCalendar}
                 onPick={pick}
               />
             ) : (
-              <div key={`empty-${index}`} className="min-h-24 border-r border-b bg-muted/10" />
+              <div
+                key={`empty-${index}`}
+                className="min-h-14 border-r border-b bg-muted/10 sm:min-h-24"
+                aria-hidden
+              />
             ),
           )}
         </div>
-      </div>
-
-      <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm border bg-card" /> Mở theo lịch tuần
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm border bg-primary/5" /> Mở theo giờ riêng
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm border bg-emerald-50 dark:bg-emerald-950/40" /> Có giá
-          sale
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm border bg-muted/50" /> Nghỉ theo lịch tuần
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm border bg-destructive/10" /> Đóng cả ngày (đặt riêng)
-        </span>
-      </div>
+      </section>
 
       <DayDialog
         date={selected}

@@ -16,11 +16,6 @@ export const LISTING_GROUP_FORM_SECTIONS = [
     label: 'Địa điểm',
     shortLabel: 'Địa điểm',
   },
-  {
-    id: 'group-amenities',
-    label: 'Tiện ích chung',
-    shortLabel: 'Tiện ích',
-  },
 ] as const satisfies ReadonlyArray<FormSectionDefinition<string>>;
 
 export type ListingGroupFormSectionId = (typeof LISTING_GROUP_FORM_SECTIONS)[number]['id'];
@@ -40,7 +35,7 @@ const FIELD_SECTION: Record<string, ListingGroupFormSectionId> = {
   address: 'group-location',
   workingArea: 'group-location',
 
-  amenities: 'group-amenities',
+  amenities: 'group-content',
 };
 
 const progress = createFormProgress<ListingGroupFormSectionId, CreateListingGroupInput>({
@@ -52,5 +47,5 @@ const progress = createFormProgress<ListingGroupFormSectionId, CreateListingGrou
 /** Derive completion from the same contract used for submission. */
 export const getListingGroupFormProgress = progress.getProgress;
 
-/** Map RHF/server field errors to the same three visual sections. */
+/** Map RHF/server field errors to the same two visual sections. */
 export const getListingGroupFormErrorSections = progress.getErrorSections;

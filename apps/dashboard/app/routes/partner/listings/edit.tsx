@@ -17,6 +17,7 @@ import { ListingStatusBadge } from '~/components/status-badge';
 import { ListingForm } from '~/features/partner/components/listing-form';
 import { PendingChangeBanner } from '~/features/partner/components/pending-change-banner';
 import { applyRevisionDiff } from '~/features/partner/lib/listing-revision';
+import { dashboardPaths } from '~/constants/paths';
 
 /**
  * A read-only strip above the edit form: current publish status + who last hid or
@@ -60,10 +61,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
     apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
-    apiGet<ListingRevisionResponse | null>(
-      `/partner/listings/${params.listingId}/revision`,
-      auth,
-    ),
+    apiGet<ListingRevisionResponse | null>(`/partner/listings/${params.listingId}/revision`, auth),
   ]);
   if (!listingRes.ok || !listingRes.data) {
     throw new Response('Không tìm thấy tin đăng.', {
@@ -106,11 +104,14 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (form.get('intent') === 'discard-revision') {
       const res = await apiDelete(`/partner/listings/${params.listingId}/revision`, auth);
       if (!res.ok) {
-        return data({ error: res.error ?? 'Huỷ thay đổi không thành công.', fieldErrors: null }, {
-          status: 400,
-        });
+        return data(
+          { error: res.error ?? 'Huỷ thay đổi không thành công.', fieldErrors: null },
+          {
+            status: 400,
+          },
+        );
       }
-      return redirect(`/partner/listings/${params.listingId}/edit`);
+      return redirect(dashboardPaths.partner.listingEdit(params.listingId));
     }
     return data({ error: 'Yêu cầu không hợp lệ.', fieldErrors: null }, { status: 400 });
   }
@@ -125,14 +126,18 @@ export async function action({ request, params }: Route.ActionArgs) {
       { status: 400 },
     );
   }
-  return redirect('/partner/listings');
+  return redirect(`${dashboardPaths.partner.listing(params.listingId)}?updated=1`);
 }
 
 export default function EditListingPage({ loaderData, actionData }: Route.ComponentProps) {
   return (
     <div className="mx-auto max-w-[1440px] space-y-5">
       <div>
-        <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
+        <BackLink
+          to={dashboardPaths.partner.listing(loaderData.listing.id)}
+          label="Tin đăng"
+          className="mb-2"
+        />
         <PageHeader title="Sửa tin đăng" description={loaderData.listing.title} />
       </div>
       <ListingStatusStrip listing={loaderData.listing} />
@@ -145,6 +150,7 @@ export default function EditListingPage({ loaderData, actionData }: Route.Compon
         minimumDepositPercent={loaderData.minimumDepositPercent}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
+        mode="edit-workspace"
       />
     </div>
   );
