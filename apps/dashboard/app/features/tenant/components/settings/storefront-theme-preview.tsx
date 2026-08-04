@@ -54,8 +54,8 @@ export function StorefrontThemePreview({
                 />
               ) : (
                 <span
-                  className="flex size-7 items-center justify-center rounded-md text-xs font-bold text-white"
-                  style={{ backgroundColor: primary }}
+                  className="flex size-7 items-center justify-center rounded-md text-xs font-bold"
+                  style={{ backgroundColor: primary, color: readableText(primary) }}
                 >
                   {tenantName.slice(0, 1).toUpperCase()}
                 </span>
@@ -90,8 +90,8 @@ export function StorefrontThemePreview({
                 {value.hero?.subtitle || 'Mô tả ngắn giúp khách hiểu dịch vụ và bắt đầu đặt chỗ.'}
               </p>
               <span
-                className="mt-4 inline-flex w-fit rounded-md px-3 py-1.5 text-[10px] font-semibold text-white"
-                style={{ backgroundColor: primary }}
+                className="mt-4 inline-flex w-fit rounded-md px-3 py-1.5 text-[10px] font-semibold"
+                style={{ backgroundColor: primary, color: readableText(primary) }}
               >
                 Xem lịch trống
               </span>

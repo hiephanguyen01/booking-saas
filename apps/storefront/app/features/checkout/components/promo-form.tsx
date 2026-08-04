@@ -65,7 +65,7 @@ export function PromoForm({
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex min-h-11 shrink-0 items-center gap-1 rounded-sm text-sm leading-5 font-medium text-success outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="flex min-h-11 shrink-0 items-center gap-1 rounded-sm text-sm leading-5 font-medium text-brand-accent outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <TicketPercent className="size-5" strokeWidth={1.6} aria-hidden="true" />
           <span>{applied ? promoCode : t('promoSection')}</span>
@@ -149,12 +149,12 @@ export function PromoForm({
                     aria-disabled={!item.eligible}
                     disabled={!item.eligible}
                     onClick={() => setSelectedCode(item.code)}
-                    className="group grid min-h-32 grid-cols-[5.75rem_1fr] overflow-hidden rounded-xl border border-border bg-background text-left outline-none transition-colors enabled:hover:border-success/60 enabled:focus-visible:ring-2 enabled:focus-visible:ring-ring enabled:focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/30 sm:grid-cols-[6.25rem_1fr]"
+                    className="group grid min-h-32 grid-cols-[5.75rem_1fr] overflow-hidden rounded-xl border border-border bg-background text-left outline-none transition-colors enabled:hover:border-brand-accent/60 enabled:focus-visible:ring-2 enabled:focus-visible:ring-ring enabled:focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/30 sm:grid-cols-[6.25rem_1fr]"
                   >
                     <span
                       className={`relative flex flex-col items-center justify-center px-2 text-center after:absolute after:top-1/2 after:-right-2.5 after:size-5 after:-translate-y-1/2 after:rounded-full after:bg-background ${
                         item.eligible
-                          ? 'bg-success text-success-foreground'
+                          ? 'bg-brand-accent text-brand-accent-foreground'
                           : 'bg-muted text-muted-foreground after:bg-muted/30'
                       }`}
                     >
@@ -191,7 +191,7 @@ export function PromoForm({
                       <span
                         aria-hidden="true"
                         className={`absolute right-3 bottom-3 flex size-5 items-center justify-center rounded-full border ${
-                          selected ? 'border-success bg-success text-success-foreground' : 'border-border bg-background'
+                          selected ? 'border-brand-accent bg-brand-accent text-brand-accent-foreground' : 'border-border bg-background'
                         }`}
                       >
                         {selected ? <Check className="size-3.5" strokeWidth={2.5} /> : null}
@@ -209,7 +209,7 @@ export function PromoForm({
             {selectedCode && selectedSavings ? (
               <p className="text-sm text-muted-foreground">
                 {t('promoDialog.selected', { code: selectedCode })}
-                <span className="mt-0.5 block text-xl font-semibold text-success">
+                <span className="mt-0.5 block text-xl font-semibold text-brand-accent">
                   {t('promoDialog.savings', { amount: formatVnd(selectedSavings) ?? '' })}
                 </span>
               </p>
