@@ -1,6 +1,8 @@
 import { customerProfileFormSchema, type CurrentUser } from '@booking/contracts';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
+import { useMemo } from 'react';
+import { profileFormMessages } from '~/features/account/lib/profile-form-messages';
 import { AccountPanel } from '~/features/account/components/shared/account-primitives';
 import { ProfileAvatarPicker } from '~/features/account/components/profile/profile-avatar-picker';
 import {
@@ -33,6 +35,9 @@ export function ProfileIdentityCard({
     },
   });
   const mine = result?.intent === 'identity' ? result : null;
+  // zod carries its messages inside the schema, so the schema is rebuilt with
+  // the active locale's copy rather than shipping English validation errors.
+  const schema = useMemo(() => customerProfileFormSchema(profileFormMessages(t)), [t]);
 
   return (
     <AccountPanel className="rounded-none px-6 py-8 sm:px-8 lg:px-10">
@@ -44,7 +49,7 @@ export function ProfileIdentityCard({
       {mine?.saved ? <ProfileSuccessNotice text={t('profile.identitySaved')} /> : null}
 
       <GenericForm
-        schema={customerProfileFormSchema}
+        schema={schema}
         fields={fields}
         defaultValues={defaultValues}
         submitLabel={t('profile.save')}

@@ -2,12 +2,32 @@ import { z } from 'zod';
 import { localeSchema, uuidSchema } from './common';
 import { dashboardBrandConfigSchema } from './tenancy';
 
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 128;
+const PASSWORD_LETTER_RE = /[A-Za-z]/;
+const PASSWORD_DIGIT_RE = /[0-9]/;
+
 export const passwordSchema = z
   .string()
-  .min(8, 'Password must be at least 8 characters')
-  .max(128)
-  .regex(/[A-Za-z]/, 'Password must contain at least one letter')
-  .regex(/[0-9]/, 'Password must contain at least one number');
+  .min(PASSWORD_MIN_LENGTH, 'Password must be at least 8 characters')
+  .max(PASSWORD_MAX_LENGTH)
+  .regex(PASSWORD_LETTER_RE, 'Password must contain at least one letter')
+  .regex(PASSWORD_DIGIT_RE, 'Password must contain at least one number');
+
+/**
+ * The same policy as {@link passwordSchema}, exposed as predicates so a live
+ * "password rules" indicator and the schema that rejects the password are read
+ * off one definition and cannot drift into telling the user different things.
+ */
+export const PASSWORD_CHECKS = {
+  length: (value: string) =>
+    value.length >= PASSWORD_MIN_LENGTH && value.length <= PASSWORD_MAX_LENGTH,
+  letter: (value: string) => PASSWORD_LETTER_RE.test(value),
+  digit: (value: string) => PASSWORD_DIGIT_RE.test(value),
+} as const;
+export type PasswordCheck = keyof typeof PASSWORD_CHECKS;
+/** Display order for the checklist — the order the rules are explained in. */
+export const PASSWORD_CHECK_ORDER: readonly PasswordCheck[] = ['length', 'letter', 'digit'];
 
 const challengeIdSchema = z.string().min(32).max(128);
 const completionTokenSchema = z.string().min(32).max(256);
@@ -174,19 +194,53 @@ export const sessionInfoResponseSchema = z.object({
 export type SessionInfoResponse = z.infer<typeof sessionInfoResponseSchema>;
 
 /**
+ * Copy for every message the profile schemas can show. The storefront is
+ * bilingual and zod bakes its messages into the schema, so these schemas are
+ * factories the caller feeds already-translated strings — that is what keeps a
+ * validation error in the same language as the form around it. Callers that
+ * have no locale (the API DTO) fall back to the English defaults below, which
+ * a customer never sees: `sanitizeApiResult` replaces an API validation message
+ * with a stable code on the way out.
+ */
+export interface CustomerProfileFormMessages {
+  fullNameRequired: string;
+  fullNameTooLong: string;
+  phoneTooShort: string;
+  phoneTooLong: string;
+}
+
+const DEFAULT_PROFILE_MESSAGES: CustomerProfileFormMessages = {
+  fullNameRequired: 'Full name is required',
+  fullNameTooLong: 'Full name must be at most 200 characters',
+  phoneTooShort: 'Phone number must be at least 6 characters',
+  phoneTooLong: 'Phone number must be at most 20 characters',
+};
+
+/**
  * `PATCH /auth/me` — the signed-in user edits their own profile.
  *
  * Email is deliberately absent: it is the login identity, so changing it needs
  * an OTP-verified flow of its own rather than a field on this form. An omitted
  * key means "leave unchanged"; an explicit `null` clears the value.
  */
-export const updateMyProfileInputSchema = z.object({
-  fullName: z.string().trim().min(1).max(200),
-  phone: z.string().trim().min(6).max(20).nullable().optional(),
-  /** Profile photo `publicUrl` from a presigned upload; null removes the photo. */
-  avatarUrl: z.string().url().max(2048).nullable().optional(),
-});
-export type UpdateMyProfileInput = z.infer<typeof updateMyProfileInputSchema>;
+export function updateMyProfileSchema(messages: CustomerProfileFormMessages) {
+  return z.object({
+    fullName: z.string().trim().min(1, messages.fullNameRequired).max(200, messages.fullNameTooLong),
+    phone: z
+      .string()
+      .trim()
+      .min(6, messages.phoneTooShort)
+      .max(20, messages.phoneTooLong)
+      .nullable()
+      .optional(),
+    /** Profile photo `publicUrl` from a presigned upload; null removes the photo. */
+    avatarUrl: z.string().url().max(2048).nullable().optional(),
+  });
+}
+
+/** The English instance the API DTO validates against. */
+export const updateMyProfileInputSchema = updateMyProfileSchema(DEFAULT_PROFILE_MESSAGES);
+export type UpdateMyProfileInput = z.infer<ReturnType<typeof updateMyProfileSchema>>;
 
 /**
  * The profile *form*. It differs from the API contract in one way: a blank phone
@@ -194,18 +248,22 @@ export type UpdateMyProfileInput = z.infer<typeof updateMyProfileInputSchema>;
  * explicit `null`. Keeping that leniency out of the API schema means a direct
  * `PATCH` can still never store an empty string.
  */
-export const customerProfileFormSchema = z.object({
-  fullName: z.string().trim().min(1).max(200),
-  phone: z
-    .string()
-    .trim()
-    .max(20)
-    .refine((value) => value === '' || value.length >= 6, {
-      message: 'Phone number must be at least 6 characters',
-    }),
-  avatarUrl: z.string().url().max(2048).nullable(),
-});
-export type CustomerProfileFormInput = z.infer<typeof customerProfileFormSchema>;
+export function customerProfileFormSchema(messages: CustomerProfileFormMessages) {
+  return z.object({
+    fullName: z
+      .string()
+      .trim()
+      .min(1, messages.fullNameRequired)
+      .max(200, messages.fullNameTooLong),
+    phone: z
+      .string()
+      .trim()
+      .max(20, messages.phoneTooLong)
+      .refine((value) => value === '' || value.length >= 6, { message: messages.phoneTooShort }),
+    avatarUrl: z.string().url().max(2048).nullable(),
+  });
+}
+export type CustomerProfileFormInput = z.infer<ReturnType<typeof customerProfileFormSchema>>;
 
 /** `POST /auth/me/password` — change the password while signed in. */
 export const changeMyPasswordInputSchema = z.object({
@@ -214,18 +272,44 @@ export const changeMyPasswordInputSchema = z.object({
 });
 export type ChangeMyPasswordInput = z.infer<typeof changeMyPasswordInputSchema>;
 
+/** Copy for every message the password-change form can show. See {@link CustomerProfileFormMessages}. */
+export interface CustomerPasswordFormMessages {
+  currentPasswordRequired: string;
+  confirmPasswordRequired: string;
+  passwordTooShort: string;
+  passwordTooLong: string;
+  passwordNoLetter: string;
+  passwordNoDigit: string;
+  passwordMismatch: string;
+  passwordSameAsCurrent: string;
+}
+
 /**
  * The password-change *form*: the API contract plus the confirmation field the
- * user retypes. Both cross-field rules are re-checked server-side.
+ * user retypes. The password rules are spelled out here rather than reusing
+ * {@link passwordSchema} so each one carries its own translated message — the
+ * limits themselves still come from the constants that schema is built from.
+ * Both cross-field rules are re-checked server-side.
  */
-export const customerPasswordChangeInputSchema = changeMyPasswordInputSchema
-  .extend({ confirmPassword: z.string().min(1) })
-  .refine((value) => value.newPassword === value.confirmPassword, {
-    path: ['confirmPassword'],
-    message: 'Passwords do not match',
-  })
-  .refine((value) => value.newPassword !== value.currentPassword, {
-    path: ['newPassword'],
-    message: 'The new password must differ from the current one',
-  });
-export type CustomerPasswordChangeInput = z.infer<typeof customerPasswordChangeInputSchema>;
+export function customerPasswordChangeSchema(messages: CustomerPasswordFormMessages) {
+  return z
+    .object({
+      currentPassword: z.string().min(1, messages.currentPasswordRequired),
+      newPassword: z
+        .string()
+        .min(PASSWORD_MIN_LENGTH, messages.passwordTooShort)
+        .max(PASSWORD_MAX_LENGTH, messages.passwordTooLong)
+        .regex(PASSWORD_LETTER_RE, messages.passwordNoLetter)
+        .regex(PASSWORD_DIGIT_RE, messages.passwordNoDigit),
+      confirmPassword: z.string().min(1, messages.confirmPasswordRequired),
+    })
+    .refine((value) => value.newPassword === value.confirmPassword, {
+      path: ['confirmPassword'],
+      message: messages.passwordMismatch,
+    })
+    .refine((value) => value.newPassword !== value.currentPassword, {
+      path: ['newPassword'],
+      message: messages.passwordSameAsCurrent,
+    });
+}
+export type CustomerPasswordChangeInput = z.infer<ReturnType<typeof customerPasswordChangeSchema>>;

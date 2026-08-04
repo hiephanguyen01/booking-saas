@@ -1,7 +1,10 @@
-import { customerPasswordChangeInputSchema } from '@booking/contracts';
+import { customerPasswordChangeSchema } from '@booking/contracts';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
+import { useMemo } from 'react';
+import { passwordFormMessages } from '~/features/account/lib/profile-form-messages';
 import { AccountPanel } from '~/features/account/components/shared/account-primitives';
+import { ProfilePasswordRules } from '~/features/account/components/profile/profile-password-rules';
 import {
   ProfileFormClassName,
   ProfileSuccessNotice,
@@ -26,6 +29,9 @@ export function ProfilePasswordCard({ result }: { result: ProfileActionData | nu
     },
   });
   const mine = result?.intent === 'password' ? result : null;
+  // zod carries its messages inside the schema, so the schema is rebuilt with
+  // the active locale's copy rather than shipping English validation errors.
+  const schema = useMemo(() => customerPasswordChangeSchema(passwordFormMessages(t)), [t]);
 
   return (
     <AccountPanel className="mt-6 rounded-none px-6 py-8 sm:px-8 lg:px-10">
@@ -43,7 +49,7 @@ export function ProfilePasswordCard({ result }: { result: ProfileActionData | nu
         // old values in place after a successful change is both untidy and a
         // small shoulder-surfing risk.
         key={mine?.saved ? 'saved' : 'editing'}
-        schema={customerPasswordChangeInputSchema}
+        schema={schema}
         fields={fields}
         defaultValues={defaultValues}
         submitLabel={t('profile.savePassword')}
@@ -51,16 +57,15 @@ export function ProfilePasswordCard({ result }: { result: ProfileActionData | nu
         serverError={mine?.error ?? null}
         fieldErrors={mine?.fieldErrors ?? null}
         transform={(values) => ({ ...values, intent: 'password' })}
-        renderFields={(renderedFields) => (
+        renderFields={(renderedFields, values) => (
           <div>
             <div className="grid max-w-[375px] gap-6">
               {renderedFields.map((field) => field.node)}
             </div>
-            <div className="mt-6 space-y-2 text-sm leading-5 text-muted-foreground">
-              <p>{t('profile.passwordRuleLength')}</p>
-              <p>{t('profile.passwordRuleLetter')}</p>
-              <p>{t('profile.passwordRuleNumber')}</p>
-            </div>
+            <ProfilePasswordRules
+              password={values.newPassword}
+              confirmPassword={values.confirmPassword}
+            />
           </div>
         )}
         className={ProfileFormClassName}

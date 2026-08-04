@@ -1,14 +1,19 @@
 import {
   authFlowCompleteResponseSchema,
   currentUserSchema,
-  customerPasswordChangeInputSchema,
-  updateMyProfileInputSchema,
+  customerPasswordChangeSchema,
+  updateMyProfileSchema,
   type AuthFlowCompleteResponse,
   type CurrentUser,
 } from '@booking/contracts';
 import type { TranslationKey } from '@booking/i18n';
 import { data } from 'react-router';
 import { apiPaths } from '~/constants/api-paths';
+import {
+  passwordFormMessages,
+  profileFormMessages,
+  type AccountTranslate,
+} from '~/features/account/lib/profile-form-messages';
 import { apiPatch, apiPost } from '~/lib/server/api.server';
 import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { forgetAuthSessionSnapshot } from '~/lib/server/auth-session-snapshot.server';
@@ -68,12 +73,14 @@ export function loadAccountProfileRoute(request: Request, locale: StorefrontLoca
 export async function handleAccountProfileAction(request: Request, locale: StorefrontLocale) {
   const auth = requireCustomerAuth(request, locale, { includeSearch: false });
   const { t } = localeTranslator(locale);
+  // The whole-app translator, narrowed to the account namespace the form copy lives in.
+  const accountT: AccountTranslate = (key) => t(`account.${key}`);
   const body = await readJsonRequestBody(request);
   const value = body.ok && body.value && typeof body.value === 'object' ? body.value : {};
   const intent = (value as { intent?: unknown }).intent;
 
   if (intent === 'identity') {
-    const parsed = updateMyProfileInputSchema.safeParse(value);
+    const parsed = updateMyProfileSchema(profileFormMessages(accountT)).safeParse(value);
     if (!parsed.success) return fail('identity', null, parsed.error.flatten().fieldErrors);
 
     const result = await apiPatch<CurrentUser>(
@@ -97,7 +104,7 @@ export async function handleAccountProfileAction(request: Request, locale: Store
   }
 
   if (intent === 'password') {
-    const parsed = customerPasswordChangeInputSchema.safeParse(value);
+    const parsed = customerPasswordChangeSchema(passwordFormMessages(accountT)).safeParse(value);
     if (!parsed.success) return fail('password', null, parsed.error.flatten().fieldErrors);
 
     const result = await apiPost<AuthFlowCompleteResponse>(
