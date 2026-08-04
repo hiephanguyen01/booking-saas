@@ -85,8 +85,12 @@ export function BookingColumn({
         ) : null}
       </div>
 
-      <div className="mt-3 flex gap-4">
-        <div className="h-27.5 w-39 shrink-0 overflow-hidden rounded-sm bg-muted">
+      {/* Side by side, a fixed 156px thumbnail leaves ~110px for the title and
+          the schedule badges — narrower than one badge, so they spilled out.
+          Below 400px the photo becomes a full-width cover and the summary gets
+          the whole column. */}
+      <div className="mt-3 flex flex-col gap-3 min-[400px]:flex-row min-[400px]:gap-4">
+        <div className="h-32 w-full shrink-0 overflow-hidden rounded-sm bg-muted min-[400px]:h-27.5 min-[400px]:w-39">
           {coverPhoto ? (
             <Image
               src={coverPhoto}

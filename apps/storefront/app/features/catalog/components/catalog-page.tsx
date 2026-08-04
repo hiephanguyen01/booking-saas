@@ -80,7 +80,7 @@ export function CatalogPage({ loaderData, params }: CatalogPageProps) {
             </div>
             <Drawer>
               <DrawerTrigger asChild>
-                <Button variant="outline" className="lg:hidden">
+                <Button size="control" variant="outline" className="lg:hidden">
                   <SlidersHorizontal data-icon="inline-start" /> {t('filters.open')}
                 </Button>
               </DrawerTrigger>
@@ -174,6 +174,7 @@ function SortChip({ label, href, active }: { label: string; href: string; active
   return (
     <Button
       asChild
+      size="control"
       variant="outline"
       className={
         active

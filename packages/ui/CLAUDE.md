@@ -55,7 +55,7 @@ the shared component so call sites remain unchanged.
 
 ## ⚠️ Form-control geometry — re-apply after any `shadcn add`
 
-Six primitives deliberately diverge from the registry (each carries a `NOT FROM THE REGISTRY` comment).
+Seven primitives deliberately diverge from the registry (each carries a `NOT FROM THE REGISTRY` comment).
 The registry ships `h-9 px-3` (36px); we ship 44px (WCAG 2.5.8 / HIG min touch target). After
 regenerating any of these, re-apply:
 
@@ -67,6 +67,7 @@ regenerating any of these, re-apply:
 | `ui/input-group.tsx` | `h-11` |
 | `ui/textarea.tsx` | `min-h-28 px-4 py-3` |
 | `ui/button.tsx` | adds `size="control"` (`h-11 px-4`) |
+| `ui/sheet.tsx` | close button `size-11` around the 16px icon (registry sizes it to the icon) |
 
 Never re-introduce a per-call-site height/radius/text-size on a form control: radius tracks `--radius`,
 and `text-base md:text-sm` keeps mobile text at 16px so iOS Safari doesn't zoom on focus. A height on an

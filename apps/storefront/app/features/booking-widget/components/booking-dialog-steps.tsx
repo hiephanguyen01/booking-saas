@@ -15,6 +15,16 @@ import { useBookingDialogStepsController } from '~/features/booking-widget/hooks
 
 export type RoomBookingDateRange = { from: Date | undefined; to?: Date | undefined };
 
+/**
+ * The dialog calendar sizes its day cells to the 44px touch target, but seven of
+ * them plus the calendar's own `p-3` need 332px of dialog — more than a phone
+ * narrower than ~390px offers, and the seventh column (Saturday) was silently
+ * cut off rather than wrapped. Drop the padding and step the cell down until the
+ * full week fits, then restore both as soon as there is room for them.
+ */
+const DIALOG_CALENDAR_FIT =
+  'max-w-full p-0 [--cell-size:2.25rem] min-[360px]:[--cell-size:2.5rem] min-[380px]:[--cell-size:2.75rem] min-[400px]:p-3';
+
 interface BookingDialogStepsProps {
   mode: ScheduledBookingMode;
   supportedModes: ScheduledBookingMode[];
@@ -262,7 +272,7 @@ function HourlyBookingStep({
           fixedWeeks
           formatters={model.calendarA11y.formatters}
           labels={model.calendarA11y.labels}
-          className="sf-calendar mx-auto mt-3 [--cell-size:2.75rem]"
+          className={cn('sf-calendar mx-auto mt-3', DIALOG_CALENDAR_FIT)}
         />
       </section>
     );
@@ -351,7 +361,7 @@ function DailyBookingStep({
             defaultMonth={model.defaultRangeMonth}
             formatters={model.calendarA11y.formatters}
             labels={model.calendarA11y.labels}
-            className="sf-calendar mx-auto [--cell-size:2.75rem]"
+            className={cn('sf-calendar mx-auto', DIALOG_CALENDAR_FIT)}
           />
           {availabilityPending ? (
             <div

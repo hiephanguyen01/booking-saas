@@ -43,7 +43,9 @@ export function SearchResultCard({
           aria-label={favoriteControl.label}
           aria-pressed={favoriteControl.selected}
           onClick={favoriteControl.onToggle}
-          className="absolute top-3 right-3 z-10 flex size-8 items-center justify-center rounded-full bg-background text-primary shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:top-6 md:right-auto md:left-[310px] md:size-10"
+          // `after:-inset-1.5` extends the 32px chip to a 44px tap target while
+          // the visible circle keeps the size the card layout is built around.
+          className="absolute top-3 right-3 z-10 flex size-8 items-center justify-center rounded-full bg-background text-primary shadow-md transition-transform after:absolute after:-inset-1.5 after:content-[''] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:top-6 md:right-auto md:left-[310px] md:size-10"
         >
           <Heart
             className="size-4 md:size-5"

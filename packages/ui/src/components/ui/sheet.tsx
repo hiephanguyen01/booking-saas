@@ -74,8 +74,15 @@ function SheetContent({
         {...props}
       >
         {children}
+        {/*
+          NOT FROM THE REGISTRY. The registry sizes this control to its 16px
+          icon, which is the whole hit area — and on the storefront this is the
+          only way to dismiss the mobile navigation. Centre the same icon in a
+          44px box (WCAG 2.5.8 / HIG) and pull the box out to the edge padding
+          so the icon stays optically where it was.
+        */}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <SheetPrimitive.Close className="absolute top-2 right-2 flex size-11 items-center justify-center rounded-md opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>

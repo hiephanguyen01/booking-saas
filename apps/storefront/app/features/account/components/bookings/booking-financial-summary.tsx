@@ -20,9 +20,12 @@ export function BookingFinancialSummary({
   const hasBalance = BigInt(balanceAmount) > 0n;
   const money = (value: string) => formatCurrency(BigInt(value), 'VND', locale);
 
+  // Three money columns need ~110px each; below ~400px that turns amounts and
+  // "Đã thanh toán đủ" into two- and three-line stacks. Fall back to labelled
+  // rows there and only go side-by-side once the columns have room.
   return (
     <dl
-      className={`grid grid-cols-3 divide-x divide-border/70 rounded-lg bg-muted/30 ${className}`}
+      className={`grid grid-cols-1 divide-y divide-border/70 rounded-lg bg-muted/30 min-[400px]:grid-cols-3 min-[400px]:divide-x min-[400px]:divide-y-0 ${className}`}
     >
       <FinancialValue
         label={t('bookings.payment.paidDeposit')}
@@ -58,7 +61,10 @@ function FinancialValue({
   }[tone];
 
   return (
-    <div className="min-w-0 px-2.5 py-3 text-center sm:px-4">
+    // Label over value, not label-beside-value: "Còn lại phải thanh toán" next
+    // to "Đã thanh toán đủ" does not fit one 320px row, and centring only starts
+    // once the three columns are side by side again.
+    <div className="min-w-0 px-4 py-2.5 min-[400px]:px-2.5 min-[400px]:py-3 min-[400px]:text-center sm:px-4">
       <dt className="text-xs leading-4 text-muted-foreground">{label}</dt>
       <dd
         className={`mt-1 break-words tabular-nums text-sm ${toneClass} ${strong ? 'font-semibold' : 'font-medium'}`}

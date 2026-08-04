@@ -24,7 +24,7 @@ export function OfferingDetailsDisclosure({
 
   return (
     <Collapsible>
-      <CollapsibleTrigger className="inline-flex items-center gap-1 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <CollapsibleTrigger className="inline-flex min-h-11 items-center gap-1 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {t('group.viewRoomDetails')}
         <ChevronDown className="size-4" aria-hidden="true" />
       </CollapsibleTrigger>

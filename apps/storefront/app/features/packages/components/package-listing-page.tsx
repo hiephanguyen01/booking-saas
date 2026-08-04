@@ -118,7 +118,7 @@ export function PackageListingPage({
                 <p className="font-semibold">{t('pickScheduleForPrice')}</p>
               )}
               <p className="mt-1 text-xs text-muted-foreground">{t('perSession')}</p>
-              <Button asChild className="mt-5 w-full">
+              <Button asChild size="control" className="mt-5 w-full">
                 <a href="#packages">{t('packages.viewPackages')}</a>
               </Button>
             </DetailPriceCard>
