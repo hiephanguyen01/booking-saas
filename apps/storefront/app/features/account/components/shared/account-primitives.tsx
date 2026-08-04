@@ -1,4 +1,5 @@
 import { formatCurrency, type Locale } from '@booking/i18n';
+import { cn } from '@booking/ui/lib/utils';
 import { Camera, Check, Construction, type LucideIcon } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import {
@@ -7,6 +8,21 @@ import {
 } from '~/features/account/lib/booking-history';
 import { cancellationLineTexts } from '~/lib/cancellation-policy';
 
+/**
+ * The account centre's surface.
+ *
+ * Radius, border and shadow all come from the tenant's `--sf-surface-*` tokens,
+ * the same trio `ListingCard`, `SearchResultCard` and `SectionCard` read — so a
+ * tenant that configures a rounded, bordered look gets it here too. It used to
+ * hardcode `rounded-sm` and omit the border entirely, which is why the booking
+ * pages rendered as square, borderless slabs no matter what the tenant set.
+ *
+ * `cn` (not template concatenation) so a caller's override actually replaces
+ * the token class instead of both shipping and CSS order picking the winner.
+ */
+export const ACCOUNT_SURFACE =
+  'rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] bg-background shadow-(--sf-surface-shadow)';
+
 export function AccountPanel({
   children,
   className = '',
@@ -14,13 +30,7 @@ export function AccountPanel({
   children: React.ReactNode;
   className?: string;
 }) {
-  return (
-    <div
-      className={`rounded-sm bg-background shadow-(--sf-surface-shadow) ${className}`}
-    >
-      {children}
-    </div>
-  );
+  return <div className={cn(ACCOUNT_SURFACE, className)}>{children}</div>;
 }
 
 export function PageHeading({ title, action }: { title: string; action?: React.ReactNode }) {
@@ -98,7 +108,10 @@ export function AccountTypeTabs({
     <div
       role="tablist"
       aria-label={label}
-      className="flex min-h-13 w-full overflow-x-auto bg-background shadow-(--sf-surface-shadow) [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className={cn(
+        ACCOUNT_SURFACE,
+        'flex min-h-13 w-full overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden',
+      )}
     >
       {tabs.map((tab) => (
         <button

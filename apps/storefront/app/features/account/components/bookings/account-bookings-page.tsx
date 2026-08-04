@@ -1,10 +1,15 @@
 import { Button } from '@booking/ui/components/ui/button';
+import { cn } from '@booking/ui/lib/utils';
 import { ReceiptText, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router';
 import { AccountResultsSkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { AccountPanel, PageHeading } from '~/features/account/components/shared/account-primitives';
+import {
+  ACCOUNT_SURFACE,
+  AccountPanel,
+  PageHeading,
+} from '~/features/account/components/shared/account-primitives';
 import { BookingHistoryCard } from '~/features/account/components/bookings/booking-history-card';
 import { CancelBookingDialog } from '~/features/account/components/bookings/cancel-booking-dialog';
 import { ReviewDialog } from '~/features/account/components/reviews/review-dialog';
@@ -43,7 +48,7 @@ export function AccountBookingsPage({
       {pending ? (
         <AccountResultsSkeleton label={t('common:loading')} />
       ) : loaderData.error ? (
-        <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-none p-8 text-center">
+        <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-4 p-8 text-center">
           <RefreshCw className="size-9 text-destructive" />
           <p className="text-sm text-destructive">{t('bookings.unavailable')}</p>
           <Button asChild variant="outline">
@@ -51,7 +56,7 @@ export function AccountBookingsPage({
           </Button>
         </AccountPanel>
       ) : loaderData.bookings.length === 0 ? (
-        <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-3 rounded-none p-8 text-center">
+        <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-3 p-8 text-center">
           <ReceiptText className="size-9 text-primary" />
           <p className="text-sm text-muted-foreground">{t('bookings.emptyFilter')}</p>
         </AccountPanel>
@@ -99,7 +104,7 @@ function BookingTabs({
   return (
     <nav
       aria-label={t('bookings.filters.label')}
-      className="overflow-x-auto border-b border-border/70 bg-background shadow-(--sf-surface-shadow)"
+      className={cn(ACCOUNT_SURFACE, 'overflow-x-auto')}
     >
       <div className="flex min-w-max">
         {BOOKING_HISTORY_FILTERS.map((filter) => {

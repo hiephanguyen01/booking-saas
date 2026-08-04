@@ -48,6 +48,8 @@ export const viCommon = {
     guestsPlaceholder: '1 - 5 khách',
     search: 'Tìm kiếm',
     topListings: '{type} nổi bật',
+    railPrevious: 'Xem các mục trước',
+    railNext: 'Xem các mục tiếp theo',
     recommended: 'Đề xuất dành cho bạn',
     loadMore: 'Xem thêm',
     emptyTitle: 'Chưa có studio phù hợp',
@@ -144,6 +146,6 @@ export const viCommon = {
       contact: 'Liên hệ',
     },
     companyName: 'Công ty Cổ phần Công nghệ và Đầu tư HIDY',
-    copyright: '© 2021 - Bản quyền thuộc công ty Cổ phần Công nghệ và Đầu tư HIDY',
+    copyright: '© 2026 - Bản quyền thuộc công ty Cổ phần Công nghệ và Đầu tư HIDY',
   },
 } as const;

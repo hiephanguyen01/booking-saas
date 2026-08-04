@@ -1,6 +1,7 @@
 import type { Locale } from '@booking/i18n';
 import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
+import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, Clock3, PackageCheck, Users } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
@@ -10,6 +11,7 @@ import type {
   BookingDetailState,
 } from '~/features/account/lib/booking-history';
 import {
+  ACCOUNT_SURFACE,
   CancellationPolicyList,
   ListingThumbnail,
 } from '~/features/account/components/shared/account-primitives';
@@ -33,7 +35,7 @@ export function BookingDetailOverview({
   const controller = useBookingDetailOverviewController({ booking, state, defaultCancelOpen });
 
   return (
-    <section className="overflow-hidden bg-background shadow-(--sf-surface-shadow)">
+    <section className={cn(ACCOUNT_SURFACE, 'overflow-hidden')}>
       <BookingCardHeader
         partnerName={booking.partnerName}
         listingSlug={booking.listingSlug}

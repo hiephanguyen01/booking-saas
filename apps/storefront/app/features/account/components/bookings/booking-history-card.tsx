@@ -31,7 +31,7 @@ export function BookingHistoryCard({
   const detailPath = storefrontPaths.account.booking(locale, booking.code);
 
   return (
-    <AccountPanel className="overflow-hidden rounded-xl border border-border/70 shadow-(--sf-surface-shadow)">
+    <AccountPanel className="overflow-hidden">
       <BookingCardHeader
         partnerName={booking.partnerName}
         listingSlug={booking.listingSlug}

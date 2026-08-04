@@ -12,6 +12,7 @@ import {
   bookingDetailState,
   type AccountBookingViewModel,
 } from '~/features/account/lib/booking-history';
+import { ACCOUNT_SURFACE } from '~/features/account/components/shared/account-primitives';
 import { DEFAULT_TZ } from '~/lib/time';
 
 export function BookingContactSection({ booking }: { booking: AccountBookingViewModel }) {
@@ -325,7 +326,7 @@ function PostServiceRefundSummary({
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="bg-background px-5 py-5 shadow-(--sf-surface-shadow) sm:px-6">
+    <section className={cn(ACCOUNT_SURFACE, 'px-5 py-5 sm:px-6')}>
       <h2 className="text-base font-semibold text-foreground">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>

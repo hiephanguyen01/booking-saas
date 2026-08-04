@@ -51,6 +51,8 @@ export const enCommon = {
     guestsPlaceholder: '1 - 5 guests',
     search: 'Search',
     topListings: 'Featured {type}',
+    railPrevious: 'Show previous items',
+    railNext: 'Show next items',
     recommended: 'Recommended for you',
     loadMore: 'Show more',
     emptyTitle: 'No studios yet',
@@ -147,6 +149,6 @@ export const enCommon = {
       contact: 'Contact',
     },
     companyName: 'HIDY Technology and Investment Joint Stock Company',
-    copyright: '© 2021 - Copyright belongs to HIDY Technology and Investment JSC',
+    copyright: '© 2026 - Copyright belongs to HIDY Technology and Investment JSC',
   },
 } satisfies TranslationShape<typeof viCommon>;

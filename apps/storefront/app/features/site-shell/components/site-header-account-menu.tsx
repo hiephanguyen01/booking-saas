@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@booking/ui/components/ui/dropdown-menu';
+import { cn } from '@booking/ui/lib/utils';
 import { LogOut } from 'lucide-react';
 import { Fragment } from 'react';
 import { ACCOUNT_NAV_ICONS, type AccountNavIcon } from '~/components/account-nav-icons';
@@ -20,6 +21,21 @@ import { storefrontPaths } from '~/constants/paths';
 import { useSiteHeaderAccountMenuController } from '~/features/site-shell/hooks/use-site-header-account-menu-controller';
 
 const ACCOUNT_MENU_DIVIDERS = new Set<AccountNavKey>(['reviews', 'recent', 'help']);
+
+/**
+ * One row geometry for every entry in the menu, applied through
+ * `DropdownMenuItem`'s own `className`.
+ *
+ * It has to go there rather than on the `asChild` child: Radix's `Slot` merges
+ * className by plain concatenation (`[slot, child].join(' ')`), with no
+ * tailwind-merge, so a child's `rounded-none` did not replace the item's base
+ * `rounded-sm` — both shipped and the later one in Tailwind's output won. That
+ * is why the highlight rendered as a rounded pill inside a menu whose panel is
+ * clipped square and whose separators run edge to edge. Routed through
+ * `DropdownMenuItem`, `cn` resolves the conflict and the declared class wins.
+ */
+const ACCOUNT_MENU_ROW =
+  'min-h-11 gap-3 rounded-none px-4 py-2.5 text-sm font-medium leading-5 focus:bg-muted focus:text-foreground';
 
 export function SiteHeaderAccountMenu({
   currentUser,
@@ -80,11 +96,8 @@ export function SiteHeaderAccountMenu({
           );
         })}
         <fetcher.Form method="post" action={logoutAction}>
-          <DropdownMenuItem asChild>
-            <button
-              type="submit"
-              className="min-h-11.5 w-full gap-3 rounded-none px-4 py-3 text-sm font-medium leading-5 text-foreground focus:bg-muted"
-            >
+          <DropdownMenuItem asChild className={cn(ACCOUNT_MENU_ROW, 'text-foreground')}>
+            <button type="submit" className="w-full">
               <LogOut className="size-5.5 text-foreground/80" />
               {t('navigation:logout')}
             </button>
@@ -155,15 +168,11 @@ function DropdownLink({
   children: React.ReactNode;
 }) {
   return (
-    <DropdownMenuItem asChild>
-      <Link
-        to={to}
-        prefetch="intent"
-        aria-current={active ? 'page' : undefined}
-        className={`min-h-11 gap-3 rounded-none px-4 py-2.5 text-sm font-medium leading-5 focus:bg-muted focus:text-foreground ${
-          active ? 'bg-muted text-foreground' : 'text-foreground/85'
-        }`}
-      >
+    <DropdownMenuItem
+      asChild
+      className={cn(ACCOUNT_MENU_ROW, active ? 'bg-muted text-foreground' : 'text-foreground/85')}
+    >
+      <Link to={to} prefetch="intent" aria-current={active ? 'page' : undefined}>
         <Icon className="size-5 text-foreground/80" />
         <span className="flex-1">{children}</span>
         {badge ? (

@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { AccountBookingViewModel } from '~/features/account/lib/booking-history';
+import { AccountPanel } from '~/features/account/components/shared/account-primitives';
 import { BookingDetailOverview } from './booking-detail-overview';
 import { ReviewDialog } from '~/features/account/components/reviews/review-dialog';
 import {
@@ -44,7 +45,7 @@ export function BookingDetailPanel({
       <h1 className="mb-3 text-lg font-semibold uppercase leading-7 text-foreground">
         {t('bookings.title')}
       </h1>
-      <div className="flex min-h-13 items-center bg-background px-5 shadow-(--sf-surface-shadow)">
+      <AccountPanel className="flex min-h-13 items-center px-5">
         <Link
           to={bookingsPath}
           className="inline-flex min-h-10 items-center gap-3 text-sm font-medium text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -52,12 +53,12 @@ export function BookingDetailPanel({
           <ArrowLeft aria-hidden="true" className="size-4" />
           {t('bookings.detailTitle')}
         </Link>
-      </div>
+      </AccountPanel>
 
       {actionError ? (
         <p
           role="alert"
-          className="mt-3 border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="mt-3 rounded-(--sf-surface-radius) border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           {t('bookings.actionFailed')}
         </p>

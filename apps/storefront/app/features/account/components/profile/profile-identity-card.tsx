@@ -40,7 +40,7 @@ export function ProfileIdentityCard({
   const schema = useMemo(() => customerProfileFormSchema(profileFormMessages(t)), [t]);
 
   return (
-    <AccountPanel className="rounded-none px-6 py-8 sm:px-8 lg:px-10">
+    <AccountPanel className="px-6 py-8 sm:px-8 lg:px-10">
       <h1 className="text-lg font-semibold leading-7 text-foreground">{t('profile.title')}</h1>
       <p className="mt-1 text-sm leading-5 text-muted-foreground">
         {t('profile.identityDescription')}

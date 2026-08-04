@@ -36,7 +36,7 @@ export function ReviewBookingCard({
   );
 
   return (
-    <AccountPanel className="overflow-hidden border border-border/50 shadow-(--sf-surface-shadow)">
+    <AccountPanel className="overflow-hidden">
       <BookingCardHeader
         partnerName={review.partnerName}
         listingSlug={review.listingSlug}
