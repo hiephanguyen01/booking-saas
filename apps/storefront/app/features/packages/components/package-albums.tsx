@@ -50,7 +50,7 @@ export function PackageAlbums({
               <Image
                 src={album.photos[0]}
                 alt=""
-                className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                className="size-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
               />
               <span className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/10 to-transparent" />
               <span className="absolute inset-x-2 bottom-2 truncate text-xs font-semibold text-background">

@@ -37,7 +37,7 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
   } = useStorefrontAppShellController(loaderData);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <TenantThemeStyle theme={tenant.themeConfig} nonce={documentNonce} />
       {!tenant.live && !bypassTenantGate ? (
         <SuspendedNotice name={tenant.name} />

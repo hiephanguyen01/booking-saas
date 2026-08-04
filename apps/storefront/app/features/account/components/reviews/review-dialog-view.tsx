@@ -189,7 +189,7 @@ export function ReviewDialogView({
                       />
                     )}
                     {item.state === 'uploading' ? (
-                      <span className="absolute inset-0 grid place-items-center bg-black/45 text-white">
+                      <span className="absolute inset-0 grid place-items-center bg-scrim text-white">
                         <LoaderCircle className="size-6 animate-spin" aria-hidden="true" />
                       </span>
                     ) : null}
@@ -203,7 +203,7 @@ export function ReviewDialogView({
                       onClick={() => onRemoveFile(item.id)}
                       disabled={submitting}
                       aria-label={t('reviews.dialog.removeFile', { name: item.file.name })}
-                      className="absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-full bg-black/65 text-white outline-none hover:bg-black/80 focus-visible:ring-2 focus-visible:ring-white"
+                      className="absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-full bg-scrim text-white outline-none hover:bg-scrim-strong focus-visible:ring-2 focus-visible:ring-white"
                     >
                       <X className="size-4" aria-hidden="true" />
                     </button>

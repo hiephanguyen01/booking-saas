@@ -1,5 +1,68 @@
 @import '@booking/ui/globals.css';
 
+/*
+ * The sign-in screen's own brand.
+ *
+ * This surface renders *before* a tenant is known — there is no `theme_config`
+ * to read, so unlike every other dashboard screen it cannot inherit a brand and
+ * needs one of its own. Following `.platform-landing` in the storefront, that
+ * brand is expressed by overriding the shadcn **base** tokens inside a scope, so
+ * the route styles itself with ordinary semantic utilities (`bg-card`,
+ * `text-muted-foreground`, `bg-primary`) rather than the thirty-five literal
+ * hexes it used to carry — which no theme could reach and no guard could check.
+ *
+ * The two halves are separate surfaces sitting side by side, so each restates
+ * the tokens rather than one inheriting from the other.
+ */
+.auth-brand-panel {
+  --background: #10281f;
+  --foreground: #f4f7f5;
+  --primary: #83d5a8;
+  --primary-foreground: #10281f;
+  --muted-foreground: color-mix(in oklch, var(--foreground) 62%, var(--background));
+  --border: color-mix(in oklch, white 15%, transparent);
+  --input: color-mix(in oklch, white 15%, transparent);
+  --ring: #83d5a8;
+  /* The panel's own tinted chip surface — `--card` would read as a raised panel
+     here, and nothing on this half is a card. */
+  --auth-chip: color-mix(in oklch, white 10%, transparent);
+}
+
+.auth-form-panel {
+  --background: #fbfcfb;
+  --foreground: #17211d;
+  --card: #ffffff;
+  --card-foreground: #17211d;
+  --primary: #173f30;
+  --primary-foreground: #ffffff;
+  --muted-foreground: #627069;
+  --border: #dfe5e1;
+  --input: #ccd5d0;
+  --ring: #287553;
+  /* Eyebrow text and the mobile logo chip. `--primary` is nearly black here, so
+     it cannot carry the green the brand panel uses for the same role. */
+  --auth-accent: #287553;
+  --auth-chip: #173f30;
+  --auth-chip-foreground: #a4e0bd;
+}
+
+.dark .auth-form-panel {
+  --background: #111714;
+  --foreground: #edf3ef;
+  --card: #161d19;
+  --card-foreground: #edf3ef;
+  --muted-foreground: #a4afa9;
+  --border: color-mix(in oklch, white 10%, transparent);
+  --input: color-mix(in oklch, white 15%, transparent);
+  --auth-accent: #82d4a7;
+}
+
+@theme inline {
+  --color-auth-accent: var(--auth-accent);
+  --color-auth-chip: var(--auth-chip);
+  --color-auth-chip-foreground: var(--auth-chip-foreground);
+}
+
 .auth-brand-panel::before {
   position: absolute;
   inset: 0;

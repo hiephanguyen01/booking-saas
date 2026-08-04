@@ -26,6 +26,7 @@ jobs:
       - run: pnpm check:no-tests
       - run: pnpm check:module-cycles
       - run: pnpm check:frontend-structure
+      - run: pnpm check:theme-tokens
       - run: pnpm --filter=@booking/storefront security
       - name: API typecheck
         # Run through Turbo so workspace dependencies such as contracts are

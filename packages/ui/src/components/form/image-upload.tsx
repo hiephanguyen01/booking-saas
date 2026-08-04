@@ -757,7 +757,7 @@ function GalleryAction({
 }
 
 const compactGalleryActionClassName =
-  'pointer-events-auto grid size-11 place-items-center rounded-lg bg-black/35 text-white shadow-sm outline-none backdrop-blur-sm transition hover:bg-black/55 focus-visible:ring-2 focus-visible:ring-white disabled:pointer-events-none disabled:opacity-35 [&_svg]:size-4';
+  'pointer-events-auto grid size-11 place-items-center rounded-lg bg-scrim text-white shadow-sm outline-none backdrop-blur-sm transition hover:bg-scrim-strong focus-visible:ring-2 focus-visible:ring-white disabled:pointer-events-none disabled:opacity-35 [&_svg]:size-4';
 
 export function validateImageUpload(
   file: File,

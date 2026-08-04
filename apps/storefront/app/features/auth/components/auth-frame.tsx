@@ -33,7 +33,7 @@ export function AuthFrame({
             />
           ) : null}
           <div className="absolute inset-0 bg-linear-to-t from-primary/45 via-primary/12 to-background/20" />
-          <div className="relative max-w-md rounded-sm border border-white/40 bg-background/90 p-6 backdrop-blur-sm">
+          <div className="relative max-w-md rounded-sm border border-foreground/25 bg-background/90 p-6 backdrop-blur-sm">
             {tenant.themeConfig.logoUrl ? (
               <Image
                 src={tenant.themeConfig.logoUrl}

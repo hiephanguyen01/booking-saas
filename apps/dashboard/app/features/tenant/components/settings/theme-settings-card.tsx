@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CircleAlert,
   Contact,
+  Frame,
   Image,
   LayoutTemplate,
   Palette,
@@ -98,7 +99,31 @@ export function ThemeSettingsCard({
                       description="Giữ độ tương phản tốt để nút, nội dung và trạng thái luôn dễ đọc."
                     >
                       <Grid>
-                        {take('colors.primary', 'colors.accent', 'colors.background', 'font')}
+                        {take(
+                          'colors.primary',
+                          'colors.accent',
+                          'colors.background',
+                          'font',
+                          'baseSize',
+                        )}
+                      </Grid>
+                    </Section>
+
+                    <Section
+                      icon={<Frame />}
+                      title="Bo góc và bề mặt"
+                      description="Quyết định storefront trông sắc hay mềm, đặc hay thoáng. Mọi giá trị đều được kẹp trong khoảng an toàn khi lưu."
+                    >
+                      <Grid>
+                        {take(
+                          'surface.radius',
+                          'surface.imageRadius',
+                          'surface.borderWidth',
+                          'surface.borderColor',
+                          'surface.cardPadding',
+                          'surface.sectionGap',
+                          'surface.shadow',
+                        )}
                       </Grid>
                     </Section>
 

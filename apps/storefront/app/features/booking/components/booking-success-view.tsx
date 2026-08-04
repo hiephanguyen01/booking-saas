@@ -27,7 +27,7 @@ export function BookingSuccessView({
     <div className="bg-muted/20 px-4 py-10 font-studio sm:px-6 sm:py-14 lg:py-16">
       <section
         aria-labelledby="booking-success-title"
-        className="mx-auto flex w-full max-w-107.5 flex-col items-center justify-center gap-5 bg-card p-6 text-center shadow-[0_4px_15px_rgba(0,0,0,0.07)] sm:p-10"
+        className="mx-auto flex w-full max-w-107.5 flex-col items-center justify-center gap-5 bg-card p-6 text-center shadow-(--sf-surface-shadow) sm:p-10"
       >
         <BadgeCheck
           className="size-15 shrink-0 text-success"

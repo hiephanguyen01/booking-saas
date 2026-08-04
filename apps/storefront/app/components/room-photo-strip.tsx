@@ -86,7 +86,7 @@ function RoomPhoto({
     <Image
       src={photo}
       alt={index === 0 ? title : ''}
-      className="size-full object-cover"
+      className="size-full object-cover object-top"
     />
   );
 
@@ -95,7 +95,7 @@ function RoomPhoto({
       <Image
         src={photo}
         alt={index === 0 ? title : ''}
-        className={`${className ?? ''} size-full object-cover`}
+        className={`${className ?? ''} size-full object-cover object-top`}
       />
     );
   }

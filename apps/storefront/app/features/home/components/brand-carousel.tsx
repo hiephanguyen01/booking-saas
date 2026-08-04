@@ -99,7 +99,7 @@ function BrandCarouselImage({ src }: { src: string }) {
       width={700}
       height={700}
       draggable={false}
-      className="size-full object-cover"
+      className="size-full object-cover object-top"
     />
   );
 }

@@ -39,12 +39,12 @@ export function PricePanel({
     <div
       className={cn(
         'mt-3 rounded-lg px-5 py-4 text-sm leading-5 text-foreground',
-        hasPromotion ? 'bg-success/10' : 'bg-muted/40',
+        hasPromotion ? 'bg-brand-accent/10' : 'bg-muted/40',
       )}
     >
       {hasCalendarSale ? (
         <div className="mb-2 flex items-center justify-between gap-4">
-          <Badge variant="success" className="rounded-sm">
+          <Badge className="rounded-sm bg-brand-accent text-brand-accent-foreground">
             Sale
           </Badge>
           <span className="text-muted-foreground line-through">
@@ -54,7 +54,7 @@ export function PricePanel({
       ) : null}
       {hasDiscount ? (
         <div className="flex items-center justify-between gap-4">
-          <Badge variant="success" className="rounded-sm font-semibold">
+          <Badge className="rounded-sm bg-brand-accent font-semibold text-brand-accent-foreground">
             {promo?.code ?? t('discount')}
           </Badge>
           <span className="text-muted-foreground line-through">{formatVnd(amounts.subtotal)}</span>
@@ -68,7 +68,7 @@ export function PricePanel({
       <PriceRow
         label={t('discount')}
         value={`− ${formatVnd(amounts.discount)}`}
-        className={cn('mt-2', hasDiscount && 'text-success')}
+        className={cn('mt-2', hasDiscount && 'text-brand-accent')}
       />
       {quote.securityDeposit !== '0' ? (
         <PriceRow

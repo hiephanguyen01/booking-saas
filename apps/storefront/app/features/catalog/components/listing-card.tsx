@@ -11,6 +11,7 @@ import type {
   ListingFavoriteControl,
 } from '~/features/catalog/lib/listing-card.types';
 import { RatingStars } from '~/components/rating-stars';
+import { DiscountBadge } from '~/components/discount-badge';
 
 /**
  * Image-forward listing card used on the home + catalog pages.
@@ -43,7 +44,7 @@ export function ListingCard({
 
   return (
     <article
-      className={`group/card relative flex h-full min-h-80 flex-col overflow-hidden rounded-lg border-2 border-border bg-card ${className}`}
+      className={`group/card relative flex h-full min-h-80 flex-col overflow-hidden bg-card rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) ${className}`}
     >
       <Link
         to={
@@ -60,7 +61,7 @@ export function ListingCard({
               alt={listing.title}
               width={720}
               height={480}
-              className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-105"
+              className="h-full w-full object-cover object-top transition duration-500 ease-out group-hover:scale-105"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
@@ -68,9 +69,7 @@ export function ListingCard({
             </div>
           )}
           {presentation?.discountPercent ? (
-            <span className="absolute left-0 top-6 flex h-10 w-18 items-center bg-success px-2 text-base font-semibold text-success-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
-              - {presentation.discountPercent}%
-            </span>
+            <DiscountBadge percent={presentation.discountPercent} />
           ) : null}
         </div>
         <div className="flex flex-1 flex-col gap-3 p-4">
@@ -102,7 +101,7 @@ export function ListingCard({
                   <span className="mr-2 text-muted-foreground line-through">{originalPrice}</span>
                 ) : null}
                 <span
-                  className={presentation?.discountPercent ? 'text-success' : 'text-foreground'}
+                  className={presentation?.discountPercent ? 'text-brand-accent' : 'text-foreground'}
                 >
                   <span className="font-normal">{t('fromPriceShort')} </span>
                   <span className="text-base font-semibold">{price}</span>
@@ -110,7 +109,7 @@ export function ListingCard({
               </p>
               <p
                 className={`mt-1 ${
-                  presentation?.discountPercent ? 'text-success' : 'text-muted-foreground'
+                  presentation?.discountPercent ? 'text-brand-accent' : 'text-muted-foreground'
                 }`}
               >
                 {presentation?.priceUnit

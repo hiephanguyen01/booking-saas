@@ -38,7 +38,7 @@ export function StudioHero({
               priority
               className="absolute inset-0 size-full object-cover"
             />
-            <div className="absolute inset-0 bg-black/20" />
+            <div className="absolute inset-0 bg-scrim-soft" />
           </>
         ) : null}
         <div className="absolute inset-x-4 top-8 flex flex-col items-center gap-1.5 text-center">

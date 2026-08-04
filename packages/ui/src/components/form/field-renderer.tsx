@@ -512,7 +512,7 @@ function ColorField<T extends FieldValues>({
                   >
                     {currentHex ? (
                       <span
-                        className="size-full rounded-sm border border-black/10 shadow-inner dark:border-white/15"
+                        className="size-full rounded-sm border border-border shadow-inner"
                         style={{ backgroundColor: currentHex }}
                       />
                     ) : (
@@ -542,7 +542,7 @@ function ColorField<T extends FieldValues>({
                             aria-pressed={selected}
                             disabled={field.disabled}
                             onClick={() => rhf.onChange(normalized)}
-                            className="aspect-square rounded-md border border-black/10 shadow-sm outline-none transition-transform hover:scale-105 active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-white/15"
+                            className="aspect-square rounded-md border border-border shadow-sm outline-none transition-transform hover:scale-105 active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring/50"
                             style={{ backgroundColor: normalized }}
                           >
                             <span className="sr-only">{normalized}</span>

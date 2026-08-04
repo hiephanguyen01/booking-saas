@@ -99,7 +99,7 @@ function BookingTabs({
   return (
     <nav
       aria-label={t('bookings.filters.label')}
-      className="overflow-x-auto border-b border-border/70 bg-background shadow-[0_4px_16px_rgba(15,23,42,0.03)]"
+      className="overflow-x-auto border-b border-border/70 bg-background shadow-(--sf-surface-shadow)"
     >
       <div className="flex min-w-max">
         {BOOKING_HISTORY_FILTERS.map((filter) => {

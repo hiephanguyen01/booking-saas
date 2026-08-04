@@ -2,6 +2,7 @@ import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import { Image } from '@booking/ui/components/media/image';
 import { RatingStars } from '~/components/rating-stars';
+import { DiscountBadge } from '~/components/discount-badge';
 import type {
   EnrichedSearchListing,
   SearchResultContext,
@@ -36,7 +37,12 @@ export function SearchResultCard({
   const priceUnit = priceUnitLabel(context, listing.priceUnit);
 
   return (
-    <article className="group relative grid overflow-hidden rounded-lg border-[1.4px] border-border bg-card transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5">
+    // `md:grid-rows-1` is load-bearing: without an explicit row the implicit one
+    // is content-sized, so the photo below never had a definite height to
+    // resolve its `h-full` against and sized itself from its own aspect ratio
+    // instead. A 4:3 source happened to land on this card's 184px, which is why
+    // only portrait uploads broke out of the card.
+    <article className="group relative grid overflow-hidden bg-card transition-[border-color,box-shadow] rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) hover:border-primary/50 md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)] md:grid-rows-1 md:gap-x-1.5">
       {favoriteControl ? (
         <button
           type="button"
@@ -55,7 +61,9 @@ export function SearchResultCard({
       ) : null}
       <Link
         to={href}
-        className="relative min-h-52 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
+        // `h-52`, not `min-h-52`: a min-height is not a definite height, so the
+        // image inside could not resolve `h-full` on the stacked layout either.
+        className="relative h-52 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:h-full"
       >
         {photos[0] ? (
           <Image
@@ -63,14 +71,10 @@ export function SearchResultCard({
             alt={listing.title}
             width={720}
             height={480}
-            className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            className="size-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : null}
-        {discountPercent !== null ? (
-          <span className="absolute top-6 left-0 flex h-10 w-18 items-center bg-success px-2 text-base font-semibold text-success-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
-            - {discountPercent}%
-          </span>
-        ) : null}
+        {discountPercent !== null ? <DiscountBadge percent={discountPercent} /> : null}
       </Link>
 
       <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
@@ -82,7 +86,7 @@ export function SearchResultCard({
                 alt=""
                 width={360}
                 height={264}
-                className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                className="size-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
               />
             ) : null}
           </div>
@@ -124,13 +128,13 @@ export function SearchResultCard({
                   {regularPrice}
                 </span>
               ) : null}
-              <span className={discountPercent !== null ? 'text-success' : 'text-foreground'}>
+              <span className={discountPercent !== null ? 'text-brand-accent' : 'text-foreground'}>
                 {t('listing:fromPriceShort')}{' '}
                 <strong className="text-lg leading-7 font-semibold">{price}</strong>
               </span>
             </span>
             <span
-              className={`block ${discountPercent !== null ? 'text-success' : 'text-muted-foreground'}`}
+              className={`block ${discountPercent !== null ? 'text-brand-accent' : 'text-muted-foreground'}`}
             >
               {t(priceUnit.key, priceUnit.count === undefined ? {} : { count: priceUnit.count })}
             </span>

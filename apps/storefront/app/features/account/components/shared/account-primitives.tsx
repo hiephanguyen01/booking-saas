@@ -16,7 +16,7 @@ export function AccountPanel({
 }) {
   return (
     <div
-      className={`rounded-sm bg-background shadow-[0_8px_28px_rgba(16,24,40,0.05)] ${className}`}
+      className={`rounded-sm bg-background shadow-(--sf-surface-shadow) ${className}`}
     >
       {children}
     </div>
@@ -98,7 +98,7 @@ export function AccountTypeTabs({
     <div
       role="tablist"
       aria-label={label}
-      className="flex min-h-13 w-full overflow-x-auto bg-background shadow-[0_0_8px_rgba(0,0,0,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex min-h-13 w-full overflow-x-auto bg-background shadow-(--sf-surface-shadow) [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {tabs.map((tab) => (
         <button

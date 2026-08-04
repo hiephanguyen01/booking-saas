@@ -37,7 +37,7 @@ export function WizardSection<Id extends string>({
       id={id}
       data-form-section
       className={cn(
-        'scroll-mt-32 overflow-hidden rounded-2xl border bg-card shadow-[0_12px_36px_-28px_hsl(var(--foreground)/0.35)]',
+        'scroll-mt-32 overflow-hidden rounded-2xl border bg-card shadow-[0_12px_36px_-28px_color-mix(in_oklch,var(--foreground)_35%,transparent)]',
         error && 'border-destructive/40',
       )}
       aria-labelledby={`${id}-title`}
@@ -210,7 +210,7 @@ export function WizardActions({
 }) {
   const last = currentIndex === total - 1;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur xl:static xl:z-auto xl:rounded-2xl xl:border xl:bg-card xl:p-4 xl:shadow-none">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_color-mix(in_oklch,var(--foreground)_50%,transparent)] backdrop-blur xl:static xl:z-auto xl:rounded-2xl xl:border xl:bg-card xl:p-4 xl:shadow-none">
       <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 xl:flex-nowrap xl:gap-3">
         <Button
           type="button"
@@ -271,7 +271,7 @@ export function WizardContextStrip({
   idleLabel?: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card px-5 py-4 shadow-[0_12px_36px_-28px_hsl(var(--foreground)/0.35)] sm:px-6">
+    <div className="relative overflow-hidden rounded-2xl border bg-card px-5 py-4 shadow-[0_12px_36px_-28px_color-mix(in_oklch,var(--foreground)_35%,transparent)] sm:px-6">
       <div className="absolute inset-y-0 left-0 w-1 bg-primary" aria-hidden />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

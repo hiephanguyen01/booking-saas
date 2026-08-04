@@ -34,7 +34,7 @@ export function WizardRail<Id extends string>({
   return (
     <aside className="hidden self-stretch xl:block">
       <div className="sticky top-20 space-y-4">
-        <div className="overflow-hidden rounded-2xl border bg-card shadow-[0_12px_36px_-28px_hsl(var(--foreground)/0.35)]">
+        <div className="overflow-hidden rounded-2xl border bg-card shadow-[0_12px_36px_-28px_color-mix(in_oklch,var(--foreground)_35%,transparent)]">
           <div className="border-b p-5">
             <p className="text-sm font-semibold">Các phần chỉnh sửa</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -119,7 +119,7 @@ export function FormRailMobileActions({
   submitLabel: string;
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur xl:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_color-mix(in_oklch,var(--foreground)_50%,transparent)] backdrop-blur xl:hidden">
       <div className="mx-auto flex max-w-2xl items-center gap-3">
         <p className="text-xs text-muted-foreground">Lưu toàn bộ thay đổi trên trang</p>
         <Button type="submit" size="control" disabled={isSubmitting} className="ml-auto px-5">
