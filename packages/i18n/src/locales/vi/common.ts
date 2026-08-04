@@ -143,7 +143,7 @@ export const viCommon = {
       rules: 'Quy định chung',
       contact: 'Liên hệ',
     },
-    companyName: 'Công ty Cổ phần Công nghệ và Đầu tư VNPLUS',
-    copyright: '© 2021 - Bản quyền thuộc công ty Cổ phần Công nghệ và Đầu tư VNPLUS',
+    companyName: 'Công ty Cổ phần Công nghệ và Đầu tư HIDY',
+    copyright: '© 2021 - Bản quyền thuộc công ty Cổ phần Công nghệ và Đầu tư HIDY',
   },
 } as const;

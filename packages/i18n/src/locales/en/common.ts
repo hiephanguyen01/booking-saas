@@ -146,7 +146,7 @@ export const enCommon = {
       rules: 'General rules',
       contact: 'Contact',
     },
-    companyName: 'VNPLUS Technology and Investment Joint Stock Company',
-    copyright: '© 2021 - Copyright belongs to VNPLUS Technology and Investment JSC',
+    companyName: 'HIDY Technology and Investment Joint Stock Company',
+    copyright: '© 2021 - Copyright belongs to HIDY Technology and Investment JSC',
   },
 } satisfies TranslationShape<typeof viCommon>;
