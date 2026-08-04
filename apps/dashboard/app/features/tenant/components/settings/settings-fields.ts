@@ -124,7 +124,7 @@ export const zalopayGatewayFields: FieldConfig<ZalopayGatewaySettingsForm>[] = [
   },
 ];
 
-export const themeFields: FieldConfig<ThemeConfigInput>[] = [
+const themeIdentityFields: FieldConfig<ThemeConfigInput>[] = [
   {
     name: 'logoUrl',
     type: 'file',
@@ -162,11 +162,91 @@ export const themeFields: FieldConfig<ThemeConfigInput>[] = [
     name: 'colors.background',
     type: 'color',
     label: 'Màu nền',
-    description: 'Nên chọn màu sáng, dịu để nội dung storefront dễ đọc.',
+    description:
+      'Chọn nền tối và storefront tự chuyển sang bộ màu tối — thẻ, viền và chữ phụ suy theo độ sáng của nền.',
     placeholder: '#ffffff',
-    presets: ['#ffffff', '#f8fafc', '#f5f5f4', '#fff7ed', '#f0fdfa', '#eff6ff'],
+    presets: ['#ffffff', '#f8fafc', '#f5f5f4', '#fff7ed', '#0b1220', '#111827'],
   },
   { name: 'font', type: 'text', label: 'Phông chữ', placeholder: 'Inter' },
+  {
+    name: 'baseSize',
+    type: 'text',
+    label: 'Cỡ chữ nền',
+    description: 'Từ 12px đến 20px. Mọi khoảng cách và chiều cao ô nhập đều giãn theo giá trị này.',
+    placeholder: '16px',
+  },
+];
+
+/**
+ * Surface shape. Split from `themeFields` so the theme form can give it its own
+ * section: these decide how the storefront *feels* (sharp or soft, dense or airy)
+ * rather than what it says, and grouping them is what makes that legible.
+ *
+ * Every value is re-validated and clamped in `themeCss()` — the ranges quoted in
+ * the descriptions are the clamps, not just advice.
+ */
+export const themeSurfaceFields: FieldConfig<ThemeConfigInput>[] = [
+  {
+    name: 'surface.radius',
+    type: 'text',
+    label: 'Bo góc',
+    description: '0px đến 32px. Áp cho nút, ô nhập, thẻ và mọi thành phần giao diện.',
+    placeholder: '10px',
+  },
+  {
+    name: 'surface.imageRadius',
+    type: 'text',
+    label: 'Bo góc ảnh',
+    description: '0px đến 32px. Dùng riêng cho thư viện ảnh và ảnh bìa.',
+    placeholder: '8px',
+  },
+  {
+    name: 'surface.borderWidth',
+    type: 'text',
+    label: 'Độ dày viền',
+    description: '0px đến 4px. Đặt 0px để bỏ hẳn viền thẻ.',
+    placeholder: '1px',
+  },
+  {
+    name: 'surface.borderColor',
+    type: 'color',
+    label: 'Màu viền',
+    description: 'Bỏ trống để viền tự suy theo màu nền.',
+    placeholder: '#e5e7eb',
+    presets: ['#e5e7eb', '#d4d4d8', '#cbd5e1', '#1f2937', '#000000'],
+  },
+  {
+    name: 'surface.shadow',
+    type: 'radio',
+    variant: 'segmented',
+    label: 'Đổ bóng',
+    description: 'Chọn từ thang có sẵn — bóng tự nhập không được chấp nhận vì lý do bảo mật.',
+    options: [
+      { label: 'Không', value: 'none' },
+      { label: 'Nhẹ', value: 'sm' },
+      { label: 'Vừa', value: 'md' },
+      { label: 'Rõ', value: 'lg' },
+      { label: 'Đậm', value: 'xl' },
+    ],
+    colSpan: 2,
+  },
+  {
+    name: 'surface.cardPadding',
+    type: 'text',
+    label: 'Đệm trong thẻ',
+    description: '0px đến 48px. Quyết định thẻ trông đặc hay thoáng.',
+    placeholder: '16px',
+  },
+  {
+    name: 'surface.sectionGap',
+    type: 'text',
+    label: 'Khoảng cách khối',
+    description: '0px đến 64px.',
+    placeholder: '16px',
+  },
+];
+
+const themeContentFields: FieldConfig<ThemeConfigInput>[] = [
   {
     name: 'hero.title',
     type: 'text',
@@ -222,15 +302,36 @@ export const themeFields: FieldConfig<ThemeConfigInput>[] = [
   },
 ];
 
+/**
+ * One registration list for the whole theme form. `GenericForm` only binds the
+ * fields it is handed, so the sections in `ThemeSettingsCard` place nodes out of
+ * this array by name rather than each rendering their own form.
+ */
+export const themeFields: FieldConfig<ThemeConfigInput>[] = [
+  ...themeIdentityFields,
+  ...themeSurfaceFields,
+  ...themeContentFields,
+];
+
 /** Expands the shared optional theme contract into controlled form defaults. */
 export function toThemeDefaults(tc: ThemeConfigInput): ThemeConfigInput {
   return {
     logoUrl: tc.logoUrl ?? '',
     faviconUrl: tc.faviconUrl ?? '',
+    baseSize: tc.baseSize ?? '',
     colors: {
       primary: tc.colors?.primary ?? '',
       accent: tc.colors?.accent ?? '',
       background: tc.colors?.background ?? '',
+    },
+    surface: {
+      radius: tc.surface?.radius ?? '',
+      imageRadius: tc.surface?.imageRadius ?? '',
+      borderWidth: tc.surface?.borderWidth ?? '',
+      borderColor: tc.surface?.borderColor ?? '',
+      shadow: tc.surface?.shadow,
+      cardPadding: tc.surface?.cardPadding ?? '',
+      sectionGap: tc.surface?.sectionGap ?? '',
     },
     font: tc.font ?? '',
     hero: {

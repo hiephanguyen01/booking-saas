@@ -5,19 +5,53 @@
   --font-studio: var(--font-tenant, 'Montserrat', ui-sans-serif, system-ui, sans-serif);
   --font-promo-script: 'Dancing Script', cursive;
   --font-promo-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /*
+   * The tenant's brand accent as a real colour in the theme, so it takes the
+   * opacity modifier (`bg-brand-accent/10`) that a bare `bg-(--sf-accent)`
+   * cannot. Distinct from shadcn's `--accent`, which is the neutral hover
+   * surface — hence the `brand-` prefix rather than shadowing that name.
+   */
+  --color-brand-accent: var(--sf-accent);
+  --color-brand-accent-foreground: var(--sf-accent-foreground);
 }
 
+/*
+ * Shape defaults only — no brand colours.
+ *
+ * The tenant colour tokens (`--sf-accent*`, the neutral ramp, the scrims) are
+ * emitted by `themeCss()` and their defaults live once in `BRAND_DEFAULTS`
+ * (`@booking/ui/lib/brand-theme`). Restating a hex here made a second copy of the
+ * same default — and the accent's hand-computed foreground alongside it, which
+ * would have gone quietly wrong the moment the default accent changed. Every
+ * surface that reads `--sf-accent` sits behind a resolved tenant (the platform
+ * landing has its own footer and its own brand scope), so there is nothing left
+ * for a colour default here to serve.
+ *
+ * The values below are geometry, which has no tenant-independent source and is
+ * what an un-themed render needs to not collapse.
+ */
 :root {
-  /* defaults — overridden per tenant by themeStyle() on the app shell */
-  --sf-primary: #0ea5e9;
-  --sf-accent: #f97316;
-  --sf-background: #ffffff;
-  --sf-primary-soft: color-mix(in oklch, var(--sf-primary) 10%, var(--sf-background));
-  --sf-accent-soft: color-mix(in oklch, var(--sf-accent) 10%, var(--sf-background));
-  /* page canvas: a hair off-white so white cards lift off it */
-  --sf-canvas: #ffffff;
-  --sf-muted: #6b7280;
   --font-tenant: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /* Surface shape for the storefront's hand-rolled panels. */
+  --sf-surface-radius: var(--radius);
+  --sf-image-radius: calc(var(--radius) - 2px);
+  --sf-surface-border-width: 1px;
+  --sf-surface-border-color: var(--border);
+  --sf-surface-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --sf-surface-pad: 1rem;
+  --sf-section-gap: 1rem;
+  --sf-base-size: 16px;
+  /* Casts upward, under a sticky footer — see booking-dialog-footer.tsx. */
+  --sf-lip-shadow: 0 -8px 24px -20px var(--scrim);
+}
+
+/*
+ * Every `rem` in the storefront scales from here, which is what makes the tenant
+ * type-size setting reach spacing and control heights too rather than text alone.
+ */
+html {
+  font-size: var(--sf-base-size);
 }
 
 .sf-calendar button[data-selected-single='true'],

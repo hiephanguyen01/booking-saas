@@ -53,6 +53,13 @@ Verified to have zero consumers anywhere in either frontend, and **deleted**.
 | `firstFormErrorField` (`dashboard/lib/form-errors.ts`) | Replaced by `FormSectionMap.getFirstErrorSection`, which maps the field to its section in one step. |
 | `withSearchContext` (`storefront/features/search/lib/search-state.ts`) | Callers build the URL from `searchContextParams` directly. |
 
+## Removed on 2026-08-04
+
+| Artifact | Why |
+| --- | --- |
+| `--sf-accent-soft`, `--sf-primary-soft` (`storefront/lib/theme.ts`) | Emitted into every tenant's `:root` block since the theme system was written, read by nothing in either frontend. `--sf-accent` and `--sf-accent-foreground` stay: both are also emitted by the dashboard's `tenant-brand.ts`, and one tenant config has to make one brand in both apps. |
+| `--sf-canvas`, `--sf-muted`, `--sf-primary`, `--sf-background` (`storefront/app.css`) | Colour defaults that restated `BRAND_DEFAULTS`, so the same value lived in two places — including a hand-computed accent foreground that would have gone quietly wrong the moment the default accent changed. `themeCss()` is now the only source; the one `--sf-background` consumer moved to the semantic `bg-background`. |
+
 ### Not removed, but over-exported
 
 These are **live** (used inside their own module) yet exported with no external consumer, so the

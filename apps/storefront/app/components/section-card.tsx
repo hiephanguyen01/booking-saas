@@ -18,7 +18,13 @@ import type { ComponentProps } from 'react';
 export function SectionCard({ className, ...props }: ComponentProps<'section'>) {
   return (
     <section
-      className={cn('rounded-lg bg-card p-4 text-card-foreground shadow-sm sm:p-6', className)}
+      // Radius, padding, border and shadow come from `--sf-surface-*` rather than
+      // fixed utilities so a tenant's surface settings reach this panel — it is
+      // hand-rolled, not a shadcn `Card`, so it inherits nothing on its own.
+      className={cn(
+        'bg-card text-card-foreground rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) p-(--sf-surface-pad)',
+        className,
+      )}
       {...props}
     />
   );

@@ -160,7 +160,28 @@ export const themeConfigSchema = z.object({
       background: z.string().max(64).optional(),
     })
     .optional(),
+  /**
+   * Surface shape (§16.2). Lengths are plain `px`/`rem` strings and the shadow is
+   * a step on a closed scale — both are re-validated and clamped by
+   * `@booking/ui/lib/brand-theme` before they reach a `<style>` block, because a
+   * schema that only checks a string's length cannot tell CSS from an injection.
+   * Foreground/ink colours are absent on purpose: they are derived from the
+   * background so a tenant cannot ship an unreadable pairing.
+   */
+  surface: z
+    .object({
+      radius: z.string().max(16).optional(),
+      imageRadius: z.string().max(16).optional(),
+      borderWidth: z.string().max(16).optional(),
+      borderColor: z.string().max(64).optional(),
+      shadow: z.enum(['none', 'sm', 'md', 'lg', 'xl']).optional(),
+      cardPadding: z.string().max(16).optional(),
+      sectionGap: z.string().max(16).optional(),
+    })
+    .optional(),
   font: z.string().max(80).optional(),
+  /** Base type size for the storefront; every `rem` in the UI scales from it. */
+  baseSize: z.string().max(16).optional(),
   hero: z
     .object({
       title: z.string().max(200).optional(),

@@ -25,7 +25,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
 
   return (
     <>
-      <div className="grid h-64 overflow-hidden rounded-md bg-muted md:h-85 md:grid-cols-[460px_1fr] md:gap-3">
+      <div className="grid h-64 overflow-hidden bg-muted rounded-(--sf-image-radius) md:h-85 md:grid-cols-[460px_1fr] md:gap-3">
         <button
           type="button"
           onClick={(event) => showPhoto(0, event.currentTarget)}
@@ -42,7 +42,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
               width={920}
               height={680}
               priority
-              className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              className="size-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
             <GalleryPlaceholder title={title} />
@@ -74,7 +74,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
                     alt=""
                     width={430}
                     height={328}
-                    className="size-full object-cover"
+                    className="size-full object-cover object-top"
                   />
                 ) : (
                   <GalleryPlaceholder />
