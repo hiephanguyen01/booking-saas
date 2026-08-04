@@ -161,7 +161,7 @@ export async function storefrontAuthMiddleware(
   const state: StorefrontRequestContextState = {
     kind: 'tenant',
     tenant,
-    auth: { session: result.data, info: result.info },
+    auth: { sessionId: stored.id, session: result.data, info: result.info },
     suppressSessionCommit: false,
   };
   return runWithStorefrontRequestContext(state, next);

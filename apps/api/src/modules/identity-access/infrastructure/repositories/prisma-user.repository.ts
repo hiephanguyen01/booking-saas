@@ -4,6 +4,7 @@ import {
   UserAccount,
   type LoginLockoutIntent,
   type NewUserAccount,
+  type ProfileIntent,
 } from '../../domain/entities/user-account.entity';
 import type { IUserRepository, UserRecord } from '../../domain/ports/user-repository.port';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
@@ -15,6 +16,7 @@ function toUserAccount(row: User): UserAccount {
     passwordHash: row.passwordHash,
     fullName: row.fullName,
     phone: row.phone,
+    avatarUrl: row.avatarUrl,
     locale: row.locale,
     status: row.status,
     failedLoginCount: row.failedLoginCount,
@@ -30,6 +32,7 @@ function toUserRecord(row: User): UserRecord {
     passwordHash: row.passwordHash,
     fullName: row.fullName,
     phone: row.phone,
+    avatarUrl: row.avatarUrl,
     locale: row.locale,
     status: row.status,
     failedLoginCount: row.failedLoginCount,
@@ -51,8 +54,26 @@ export class PrismaUserRepository implements IUserRepository {
     return row ? toUserAccount(row) : null;
   }
 
+  async findById(userId: string): Promise<UserAccount | null> {
+    const row = await this.prisma.admin.user.findUnique({ where: { id: userId } });
+    return row ? toUserAccount(row) : null;
+  }
+
   async create(data: NewUserAccount): Promise<UserRecord> {
     return toUserRecord(await this.prisma.admin.user.create({ data }));
+  }
+
+  async updateProfile(userId: string, intent: ProfileIntent): Promise<UserRecord> {
+    return toUserRecord(
+      await this.prisma.admin.user.update({
+        where: { id: userId },
+        data: {
+          fullName: intent.fullName,
+          phone: intent.phone,
+          avatarUrl: intent.avatarUrl,
+        },
+      }),
+    );
   }
 
   async setPassword(userId: string, passwordHash: string): Promise<UserRecord> {

@@ -4,6 +4,8 @@ import type { StorefrontSessionData } from './session.server';
 import type { StorefrontTenant } from './tenant.server';
 
 export interface StorefrontAuthContext {
+  /** Redis session id (the value the signed cookie carries), not the backend token. */
+  sessionId: string;
   session: StorefrontSessionData;
   info: SessionInfoResponse;
 }

@@ -117,6 +117,8 @@ export const currentUserSchema = z.object({
   email: z.string().email(),
   fullName: z.string(),
   phone: z.string().nullable(),
+  /** Profile photo `publicUrl` from a presigned upload; null when unset. */
+  avatarUrl: z.string().nullable(),
   locale: localeSchema,
   status: userStatusSchema,
 });
@@ -171,29 +173,59 @@ export const sessionInfoResponseSchema = z.object({
 });
 export type SessionInfoResponse = z.infer<typeof sessionInfoResponseSchema>;
 
-/** Storefront customer account form. Mutations are currently handled by the BFF demo action. */
-export const customerProfileInputSchema = z.object({
+/**
+ * `PATCH /auth/me` — the signed-in user edits their own profile.
+ *
+ * Email is deliberately absent: it is the login identity, so changing it needs
+ * an OTP-verified flow of its own rather than a field on this form. An omitted
+ * key means "leave unchanged"; an explicit `null` clears the value.
+ */
+export const updateMyProfileInputSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
-  email: z.string().email().toLowerCase(),
-  phone: z.string().trim().min(6).max(20).optional(),
+  phone: z.string().trim().min(6).max(20).nullable().optional(),
+  /** Profile photo `publicUrl` from a presigned upload; null removes the photo. */
+  avatarUrl: z.string().url().max(2048).nullable().optional(),
 });
-export type CustomerProfileInput = z.infer<typeof customerProfileInputSchema>;
+export type UpdateMyProfileInput = z.infer<typeof updateMyProfileInputSchema>;
 
-/** Password-change presentation contract, ready for the future authenticated API endpoint. */
-export const customerPasswordChangeInputSchema = z
-  .object({
-    currentPassword: z.string().min(1),
-    newPassword: passwordSchema,
-    confirmPassword: z.string().min(1),
-  })
+/**
+ * The profile *form*. It differs from the API contract in one way: a blank phone
+ * is a legal input meaning "I have no phone", which the action turns into an
+ * explicit `null`. Keeping that leniency out of the API schema means a direct
+ * `PATCH` can still never store an empty string.
+ */
+export const customerProfileFormSchema = z.object({
+  fullName: z.string().trim().min(1).max(200),
+  phone: z
+    .string()
+    .trim()
+    .max(20)
+    .refine((value) => value === '' || value.length >= 6, {
+      message: 'Phone number must be at least 6 characters',
+    }),
+  avatarUrl: z.string().url().max(2048).nullable(),
+});
+export type CustomerProfileFormInput = z.infer<typeof customerProfileFormSchema>;
+
+/** `POST /auth/me/password` — change the password while signed in. */
+export const changeMyPasswordInputSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: passwordSchema,
+});
+export type ChangeMyPasswordInput = z.infer<typeof changeMyPasswordInputSchema>;
+
+/**
+ * The password-change *form*: the API contract plus the confirmation field the
+ * user retypes. Both cross-field rules are re-checked server-side.
+ */
+export const customerPasswordChangeInputSchema = changeMyPasswordInputSchema
+  .extend({ confirmPassword: z.string().min(1) })
   .refine((value) => value.newPassword === value.confirmPassword, {
     path: ['confirmPassword'],
     message: 'Passwords do not match',
+  })
+  .refine((value) => value.newPassword !== value.currentPassword, {
+    path: ['newPassword'],
+    message: 'The new password must differ from the current one',
   });
 export type CustomerPasswordChangeInput = z.infer<typeof customerPasswordChangeInputSchema>;
-
-/** Unified customer account form used by the storefront profile center. */
-export const customerAccountSettingsInputSchema = customerProfileInputSchema.and(
-  customerPasswordChangeInputSchema,
-);
-export type CustomerAccountSettingsInput = z.infer<typeof customerAccountSettingsInputSchema>;

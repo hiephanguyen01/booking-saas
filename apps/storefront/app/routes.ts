@@ -5,6 +5,7 @@ export default [
   route('readyz', 'routes/readyz.ts'),
   route('uploads/presign', 'routes/uploads.presign.tsx'),
   route('uploads/reviews/presign', 'routes/uploads.reviews.presign.tsx'),
+  route('uploads/avatar/presign', 'routes/uploads.avatar.presign.tsx'),
   route('administrative-divisions/wards', 'routes/administrative-wards.tsx'),
   route(':locale', 'routes/locale-layout.tsx', [
     index('routes/home.tsx'),

@@ -521,6 +521,8 @@ model User {
   passwordHash     String?    @map("password_hash")
   fullName         String     @map("full_name")
   phone            String?
+  /// Profile photo publicUrl from a presigned upload (§4.2); null when unset.
+  avatarUrl        String?    @map("avatar_url")
   locale           String     @default("vi")
   status           UserStatus @default(active)
   emailVerifiedAt  DateTime?  @map("email_verified_at") @db.Timestamptz(6)

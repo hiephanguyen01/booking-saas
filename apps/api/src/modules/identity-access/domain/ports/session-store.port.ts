@@ -14,6 +14,7 @@ export interface SessionPrincipal {
   email: string;
   fullName: string;
   phone: string | null;
+  avatarUrl: string | null;
   locale: string;
   status: string;
 }
@@ -27,4 +28,10 @@ export interface ISessionStore {
   revoke(sessionId: string): Promise<void>;
   /** Revokes every active device after a credential reset. */
   revokeAllForUser(userId: string): Promise<void>;
+  /**
+   * Revokes every active device except the one that made the change — used by a
+   * signed-in password change, which should sign other devices out without
+   * logging the user out of the tab they are working in.
+   */
+  revokeOtherSessionsForUser(userId: string, keepSessionId: string): Promise<void>;
 }

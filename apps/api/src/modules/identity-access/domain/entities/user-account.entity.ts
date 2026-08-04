@@ -7,6 +7,7 @@ import {
   EmailTaken,
   GuestNotFound,
   InvalidCredentials,
+  PasswordNotSet,
 } from '../errors/identity-access-errors';
 
 export type UserAccountStatus = 'active' | 'suspended';
@@ -22,6 +23,7 @@ export interface UserAccountState {
   passwordHash: string | null;
   fullName: string;
   phone: string | null;
+  avatarUrl: string | null;
   locale: string;
   status: UserAccountStatus;
   failedLoginCount: number;
@@ -35,6 +37,7 @@ export interface NewUserAccount {
   passwordHash: string | null;
   fullName: string;
   phone: string | null;
+  avatarUrl: string | null;
   locale: string;
   status: 'active';
   failedLoginCount: 0;
@@ -51,6 +54,13 @@ export interface LoginLockoutIntent {
 /** Column-granular password write. Plaintext never enters this intent. */
 export interface PasswordHashIntent {
   passwordHash: string;
+}
+
+/** Column-granular self-service profile write. Email and locale are not editable here. */
+export interface ProfileIntent {
+  fullName: string;
+  phone: string | null;
+  avatarUrl: string | null;
 }
 
 /**
@@ -84,6 +94,7 @@ export class UserAccount {
       passwordHash: input.passwordHash,
       fullName: input.fullName,
       phone: input.phone ?? null,
+      avatarUrl: null,
       locale: input.locale,
       status: 'active',
       failedLoginCount: 0,
@@ -99,6 +110,7 @@ export class UserAccount {
       passwordHash: null,
       fullName: input.fullName,
       phone: input.phone,
+      avatarUrl: null,
       locale: 'vi',
       status: 'active',
       failedLoginCount: 0,
@@ -159,6 +171,10 @@ export class UserAccount {
 
   get phone(): string | null {
     return this.state.phone;
+  }
+
+  get avatarUrl(): string | null {
+    return this.state.avatarUrl;
   }
 
   get locale(): string {
@@ -229,5 +245,36 @@ export class UserAccount {
   changePasswordHash(nextPasswordHash: string): PasswordHashIntent {
     this.state = { ...this.state, passwordHash: nextPasswordHash };
     return { passwordHash: nextPasswordHash };
+  }
+
+  /**
+   * Self-service profile edit. An omitted key leaves the column as it is, so a
+   * card that only submits a name can never blank out the phone or the photo;
+   * an explicit null clears the value. Suspended accounts may not edit.
+   */
+  changeProfile(input: {
+    fullName: string;
+    phone?: string | null;
+    avatarUrl?: string | null;
+  }): ProfileIntent {
+    if (this.state.status !== 'active') throw new AccountSuspended();
+    const intent: ProfileIntent = {
+      fullName: input.fullName,
+      phone: input.phone === undefined ? this.state.phone : input.phone,
+      avatarUrl: input.avatarUrl === undefined ? this.state.avatarUrl : input.avatarUrl,
+    };
+    this.state = { ...this.state, ...intent };
+    return intent;
+  }
+
+  /**
+   * Gates a signed-in password change and hands back the hash to verify against.
+   * A passwordless guest has no current password to prove, so it must go through
+   * the upgrade flow instead of this one.
+   */
+  assertCanChangePassword(): string {
+    if (this.state.status !== 'active') throw new AccountSuspended();
+    if (this.state.passwordHash === null) throw new PasswordNotSet();
+    return this.state.passwordHash;
   }
 }

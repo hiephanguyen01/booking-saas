@@ -12,7 +12,7 @@
  */
 
 /** Storage album the object belongs to (mirrors `PresignUploadInput['target']`). */
-export type UploadTarget = "listings" | "groups" | "partners" | "tenants"
+export type UploadTarget = "listings" | "groups" | "partners" | "tenants" | "avatars"
 
 /** Mirrors `PresignUploadResponse` from `@booking/contracts`. */
 export interface PresignGrant {

@@ -7,8 +7,10 @@ import {
   authOtpVerifiedResponseSchema,
   authOtpVerifyInputSchema,
   authPasswordCompleteInputSchema,
+  changeMyPasswordInputSchema,
   currentUserSchema,
   loginInputSchema,
+  updateMyProfileInputSchema,
   passwordResetStartInputSchema,
   refreshResponseSchema,
   registerInputSchema,
@@ -26,6 +28,8 @@ export class PasswordResetStartDto extends createZodDto(passwordResetStartInputS
 export class AuthChallengeDto extends createZodDto(authChallengeInputSchema) {}
 export class AuthOtpVerifyDto extends createZodDto(authOtpVerifyInputSchema) {}
 export class AuthPasswordCompleteDto extends createZodDto(authPasswordCompleteInputSchema) {}
+export class UpdateMyProfileDto extends createZodDto(updateMyProfileInputSchema) {}
+export class ChangeMyPasswordDto extends createZodDto(changeMyPasswordInputSchema) {}
 
 // Responses
 export class AuthSessionResponseDto extends createZodDto(authSessionResponseSchema) {}

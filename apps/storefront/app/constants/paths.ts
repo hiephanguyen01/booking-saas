@@ -43,6 +43,7 @@ export const storefrontPaths = {
    */
   uploadPresign: '/uploads/presign',
   reviewUploadPresign: '/uploads/reviews/presign',
+  avatarUploadPresign: '/uploads/avatar/presign',
   home: (locale: Locale) => `/${locale}`,
   catalog: (locale: Locale, typeSlug: string) => `/${locale}/t/${segment(typeSlug)}`,
   listing: (locale: Locale, listingSlug: string) => `/${locale}/l/${segment(listingSlug)}`,

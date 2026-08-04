@@ -1,6 +1,6 @@
 import type { CurrentUser } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
-import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
 import { LogOut } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
@@ -38,6 +38,9 @@ function AccountIdentity({ user }: { user: CurrentUser }) {
   return (
     <div className="flex w-full items-center gap-3">
       <Avatar className="size-12">
+        {user.avatarUrl ? (
+          <AvatarImage src={user.avatarUrl} alt="" className="object-cover" />
+        ) : null}
         <AvatarFallback className="bg-primary/10 font-semibold text-primary">
           {userInitials(user.fullName)}
         </AvatarFallback>

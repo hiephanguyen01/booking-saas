@@ -78,6 +78,7 @@ export class PrismaSessionStore implements ISessionStore {
       email: session.user.email,
       fullName: session.user.fullName,
       phone: session.user.phone,
+      avatarUrl: session.user.avatarUrl,
       locale: session.user.locale,
       status: session.user.status,
     };
@@ -121,6 +122,13 @@ export class PrismaSessionStore implements ISessionStore {
   async revokeAllForUser(userId: string): Promise<void> {
     await this.prisma.admin.session.updateMany({
       where: { userId, revokedAt: null },
+      data: Session.revokeAll(new Date()),
+    });
+  }
+
+  async revokeOtherSessionsForUser(userId: string, keepSessionId: string): Promise<void> {
+    await this.prisma.admin.session.updateMany({
+      where: { userId, revokedAt: null, id: { not: keepSessionId } },
       data: Session.revokeAll(new Date()),
     });
   }

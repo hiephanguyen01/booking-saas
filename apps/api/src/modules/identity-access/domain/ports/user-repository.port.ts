@@ -1,6 +1,7 @@
 import type {
   LoginLockoutIntent,
   NewUserAccount,
+  ProfileIntent,
   UserAccount,
 } from '../entities/user-account.entity';
 
@@ -13,6 +14,7 @@ export interface UserRecord {
   passwordHash: string | null;
   fullName: string;
   phone: string | null;
+  avatarUrl: string | null;
   locale: string;
   status: 'active' | 'suspended';
   failedLoginCount: number;
@@ -22,8 +24,11 @@ export interface UserRecord {
 
 export interface IUserRepository {
   findByEmail(email: string): Promise<UserAccount | null>;
+  findById(userId: string): Promise<UserAccount | null>;
   create(data: NewUserAccount): Promise<UserRecord>;
   /** Set a guest's password hash — the upgrade-to-account step (§8.6). */
   setPassword(userId: string, passwordHash: string): Promise<UserRecord>;
+  /** Self-service profile write; the intent already carries every resolved column. */
+  updateProfile(userId: string, intent: ProfileIntent): Promise<UserRecord>;
   updateLockout(userId: string, intent: LoginLockoutIntent): Promise<void>;
 }

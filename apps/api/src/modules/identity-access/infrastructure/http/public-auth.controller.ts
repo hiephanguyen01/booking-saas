@@ -3,15 +3,18 @@ import type {
   AuthFlowCompleteResponse,
   AuthOtpVerifiedResponse,
   AuthSessionResponse,
+  CurrentUser,
   RefreshResponse,
   SessionInfoResponse,
 } from '@booking/contracts';
-import { Body, Controller, Get, HttpCode, Ip, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Ip, Patch, Post, Req, Res } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import { ChangeMyPasswordUseCase } from '../../application/use-cases/change-my-password.use-case';
 import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
+import { UpdateMyProfileUseCase } from '../../application/use-cases/update-my-profile.use-case';
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterUseCase } from '../../application/use-cases/register.use-case';
@@ -26,6 +29,7 @@ import { VerifyPasswordResetUseCase } from '../../application/use-cases/verify-p
 import { VerifyRegistrationUseCase } from '../../application/use-cases/verify-registration.use-case';
 import type { SessionPrincipal, SessionTokens } from '../../domain/ports/session-store.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';
+import { toCurrentUser } from '../../application/user-account.mapper';
 import { clearSessionCookies, REFRESH_COOKIE, setSessionCookies } from './cookies';
 import { AuthenticatedOnly } from './decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from './decorators/current-principal.decorator';
@@ -38,6 +42,7 @@ import {
   AuthOtpVerifiedResponseDto,
   AuthOtpVerifyDto,
   AuthPasswordCompleteDto,
+  ChangeMyPasswordDto,
   CurrentUserDto,
   LoginDto,
   RefreshResponseDto,
@@ -45,20 +50,27 @@ import {
   RegistrationStartDto,
   PasswordResetStartDto,
   SessionInfoResponseDto,
+  UpdateMyProfileDto,
   UpgradeGuestDto,
 } from './dto/auth.dto';
 
 function toResponse(user: UserRecord, tokens: SessionTokens): AuthSessionResponse {
   return {
-    user: {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      phone: user.phone,
-      locale: user.locale as 'vi' | 'en',
-      status: user.status,
-    },
+    user: toCurrentUser(user),
     accessExpiresAt: tokens.accessExpiresAt.toISOString(),
+  };
+}
+
+/** The principal already carries every `CurrentUser` field, refreshed per request. */
+function principalUser(principal: SessionPrincipal): CurrentUser {
+  return {
+    id: principal.userId,
+    email: principal.email,
+    fullName: principal.fullName,
+    phone: principal.phone,
+    avatarUrl: principal.avatarUrl,
+    locale: principal.locale as CurrentUser['locale'],
+    status: principal.status as CurrentUser['status'],
   };
 }
 
@@ -80,6 +92,8 @@ export class PublicAuthController {
     private readonly resendPasswordResetUseCase: ResendPasswordResetUseCase,
     private readonly verifyPasswordResetUseCase: VerifyPasswordResetUseCase,
     private readonly completePasswordResetUseCase: CompletePasswordResetUseCase,
+    private readonly updateMyProfileUseCase: UpdateMyProfileUseCase,
+    private readonly changeMyPasswordUseCase: ChangeMyPasswordUseCase,
   ) {}
 
   @Public()
@@ -251,15 +265,46 @@ export class PublicAuthController {
   @Get('me')
   @ApiOperation({ summary: 'Current user identity' })
   @ApiOkResponse({ type: CurrentUserDto })
-  me(@CurrentPrincipal() principal: SessionPrincipal) {
-    return {
-      id: principal.userId,
-      email: principal.email,
-      fullName: principal.fullName,
-      phone: principal.phone,
-      locale: principal.locale,
-      status: principal.status,
-    };
+  me(@CurrentPrincipal() principal: SessionPrincipal): CurrentUser {
+    return principalUser(principal);
+  }
+
+  /**
+   * Self-service profile edit (§8.6): name, phone and photo. Email stays out —
+   * it is the login identity and would need its own verified change flow.
+   */
+  @AuthenticatedOnly()
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @Patch('me')
+  @ApiOperation({ summary: 'Update the signed-in user’s own profile' })
+  @ApiOkResponse({ type: CurrentUserDto })
+  updateMe(
+    @CurrentPrincipal() principal: SessionPrincipal,
+    @Body() input: UpdateMyProfileDto,
+  ): Promise<CurrentUser> {
+    return this.updateMyProfileUseCase.execute(principal.userId, input);
+  }
+
+  /**
+   * Password change for a signed-in user: proves the current password, then
+   * signs every *other* device out. The calling session survives, so the tab
+   * that made the change is not logged out of itself.
+   */
+  @AuthenticatedOnly()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Post('me/password')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Change the signed-in user’s password' })
+  @ApiOkResponse({ type: AuthFlowCompleteResponseDto })
+  async changeMyPassword(
+    @CurrentPrincipal() principal: SessionPrincipal,
+    @Body() input: ChangeMyPasswordDto,
+  ): Promise<AuthFlowCompleteResponse> {
+    await this.changeMyPasswordUseCase.execute(
+      { userId: principal.userId, sessionId: principal.sessionId },
+      input,
+    );
+    return { success: true };
   }
 
   /** Identity + every scope membership with resolved permissions (dashboard shell gating). */
@@ -269,16 +314,6 @@ export class PublicAuthController {
   @ApiOkResponse({ type: SessionInfoResponseDto })
   async session(@CurrentPrincipal() principal: SessionPrincipal): Promise<SessionInfoResponse> {
     const scopes = await this.getSessionInfoUseCase.execute(principal.userId);
-    return {
-      user: {
-        id: principal.userId,
-        email: principal.email,
-        fullName: principal.fullName,
-        phone: principal.phone,
-        locale: principal.locale as 'vi' | 'en',
-        status: principal.status as 'active' | 'suspended',
-      },
-      scopes,
-    };
+    return { user: principalUser(principal), scopes };
   }
 }

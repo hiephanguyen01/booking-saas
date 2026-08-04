@@ -95,6 +95,22 @@ export async function apiPost<T>(
   return sanitizeApiResult(request, result);
 }
 
+export async function apiPatch<T>(
+  request: Request,
+  path: string,
+  body: unknown,
+  auth: Auth,
+  options: StorefrontJsonOptions<T>,
+): Promise<ApiResult<T>> {
+  const result = await apiClient.patch(
+    path,
+    body,
+    auth,
+    storefrontRequestOptions(request, options),
+  );
+  return sanitizeApiResult(request, result);
+}
+
 export const backendLogin = (request: Request, credentials: { email: string; password: string }) =>
   apiClient.login(credentials, storefrontAuthOptions(request));
 export const backendRegister = (request: Request, credentials: BackendRegisterCredentials) =>

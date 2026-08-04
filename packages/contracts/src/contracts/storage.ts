@@ -38,7 +38,7 @@ export const MAX_UPLOAD_SIZE_MB = 5;
 
 export const presignUploadInputSchema = z.object({
   /** Logical album the object belongs to. */
-  target: z.enum(['listings', 'groups', 'partners', 'tenants']).default('listings'),
+  target: z.enum(['listings', 'groups', 'partners', 'tenants', 'avatars']).default('listings'),
   contentType: uploadContentTypeSchema,
 });
 export type PresignUploadInput = z.infer<typeof presignUploadInputSchema>;

@@ -19,6 +19,9 @@ export const apiPaths = {
   auth: {
     login: '/auth/login',
     session: '/auth/session',
+    /** The signed-in user's own profile: `PATCH` edits name/phone/photo. */
+    me: '/auth/me',
+    mePassword: '/auth/me/password',
     registrationStart: '/auth/registration/start',
     registrationResend: '/auth/registration/resend',
     registrationVerify: '/auth/registration/verify',
@@ -52,6 +55,11 @@ export const apiPaths = {
   partner: {
     apply: '/partners/apply',
     uploadPresign: '/uploads/partner-applications/presign',
+  },
+
+  /** The generic authenticated upload grant; the target picks the storage album. */
+  uploads: {
+    presign: '/uploads/presign',
   },
 
   affiliate: {

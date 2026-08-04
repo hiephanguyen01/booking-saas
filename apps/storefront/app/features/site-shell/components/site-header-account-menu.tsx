@@ -1,5 +1,5 @@
 import type { CurrentUser } from '@booking/contracts';
-import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@booking/ui/components/ui/dropdown-menu';
-import { LogOut, Pencil } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Fragment } from 'react';
 import { ACCOUNT_NAV_ICONS, type AccountNavIcon } from '~/components/account-nav-icons';
 import { Link, useFetcher } from 'react-router';
@@ -53,14 +53,8 @@ export function SiteHeaderAccountMenu({
         className="w-[263px] overflow-hidden rounded-[8px] border border-border bg-background p-0 font-studio shadow-lg"
       >
         <DropdownMenuLabel className="flex min-h-17 items-center gap-3 px-4 py-3.5">
-          <span className="relative shrink-0">
+          <span className="shrink-0">
             <SiteHeaderAccountAvatar currentUser={currentUser} />
-            <span
-              aria-hidden="true"
-              className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm"
-            >
-              <Pencil className="size-2.5" />
-            </span>
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold leading-5 text-foreground">
@@ -110,6 +104,9 @@ export function SiteHeaderAccountAvatar({
 }) {
   return (
     <Avatar size="lg" className={className}>
+      {currentUser.avatarUrl ? (
+        <AvatarImage src={currentUser.avatarUrl} alt="" className="object-cover" />
+      ) : null}
       <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
         {userInitials(currentUser.fullName)}
       </AvatarFallback>

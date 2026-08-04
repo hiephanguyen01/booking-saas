@@ -76,6 +76,21 @@ function invalidateSnapshot(key: string, digest: string): void {
   if (snapshots.get(key)?.tokenDigest === digest) snapshots.delete(key);
 }
 
+/**
+ * Drop the cached `/auth/session` probe for one session. Call this right after a
+ * write that changes the identity itself (a profile edit), otherwise the layout
+ * would keep rendering the pre-edit name for the rest of the snapshot TTL.
+ */
+export function forgetAuthSessionSnapshot({
+  tenantId,
+  sessionId,
+}: {
+  tenantId: string;
+  sessionId: string;
+}): void {
+  snapshots.delete(snapshotKey(tenantId, sessionId));
+}
+
 export async function loadAuthSessionSnapshot({
   tenantId,
   sessionId,

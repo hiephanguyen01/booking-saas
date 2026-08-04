@@ -5,7 +5,9 @@ import { PERMISSION_RESOLVER } from '../../domain/ports/permission-resolver.port
 import { SESSION_INFO_READER } from '../../domain/ports/session-info-reader.port';
 import { SESSION_STORE } from '../../domain/ports/session-store.port';
 import { USER_REPOSITORY } from '../../domain/ports/user-repository.port';
+import { ChangeMyPasswordUseCase } from '../../application/use-cases/change-my-password.use-case';
 import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
+import { UpdateMyProfileUseCase } from '../../application/use-cases/update-my-profile.use-case';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
@@ -60,6 +62,8 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     ResendPasswordResetUseCase,
     VerifyPasswordResetUseCase,
     CompletePasswordResetUseCase,
+    UpdateMyProfileUseCase,
+    ChangeMyPasswordUseCase,
     // guard order matters: authentication first, then deny-by-default authorization
     { provide: APP_GUARD, useClass: SessionAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
