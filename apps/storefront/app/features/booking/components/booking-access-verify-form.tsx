@@ -29,11 +29,11 @@ export function BookingAccessVerifyForm({
 
   return (
     <div className="space-y-5">
-      <p className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-foreground">
+      <p className="rounded-(--sf-surface-radius) border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-foreground">
         {t('lookup.otpSent')}
       </p>
       {devOtp ? (
-        <p className="rounded-sm bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
+        <p className="rounded-(--sf-surface-radius) bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
           {t('lookup.otpHintDev', { otp: devOtp })}
         </p>
       ) : null}
@@ -52,11 +52,11 @@ export function BookingAccessVerifyForm({
             inputMode="numeric"
             autoComplete="one-time-code"
             autoFocus
-            className="h-12 rounded-sm font-mono tracking-[0.2em]"
+            className="font-mono tracking-[0.2em]"
             disabled={submitting}
           />
         </label>
-        <Button type="submit" className="h-12 w-full rounded-sm" disabled={submitting}>
+        <Button type="submit" size="control" className="w-full" disabled={submitting}>
           {t('lookup.verify')}
         </Button>
       </Form>

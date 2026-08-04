@@ -33,7 +33,7 @@ export function PaymentHandoff({ destination }: { destination: FormPostDestinati
 
   return (
     <main className="grid min-h-[60vh] place-items-center bg-muted px-4 py-12">
-      <Card className="w-full max-w-md rounded-sm">
+      <Card className="w-full max-w-md">
         <CardContent className="flex flex-col items-center p-8 text-center">
           <Spinner className="size-7 text-primary" />
           <h1 className="mt-5 text-xl font-semibold text-foreground">
@@ -53,7 +53,7 @@ export function PaymentHandoff({ destination }: { destination: FormPostDestinati
             {Object.entries(destination.fields).map(([name, value]) => (
               <input key={name} type="hidden" name={name} value={value} />
             ))}
-            <Button type="submit" className="w-full rounded-sm" disabled={submitting}>
+            <Button type="submit" size="control" className="w-full" disabled={submitting}>
               {t('payment.handoffContinue')}
             </Button>
           </form>

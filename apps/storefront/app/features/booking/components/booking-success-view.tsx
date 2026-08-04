@@ -1,14 +1,18 @@
+import type { BookingStatus } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { BadgeCheck, History, Home, Search } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
+import { BookingOutcomeLayout } from './booking-outcome-layout';
 
 interface BookingSuccessViewProps {
   code: string;
   locale: 'en' | 'vi';
   maskedEmail: string | null;
   signedIn: boolean;
+  bookingStatus: BookingStatus | null;
+  paidAmount: string | null;
 }
 
 export function BookingSuccessView({
@@ -16,6 +20,8 @@ export function BookingSuccessView({
   locale,
   maskedEmail,
   signedIn,
+  bookingStatus,
+  paidAmount,
 }: BookingSuccessViewProps) {
   const { t } = useTranslation(NsI18n.Booking);
   const primaryHref = signedIn
@@ -24,64 +30,57 @@ export function BookingSuccessView({
   const PrimaryIcon = signedIn ? History : Search;
 
   return (
-    <div className="bg-muted/20 px-4 py-10 font-studio sm:px-6 sm:py-14 lg:py-16">
-      <section
-        aria-labelledby="booking-success-title"
-        className="mx-auto flex w-full max-w-107.5 flex-col items-center justify-center gap-5 bg-card p-6 text-center shadow-(--sf-surface-shadow) sm:p-10"
-      >
-        <BadgeCheck
-          className="size-15 shrink-0 text-success"
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
-
-        <div className="flex flex-col items-center gap-2">
-          <h1
-            id="booking-success-title"
-            className="text-base leading-6 font-semibold text-foreground"
-          >
-            {t('success.title')}
-          </h1>
-          <div className="w-full max-w-80 text-sm leading-5 text-foreground">
-            <p>{t('success.thanks')}</p>
-            <p>
-              {maskedEmail ? (
-                <>
-                  {t('success.bookingCodePrefix')}{' '}
-                  <span className="font-medium text-success">{code}</span>{' '}
-                  {t('success.sentToEmail')}{' '}
-                  <span className="font-medium text-foreground">{maskedEmail}</span>
-                </>
-              ) : (
-                <>
-                  {t('success.bookingCodeFallbackPrefix')}{' '}
-                  <span className="font-medium text-success">{code}</span>.{' '}
-                  {t('success.emailSentFallback')}
-                </>
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex w-full max-w-87.5 flex-col gap-4">
-          <Button asChild className="h-12 w-full rounded-sm px-5 text-base font-semibold">
-            <Link to={primaryHref}>
-              <PrimaryIcon className="size-6" data-icon="inline-start" />
-              {signedIn ? t('bookingHistory') : t('success.lookup')}
+    <BookingOutcomeLayout
+      locale={locale}
+      title={t('success.title')}
+      description={t('success.thanks')}
+      code={code}
+      bookingStatus={bookingStatus}
+      paidAmount={paidAmount}
+      icon={
+        <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-success/10 text-success ring-1 ring-inset ring-success/20">
+          <BadgeCheck className="size-6" strokeWidth={1.8} aria-hidden="true" />
+        </span>
+      }
+      actions={
+        // `lg:w-70` and the stacked-then-inline arrangement are checkout's own
+        // action treatment, so the button a customer presses here matches the
+        // one that brought them.
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <Button asChild size="control" variant="outline" className="w-full sm:w-auto">
+            <Link to={storefrontPaths.home(locale)}>
+              <Home data-icon="inline-start" />
+              {t('success.home')}
             </Link>
           </Button>
           <Button
             asChild
-            variant="outline"
-            className="h-12 w-full rounded-sm border-primary px-5 text-base font-semibold text-primary hover:bg-primary/5 hover:text-primary"
+            size="control"
+            className="w-full text-base font-semibold sm:w-auto lg:w-70"
           >
-            <Link to={storefrontPaths.home(locale)}>
-              <Home className="size-6" data-icon="inline-start" />
-              {t('success.home')}
+            <Link to={primaryHref}>
+              <PrimaryIcon data-icon="inline-start" />
+              {signedIn ? t('bookingHistory') : t('success.lookup')}
             </Link>
           </Button>
         </div>
-      </section>
-    </div>
+      }
+    >
+      <p className="mt-4 rounded-lg bg-muted/40 px-5 py-4 text-sm leading-6 text-foreground">
+        {maskedEmail ? (
+          <>
+            {t('success.bookingCodePrefix')}{' '}
+            <span className="font-mono font-semibold">{code}</span> {t('success.sentToEmail')}{' '}
+            <span className="font-semibold">{maskedEmail}</span>
+          </>
+        ) : (
+          <>
+            {t('success.bookingCodeFallbackPrefix')}{' '}
+            <span className="font-mono font-semibold">{code}</span>.{' '}
+            {t('success.emailSentFallback')}
+          </>
+        )}
+      </p>
+    </BookingOutcomeLayout>
   );
 }
