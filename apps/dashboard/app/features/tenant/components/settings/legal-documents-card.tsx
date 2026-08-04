@@ -32,7 +32,12 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { RestrictedMarkdown } from '@booking/ui/components/markdown/restricted-markdown';
-import { CheckCircle2, Clock, Eye, History, ScrollText, Undo2 } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@booking/ui/components/ui/collapsible';
+import { CheckCircle2, ChevronDown, Clock, Eye, History, ScrollText, Undo2 } from 'lucide-react';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { WarningCallout } from '~/components/warning-callout';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
@@ -212,29 +217,50 @@ function LegalDocumentEditor({
   const isBlank = active.title.trim().length === 0 && active.bodyMd.trim().length === 0;
 
   return (
-    <Card className="shadow-none" aria-busy={busy}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ScrollText className="size-4 text-primary" aria-hidden="true" />
-          {LEGAL_DOCUMENT_LABELS[doc.docType]}
-        </CardTitle>
-        <CardDescription>{LEGAL_DOCUMENT_HINTS[doc.docType]}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="flex flex-wrap items-center gap-2">
-          {doc.currentVersionNo !== null ? (
-            <Badge variant="success">
-              <CheckCircle2 className="size-3" aria-hidden="true" /> Đã công bố v{doc.currentVersionNo}
-            </Badge>
-          ) : (
-            <Badge variant="outline">Chưa công bố</Badge>
-          )}
-          {doc.hasDraft ? (
-            <Badge variant="secondary">
-              <Clock className="size-3" aria-hidden="true" /> Bản nháp đang chờ
-            </Badge>
-          ) : null}
-        </div>
+    // Four documents, each a full markdown editor with a preview and a version
+    // history — expanded together they ran past 3,000px, though an operator only
+    // ever edits one. The header keeps the status an at-a-glance answer; the
+    // editor opens on demand, and starts open for a document that still needs
+    // attention (an unpublished document or a draft waiting to go live).
+    <Collapsible defaultOpen={doc.currentVersionNo === null || doc.hasDraft} asChild>
+      <Card className="group shadow-none" aria-busy={busy}>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1.5">
+              <CardTitle className="flex items-center gap-2">
+                <ScrollText className="size-4 text-primary" aria-hidden="true" />
+                {LEGAL_DOCUMENT_LABELS[doc.docType]}
+              </CardTitle>
+              <CardDescription>{LEGAL_DOCUMENT_HINTS[doc.docType]}</CardDescription>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {doc.currentVersionNo !== null ? (
+                  <Badge variant="success">
+                    <CheckCircle2 className="size-3" aria-hidden="true" /> Đã công bố v
+                    {doc.currentVersionNo}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Chưa công bố</Badge>
+                )}
+                {doc.hasDraft ? (
+                  <Badge variant="secondary">
+                    <Clock className="size-3" aria-hidden="true" /> Bản nháp đang chờ
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+            <CollapsibleTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="shrink-0">
+                Chỉnh sửa
+                <ChevronDown
+                  className="size-4 transition-transform group-has-data-[state=open]:rotate-180"
+                  aria-hidden="true"
+                />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-5">
 
         {doc.currentVersionNo !== null && !doc.readyInDefaultLocale ? (
           <WarningCallout>
@@ -364,10 +390,12 @@ function LegalDocumentEditor({
                 </li>
               ))}
             </ul>
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
+            </div>
+          ) : null}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 

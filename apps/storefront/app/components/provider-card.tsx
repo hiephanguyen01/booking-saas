@@ -43,7 +43,7 @@ export function ProviderCard({ trust }: { trust: RoomTrust | null }) {
           </span>
         ) : null}
       </div>
-      <Button asChild variant="outline" className="mt-5 w-full">
+      <Button asChild size="control" variant="outline" className="mt-5 w-full">
         <Link to={storefrontPaths.provider(locale, trust?.partnerSlug ?? '')}>
           <Store /> {t('group.viewProvider')}
         </Link>

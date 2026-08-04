@@ -1,6 +1,6 @@
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
+import { Tabs, TabsContent } from '@booking/ui/components/ui/tabs';
 import {
   CircleAlert,
   CreditCard,
@@ -27,6 +27,7 @@ import { PaymentGatewayCard } from '~/features/tenant/components/settings/paymen
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
 import { PaymentMethodSettingsCard } from '~/features/tenant/components/settings/payment-method-settings-card';
 import { SettingsOverview } from '~/features/tenant/components/settings/settings-overview';
+import { SettingsSectionNav } from '~/features/tenant/components/settings/settings-section-nav';
 import { loadTenantSettings } from '~/features/tenant/server/settings-loader.server';
 
 const SETTINGS_TAB_BY_FORM: Record<string, string> = {
@@ -182,27 +183,16 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
         }
       />
 
-      <Tabs value={activeTab} onValueChange={selectTab} className="gap-5">
-        <div className="sticky top-20 z-10 -mx-1 overflow-x-auto rounded-xl border bg-background/95 p-1.5 shadow-xs backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <TabsList
-            aria-label="Nhóm cài đặt"
-            className="h-auto min-w-max w-full justify-start gap-1 bg-transparent p-0"
-          >
-            {settingsTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="min-h-11 min-w-36 flex-1 justify-center gap-2 rounded-lg px-3.5 py-2 font-semibold text-foreground/60 shadow-none hover:bg-muted/60 hover:text-foreground active:scale-[0.98] data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm dark:data-[state=active]:border-border dark:data-[state=active]:bg-muted/70 sm:min-w-40 lg:min-w-0"
-                >
-                  <Icon className="size-4" aria-hidden="true" />
-                  {tab.label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </div>
+      <Tabs
+        value={activeTab}
+        onValueChange={selectTab}
+        orientation="vertical"
+        // `flex-col` explicitly: `Tabs` only stacks for `orientation=horizontal`,
+        // so the vertical rail would otherwise sit beside the content at every
+        // width — including the phone widths where the rail is a select.
+        className="flex-col gap-5 lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:items-start lg:gap-8"
+      >
+        <SettingsSectionNav sections={settingsTabs} value={activeTab} onChange={selectTab} />
 
         <div className="min-w-0">
           <TabsContent value="overview" forceMount className="w-full data-[state=inactive]:hidden">

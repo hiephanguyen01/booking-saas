@@ -56,22 +56,22 @@ export function SiteFooter({
               <p className="max-w-80 text-sm leading-5 text-muted-foreground">{contact.address}</p>
             ) : null}
             {contact?.phone || contact?.email ? (
-              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <div className="flex flex-col text-sm text-muted-foreground">
                 {contact.phone ? (
                   <a
                     href={`tel:${contact.phone}`}
-                    className="inline-flex items-center gap-2 hover:text-primary"
+                    className="inline-flex min-h-11 items-center gap-2 hover:text-primary"
                   >
-                    <Phone aria-hidden="true" className="size-4" />
+                    <Phone aria-hidden="true" className="size-4 shrink-0" />
                     {contact.phone}
                   </a>
                 ) : null}
                 {contact.email ? (
                   <a
                     href={`mailto:${contact.email}`}
-                    className="inline-flex items-center gap-2 hover:text-primary"
+                    className="inline-flex min-h-11 items-center gap-2 break-all hover:text-primary"
                   >
-                    <Mail aria-hidden="true" className="size-4" />
+                    <Mail aria-hidden="true" className="size-4 shrink-0" />
                     {contact.email}
                   </a>
                 ) : null}
@@ -80,7 +80,9 @@ export function SiteFooter({
             {socials.length ? (
               <>
                 <p className="text-sm leading-5 text-muted-foreground">{t('footer.followUs')}</p>
-                <div className="flex items-center gap-3">
+                {/* `-mx-2.5` keeps the row optically flush with the column above
+                    while each icon carries a 44px tap area around it. */}
+                <div className="-mx-2.5 flex items-center">
                   {socials.map((social) => (
                     <a
                       key={social.name}
@@ -88,7 +90,7 @@ export function SiteFooter({
                       target="_blank"
                       rel="noreferrer noopener"
                       aria-label={social.name}
-                      className="rounded-full text-foreground transition-colors hover:text-(--sf-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:text-(--sf-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <SocialIcon network={social.tenantKey} />
                     </a>
@@ -164,19 +166,24 @@ function FooterList({
   items: Array<{ label: string; href?: string }>;
 }) {
   return (
-    <section className="flex flex-col items-start gap-3">
-      <h2 className="text-base font-semibold uppercase leading-6">{title}</h2>
+    // Links get `min-h-11` rather than the plain 20px line box they had, so a
+    // thumb has something to hit; the static labels keep the tighter rhythm.
+    <section className="flex flex-col items-start gap-1">
+      <h2 className="mb-1 text-base font-semibold uppercase leading-6">{title}</h2>
       {items.map((item) =>
         item.href ? (
           <Link
             key={item.label}
             to={item.href}
-            className="text-sm font-medium leading-5 text-muted-foreground hover:text-primary"
+            className="flex min-h-11 items-center text-sm font-medium leading-5 text-muted-foreground hover:text-primary"
           >
             {item.label}
           </Link>
         ) : (
-          <span key={item.label} className="text-sm font-medium leading-5 text-muted-foreground">
+          <span
+            key={item.label}
+            className="flex min-h-11 items-center text-sm font-medium leading-5 text-muted-foreground"
+          >
             {item.label}
           </span>
         ),

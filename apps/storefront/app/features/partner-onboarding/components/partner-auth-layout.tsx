@@ -28,7 +28,11 @@ export function AuthSplit({
   tall?: boolean;
 }) {
   return (
-    <main className="mx-auto grid w-full max-w-292.5 grid-cols-1 gap-10 px-5 pb-16 lg:grid-cols-[486px_566px] lg:justify-between lg:px-0 lg:pt-10">
+    // `minmax(0, …)`, not a bare track width: the two fixed columns plus the gap
+    // want 1092px, so between `lg` (1024px) and the 1170px max width they used to
+    // push the whole page into a horizontal scroll. The gutter stays until the
+    // full-size layout actually fits.
+    <main className="mx-auto grid w-full max-w-292.5 grid-cols-1 gap-10 px-5 pb-16 lg:grid-cols-[minmax(0,486px)_minmax(0,566px)] lg:justify-between lg:pt-10 xl:px-0">
       <div className="hidden lg:block">
         <PromoPanel tenantName={tenantName} />
       </div>

@@ -231,6 +231,7 @@ function PackageChoice({
     <div>
       <Button
         type="button"
+        size="control"
         variant={selected ? 'secondary' : 'default'}
         className="w-full"
         onClick={(event) => onSelect(item.id, event.currentTarget)}

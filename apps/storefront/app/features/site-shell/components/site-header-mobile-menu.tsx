@@ -37,7 +37,15 @@ export function SiteHeaderMobileMenu({
       <div className="flex h-18 items-center justify-between lg:hidden">
         {brand}
         <SheetTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" aria-label={t('openMenu')}>
+          {/* `size-11`: this is the only navigation affordance on mobile, so it
+              takes the 44px touch target rather than the 36px icon default. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-11"
+            aria-label={t('openMenu')}
+          >
             <Menu aria-hidden="true" />
           </Button>
         </SheetTrigger>
@@ -97,7 +105,7 @@ export function SiteHeaderMobileMenu({
             <Button
               type="submit"
               variant="ghost"
-              className="h-auto justify-start rounded-sm px-3 py-2.5 text-sm font-semibold uppercase text-muted-foreground"
+              className="h-11 justify-start rounded-sm px-3 text-sm font-semibold uppercase text-muted-foreground"
               aria-label={t('switchLanguage', { locale: nextLocale })}
             >
               {locale}

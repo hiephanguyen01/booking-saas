@@ -188,7 +188,9 @@ export function ModeToggle({
       onValueChange={(value) => value && onModeChange(value as SearchMode)}
       variant={isPills ? 'outline' : 'default'}
       spacing={isPills ? 3 : 0}
-      className={cn(!isPills && 'mx-auto grid grid-cols-2 px-6')}
+      // The two pills sit side by side at ~270px, wider than the hero card on a
+      // 320px screen — let them wrap instead of pushing out of the card.
+      className={cn(isPills ? 'max-w-full flex-wrap' : 'mx-auto grid grid-cols-2 px-6')}
       aria-label={t('home.bookingMode')}
     >
       {modes.map((item) => (

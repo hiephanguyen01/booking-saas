@@ -66,11 +66,22 @@ import { cn } from '@booking/ui/lib/utils';
  * here rather than inherited from `size="control"`; keep it in step with the
  * `Input` beside it.
  */
+/**
+ * A segmented control shows which option is *selected* — it is not the form's
+ * action. Filling the selected segment with `--primary` made it outrank the
+ * submit button beside it (a settings screen with three of these read as three
+ * competing CTAs), so the selection is carried by an elevated card-coloured pill
+ * on a muted track, the way a segmented control conventionally reads.
+ */
+// Capped: a two-option control stretched to a full form column reads as a pair of
+// banners rather than one control, and the hit areas grow far past what they need.
+const SEGMENTED_TRACK = 'flex w-full max-w-md gap-1 rounded-lg bg-muted p-1';
+// `h-11` still, not the shorter pill the muted track invites: this is a form
+// control and every form control in this product is a 44px touch target.
 const SEGMENTED_BASE =
-  'flex h-11 flex-1 items-center justify-center rounded-md border px-4 text-sm font-semibold outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
-const SEGMENTED_ON = 'border-primary bg-primary text-primary-foreground shadow-sm';
-const SEGMENTED_OFF =
-  'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground';
+  'flex h-11 flex-1 items-center justify-center rounded-md px-4 text-sm font-medium outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50';
+const SEGMENTED_ON = 'bg-background text-foreground shadow-sm ring-1 ring-border font-semibold';
+const SEGMENTED_OFF = 'text-muted-foreground hover:text-foreground';
 
 /**
  * Renders a single field from its config, bound to react-hook-form. Boolean and
@@ -277,7 +288,7 @@ function RadioControl<T extends FieldValues>({
   // Segmented: a horizontal button group (register-partner partner-type toggle).
   if (field.variant === 'segmented') {
     return (
-      <div className="flex gap-3">
+      <div className={SEGMENTED_TRACK}>
         {field.options.map((opt) => {
           const selected = String(rhf.value) === opt.value;
           return (

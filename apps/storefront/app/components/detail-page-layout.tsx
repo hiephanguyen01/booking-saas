@@ -26,7 +26,9 @@ export function DetailPageLayout({
         </SectionCard>
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,870px)_284px]">
           <div className="flex min-w-0 flex-col gap-4">{main}</div>
-          <aside className="flex flex-col gap-4 lg:sticky lg:top-24">{aside}</aside>
+          {/* `min-w-0` like the main column: without it the aside's booking card
+              keeps its min-content width and widens the single-column track. */}
+          <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-24">{aside}</aside>
         </div>
         {footerSections}
       </main>

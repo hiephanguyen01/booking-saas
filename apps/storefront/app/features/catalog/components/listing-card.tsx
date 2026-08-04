@@ -134,7 +134,9 @@ export function ListingCard({
           aria-label={favoriteControl.label}
           aria-pressed={favoriteControl.selected}
           onClick={favoriteControl.onToggle}
-          className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-background/95 text-primary shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          // The `after` box widens the 40px chip to a 44px tap target without
+          // growing the circle the design places over the photo.
+          className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-background/95 text-primary shadow-md transition-transform after:absolute after:-inset-0.5 after:content-[''] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Heart className="size-5" fill={favoriteControl.selected ? 'currentColor' : 'none'} />
         </button>

@@ -164,7 +164,7 @@ function ListingHeader({
               href={mapsHref}
               target="_blank"
               rel="noreferrer"
-              className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-11 items-center font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {t('group.viewMap')}
             </a>

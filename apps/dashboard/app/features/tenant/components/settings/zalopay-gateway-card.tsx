@@ -1,8 +1,9 @@
 import { zalopayGatewaySettingsFormSchema, type GatewayConfigResponse } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { CheckCircle2, CircleAlert, Wallet } from 'lucide-react';
+import { CheckCircle2, CircleAlert } from 'lucide-react';
 import { zalopayGatewayFields } from './settings-fields';
+import { GatewaySetupNotes } from './gateway-setup-notes';
 
 export function ZalopayGatewayBody({
   config,
@@ -68,23 +69,18 @@ export function ZalopayGatewayBody({
           fieldErrors={fieldErrors}
         />
       </fieldset>
-      <div className="mt-4 rounded-lg border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground">
-        <p className="flex items-center gap-1.5 font-medium text-foreground">
-          <Wallet className="size-3.5" aria-hidden="true" /> Cấu hình callback trên ZaloPay Merchant
-        </p>
-        <ol className="mt-2 list-decimal space-y-1 pl-4">
-          <li>Mở merchant.zalopay.vn → Ứng dụng → Cấu hình Callback URL.</li>
-          <li>
+      <GatewaySetupNotes
+        title="Cấu hình callback trên ZaloPay Merchant"
+        steps={[
+          'Mở merchant.zalopay.vn → Ứng dụng → Cấu hình Callback URL.',
+          <>
             Callback URL: <span className="font-mono">/webhooks/zalopay</span> trên API public HTTPS.
-          </li>
-          <li>ZaloPay gửi POST JSON, xác thực bằng chữ ký HMAC-SHA256 (Key1 tạo đơn, Key2 callback).</li>
-          <li>Sandbox và Production dùng hai bộ App ID/Key1/Key2 riêng.</li>
-        </ol>
-        <p className="mt-2">
-          Key1 và Key2 được mã hoá trước khi lưu và không hiển thị lại. Thanh toán qua ví ZaloPay
-          (redirect); hoàn tiền huỷ đơn được đẩy tự động về ví khách qua API ZaloPay.
-        </p>
-      </div>
+          </>,
+          'ZaloPay gửi POST JSON, xác thực bằng chữ ký HMAC-SHA256 (Key1 tạo đơn, Key2 callback).',
+          'Sandbox và Production dùng hai bộ App ID/Key1/Key2 riêng.',
+        ]}
+        footnote="Key1 và Key2 được mã hoá trước khi lưu và không hiển thị lại. Thanh toán qua ví ZaloPay (redirect); hoàn tiền huỷ đơn được đẩy tự động về ví khách qua API ZaloPay."
+      />
     </div>
   );
 }

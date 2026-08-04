@@ -44,7 +44,10 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
     <div className="bg-muted py-4 sm:py-6 lg:py-8">
       <main className="mx-auto w-full max-w-304.5 px-4 sm:px-6">
         <h1 className="sr-only">{t('title')}</h1>
-        <div className="grid items-start gap-4 lg:grid-cols-2">
+        {/* `[&>*]:min-w-0`: a grid item defaults to `min-width:auto`, so the
+            booking summary's min-content width (thumbnail + text) widened the
+            single-column track and scrolled the page sideways below ~360px. */}
+        <div className="grid items-start gap-4 lg:grid-cols-2 [&>*]:min-w-0">
           <BookingColumn
             listing={listing}
             mode={mode}

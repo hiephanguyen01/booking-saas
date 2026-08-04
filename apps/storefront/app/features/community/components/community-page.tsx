@@ -9,16 +9,18 @@ export function CommunityPage() {
   const { locale, currentUser } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Account);
   return (
-    <div className="relative isolate overflow-hidden bg-muted/30 px-4 py-20 font-studio sm:px-6 lg:py-28">
+    <div className="relative isolate overflow-hidden bg-muted/30 px-4 py-14 font-studio sm:px-6 sm:py-20 lg:py-28">
       <div className="absolute left-1/2 top-8 -z-10 size-96 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
       <div className="mx-auto max-w-4xl text-center">
         <p className="text-xs font-semibold tracking-[0.28em] text-primary">
           {t('community.eyebrow')}
         </p>
-        <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-6xl">
+        {/* Vietnamese runs long: at `text-4xl` this title wrapped to four lines
+            on a 320px screen. Start a step lower and climb with the viewport. */}
+        <h1 className="mx-auto mt-5 max-w-3xl text-balance text-3xl font-semibold leading-tight tracking-tight min-[400px]:text-4xl sm:text-5xl lg:text-6xl">
           {t('community.title')}
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+        <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">
           {t('community.description')}
         </p>
         <div className="mt-10 flex flex-wrap justify-center gap-3">

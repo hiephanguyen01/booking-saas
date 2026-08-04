@@ -73,7 +73,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
                   href={mapsHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="inline-flex min-h-11 items-center font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {t('group.viewMap')}
                 </a>
@@ -112,7 +112,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
                   : t('perHour')
                 : t('group.priceForRange', { from: state.from, to: state.to })}
             </p>
-            <Button asChild className="mt-5 w-full">
+            <Button asChild size="control" className="mt-5 w-full">
               <a href="#room-options">{t('group.viewRooms')}</a>
             </Button>
           </DetailPriceCard>

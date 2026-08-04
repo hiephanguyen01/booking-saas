@@ -57,7 +57,7 @@ export function ListingBookingDialog({
   }
 
   const trigger = (
-    <Button className="w-full">
+    <Button size="control" className="w-full">
       <CalendarDays aria-hidden="true" /> {triggerLabel}
     </Button>
   );

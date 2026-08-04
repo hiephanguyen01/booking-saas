@@ -1,8 +1,9 @@
 import { momoGatewaySettingsFormSchema, type GatewayConfigResponse } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { CheckCircle2, CircleAlert, Wallet } from 'lucide-react';
+import { CheckCircle2, CircleAlert } from 'lucide-react';
 import { momoGatewayFields } from './settings-fields';
+import { GatewaySetupNotes } from './gateway-setup-notes';
 
 export function MomoGatewayBody({
   config,
@@ -69,23 +70,18 @@ export function MomoGatewayBody({
           fieldErrors={fieldErrors}
         />
       </fieldset>
-      <div className="mt-4 rounded-lg border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground">
-        <p className="flex items-center gap-1.5 font-medium text-foreground">
-          <Wallet className="size-3.5" aria-hidden="true" /> Cấu hình IPN trên MoMo Business
-        </p>
-        <ol className="mt-2 list-decimal space-y-1 pl-4">
-          <li>Mở MoMo Business → Cấu hình kết nối → IPN URL.</li>
-          <li>
+      <GatewaySetupNotes
+        title="Cấu hình IPN trên MoMo Business"
+        steps={[
+          'Mở MoMo Business → Cấu hình kết nối → IPN URL.',
+          <>
             IPN URL: <span className="font-mono">/webhooks/momo</span> trên API public HTTPS.
-          </li>
-          <li>MoMo gửi POST JSON, xác thực bằng chữ ký HMAC-SHA256 (Access Key + Secret Key).</li>
-          <li>Sandbox và Production dùng hai bộ Partner Code/Access Key/Secret Key riêng.</li>
-        </ol>
-        <p className="mt-2">
-          Access Key và Secret Key được mã hoá trước khi lưu và không hiển thị lại. Thanh toán qua ví
-          MoMo (redirect); hoàn tiền huỷ đơn được đẩy tự động về ví khách qua API MoMo.
-        </p>
-      </div>
+          </>,
+          'MoMo gửi POST JSON, xác thực bằng chữ ký HMAC-SHA256 (Access Key + Secret Key).',
+          'Sandbox và Production dùng hai bộ Partner Code/Access Key/Secret Key riêng.',
+        ]}
+        footnote="Access Key và Secret Key được mã hoá trước khi lưu và không hiển thị lại. Thanh toán qua ví MoMo (redirect); hoàn tiền huỷ đơn được đẩy tự động về ví khách qua API MoMo."
+      />
     </div>
   );
 }
