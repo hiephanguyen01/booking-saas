@@ -33,7 +33,7 @@ export function BookingDetailOverview({
   const controller = useBookingDetailOverviewController({ booking, state, defaultCancelOpen });
 
   return (
-    <section className="overflow-hidden bg-background shadow-[0_3px_14px_rgba(15,23,42,0.035)]">
+    <section className="overflow-hidden bg-background shadow-(--sf-surface-shadow)">
       <BookingCardHeader
         partnerName={booking.partnerName}
         listingSlug={booking.listingSlug}

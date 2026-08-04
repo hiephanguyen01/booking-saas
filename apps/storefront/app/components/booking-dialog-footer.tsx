@@ -22,7 +22,10 @@ export function BookingDialogFooter({
   const showQuote = quote !== null && !quotePending;
 
   return (
-    <div className="shrink-0 border-t bg-card px-5 py-4 shadow-[0_-8px_24px_-20px_rgba(0,0,0,0.35)]">
+    // `--sf-lip-shadow`, not the card shadow: this casts *upward* to lift a
+    // sticky footer off the content scrolling under it, so it cannot share the
+    // token that gives cards their downward elevation.
+    <div className="shrink-0 border-t bg-card px-5 py-4 shadow-(--sf-lip-shadow)">
       <div
         className="grid min-h-11 grid-cols-[minmax(0,1fr)_minmax(8rem,auto)] items-stretch gap-4"
         aria-live="polite"

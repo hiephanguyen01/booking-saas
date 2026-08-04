@@ -60,7 +60,7 @@ export function ReviewMediaGallery({
                   preload="metadata"
                   className="size-full object-cover"
                 />
-                <span className="absolute inset-0 grid place-items-center bg-black/25 text-white">
+                <span className="absolute inset-0 grid place-items-center bg-scrim-soft text-white">
                   <Play className="size-6 fill-current" aria-hidden="true" />
                 </span>
               </>
