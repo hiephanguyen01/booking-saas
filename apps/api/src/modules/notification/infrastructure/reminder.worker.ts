@@ -1,6 +1,7 @@
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
+import { QUEUE_OPTIONS } from '../../../shared/redis/queue-options';
 import { addMinutes, utcNow } from '../../../shared/time/time';
 import { DispatchReminderUseCase } from '../application/use-cases/dispatch-reminder.use-case';
 import { NOTIFICATION_READER, type INotificationReader } from '../domain/ports/notification-reader.port';
@@ -31,7 +32,7 @@ export class ReminderWorker implements OnModuleInit, OnApplicationShutdown {
   async onModuleInit(): Promise<void> {
     if (process.env.NOTIFICATION_REMINDER_DISABLED === 'true' || process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
-    this.queue = new Queue(REMINDER_QUEUE, { connection });
+    this.queue = new Queue(REMINDER_QUEUE, { connection, ...QUEUE_OPTIONS });
     await this.queue.upsertJobScheduler('reminder-poll', { every: POLL_EVERY_MS }, { name: 'poll' });
     this.worker = new Worker(REMINDER_QUEUE, () => this.sweep(), { connection });
   }

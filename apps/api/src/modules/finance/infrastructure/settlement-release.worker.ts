@@ -1,6 +1,7 @@
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
+import { QUEUE_OPTIONS } from '../../../shared/redis/queue-options';
 import {
   SETTLEMENT_REPOSITORY,
   type ISettlementRepository,
@@ -29,7 +30,7 @@ export class SettlementReleaseWorker implements OnModuleInit, OnApplicationShutd
     )
       return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
-    this.queue = new Queue(SETTLEMENT_RELEASE_QUEUE, { connection });
+    this.queue = new Queue(SETTLEMENT_RELEASE_QUEUE, { connection, ...QUEUE_OPTIONS });
     await this.queue.upsertJobScheduler(
       'settlement-release-poll',
       { every: POLL_EVERY_MS },

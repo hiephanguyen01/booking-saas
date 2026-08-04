@@ -1,6 +1,7 @@
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
+import { QUEUE_OPTIONS } from '../../../shared/redis/queue-options';
 import type { BookingStatus } from '@booking/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
@@ -50,7 +51,7 @@ export class BookingSchedulerWorker implements OnModuleInit, OnApplicationShutdo
     )
       return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
-    this.queue = new Queue(BOOKING_SCHEDULER_QUEUE, { connection });
+    this.queue = new Queue(BOOKING_SCHEDULER_QUEUE, { connection, ...QUEUE_OPTIONS });
     await this.queue.upsertJobScheduler('booking-poll', { every: POLL_EVERY_MS }, { name: 'poll' });
     this.worker = new Worker(BOOKING_SCHEDULER_QUEUE, () => this.sweep(), { connection });
   }

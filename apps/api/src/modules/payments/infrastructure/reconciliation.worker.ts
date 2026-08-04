@@ -1,6 +1,7 @@
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
+import { QUEUE_OPTIONS } from '../../../shared/redis/queue-options';
 import { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../shared/outbox/outbox.service';
 import {
@@ -37,7 +38,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
   async onModuleInit(): Promise<void> {
     if (process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
-    this.queue = new Queue(RECONCILIATION_QUEUE, { connection });
+    this.queue = new Queue(RECONCILIATION_QUEUE, { connection, ...QUEUE_OPTIONS });
     await this.queue.upsertJobScheduler(
       'reconcile-poll',
       { every: POLL_EVERY_MS },

@@ -1,6 +1,7 @@
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker, type Job } from 'bullmq';
+import { QUEUE_OPTIONS } from '../../../shared/redis/queue-options';
 import { domainVerificationRecord } from '../domain/hostname';
 import type { IDomainVerificationQueue } from '../domain/ports/domain-verification-queue.port';
 import {
@@ -45,7 +46,7 @@ export class DomainVerificationWorker
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
     // The producer (queue) is always available so the API can enqueue; the
     // consumer (worker) is skipped when relays are disabled (e.g. in tests).
-    this.queue = new Queue(DOMAIN_VERIFICATION_QUEUE_NAME, { connection });
+    this.queue = new Queue(DOMAIN_VERIFICATION_QUEUE_NAME, { connection, ...QUEUE_OPTIONS });
     if (process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     this.worker = new Worker<VerifyJob>(
       DOMAIN_VERIFICATION_QUEUE_NAME,

@@ -1,6 +1,7 @@
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
+import { QUEUE_OPTIONS } from '../redis/queue-options';
 import { PrismaService } from '../prisma/prisma.service';
 import { TenantContextService } from '../tenant-context/tenant-context.service';
 import { OutboxHandlerRegistry } from './outbox-handler.registry';
@@ -35,7 +36,7 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
   async onModuleInit() {
     if (process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
-    this.queue = new Queue(OUTBOX_QUEUE, { connection });
+    this.queue = new Queue(OUTBOX_QUEUE, { connection, ...QUEUE_OPTIONS });
     await this.queue.upsertJobScheduler(
       'outbox-poll',
       { every: POLL_EVERY_MS },
