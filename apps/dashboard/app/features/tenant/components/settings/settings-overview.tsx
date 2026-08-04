@@ -6,7 +6,6 @@ import type {
   TenantThemeResponse,
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import {
   ArrowRight,
@@ -20,7 +19,7 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { Link } from 'react-router';
-import { formatDate, formatVnd } from '~/lib/format';
+import { formatDate } from '~/lib/format';
 import type { TenantAreaContext } from '~/features/tenant/lib/area-context';
 
 type SectionKey = 'brand' | 'domains' | 'operations' | 'payments' | 'payouts';
@@ -64,7 +63,10 @@ export function SettingsOverview({
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
+      {/* Splits at `2xl`, not `xl`: the settings rail now takes 13.5rem of the
+          row, so an `xl` split left both columns too narrow and re-introduced the
+          truncation this view exists to avoid. */}
+      <section className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
         <Card className="overflow-hidden border-primary/15 bg-primary/[0.035] shadow-none">
           <CardHeader className="pb-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -85,7 +87,7 @@ export function SettingsOverview({
               </StatusBadge>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
+          <CardContent className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             {canTheme ? (
               <OverviewItem
                 icon={Palette}
@@ -198,36 +200,6 @@ export function SettingsOverview({
         </Card>
       </section>
 
-      {canFinance ? (
-        <Card className="shadow-none">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Quy tắc dòng tiền hiện tại</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {payoutPolicyError ? (
-              <InlineState error text="Không tải được chính sách chi trả. Hãy thử tải lại trang." />
-            ) : payoutPolicy ? (
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Metric label="Thời gian giữ tiền" value={`${payoutPolicy.holdingDays} ngày`} />
-                <Metric label="Mức chi tối thiểu" value={formatVnd(payoutPolicy.minAmount)} />
-                <Metric
-                  label="Chu kỳ mặc định"
-                  value={payoutPolicy.cycle === 'weekly' ? 'Hàng tuần' : 'Hàng tháng'}
-                />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Chưa có dữ liệu chính sách chi trả.</p>
-            )}
-            {payoutPolicy ? (
-              <Button asChild variant="link" className="mt-3 h-auto px-0">
-                <Link to="?section=payouts" preventScrollReset>
-                  Xem chính sách chi trả <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }
@@ -258,15 +230,17 @@ function OverviewItem({
         <span className="flex items-center gap-2 text-sm font-semibold">
           {title}
           {ok ? (
-            <CircleCheck
-              className="size-4 text-success"
-              aria-label="Đã hoàn tất"
-            />
+            <CircleCheck className="size-4 shrink-0 text-success" aria-label="Đã hoàn tất" />
           ) : (
-            <CircleAlert className="size-4 text-warning" aria-label="Cần kiểm tra" />
+            <CircleAlert className="size-4 shrink-0 text-warning" aria-label="Cần kiểm tra" />
           )}
         </span>
-        <span className="mt-1 block truncate text-xs leading-5 text-muted-foreground">{value}</span>
+        {/* Wrap rather than ellipsis: these values are the answer the operator
+            came for ("bookingstudio.stg.bookingos.vn", "3 ngày · hàng tháng"),
+            and in a narrow column every one of them was cut mid-word. */}
+        <span className="mt-1 block text-xs leading-5 break-words text-muted-foreground">
+          {value}
+        </span>
       </span>
       <ArrowRight
         className="mt-2 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
@@ -297,21 +271,6 @@ function InfoLine({ label, value }: { label: string; value: string }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-medium tabular-nums">{value}</span>
     </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-muted/45 px-4 py-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 font-semibold tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-function InlineState({ error, text }: { error?: boolean; text: string }) {
-  return (
-    <p className={error ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>{text}</p>
   );
 }
 

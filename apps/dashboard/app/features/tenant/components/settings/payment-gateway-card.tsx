@@ -15,6 +15,7 @@ import { CircleAlert, PowerOff, WalletCards } from 'lucide-react';
 import { SepayGatewayBody } from './sepay-gateway-card';
 import { MomoGatewayBody } from './momo-gateway-card';
 import { ZalopayGatewayBody } from './zalopay-gateway-card';
+import { WalletGatewayPanel } from './wallet-gateway-panel';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 const BASE_GATEWAYS: readonly GatewayKey[] = ['sepay', 'payos', 'mock'];
@@ -86,6 +87,9 @@ export function PaymentGatewayCard({
           </Alert>
         ) : null}
 
+        {/* `display: contents` keeps the fieldset out of the layout, so the
+            card's `space-y-6` lands on the fieldset itself rather than on the
+            sections inside it — they carry their own rhythm instead. */}
         <fieldset disabled={busy} className="contents">
           <section>
             <h3 className="mb-1 text-sm font-semibold">Cổng cơ bản</h3>
@@ -123,7 +127,7 @@ export function PaymentGatewayCard({
             ) : null}
           </section>
 
-          <Separator />
+          <Separator className="my-6" />
 
           <section>
             <h3 className="mb-1 text-sm font-semibold">Ví điện tử (song song)</h3>
@@ -131,9 +135,12 @@ export function PaymentGatewayCard({
               Có thể bật cùng lúc nhiều ví — mỗi ví hoạt động độc lập, không ảnh hưởng đến cổng cơ bản
               hay ví còn lại.
             </p>
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="rounded-xl border p-4">
-                <WalletStatusLine enabled={Boolean(momoConfig)} label="MoMo" />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <WalletGatewayPanel
+                label="MoMo"
+                enabled={Boolean(momoConfig)}
+                forceOpen={Boolean(momoError) || momoSaved}
+              >
                 <MomoGatewayBody
                   config={momoConfig}
                   readOnly={readOnly}
@@ -145,20 +152,18 @@ export function PaymentGatewayCard({
                   <Form method="post" className="mt-3" onSubmit={handleDisable}>
                     <input type="hidden" name="intent" value="disable-gateway" />
                     <input type="hidden" name="gateway" value="momo" />
-                    <Button
-                      type="submit"
-                      variant="destructive"
-                      size="sm"
-                      disabled={readOnly || busy}
-                    >
+                    <Button type="submit" variant="outline" size="sm" disabled={readOnly || busy}>
                       {disablingGateway === 'momo' ? 'Đang tắt…' : 'Tắt ví MoMo'}
                     </Button>
                   </Form>
                 ) : null}
-              </div>
+              </WalletGatewayPanel>
 
-              <div className="rounded-xl border p-4">
-                <WalletStatusLine enabled={Boolean(zalopayConfig)} label="ZaloPay" />
+              <WalletGatewayPanel
+                label="ZaloPay"
+                enabled={Boolean(zalopayConfig)}
+                forceOpen={Boolean(zalopayError) || zalopaySaved}
+              >
                 <ZalopayGatewayBody
                   config={zalopayConfig}
                   readOnly={readOnly}
@@ -170,17 +175,12 @@ export function PaymentGatewayCard({
                   <Form method="post" className="mt-3" onSubmit={handleDisable}>
                     <input type="hidden" name="intent" value="disable-gateway" />
                     <input type="hidden" name="gateway" value="zalopay" />
-                    <Button
-                      type="submit"
-                      variant="destructive"
-                      size="sm"
-                      disabled={readOnly || busy}
-                    >
+                    <Button type="submit" variant="outline" size="sm" disabled={readOnly || busy}>
                       {disablingGateway === 'zalopay' ? 'Đang tắt…' : 'Tắt ví ZaloPay'}
                     </Button>
                   </Form>
                 ) : null}
-              </div>
+              </WalletGatewayPanel>
             </div>
           </section>
         </fieldset>
@@ -189,16 +189,3 @@ export function PaymentGatewayCard({
   );
 }
 
-function WalletStatusLine({ enabled, label }: { enabled: boolean; label: string }) {
-  return (
-    <p className="mb-3 flex items-center gap-1.5 text-sm font-medium">
-      {enabled ? (
-        <>
-          <span className="text-success">●</span> Đang bật {label}
-        </>
-      ) : (
-        <span className="text-muted-foreground">Chưa bật {label}</span>
-      )}
-    </p>
-  );
-}

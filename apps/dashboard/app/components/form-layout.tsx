@@ -98,6 +98,15 @@ export function Field({
  */
 export const FORM_ACTIONS_ROW = 'justify-end border-t pt-4';
 
+/**
+ * `FORM_ACTIONS_ROW` for a form tall enough that its end is off-screen — the
+ * storefront theme editor runs past 2,500px, so its only save control used to sit
+ * a full page-height of scrolling away from whichever field was just edited. The
+ * row pins to the bottom of the viewport instead and rides along with the form.
+ */
+export const FORM_ACTIONS_STICKY =
+  'sticky bottom-0 z-10 justify-end border-t bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/85';
+
 export function FormSurface({ children }: { children: ReactNode }) {
   return (
     <div className="w-full overflow-hidden rounded-xl border bg-background [&>section:last-child]:border-b-0">

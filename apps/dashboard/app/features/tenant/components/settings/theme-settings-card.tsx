@@ -1,13 +1,7 @@
 import { themeConfigSchema, type TenantThemeResponse } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@booking/ui/components/ui/card';
+import { FORM_ACTIONS_STICKY, FormSurface, Grid, Section } from '~/components/form-layout';
 import {
   CheckCircle2,
   CircleAlert,
@@ -37,14 +31,16 @@ export function ThemeSettingsCard({
   storefrontUrl: string | null;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Thương hiệu và nội dung storefront</CardTitle>
-        <CardDescription>
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-base font-semibold tracking-tight">
+          Thương hiệu và nội dung storefront
+        </h2>
+        <p className="text-sm text-muted-foreground">
           Quản lý nhận diện, nội dung trang chủ và thông tin giúp khách tìm thấy cửa hàng.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+        </p>
+      </div>
+      <div>
         {saved ? (
           <Alert className="mb-4 border-success/40 text-success">
             <CheckCircle2 className="size-4" />
@@ -72,48 +68,56 @@ export function ThemeSettingsCard({
             fieldErrors={fieldErrors}
             warnOnUnsavedChanges
             resetDirtyOnSuccess={saved}
+            actionsClassName={FORM_ACTIONS_STICKY}
             renderFields={(fields, values) => {
               const take = (...names: string[]) =>
                 fields.filter((field) => names.includes(field.name)).map((field) => field.node);
               return (
-                <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
-                  <div className="space-y-5">
-                    <ThemeGroup
-                      icon={Image}
+                // 1750px, measured rather than guessed: the settings rail (216px),
+                // each `Section`'s label rail (192px) and the preview (352px) all
+                // bill to this row, and below that width the inputs drop under
+                // ~200px. Until then the preview sits beneath the form, where it
+                // costs the fields nothing.
+                <div className="grid gap-6 min-[1750px]:grid-cols-[minmax(0,1fr)_22rem] min-[1750px]:items-start">
+                  {/* One surface with divided sections — the dashboard's own
+                      full-page-form pattern — instead of five bordered cards
+                      inside a sixth. `Section`'s label rail also hands the
+                      inputs the width the old nested layout wasted. */}
+                  <FormSurface>
+                    <Section
+                      icon={<Image />}
                       title="Nhận diện"
                       description="Logo và favicon xuất hiện trên storefront, tab trình duyệt và dashboard."
                     >
-                      <div className="grid gap-5 sm:grid-cols-2">
-                        {take('logoUrl', 'faviconUrl')}
-                      </div>
-                    </ThemeGroup>
+                      <Grid>{take('logoUrl', 'faviconUrl')}</Grid>
+                    </Section>
 
-                    <ThemeGroup
-                      icon={Palette}
+                    <Section
+                      icon={<Palette />}
                       title="Màu sắc và kiểu chữ"
                       description="Giữ độ tương phản tốt để nút, nội dung và trạng thái luôn dễ đọc."
                     >
-                      <div className="grid gap-5 sm:grid-cols-2">
+                      <Grid>
                         {take('colors.primary', 'colors.accent', 'colors.background', 'font')}
-                      </div>
-                    </ThemeGroup>
+                      </Grid>
+                    </Section>
 
-                    <ThemeGroup
-                      icon={LayoutTemplate}
+                    <Section
+                      icon={<LayoutTemplate />}
                       title="Trang chủ"
                       description="Thiết lập thông điệp đầu trang và thư viện ảnh giới thiệu dịch vụ."
                     >
-                      <div className="grid gap-5 sm:grid-cols-2">
+                      <Grid>
                         {take('hero.title', 'hero.subtitle', 'hero.imageUrl', 'carousel')}
-                      </div>
-                    </ThemeGroup>
+                      </Grid>
+                    </Section>
 
-                    <ThemeGroup
-                      icon={Contact}
+                    <Section
+                      icon={<Contact />}
                       title="Liên hệ và mạng xã hội"
                       description="Thông tin công khai giúp khách liên hệ và kiểm tra độ tin cậy của cửa hàng."
                     >
-                      <div className="grid gap-5 sm:grid-cols-2">
+                      <Grid>
                         {take(
                           'contact.email',
                           'contact.phone',
@@ -123,58 +127,33 @@ export function ThemeSettingsCard({
                           'socialLinks.tiktok',
                           'socialLinks.youtube',
                         )}
-                      </div>
-                    </ThemeGroup>
+                      </Grid>
+                    </Section>
 
-                    <ThemeGroup
-                      icon={Search}
+                    <Section
+                      icon={<Search />}
                       title="Tìm kiếm và chia sẻ"
                       description="Tiêu đề và mô tả được dùng cho công cụ tìm kiếm và thẻ chia sẻ."
                     >
-                      <div className="grid gap-5 sm:grid-cols-2">
-                        {take('seo.title', 'seo.description')}
-                      </div>
-                    </ThemeGroup>
-                  </div>
+                      <Grid>{take('seo.title', 'seo.description')}</Grid>
+                    </Section>
+                  </FormSurface>
 
-                  <StorefrontThemePreview
-                    tenantName={theme.name}
-                    value={values}
-                    storefrontUrl={storefrontUrl}
-                  />
+                  {/* Sticky: the form is taller than the viewport, so a preview
+                      pinned to the top of the page is off-screen for most edits. */}
+                  <div className="min-[1750px]:sticky min-[1750px]:top-24">
+                    <StorefrontThemePreview
+                      tenantName={theme.name}
+                      value={values}
+                      storefrontUrl={storefrontUrl}
+                    />
+                  </div>
                 </div>
               );
             }}
           />
         </fieldset>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ThemeGroup({
-  icon: Icon,
-  title,
-  description,
-  children,
-}: {
-  icon: typeof Palette;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border bg-background p-4 sm:p-5">
-      <div className="mb-5 flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="size-4" aria-hidden="true" />
-        </span>
-        <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{description}</p>
-        </div>
       </div>
-      {children}
-    </section>
+    </div>
   );
 }
