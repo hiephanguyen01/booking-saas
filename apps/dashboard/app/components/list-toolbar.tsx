@@ -114,7 +114,14 @@ export function ListToolbar({
   const searchFields = searchField
     ? [searchField]
     : spec.filter((field): field is SearchField => field.kind === 'text');
-  const filterFields = searchField ? spec : spec.filter((field) => field.kind !== 'text');
+  const primaryInlineFilters = spec.filter(
+    (field): field is Exclude<FilterField, SearchField> =>
+      field.kind !== 'text' && field.row === 'primary',
+  );
+  const secondaryFields = spec.filter(
+    (field): field is Exclude<FilterField, SearchField> =>
+      field.kind !== 'text' && field.row !== 'primary',
+  );
   const activeFilters = hasActiveFilters(filters);
 
   const hiddenInputs = (
@@ -139,8 +146,9 @@ export function ListToolbar({
   );
 
   if (layout === 'split') {
-    const showPrimaryRow = searchFields.length > 0 || actions;
-    const showFilterRow = filterFields.length > 0 || customFilters || utilities || activeFilters;
+    const showPrimaryRow = searchFields.length > 0 || primaryInlineFilters.length > 0 || actions;
+    const showSecondaryRow =
+      secondaryFields.length > 0 || customFilters || utilities || activeFilters;
 
     return (
       <Form
@@ -150,29 +158,47 @@ export function ListToolbar({
       >
         {hiddenInputs}
         {showPrimaryRow ? (
-          <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex min-w-0 w-full flex-col gap-3 sm:max-w-sm sm:flex-row">
-              {searchFields.map((field) => (
-                <ToolbarField
-                  key={`${fieldKey(field)}:${fieldStateKey(field, filters)}`}
-                  field={field}
-                  filters={filters}
-                  onSearchInput={onSearchInput}
-                  onControlChange={onControlChange}
-                  onDateRangeApply={(field, from, to) => {
-                    const form = formRef.current;
-                    if (form) {
-                      submitWithOverrides(form, {
-                        [field.fromKey]: from,
-                        [field.toKey]: to,
-                      });
-                    }
-                  }}
-                  compact
-                  split
-                />
-              ))}
-            </div>
+          <div className="flex min-w-0 w-full flex-wrap items-center gap-3">
+            {searchFields.map((field) => (
+              <ToolbarField
+                key={`${fieldKey(field)}:${fieldStateKey(field, filters)}`}
+                field={field}
+                filters={filters}
+                onSearchInput={onSearchInput}
+                onControlChange={onControlChange}
+                onDateRangeApply={(field, from, to) => {
+                  const form = formRef.current;
+                  if (form) {
+                    submitWithOverrides(form, {
+                      [field.fromKey]: from,
+                      [field.toKey]: to,
+                    });
+                  }
+                }}
+                compact
+                split
+              />
+            ))}
+            {primaryInlineFilters.map((field) => (
+              <ToolbarField
+                key={`${fieldKey(field)}:${fieldStateKey(field, filters)}`}
+                field={field}
+                filters={filters}
+                onSearchInput={onSearchInput}
+                onControlChange={onControlChange}
+                onDateRangeApply={(field, from, to) => {
+                  const form = formRef.current;
+                  if (form) {
+                    submitWithOverrides(form, {
+                      [field.fromKey]: from,
+                      [field.toKey]: to,
+                    });
+                  }
+                }}
+                compact={variant === 'compact'}
+                split
+              />
+            ))}
             {actions ? (
               <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">
                 {actions}
@@ -181,9 +207,9 @@ export function ListToolbar({
           </div>
         ) : null}
 
-        {showFilterRow ? (
+        {showSecondaryRow ? (
           <div className="flex min-w-0 w-full flex-wrap items-center gap-3">
-            {filterFields.map((field) => (
+            {secondaryFields.map((field) => (
               <ToolbarField
                 key={`${fieldKey(field)}:${fieldStateKey(field, filters)}`}
                 field={field}
@@ -307,9 +333,9 @@ function ToolbarField({
     return (
       <div
         className={cn(
-          'min-w-56 flex-1 space-y-1.5',
-          compact && 'space-y-0 lg:w-64 lg:flex-none',
-          split && 'w-full min-w-0 max-w-sm flex-none lg:w-full',
+          'min-w-48 flex-1 basis-full space-y-1.5 md:basis-auto md:min-w-56',
+          compact && 'space-y-0',
+          split && 'md:flex-none',
         )}
       >
         <Label htmlFor={field.key} className={compact ? 'sr-only' : undefined}>
@@ -344,7 +370,7 @@ function ToolbarField({
   }
   if (field.kind === 'enum') {
     return (
-      <div className={cn('space-y-1.5', compact && 'space-y-0', split && 'w-full sm:w-auto')}>
+      <div className={cn('space-y-1.5', compact && 'space-y-0')}>
         <Label htmlFor={field.key} className={compact ? 'sr-only' : undefined}>
           {field.label}
         </Label>
@@ -353,7 +379,7 @@ function ToolbarField({
           name={field.key}
           defaultValue={filters[field.key] ?? ''}
           onChange={onControlChange}
-          className={cn(compact && 'min-w-40', split && 'w-full sm:w-auto', field.className)}
+          className={cn(compact && 'min-w-40', field.className)}
         >
           <option value="">{field.allLabel ?? 'Tất cả'}</option>
           {field.options.map((o) => (
@@ -371,7 +397,6 @@ function ToolbarField({
       from={filters[field.fromKey] ?? ''}
       to={filters[field.toKey] ?? ''}
       onApply={(from, to) => onDateRangeApply(field, from, to)}
-      className={cn(split && 'w-full sm:w-auto')}
     />
   );
 }
