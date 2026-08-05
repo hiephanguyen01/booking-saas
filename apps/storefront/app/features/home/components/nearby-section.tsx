@@ -32,31 +32,32 @@ export function NearbySection({
   if (locationState === 'unsupported') return null;
 
   if (locationState === 'prompt' || locationState === 'denied' || locationState === 'error') {
+    const description = t(
+      locationState === 'denied'
+        ? 'home.nearbyDenied'
+        : locationState === 'error'
+          ? 'home.nearbyLocationError'
+          : 'home.nearbyPermissionBody',
+    );
     return (
-      <section className="flex flex-col gap-6">
-        <NearbyHeader title={title} />
-        <div
-          className={cn(
-            PANEL_SURFACE,
-            'flex flex-col items-start gap-4 bg-card p-6 sm:flex-row sm:items-center sm:justify-between',
-          )}
-        >
-          <div className="flex gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <MapPin aria-hidden className="size-5" />
-            </span>
-            <div>
-              <p className="font-medium text-foreground">{t('home.nearbyPermissionTitle')}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t(locationState === 'denied' ? 'home.nearbyDenied' : 'home.nearbyPermissionBody')}
-              </p>
-            </div>
-          </div>
-          <Button type="button" size="control" onClick={requestLocation}>
-            <LocateFixed aria-hidden />
-            {t(locationState === 'denied' ? 'home.nearbyRetry' : 'home.nearbyUseLocation')}
-          </Button>
-        </div>
+      <section>
+        <NearbyHeader
+          title={title}
+          description={description}
+          icon={<MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />}
+          controls={
+            <Button
+              type="button"
+              variant="outline"
+              size="control"
+              className="shrink-0 border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+              onClick={requestLocation}
+            >
+              <LocateFixed aria-hidden />
+              {t(locationState === 'prompt' ? 'home.nearbyUseLocation' : 'home.nearbyRetry')}
+            </Button>
+          }
+        />
       </section>
     );
   }
@@ -138,15 +139,35 @@ export function NearbySection({
   );
 }
 
-function NearbyHeader({ title, controls }: { title: string; controls?: React.ReactNode }) {
+function NearbyHeader({
+  title,
+  description,
+  icon,
+  controls,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  controls?: React.ReactNode;
+}) {
   return (
     <div
       className={cn(
         PANEL_SURFACE,
-        'flex min-h-16 items-center justify-between gap-4 bg-card px-6 py-5',
+        'flex min-h-16 flex-col items-start justify-between gap-4 bg-card px-5 py-5 sm:flex-row sm:items-center sm:px-6',
       )}
     >
-      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <div className="flex min-w-0 items-start gap-3">
+        {icon}
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          {description ? (
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-pretty text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
+      </div>
       {controls}
     </div>
   );
