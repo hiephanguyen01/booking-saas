@@ -15,7 +15,13 @@ import {
 } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { NativeSelect } from '@booking/ui/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
@@ -31,7 +37,10 @@ import { SubscriptionStatusBadge } from '~/components/status-badge';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 const historyColumns: DataTableColumn<SubscriptionHistoryItem>[] = [
-  { header: 'Gói', cell: (subscription) => <span className="font-medium">{subscription.planName}</span> },
+  {
+    header: 'Gói',
+    cell: (subscription) => <span className="font-medium">{subscription.planName}</span>,
+  },
   {
     header: 'Trạng thái',
     cell: (subscription) => <SubscriptionStatusBadge status={subscription.status} />,
@@ -88,24 +97,34 @@ function AssignSubscriptionForm({
       <fieldset disabled={isBusy} className="m-0 min-w-0 space-y-3 border-0 p-0">
         <div className="space-y-1.5">
           <Label htmlFor="planId">Gói</Label>
-          <NativeSelect id="planId" name="planId" className="w-full" required>
-            {activePlans.map((plan) => (
-              <option key={plan.id} value={plan.id}>
-                {plan.name}
-              </option>
-            ))}
-          </NativeSelect>
+          <Select name="planId" defaultValue={activePlans[0]?.id} required>
+            <SelectTrigger id="planId" className="w-full">
+              <SelectValue placeholder="Chọn gói" />
+            </SelectTrigger>
+            <SelectContent>
+              {activePlans.map((plan) => (
+                <SelectItem key={plan.id} value={plan.id}>
+                  {plan.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="status">Trạng thái</Label>
-            <NativeSelect id="status" name="status" className="w-full" defaultValue="active">
-              {(['trial', 'active', 'past_due'] as const).map((status) => (
-                <option key={status} value={status}>
-                  {SUBSCRIPTION_STATUS_LABELS[status]}
-                </option>
-              ))}
-            </NativeSelect>
+            <Select name="status" defaultValue="active">
+              <SelectTrigger id="status" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(['trial', 'active', 'past_due'] as const).map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {SUBSCRIPTION_STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="expiresAt">Hết hạn</Label>

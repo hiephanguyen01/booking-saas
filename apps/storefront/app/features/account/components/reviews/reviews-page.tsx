@@ -1,6 +1,13 @@
 import { Button } from '@booking/ui/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import { ChevronLeft, ChevronRight, MessageSquareText } from 'lucide-react';
-import { Form, Link } from 'react-router';
+import { Link, useSubmit } from 'react-router';
 import { AccountResultsSkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { AccountPanel, PageHeading } from '~/features/account/components/shared/account-primitives';
@@ -63,20 +70,25 @@ export function AccountReviewsPage({
 
 function ReviewFilter({ active }: { active: AccountReviewFilter }) {
   const { t } = useTranslation(NsI18n.Account);
+  const submit = useSubmit();
+
+  const changeStatus = (status: string) => {
+    const data = new FormData();
+    data.set('status', status);
+    submit(data, { method: 'get', replace: true });
+  };
+
   return (
-    <Form method="get">
-      <select
-        name="status"
-        value={active}
-        onChange={(event) => event.currentTarget.form?.requestSubmit()}
-        className="h-10 min-w-42 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={t('reviews.filterLabel')}
-      >
-        <option value="all">{t('reviews.newest')}</option>
-        <option value="reviewed">{t('reviews.reviewed')}</option>
-        <option value="pending">{t('reviews.pending')}</option>
-      </select>
-    </Form>
+    <Select value={active} onValueChange={changeStatus}>
+      <SelectTrigger className="min-w-42" aria-label={t('reviews.filterLabel')}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{t('reviews.newest')}</SelectItem>
+        <SelectItem value="reviewed">{t('reviews.reviewed')}</SelectItem>
+        <SelectItem value="pending">{t('reviews.pending')}</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
 

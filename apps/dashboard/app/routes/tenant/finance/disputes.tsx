@@ -9,7 +9,13 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { NativeSelect } from '@booking/ui/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { ArrowLeft, ArrowUpRight, Scale } from 'lucide-react';
 import {
@@ -211,16 +217,16 @@ export default function TenantDisputes({ loaderData, actionData }: Route.Compone
                     <input type="hidden" name="disputeId" value={dispute.id} />
                     <div className="space-y-1.5">
                       <Label htmlFor={`resolution-${dispute.id}`}>Quyết định</Label>
-                      <NativeSelect
-                        id={`resolution-${dispute.id}`}
-                        name="resolution"
-                        required
-                        disabled={busy}
-                      >
-                        <option value="release">Từ chối — tiếp tục đối soát</option>
-                        <option value="full_refund">Chấp nhận — hoàn toàn bộ</option>
-                        <option value="partial_refund">Chấp nhận — hoàn một phần</option>
-                      </NativeSelect>
+                      <Select name="resolution" defaultValue="release" required disabled={busy}>
+                        <SelectTrigger id={`resolution-${dispute.id}`} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="release">Từ chối — tiếp tục đối soát</SelectItem>
+                          <SelectItem value="full_refund">Chấp nhận — hoàn toàn bộ</SelectItem>
+                          <SelectItem value="partial_refund">Chấp nhận — hoàn một phần</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor={`refund-${dispute.id}`}>Số tiền hoàn một phần</Label>

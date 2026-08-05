@@ -202,26 +202,33 @@ export function ModeToggle({
   );
 }
 
-/** One bordered box holding an icon + a control: the box IS the form control, so it
- * owns the 44px geometry and the control inside is stripped of its own
- * border/height/padding (`h-auto border-0 p-0` — merged last, so it beats the
- * primitive's own `h-11 px-4`). */
+/** One bordered box holding an icon + a control: the box IS the form control.
+ * Nested inputs shed their border/height/padding; a composed Select keeps the
+ * shared 44px trigger geometry but sheds its inner border, padding and shadow. */
 export function SearchField({
   icon: Icon,
   label,
   children,
+  asLabel = true,
 }: {
   icon: LucideIcon;
   label: string;
   children: ReactNode;
+  asLabel?: boolean;
 }) {
-  return (
-    <label className="flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+  const content = (
+    <>
       <span className="sr-only">{label}</span>
       <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="min-w-0 flex-1 [&_[data-slot=native-select-wrapper]]:w-full">
-        {children}
-      </span>
-    </label>
+      <span className="min-w-0 flex-1 [&_[data-slot=select-trigger]]:w-full">{children}</span>
+    </>
+  );
+  const className =
+    'flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30';
+
+  return asLabel ? (
+    <label className={className}>{content}</label>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }

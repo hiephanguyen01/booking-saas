@@ -1,12 +1,14 @@
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
 import { Check, Store, ShieldCheck } from 'lucide-react';
-import { NsI18n, useTranslation } from '@booking/i18n';
-import type { RoomTrust } from '~/features/listing-group/lib/listing-group-types';
+import { useId } from 'react';
 import { Link } from 'react-router';
+import { SectionCard } from '~/components/section-card';
 import { storefrontPaths } from '~/constants/paths';
-import { nameInitials } from '~/lib/ui';
+import type { RoomTrust } from '~/features/listing-group/lib/listing-group-types';
 import { useLocale } from '~/hooks/use-locale';
+import { nameInitials } from '~/lib/ui';
 
 /**
  * The partner behind the group's rooms.
@@ -19,15 +21,19 @@ import { useLocale } from '~/hooks/use-locale';
 export function ProviderCard({ trust }: { trust: RoomTrust | null }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
+  const titleId = useId();
   const partnerName = trust?.partnerName || t('group.partnerFallback');
+
   return (
-    <div className="rounded-lg bg-card p-5 text-card-foreground shadow-sm">
+    <SectionCard aria-labelledby={titleId}>
       <div className="flex items-center gap-3">
         <Avatar className="size-11">
           {trust?.partnerLogoUrl ? <AvatarImage src={trust.partnerLogoUrl} alt="" /> : null}
           <AvatarFallback>{nameInitials(partnerName, 'ST')}</AvatarFallback>
         </Avatar>
-        <p className="min-w-0 truncate font-semibold">{partnerName}</p>
+        <h2 id={titleId} className="min-w-0 truncate text-base font-semibold">
+          {partnerName}
+        </h2>
       </div>
       <div className="mt-4 flex flex-col gap-2 text-sm">
         {trust?.identityVerified ? (
@@ -48,6 +54,6 @@ export function ProviderCard({ trust }: { trust: RoomTrust | null }) {
           <Store /> {t('group.viewProvider')}
         </Link>
       </Button>
-    </div>
+    </SectionCard>
   );
 }

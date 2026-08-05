@@ -1,10 +1,16 @@
 import { Search } from 'lucide-react';
-import { useEffect, useRef, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type FormEvent, type ReactNode } from 'react';
 import { Form, Link, useSearchParams, useSubmit } from 'react-router';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { NativeSelect } from '@booking/ui/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import {
   InputGroup,
   InputGroupAddon,
@@ -16,6 +22,7 @@ import type { FilterField, FilterSpec } from '~/lib/list-filters';
 import { hasActiveFilters } from '~/lib/list-filters';
 
 const SEARCH_DEBOUNCE_MS = 300;
+const ALL_FILTER_VALUES = '__all__';
 
 type SearchField = Extract<FilterField, { kind: 'text' }>;
 
@@ -107,8 +114,9 @@ export function ListToolbar({
       submitForm(form);
     }, SEARCH_DEBOUNCE_MS);
   };
-  const onControlChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    if (event.currentTarget.form) submitForm(event.currentTarget.form);
+  const onSelectChange = (key: string, value: string) => {
+    const form = formRef.current;
+    if (form) submitWithOverrides(form, { [key]: value === ALL_FILTER_VALUES ? '' : value });
   };
 
   const searchFields = searchField
@@ -165,7 +173,7 @@ export function ListToolbar({
                 field={field}
                 filters={filters}
                 onSearchInput={onSearchInput}
-                onControlChange={onControlChange}
+                onSelectChange={onSelectChange}
                 onDateRangeApply={(field, from, to) => {
                   const form = formRef.current;
                   if (form) {
@@ -185,7 +193,7 @@ export function ListToolbar({
                 field={field}
                 filters={filters}
                 onSearchInput={onSearchInput}
-                onControlChange={onControlChange}
+                onSelectChange={onSelectChange}
                 onDateRangeApply={(field, from, to) => {
                   const form = formRef.current;
                   if (form) {
@@ -215,7 +223,7 @@ export function ListToolbar({
                 field={field}
                 filters={filters}
                 onSearchInput={onSearchInput}
-                onControlChange={onControlChange}
+                onSelectChange={onSelectChange}
                 onDateRangeApply={(field, from, to) => {
                   const form = formRef.current;
                   if (form) {
@@ -268,7 +276,7 @@ export function ListToolbar({
           field={field}
           filters={filters}
           onSearchInput={onSearchInput}
-          onControlChange={onControlChange}
+          onSelectChange={onSelectChange}
           onDateRangeApply={(field, from, to) => {
             const form = formRef.current;
             if (form) {
@@ -312,7 +320,7 @@ function ToolbarField({
   field,
   filters,
   onSearchInput,
-  onControlChange,
+  onSelectChange,
   onDateRangeApply,
   compact,
   split = false,
@@ -320,7 +328,7 @@ function ToolbarField({
   field: FilterField;
   filters: Record<string, string>;
   onSearchInput: (e: FormEvent<HTMLInputElement>) => void;
-  onControlChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onSelectChange: (key: string, value: string) => void;
   onDateRangeApply: (
     field: Extract<FilterField, { kind: 'date-range' }>,
     from: string,
@@ -374,20 +382,25 @@ function ToolbarField({
         <Label htmlFor={field.key} className={compact ? 'sr-only' : undefined}>
           {field.label}
         </Label>
-        <NativeSelect
-          id={field.key}
-          name={field.key}
-          defaultValue={filters[field.key] ?? ''}
-          onChange={onControlChange}
-          className={cn(compact && 'min-w-40', field.className)}
+        <Select
+          value={filters[field.key] || ALL_FILTER_VALUES}
+          onValueChange={(value) => onSelectChange(field.key, value)}
         >
-          <option value="">{field.allLabel ?? 'Tất cả'}</option>
-          {field.options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </NativeSelect>
+          <SelectTrigger id={field.key} className={cn(compact && 'min-w-40', field.className)}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_FILTER_VALUES}>{field.allLabel ?? 'Tất cả'}</SelectItem>
+            {field.options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {filters[field.key] ? (
+          <input type="hidden" name={field.key} value={filters[field.key]} />
+        ) : null}
       </div>
     );
   }

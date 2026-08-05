@@ -1,6 +1,13 @@
 import { AlertCircle, CheckCircle2, LoaderCircle } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 
 export interface ConsultationLead {
   name: string;
@@ -22,11 +29,12 @@ export function PlatformConsultationForm({ submitLead }: { submitLead?: SubmitLe
   const formId = useId();
   const [status, setStatus] = useState<FormStatus>('idle');
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [service, setService] = useState('');
   const refs = {
     name: useRef<HTMLInputElement>(null),
     phone: useRef<HTMLInputElement>(null),
     business: useRef<HTMLInputElement>(null),
-    service: useRef<HTMLSelectElement>(null),
+    service: useRef<HTMLButtonElement>(null),
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -63,7 +71,10 @@ export function PlatformConsultationForm({ submitLead }: { submitLead?: SubmitLe
     try {
       const result = await submitLead(lead);
       setStatus(result.ok ? 'success' : 'error');
-      if (result.ok) event.currentTarget.reset();
+      if (result.ok) {
+        event.currentTarget.reset();
+        setService('');
+      }
     } catch {
       setStatus('error');
     }
@@ -105,26 +116,26 @@ export function PlatformConsultationForm({ submitLead }: { submitLead?: SubmitLe
             {t('consultation.serviceLabel')}{' '}
             <span className="text-xs font-medium text-primary">({t('consultation.required')})</span>
           </label>
-          <select
-            ref={refs.service}
-            id={`${formId}-service`}
-            name="service"
-            defaultValue=""
-            aria-invalid={errors.service ? true : undefined}
-            aria-describedby={errors.service ? `${formId}-service-error` : undefined}
-            className="platform-form-control"
-          >
-            <option value="" disabled>
-              {t('consultation.servicePlaceholder')}
-            </option>
-            <option value="studio">{t('consultation.options.studio')}</option>
-            <option value="sport">{t('consultation.options.sport')}</option>
-            <option value="class">{t('consultation.options.class')}</option>
-            <option value="appointment">{t('consultation.options.appointment')}</option>
-            <option value="stay">{t('consultation.options.stay')}</option>
-            <option value="inventory">{t('consultation.options.inventory')}</option>
-            <option value="other">{t('consultation.options.other')}</option>
-          </select>
+          <Select name="service" value={service} onValueChange={setService}>
+            <SelectTrigger
+              ref={refs.service}
+              id={`${formId}-service`}
+              aria-invalid={errors.service ? true : undefined}
+              aria-describedby={errors.service ? `${formId}-service-error` : undefined}
+              className="platform-form-control justify-between"
+            >
+              <SelectValue placeholder={t('consultation.servicePlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="studio">{t('consultation.options.studio')}</SelectItem>
+              <SelectItem value="sport">{t('consultation.options.sport')}</SelectItem>
+              <SelectItem value="class">{t('consultation.options.class')}</SelectItem>
+              <SelectItem value="appointment">{t('consultation.options.appointment')}</SelectItem>
+              <SelectItem value="stay">{t('consultation.options.stay')}</SelectItem>
+              <SelectItem value="inventory">{t('consultation.options.inventory')}</SelectItem>
+              <SelectItem value="other">{t('consultation.options.other')}</SelectItem>
+            </SelectContent>
+          </Select>
           {errors.service ? (
             <p id={`${formId}-service-error`} className="platform-field-error">
               <AlertCircle className="size-4" aria-hidden="true" />

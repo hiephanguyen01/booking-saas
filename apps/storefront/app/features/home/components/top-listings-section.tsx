@@ -9,6 +9,8 @@ import type { PublicListingResponse } from '@booking/contracts';
 import { HomeListingCardsSkeleton } from '~/components/loading-skeletons';
 import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+import { cn } from '@booking/ui/lib/utils';
 
 /** The home page's lead rail of listings. */
 export function TopListingsSection({
@@ -46,7 +48,7 @@ export function TopListingsSection({
       */}
       <Carousel
         aria-label={title}
-        className="flex flex-col gap-6"
+        className="flex flex-col gap-6 [&_[data-slot=carousel-content]]:-mx-4 [&_[data-slot=carousel-content]]:px-4"
         opts={{ align: 'start', slidesToScroll: 1 }}
       >
         <RailHeader
@@ -64,11 +66,11 @@ export function TopListingsSection({
             </div>
           }
         />
-        <CarouselContent>
+        <CarouselContent className="-ml-5 py-4">
           {listings.map((listing) => (
             <CarouselItem
               key={listing.id}
-              className="basis-[88%] sm:basis-1/2 md:basis-1/3 lg:basis-1/4"
+              className="basis-[88%] pl-5 sm:basis-1/2 md:basis-1/3 lg:basis-1/4"
             >
               <FavoriteListingCard listing={listing} />
             </CarouselItem>
@@ -81,7 +83,12 @@ export function TopListingsSection({
 
 function RailHeader({ title, controls }: { title: string; controls?: React.ReactNode }) {
   return (
-    <div className="flex min-h-16 items-center justify-between gap-4 bg-card px-6 py-5 shadow-sm">
+    <div
+      className={cn(
+        PANEL_SURFACE,
+        'flex min-h-16 items-center justify-between gap-4 bg-card px-6 py-5',
+      )}
+    >
       <h2 className="text-lg font-semibold text-foreground">{title}</h2>
       {controls}
     </div>

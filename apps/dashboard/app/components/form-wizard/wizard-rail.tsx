@@ -1,6 +1,13 @@
 import type { ReactNode } from 'react';
 import { AlertCircle, Check, ChevronRight, Circle, LoaderCircle, Save } from 'lucide-react';
 import { Button } from '@booking/ui/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import { cn } from '@booking/ui/lib/utils';
 import type { FormProgress } from '~/lib/form-progress';
 
@@ -84,7 +91,7 @@ export function FormRailMobileNav<Id extends string>({
 }: Pick<FormRailProps<Id>, 'progress' | 'errorSections' | 'activeSection' | 'onNavigate'>) {
   return (
     <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur xl:hidden">
-      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
         <span className="text-xs font-medium text-muted-foreground">
           Phần{' '}
           {Math.max(
@@ -93,20 +100,20 @@ export function FormRailMobileNav<Id extends string>({
           ) + 1}
           /{progress.items.length}
         </span>
-        <select
-          value={activeSection}
-          onChange={(event) => onNavigate(event.target.value as Id)}
-          className="h-10 min-w-0 rounded-xl border bg-background px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Chọn phần của biểu mẫu"
-        >
-          {progress.items.map((item) => (
-            <option key={item.id} value={item.id}>
-              {errorSections.has(item.id) ? 'Cần kiểm tra: ' : ''}
-              {item.shortLabel}
-            </option>
-          ))}
-        </select>
-      </label>
+        <Select value={activeSection} onValueChange={(value) => onNavigate(value as Id)}>
+          <SelectTrigger className="w-full min-w-0 font-medium" aria-label="Chọn phần của biểu mẫu">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {progress.items.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {errorSections.has(item.id) ? 'Cần kiểm tra: ' : ''}
+                {item.shortLabel}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }
@@ -186,4 +193,3 @@ function SectionNavigationButton<Id extends string>({
     </button>
   );
 }
-

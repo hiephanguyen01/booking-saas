@@ -1,132 +1,72 @@
 import { bookingLookupInputSchema, type BookingLookupInput } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import { Link } from 'react-router';
+import { Search, ShieldCheck } from 'lucide-react';
 import { BookingAccessVerifyForm } from '~/features/booking/components/booking-access-verify-form';
-import type {
-  actionBookingsRoute,
-  loadBookingsRoute,
-} from '~/features/booking/server/bookings-route.server';
-import { storefrontPaths } from '~/constants/paths';
+import type { actionBookingsRoute } from '~/features/booking/server/bookings-route.server';
 import { useLocale } from '~/hooks/use-locale';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { ServerDataFrom } from '~/lib/react-router-data';
-import { dateLabelInTz, timeInTz } from '~/lib/time';
 import { SectionCard } from '~/components/section-card';
-import { BookingStatusBadge } from '~/features/account/components/shared/booking-status-badge';
 
 export function BookingsLookupPage({
-  loaderData,
   actionData,
 }: {
-  loaderData: ServerDataFrom<typeof loadBookingsRoute>;
   actionData?: ServerDataFrom<typeof actionBookingsRoute>;
 }) {
-  const { recent, myBookings } = loaderData;
   const { t } = useTranslation(NsI18n.Booking);
   const locale = useLocale();
   const sent = actionData?.sent ?? false;
 
   return (
-    <div className="bg-muted py-4 font-studio sm:py-6 lg:py-8">
-      <div className="mx-auto w-full max-w-304.5 px-4 sm:px-6">
-        {/* Unlike checkout and the outcome screens, this page is an entry point
-            reached from the header rather than a step inside a flow, so it keeps
-            a visible title. */}
-        <header className="max-w-2xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            {t('lookup.title')}
-          </h1>
-          <p className="mt-3 text-base leading-7 text-muted-foreground">{t('lookup.subtitle')}</p>
-        </header>
+    <div className="min-h-full bg-muted/50 py-6 font-studio sm:py-10 lg:py-14">
+      <main className="mx-auto w-full max-w-2xl px-4 sm:px-6">
+        <SectionCard aria-labelledby="lookup-form-title" className="relative overflow-hidden">
+          <span className="absolute inset-x-0 top-0 h-1 bg-primary" aria-hidden="true" />
 
-        {/* Two columns only when there is a list to fill the second one. A signed
-            -out visitor sees the access form alone, and a lone form stretched to
-            1218px reads as a mistake. */}
-        <div
-          className={
-            myBookings.length > 0
-              ? 'mt-6 grid items-start gap-4 lg:grid-cols-2 *:min-w-0'
-              : 'mt-6 grid max-w-2xl items-start gap-4 *:min-w-0'
-          }
-        >
-        {myBookings.length > 0 ? (
-          <SectionCard aria-labelledby="my-bookings-title">
-            <h2
-              id="my-bookings-title"
-              className="text-base leading-6 font-semibold text-foreground"
-            >
-              {t('lookup.myBookingsTitle')}
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              {t('lookup.myBookingsDescription')}
-            </p>
-            {/* Divided rows, not a bordered box inside the card — the card is
-                already the box. Rows are inset with a negative margin so the
-                hover fill still reaches the card's padding edge. */}
-            <ul className="-mx-(--sf-surface-pad) mt-4 divide-y divide-border border-t border-border">
-              {myBookings.map((booking) => (
-                <li key={booking.id}>
-                  <Link
-                    to={storefrontPaths.booking(locale, booking.code)}
-                    className="flex min-h-16 items-center justify-between gap-4 px-(--sf-surface-pad) py-3 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                  >
-                    <span>
-                      <span className="block font-mono text-sm font-semibold">{booking.code}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {dateLabelInTz(booking.startUtc, booking.resourceTimezone, locale)},{' '}
-                        {timeInTz(booking.startUtc, booking.resourceTimezone)}
-                      </span>
-                    </span>
-                    {/* Was a hand-rolled `bg-primary/10 text-primary` pill, which
-                        painted "Đã huỷ" and "Hoàn tất" the same brand red. */}
-                    <BookingStatusBadge status={booking.status} className="shrink-0" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </SectionCard>
-        ) : null}
-
-          {/* The access form and the recent list stack in one column, the way
-              checkout stacks its contact and payment cards. */}
-          <div className="flex flex-col gap-4">
-            {/* `SectionCard`, not a `Card` with its own gap and padding stripped
-                off and rebuilt: this panel now inherits the tenant's radius,
-                border, shadow and padding like every other surface. */}
-            <SectionCard aria-labelledby="lookup-form-title">
-              <h2
-                id="lookup-form-title"
-                className="text-base leading-6 font-semibold text-foreground"
-              >
-                {t('lookup.formTitle')}
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                {t('lookup.formDescription')}
-              </p>
-              <div className="mt-4">
-                {sent ? (
-                  <BookingAccessVerifyForm
-                    code={actionData!.code}
-                    devOtp={actionData!.devOtp}
-                    locale={locale}
-                  />
-                ) : (
-                  <RequestForm
-                    error={actionData?.error ?? null}
-                    fieldErrors={actionData?.fieldErrors ?? null}
-                  />
-                )}
+          <div className="flex items-start justify-between gap-4 pt-1">
+            <div className="flex min-w-0 items-start gap-4">
+              <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+                <Search className="size-5" strokeWidth={2.25} aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h1
+                  id="lookup-form-title"
+                  className="text-2xl leading-tight font-semibold tracking-tight text-foreground"
+                >
+                  {t('lookup.title')}
+                </h1>
+                <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground text-pretty">
+                  {t('lookup.subtitle')}
+                </p>
               </div>
-              <p className="mt-4 rounded-lg bg-muted/40 px-5 py-4 text-sm leading-6 text-muted-foreground">
-                {t('lookup.privacyNote')}
-              </p>
-            </SectionCard>
-
-            <RecentList recent={recent} locale={locale} />
+            </div>
+            <span className="hidden rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-semibold tracking-wide text-primary sm:block">
+              OTP
+            </span>
           </div>
-        </div>
-      </div>
+
+          <div className="mt-6">
+            {sent ? (
+              <BookingAccessVerifyForm
+                code={actionData!.code}
+                devOtp={actionData!.devOtp}
+                locale={locale}
+              />
+            ) : (
+              <RequestForm
+                error={actionData?.error ?? null}
+                fieldErrors={actionData?.fieldErrors ?? null}
+              />
+            )}
+          </div>
+
+          <p className="mt-5 flex items-start gap-2 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+            <span>{t('lookup.privacyNote')}</span>
+          </p>
+        </SectionCard>
+      </main>
     </div>
   );
 }
@@ -165,38 +105,7 @@ function RequestForm({
       // radius overrides that used to sit here re-implemented the control
       // geometry `@booking/ui` already owns, and pinned the radius so the
       // tenant's setting could not reach this form.
-      className="[&_input]:font-mono [&_input]:uppercase [&_input]:tracking-wide"
+      className="[&_button]:font-semibold [&_input]:bg-muted/25 [&_input]:font-mono [&_input]:uppercase [&_input]:tracking-wide"
     />
-  );
-}
-
-function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' }) {
-  const { t } = useTranslation(NsI18n.Booking);
-  return (
-    <SectionCard aria-labelledby="lookup-recent-title">
-      <h2 id="lookup-recent-title" className="text-base leading-6 font-semibold text-foreground">
-        {t('lookup.recentTitle')}
-      </h2>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">{t('lookup.recentDescription')}</p>
-      {recent.length === 0 ? (
-        <p className="mt-4 rounded-(--sf-surface-radius) border border-dashed border-border bg-muted/25 px-4 py-6 text-center text-sm text-muted-foreground">
-          {t('lookup.recentEmpty')}
-        </p>
-      ) : (
-        <ul className="-mx-(--sf-surface-pad) mt-4 divide-y divide-border border-t border-border">
-          {recent.map((code) => (
-            <li key={code}>
-              <Link
-                to={storefrontPaths.booking(locale, code)}
-                className="flex min-h-14 items-center justify-between gap-4 px-(--sf-surface-pad) py-3 text-sm transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-              >
-                <span className="font-mono font-semibold">{code}</span>
-                <span className="text-muted-foreground">{t('viewDetails')} →</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </SectionCard>
   );
 }

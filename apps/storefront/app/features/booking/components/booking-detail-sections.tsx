@@ -326,7 +326,7 @@ function PostServiceRefundSummary({
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className={cn(PANEL_SURFACE, 'px-5 py-5 sm:px-6')}>
+    <section className={cn(PANEL_SURFACE, 'p-(--sf-surface-pad)')}>
       <h2 className="text-base font-semibold text-foreground">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>

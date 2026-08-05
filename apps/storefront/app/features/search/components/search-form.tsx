@@ -1,6 +1,12 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import { cn } from '@booking/ui/lib/utils';
 import { Info, Search, Users } from 'lucide-react';
 import { useRef } from 'react';
@@ -11,6 +17,7 @@ import { CategoryPicker, LocationCombobox, ModeToggle, SearchField } from './sea
 import type { SearchFormProps } from '~/features/search/lib/search-form-types';
 import { modeHint } from '~/features/search/lib/search-mode-hint';
 import { useSearchFormController } from '~/features/search/hooks/use-search-form-controller';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 export type { LocationOption } from '~/features/search/lib/search-form-types';
 
@@ -68,7 +75,7 @@ export function SearchForm({
       className={cn(
         'font-studio',
         isHero
-          ? 'relative rounded-lg bg-card text-card-foreground shadow-lg'
+          ? cn(PANEL_SURFACE, 'relative bg-card text-card-foreground')
           : 'bg-foreground text-background',
       )}
     >
@@ -153,19 +160,24 @@ export function SearchForm({
             ) : null}
 
             {selectedConfig?.showGuests ? (
-              <SearchField icon={Users} label={t('home.guests')}>
-                <NativeSelect
-                  name="guests"
-                  defaultValue={String(state.guests)}
-                  aria-label={t('home.guests')}
-                  className="h-auto border-0 bg-transparent p-0 pr-7 shadow-none focus-visible:ring-0"
-                >
-                  {GUEST_OPTIONS.map((count) => (
-                    <NativeSelectOption key={count} value={count}>
-                      {count === 1 ? t('home.guestsPlaceholder') : t('home.guestsCount', { count })}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+              <SearchField icon={Users} label={t('home.guests')} asLabel={false}>
+                <Select name="guests" defaultValue={String(state.guests)}>
+                  <SelectTrigger
+                    aria-label={t('home.guests')}
+                    className="w-full border-0 bg-transparent px-0 py-0 shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GUEST_OPTIONS.map((count) => (
+                      <SelectItem key={count} value={String(count)}>
+                        {count === 1
+                          ? t('home.guestsPlaceholder')
+                          : t('home.guestsCount', { count })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </SearchField>
             ) : null}
 

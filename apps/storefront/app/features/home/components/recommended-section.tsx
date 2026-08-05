@@ -5,6 +5,8 @@ import { FavoriteListingCard } from '~/features/favorites/components/favorite-ca
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { LocationTabs } from './location-tabs';
 import { useRecommendedSectionController } from '~/features/home/hooks/use-recommended-section-controller';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+import { cn } from '@booking/ui/lib/utils';
 
 /**
  * "Đề xuất dành cho bạn" — location-filtered catalog with a client-side
@@ -26,7 +28,7 @@ export function RecommendedSection({
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="min-h-29 bg-card px-4 pt-6 pb-1 font-studio shadow-sm sm:px-6">
+      <div className={cn(PANEL_SURFACE, 'min-h-29 bg-card px-4 pt-6 pb-1 font-studio sm:px-6')}>
         <h2 className="text-lg leading-7 font-semibold text-foreground">{t('home.recommended')}</h2>
         <LocationTabs value={location} onValueChange={changeLocation} />
       </div>
@@ -39,7 +41,7 @@ export function RecommendedSection({
           ))}
         </div>
       ) : (
-        <p className="rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
+        <p className="rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_dashed_var(--sf-surface-border-color)] bg-card px-6 py-12 text-center text-sm text-muted-foreground shadow-(--sf-surface-shadow)">
           {t('home.emptyInLocation')}
         </p>
       )}

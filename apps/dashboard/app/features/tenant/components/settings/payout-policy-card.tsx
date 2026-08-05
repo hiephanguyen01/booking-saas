@@ -10,7 +10,13 @@ import {
 } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import { HandCoins } from 'lucide-react';
 import { Form, useNavigation, useSubmit } from 'react-router';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
@@ -108,10 +114,15 @@ export function PayoutPolicyCard({
             </div>
             <div className="space-y-2">
               <Label htmlFor="cycle">Chu kỳ mặc định</Label>
-              <NativeSelect id="cycle" name="cycle" defaultValue={policy.cycle}>
-                <NativeSelectOption value="weekly">Hàng tuần</NativeSelectOption>
-                <NativeSelectOption value="monthly">Hàng tháng</NativeSelectOption>
-              </NativeSelect>
+              <Select name="cycle" defaultValue={policy.cycle}>
+                <SelectTrigger id="cycle" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Hàng tuần</SelectItem>
+                  <SelectItem value="monthly">Hàng tháng</SelectItem>
+                </SelectContent>
+              </Select>
               <p className="text-xs leading-5 text-muted-foreground">
                 Áp dụng cho các khoản đã qua thời gian giữ tiền.
               </p>

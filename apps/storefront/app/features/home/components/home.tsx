@@ -15,6 +15,8 @@ import { StudioHero } from './hero';
 import { RecommendedSection } from './recommended-section';
 import { TopListingsSection } from './top-listings-section';
 import { useStudioHomeController } from '~/features/home/hooks/use-studio-home-controller';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+import { cn } from '@booking/ui/lib/utils';
 
 /**
  * Studio-vertical home (§16.1): hero + search, a lead rail, and a flat
@@ -59,7 +61,7 @@ export function StudioHome({
             <RecommendedSection listings={sections.recommended} pending={filterPending} />
           </>
         ) : (
-          <Empty className="border border-border bg-card py-20">
+          <Empty className={cn(PANEL_SURFACE, 'bg-card py-20')}>
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Camera aria-hidden="true" />

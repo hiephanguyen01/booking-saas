@@ -1,5 +1,11 @@
 import { TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
-import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import type { LucideIcon } from 'lucide-react';
 
 export interface SettingsSection {
@@ -32,24 +38,23 @@ export function SettingsSectionNav({
 
   return (
     <>
-      {/* `NativeSelect` wraps its control in a `w-fit` box, so the select has to
-          be stretched from here or it collapses to its first option's width. */}
-      <div className="[&_[data-slot=native-select-wrapper]]:w-full lg:hidden">
-        <label htmlFor="settings-section" className="sr-only">
-          Nhóm cài đặt
-        </label>
-        <NativeSelect
-          id="settings-section"
-          className="w-full font-medium"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          {sections.map((section) => (
-            <NativeSelectOption key={section.value} value={section.value}>
-              {section.label}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+      <div className="lg:hidden">
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger
+            id="settings-section"
+            className="w-full font-medium"
+            aria-label="Nhóm cài đặt"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {sections.map((section) => (
+              <SelectItem key={section.value} value={section.value}>
+                {section.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {active ? <span className="sr-only">Đang xem nhóm {active.label}</span> : null}
       </div>
 

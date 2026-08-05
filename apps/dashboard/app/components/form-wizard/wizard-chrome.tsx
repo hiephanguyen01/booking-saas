@@ -1,6 +1,13 @@
 import type { ReactNode } from 'react';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, LoaderCircle, Save } from 'lucide-react';
 import { Button } from '@booking/ui/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import { cn } from '@booking/ui/lib/utils';
 
 /**
@@ -117,23 +124,26 @@ export function WizardNav<Id extends string>({
   return (
     <>
       <div className="sticky top-14 z-20 -mx-4 border-y bg-background/95 px-4 py-3 backdrop-blur xl:hidden">
-        <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground">
             Phần {currentIndex + 1}/{items.length}
           </span>
-          <select
-            value={String(currentIndex)}
-            onChange={(event) => onNavigate(Number(event.target.value))}
-            className="h-10 min-w-0 rounded-xl border bg-background px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Chọn phần của biểu mẫu"
-          >
-            {items.map((item, index) => (
-              <option key={item.id} value={index} disabled={!canNavigate(index)}>
-                {item.shortLabel}
-              </option>
-            ))}
-          </select>
-        </label>
+          <Select value={String(currentIndex)} onValueChange={(value) => onNavigate(Number(value))}>
+            <SelectTrigger
+              className="w-full min-w-0 font-medium"
+              aria-label="Chọn phần của biểu mẫu"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {items.map((item, index) => (
+                <SelectItem key={item.id} value={String(index)} disabled={!canNavigate(index)}>
+                  {item.shortLabel}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <aside className="hidden xl:block">
