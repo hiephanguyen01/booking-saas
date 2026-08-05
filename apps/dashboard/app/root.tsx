@@ -16,7 +16,7 @@ import { loadSessionInfo } from './lib/auth.server';
 import { dashboardAuthMiddleware } from './lib/auth-middleware.server';
 import { AppSidebar } from './components/app-sidebar';
 import { DashboardHeader } from './components/dashboard-header';
-import { activeTenantMembership, tenantBrandStyle } from './lib/tenant-brand';
+import { activeTenantMembership, tenantBrandCss } from './lib/tenant-brand';
 import './app.css';
 
 export const middleware: Route.MiddlewareFunction[] = [dashboardAuthMiddleware];
@@ -68,17 +68,25 @@ export default function App({ loaderData }: Route.ComponentProps) {
   }
 
   const membership = activeTenantMembership(info, location.pathname);
+  const brandCss = tenantBrandCss(membership?.tenantBranding ?? null);
 
   return (
-    <SidebarProvider style={tenantBrandStyle(membership?.tenantBranding ?? null)}>
-      <AppSidebar info={info} />
-      <SidebarInset className="min-w-0">
-        <DashboardHeader />
-        <main className="min-w-0 flex-1 p-4 lg:p-6">
-          <Outlet />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <>
+      {/* A document-level rule rather than a `style` prop on the shell: Radix
+          portals every dropdown, dialog and the mobile sidebar to `document.body`,
+          where an inline style on a wrapper can never reach them. Re-rendered on
+          navigation, because which tenant's brand applies depends on the area. */}
+      {brandCss ? <style dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
+      <SidebarProvider>
+        <AppSidebar info={info} />
+        <SidebarInset className="min-w-0">
+          <DashboardHeader />
+          <main className="min-w-0 flex-1 p-4 lg:p-6">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </>
   );
 }
 
