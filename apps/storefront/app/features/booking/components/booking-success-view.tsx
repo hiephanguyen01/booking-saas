@@ -4,6 +4,7 @@ import { BadgeCheck, History, Home, Search } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
+import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import { BookingOutcomeLayout } from './booking-outcome-layout';
 
 interface BookingSuccessViewProps {
@@ -13,6 +14,7 @@ interface BookingSuccessViewProps {
   signedIn: boolean;
   bookingStatus: BookingStatus | null;
   paidAmount: string | null;
+  booking: BookingDetailViewModel | null;
 }
 
 export function BookingSuccessView({
@@ -22,6 +24,7 @@ export function BookingSuccessView({
   signedIn,
   bookingStatus,
   paidAmount,
+  booking,
 }: BookingSuccessViewProps) {
   const { t } = useTranslation(NsI18n.Booking);
   const primaryHref = signedIn
@@ -37,6 +40,7 @@ export function BookingSuccessView({
       code={code}
       bookingStatus={bookingStatus}
       paidAmount={paidAmount}
+      booking={booking}
       icon={
         <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-success/10 text-success ring-1 ring-inset ring-success/20">
           <BadgeCheck className="size-6" strokeWidth={1.8} aria-hidden="true" />

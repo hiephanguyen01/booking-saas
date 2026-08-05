@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { storefrontPaths } from '~/constants/paths';
 import {
   bookingDetailState,
-  type AccountBookingViewModel,
-} from '~/features/account/lib/booking-history';
+  type BookingDetailViewModel,
+} from '~/features/booking/lib/booking-detail-model';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 
@@ -13,7 +13,7 @@ export function useBookingDetailPanelController({
   booking,
   locale,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   locale: Locale;
 }) {
   const state = bookingDetailState(booking.status);

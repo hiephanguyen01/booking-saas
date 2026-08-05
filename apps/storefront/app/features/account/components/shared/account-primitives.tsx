@@ -1,27 +1,13 @@
 import { formatCurrency, type Locale } from '@booking/i18n';
 import { cn } from '@booking/ui/lib/utils';
-import { Camera, Check, Construction, type LucideIcon } from 'lucide-react';
+import { Check, Construction, type LucideIcon } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import {
   cancellationPolicyLines,
-  type AccountBookingViewModel,
-} from '~/features/account/lib/booking-history';
+  type BookingDetailViewModel,
+} from '~/features/booking/lib/booking-detail-model';
 import { cancellationLineTexts } from '~/lib/cancellation-policy';
-
-/**
- * The account centre's surface.
- *
- * Radius, border and shadow all come from the tenant's `--sf-surface-*` tokens,
- * the same trio `ListingCard`, `SearchResultCard` and `SectionCard` read — so a
- * tenant that configures a rounded, bordered look gets it here too. It used to
- * hardcode `rounded-sm` and omit the border entirely, which is why the booking
- * pages rendered as square, borderless slabs no matter what the tenant set.
- *
- * `cn` (not template concatenation) so a caller's override actually replaces
- * the token class instead of both shipping and CSS order picking the winner.
- */
-export const ACCOUNT_SURFACE =
-  'rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] bg-background shadow-(--sf-surface-shadow)';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 export function AccountPanel({
   children,
@@ -30,7 +16,7 @@ export function AccountPanel({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn(ACCOUNT_SURFACE, className)}>{children}</div>;
+  return <div className={cn(PANEL_SURFACE, className)}>{children}</div>;
 }
 
 export function PageHeading({ title, action }: { title: string; action?: React.ReactNode }) {
@@ -44,25 +30,12 @@ export function PageHeading({ title, action }: { title: string; action?: React.R
   );
 }
 
-export function ListingThumbnail({ label, className = '' }: { label: string; className?: string }) {
-  return (
-    <div
-      className={`relative flex overflow-hidden bg-[linear-gradient(135deg,var(--muted),var(--background)_48%,color-mix(in_oklab,var(--primary)_14%,var(--muted)))] ${className}`}
-    >
-      <div className="absolute -right-6 -top-7 size-24 rounded-full border border-primary/15 bg-primary/5" />
-      <div className="absolute -bottom-8 -left-5 size-24 rounded-full bg-foreground/5" />
-      <Camera aria-hidden="true" className="m-auto size-7 text-primary/55" />
-      <span className="sr-only">{label}</span>
-    </div>
-  );
-}
-
 export function CancellationPolicyList({
   booking,
   locale,
 }: {
   booking: Pick<
-    AccountBookingViewModel,
+    BookingDetailViewModel,
     'startUtc' | 'depositAmount' | 'cancellationTiers' | 'resourceTimezone'
   >;
   locale: Locale;
@@ -109,7 +82,7 @@ export function AccountTypeTabs({
       role="tablist"
       aria-label={label}
       className={cn(
-        ACCOUNT_SURFACE,
+        PANEL_SURFACE,
         'flex min-h-13 w-full overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden',
       )}
     >

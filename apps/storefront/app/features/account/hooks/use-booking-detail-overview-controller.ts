@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type {
-  AccountBookingViewModel,
+  BookingDetailViewModel,
   BookingDetailState,
-} from '~/features/account/lib/booking-history';
+} from '~/features/booking/lib/booking-detail-model';
 
 type BookingModeLabelKey = 'hourly' | 'daily' | 'inventory' | 'other';
 
@@ -11,7 +11,7 @@ export function useBookingDetailOverviewController({
   state,
   defaultCancelOpen,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   state: BookingDetailState;
   defaultCancelOpen: boolean;
 }) {

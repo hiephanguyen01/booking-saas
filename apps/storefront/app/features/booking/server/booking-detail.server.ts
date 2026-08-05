@@ -20,6 +20,7 @@ import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form
 import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
 import { rethrowCriticalDataError } from '~/lib/server/optional-data.server';
+import { toBookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,
@@ -53,10 +54,30 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
 
   if (!status) throw new Response('Booking not found', { status: 404 });
 
+  /**
+   * The full booking, on the same access the payment status already used — the
+   * endpoint is `@Public()` but resolves through `resolveBookingAccess`, so a
+   * grant, an OTP or the customer's own session is still required.
+   *
+   * Optional on purpose: the payment status is what this page exists to report,
+   * so a detail lookup that fails should degrade to the summary rather than take
+   * the whole screen down with it.
+   */
+  let booking = null;
+  try {
+    booking = await fetchBookingByCode(request, code, {
+      accessGrant: flow?.accessGrant,
+      otp: flow?.legacyOtp,
+    });
+  } catch (error) {
+    rethrowCriticalDataError(error);
+  }
+
   const payload = {
     code,
     loadedAt: Date.now(),
     status,
+    booking: booking ? toBookingDetailViewModel(booking, locale) : null,
     mockEnabled: mockPaymentsEnabled(),
     canRetry: Boolean(flow && status.bookingStatus === 'pending_payment'),
     listingSlug: flow?.record?.listingSlug ?? null,

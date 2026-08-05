@@ -5,8 +5,8 @@ import { Link } from 'react-router';
 import { AccountResultsSkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 import {
-  ACCOUNT_SURFACE,
   AccountPanel,
   PageHeading,
 } from '~/features/account/components/shared/account-primitives';
@@ -104,7 +104,7 @@ function BookingTabs({
   return (
     <nav
       aria-label={t('bookings.filters.label')}
-      className={cn(ACCOUNT_SURFACE, 'overflow-x-auto')}
+      className={cn(PANEL_SURFACE, 'overflow-x-auto')}
     >
       <div className="flex min-w-max">
         {BOOKING_HISTORY_FILTERS.map((filter) => {

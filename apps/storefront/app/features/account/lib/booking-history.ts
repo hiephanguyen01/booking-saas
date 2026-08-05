@@ -1,111 +1,19 @@
 import {
-  quoteLineItemSchema,
-  selectedPackageSchema,
-  type AdditionalCharge,
-  type BookingResponse,
-  type BookingStatus,
-  type CancellationTier,
-  type CustomerReviewItem,
-  type QuoteLineItem,
-} from '@booking/contracts';
-import type { Locale } from '@booking/i18n';
-import { localeTranslator } from '~/lib/translator';
-import {
-  cancellationCutoffParts,
-  cancellationPolicyLines as sharedCancellationPolicyLines,
-  type CancellationPolicyLine,
-} from '~/lib/cancellation-policy';
-import { subtractMoney } from '~/lib/money';
-import { bookingDateInTz, bookingTimeInTz, dateOnlyInTz, nightsBetween } from '~/lib/time';
-import { specCards, type SpecCard } from '~/lib/listing-attributes';
+  BOOKING_DETAIL_VARIANTS,
+  type BookingDetailViewModel,
+} from '~/features/booking/lib/booking-detail-model';
 
-export { cancellationCutoffParts, type CancellationPolicyLine };
-
-export const BOOKING_HISTORY_FILTERS = [
-  'all',
-  'payment',
-  'upcoming',
-  'completed',
-  'cancelled',
-  'no-show',
-] as const;
+/**
+ * Filtering one's own past bookings is an account concept, so it stays here —
+ * unlike the booking detail itself, which `features/booking` owns because the
+ * guest lookup renders the same thing.
+ *
+ * The filters are the detail variants plus "all", derived rather than restated,
+ * so a new variant cannot silently go missing from the tab strip.
+ */
+export const BOOKING_HISTORY_FILTERS = ['all', ...BOOKING_DETAIL_VARIANTS] as const;
 
 export type BookingHistoryFilter = (typeof BOOKING_HISTORY_FILTERS)[number];
-export type BookingDetailVariant = Exclude<BookingHistoryFilter, 'all'>;
-export type BookingDetailState = 'need-payment' | 'coming-soon' | 'done' | 'absent' | 'cancelled';
-
-export interface AccountBookingViewModel {
-  id: string;
-  code: string;
-  status: BookingStatus;
-  variant: BookingDetailVariant;
-  partnerName: string;
-  listingSlug: string;
-  listingTitle: string;
-  listingDescription: string | null;
-  selectedPackageName: string | null;
-  imageUrl: string | null;
-  resourceName: string;
-  resourceTimezone: string;
-  startUtc: string;
-  endUtc: string;
-  dateLabel: string;
-  timeLabel: string;
-  durationLabel: string;
-  customer: BookingResponse['customer'];
-  customerNote: string | null;
-  bookingMode: string;
-  quantity: number;
-  guestCount: number;
-  totalAmount: string;
-  discountAmount: string;
-  finalAmount: string;
-  depositAmount: string;
-  paidAmount: string;
-  securityDeposit: string;
-  damageAmount: string;
-  additionalCharges: AdditionalCharge[];
-  promoCode: string | null;
-  pricingLineItems: QuoteLineItem[];
-  pickedUpAt: string | null;
-  returnedAt: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-  balanceAmount: string;
-  cancellationTiers: CancellationTier[];
-  refundAmount: string | null;
-  refundPercent: number | null;
-  cancelledAt: string | null;
-  cancellationReason: string | null;
-  attributes: SpecCard[];
-  review: CustomerReviewItem | null;
-}
-
-const STATUS_FILTERS: Record<BookingStatus, BookingDetailVariant> = {
-  draft: 'payment',
-  pending_approval: 'upcoming',
-  pending_payment: 'payment',
-  confirmed: 'upcoming',
-  cancelled: 'cancelled',
-  completed: 'completed',
-  no_show: 'no-show',
-  rejected: 'cancelled',
-  expired: 'cancelled',
-  refunded: 'cancelled',
-};
-
-const DETAIL_STATES: Record<BookingStatus, BookingDetailState> = {
-  draft: 'need-payment',
-  pending_approval: 'coming-soon',
-  pending_payment: 'need-payment',
-  confirmed: 'coming-soon',
-  cancelled: 'cancelled',
-  completed: 'done',
-  no_show: 'absent',
-  rejected: 'cancelled',
-  expired: 'cancelled',
-  refunded: 'cancelled',
-};
 
 export function parseBookingHistoryFilter(value: string | null): BookingHistoryFilter {
   return BOOKING_HISTORY_FILTERS.includes(value as BookingHistoryFilter)
@@ -114,130 +22,8 @@ export function parseBookingHistoryFilter(value: string | null): BookingHistoryF
 }
 
 export function bookingMatchesFilter(
-  booking: Pick<AccountBookingViewModel, 'variant'>,
+  booking: Pick<BookingDetailViewModel, 'variant'>,
   filter: BookingHistoryFilter,
 ): boolean {
   return filter === 'all' || booking.variant === filter;
-}
-
-export function bookingVariant(status: BookingStatus): BookingDetailVariant {
-  return STATUS_FILTERS[status];
-}
-
-export function bookingDetailState(status: BookingStatus): BookingDetailState {
-  return DETAIL_STATES[status];
-}
-
-/**
- * Maps the booking's frozen cancellation tiers (sorted by `toAccountBookingViewModel`,
- * most-lenient first) to one display line per tier. The cutoff date/time and fee amount
- * are computed from the booking's own `startUtc`/`depositAmount` — nothing here is a
- * fixed bracket or invented copy, only real numbers from `cancellationPolicySnapshot`.
- */
-export function cancellationPolicyLines(
-  booking: Pick<AccountBookingViewModel, 'startUtc' | 'depositAmount' | 'cancellationTiers'>,
-): CancellationPolicyLine[] {
-  return sharedCancellationPolicyLines({
-    startUtc: booking.startUtc,
-    depositAmount: booking.depositAmount,
-    tiers: booking.cancellationTiers,
-  });
-}
-
-function durationLabel(booking: BookingResponse, locale: Locale): string {
-  const { t } = localeTranslator(locale);
-  if (booking.bookingMode === 'daily') {
-    const from = dateOnlyInTz(booking.startUtc, booking.resourceTimezone);
-    const to = dateOnlyInTz(booking.endUtc, booking.resourceTimezone);
-    const days = Math.max(1, nightsBetween(from, to));
-    return t(days === 1 ? 'account.bookings.durationDay' : 'account.bookings.durationDays', {
-      count: days,
-    });
-  }
-  if (booking.bookingMode === 'inventory') {
-    return t('account.bookings.durationItems', { count: booking.quantity });
-  }
-  const start = Date.parse(booking.startUtc);
-  const end = Date.parse(booking.endUtc);
-  const hours = Math.max(1, Math.round((end - start) / 3_600_000));
-  return t(hours === 1 ? 'account.bookings.durationHour' : 'account.bookings.durationHours', {
-    count: hours,
-  });
-}
-
-function timeLabel(startUtc: string, endUtc: string, locale: Locale, timezone: string): string {
-  return `${bookingTimeInTz(startUtc, timezone, locale)} - ${bookingTimeInTz(endUtc, timezone, locale)}`;
-}
-
-export function toAccountBookingViewModel(
-  booking: BookingResponse,
-  locale: Locale,
-  review: CustomerReviewItem | null = null,
-): AccountBookingViewModel {
-  return {
-    id: booking.id,
-    code: booking.code,
-    status: booking.status,
-    variant: bookingVariant(booking.status),
-    partnerName: booking.partnerName,
-    listingSlug: booking.listingSlug,
-    listingTitle: booking.listingTitle,
-    listingDescription: booking.listingDescription,
-    selectedPackageName: selectedPackageName(booking.pricingSnapshot),
-    imageUrl: booking.listingImageUrl,
-    resourceName: booking.resourceName,
-    resourceTimezone: booking.resourceTimezone,
-    startUtc: booking.startUtc,
-    endUtc: booking.endUtc,
-    dateLabel: bookingDateInTz(booking.startUtc, booking.resourceTimezone, locale),
-    timeLabel: timeLabel(booking.startUtc, booking.endUtc, locale, booking.resourceTimezone),
-    durationLabel: durationLabel(booking, locale),
-    customer: booking.customer,
-    customerNote: booking.customerNote,
-    bookingMode: booking.bookingMode,
-    quantity: booking.quantity,
-    guestCount: booking.guestCount,
-    totalAmount: booking.totalAmount,
-    discountAmount: booking.discountAmount,
-    finalAmount: booking.finalAmount,
-    depositAmount: booking.depositAmount,
-    paidAmount: booking.paidAmount,
-    securityDeposit: booking.securityDeposit,
-    damageAmount: booking.damageAmount,
-    additionalCharges: booking.additionalCharges,
-    promoCode: booking.promoCode,
-    pricingLineItems: pricingLineItems(booking.pricingSnapshot),
-    pickedUpAt: booking.pickedUpAt,
-    returnedAt: booking.returnedAt,
-    expiresAt: booking.expiresAt,
-    createdAt: booking.createdAt,
-    balanceAmount: subtractMoney(booking.finalAmount, booking.paidAmount),
-    cancellationTiers: [...(booking.cancellationPolicySnapshot ?? [])].sort(
-      (a, b) => b.hoursBefore - a.hoursBefore,
-    ),
-    refundAmount: booking.refundDueAmount,
-    refundPercent: booking.refundPercent,
-    cancelledAt: null,
-    cancellationReason: null,
-    attributes: specCards(booking.listingAttributes, booking.listingAttributeSchema),
-    review,
-  };
-}
-
-/**
- * `pricingSnapshot` is open jsonb frozen at booking time, so its rows are
- * narrowed by the contract that owns the shape rather than by hand-written
- * `typeof` checks that drift the moment a field is added. A row the schema
- * rejects is dropped; the rest still render.
- */
-function pricingLineItems(snapshot: BookingResponse['pricingSnapshot']): QuoteLineItem[] {
-  if (!snapshot || !Array.isArray(snapshot.lineItems)) return [];
-  return snapshot.lineItems.filter(
-    (item): item is QuoteLineItem => quoteLineItemSchema.safeParse(item).success,
-  );
-}
-
-function selectedPackageName(snapshot: BookingResponse['pricingSnapshot']): string | null {
-  const parsed = selectedPackageSchema.safeParse(snapshot?.selectedPackage);
-  return parsed.success ? parsed.data.name : null;
 }

@@ -4,10 +4,12 @@ import { z } from 'zod';
 import { apiGet } from '~/lib/server/api.server';
 import { fetchBookingByCode } from '~/features/booking/server/booking.server';
 import {
+  type BookingDetailViewModel,
+  toBookingDetailViewModel,
+} from '~/features/booking/lib/booking-detail-model';
+import {
   bookingMatchesFilter,
-  type AccountBookingViewModel,
   type BookingHistoryFilter,
-  toAccountBookingViewModel,
 } from '~/features/account/lib/booking-history';
 import { loadCustomerReviewsByBooking } from './customer-reviews.server';
 import { apiPaths } from '~/constants/api-paths';
@@ -17,7 +19,7 @@ export async function loadAccountBookings(
   accessToken: string,
   locale: Locale,
   filter: BookingHistoryFilter,
-): Promise<{ bookings: AccountBookingViewModel[]; error: string | null }> {
+): Promise<{ bookings: BookingDetailViewModel[]; error: string | null }> {
   const [result, reviews] = await Promise.all([
     apiGet<BookingResponse[]>(request, apiPaths.public.myBookings, accessToken, {
       schema: z.array(bookingResponseSchema),
@@ -27,7 +29,7 @@ export async function loadAccountBookings(
 
   if (result.ok) {
     const bookings = (result.data ?? []).map((item) =>
-      toAccountBookingViewModel(item, locale, reviews.get(item.id) ?? null),
+      toBookingDetailViewModel(item, locale, reviews.get(item.id) ?? null),
     );
     return {
       bookings: bookings.filter((item) => bookingMatchesFilter(item, filter)),
@@ -46,13 +48,13 @@ export async function loadAccountBooking(
   code: string,
   locale: Locale,
   accessToken: string,
-): Promise<AccountBookingViewModel | null> {
+): Promise<BookingDetailViewModel | null> {
   const normalizedCode = code.trim().toUpperCase();
   const [booking, reviews] = await Promise.all([
     fetchBookingByCode(request, normalizedCode),
     loadCustomerReviewsByBooking(request, accessToken),
   ]);
   return booking
-    ? toAccountBookingViewModel(booking, locale, reviews.get(booking.id) ?? null)
+    ? toBookingDetailViewModel(booking, locale, reviews.get(booking.id) ?? null)
     : null;
 }

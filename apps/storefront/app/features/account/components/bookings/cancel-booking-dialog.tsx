@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-grou
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { CircleAlert } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import type { AccountBookingViewModel } from '~/features/account/lib/booking-history';
+import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import { CancellationPolicyList } from '~/features/account/components/shared/account-primitives';
 import { useCancelBookingDialogController } from '~/features/account/hooks/use-cancel-booking-dialog-controller';
 
@@ -35,7 +35,7 @@ export function CancelBookingDialog({
   onOpenChange,
 }: {
   booking: Pick<
-    AccountBookingViewModel,
+    BookingDetailViewModel,
     'code' | 'startUtc' | 'depositAmount' | 'cancellationTiers' | 'resourceTimezone'
   >;
   locale: Locale;

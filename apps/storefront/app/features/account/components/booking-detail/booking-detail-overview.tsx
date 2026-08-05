@@ -6,15 +6,13 @@ import { CalendarDays, Clock3, PackageCheck, Users } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
+import { ListingThumbnail } from '~/components/listing-thumbnail';
 import type {
-  AccountBookingViewModel,
+  BookingDetailViewModel,
   BookingDetailState,
-} from '~/features/account/lib/booking-history';
-import {
-  ACCOUNT_SURFACE,
-  CancellationPolicyList,
-  ListingThumbnail,
-} from '~/features/account/components/shared/account-primitives';
+} from '~/features/booking/lib/booking-detail-model';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+import { CancellationPolicyList } from '~/features/account/components/shared/account-primitives';
 import { BookingCardHeader } from '~/features/account/components/shared/booking-card-header';
 import { BookingPaymentForm } from '~/features/account/components/bookings/booking-payment-form';
 import { CancelBookingDialog } from '~/features/account/components/bookings/cancel-booking-dialog';
@@ -27,7 +25,7 @@ export function BookingDetailOverview({
   state,
   defaultCancelOpen,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   locale: Locale;
   state: BookingDetailState;
   defaultCancelOpen: boolean;
@@ -35,7 +33,7 @@ export function BookingDetailOverview({
   const controller = useBookingDetailOverviewController({ booking, state, defaultCancelOpen });
 
   return (
-    <section className={cn(ACCOUNT_SURFACE, 'overflow-hidden')}>
+    <section className={cn(PANEL_SURFACE, 'overflow-hidden')}>
       <BookingCardHeader
         partnerName={booking.partnerName}
         listingSlug={booking.listingSlug}
@@ -71,7 +69,7 @@ function ListingSummary({
   isInventory,
   participantCount,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   mode: 'hourly' | 'daily' | 'inventory' | 'other';
   isInventory: boolean;
   participantCount: string;
@@ -173,7 +171,7 @@ function PolicyActions({
   setCancelOpen,
   showActions,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   locale: Locale;
   state: BookingDetailState;
   canPay: boolean;
