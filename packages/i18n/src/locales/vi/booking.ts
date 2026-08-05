@@ -55,6 +55,7 @@ export const viBooking = {
     pageTitle: 'Chi tiết đặt chỗ',
     pageDescription: 'Theo dõi trạng thái đặt chỗ và thanh toán của bạn.',
     summaryTitle: 'Tóm tắt đặt chỗ',
+    bookedTitle: 'Dịch vụ đã đặt',
     title: 'Thanh toán',
     checking: 'Đang kiểm tra trạng thái thanh toán…',
     mockPay: 'Thanh toán thử (mock)',

@@ -10,12 +10,12 @@ import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { subtractMoney } from '~/lib/money';
 import {
   bookingDetailState,
-  type AccountBookingViewModel,
-} from '~/features/account/lib/booking-history';
-import { ACCOUNT_SURFACE } from '~/features/account/components/shared/account-primitives';
+  type BookingDetailViewModel,
+} from '~/features/booking/lib/booking-detail-model';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 import { DEFAULT_TZ } from '~/lib/time';
 
-export function BookingContactSection({ booking }: { booking: AccountBookingViewModel }) {
+export function BookingContactSection({ booking }: { booking: BookingDetailViewModel }) {
   const { t } = useTranslation(NsI18n.Account);
   return (
     <DetailSection title={t('bookings.contact.title')}>
@@ -50,7 +50,7 @@ export function BookingFinancialSection({
   locale,
   settlement,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   locale: Locale;
   settlement: CustomerBookingSettlementResponse | null;
 }) {
@@ -79,7 +79,7 @@ export function BookingFinancialSection({
   );
 }
 
-export function PaymentTaxNote({ booking }: { booking: AccountBookingViewModel }) {
+export function PaymentTaxNote({ booking }: { booking: BookingDetailViewModel }) {
   const { t } = useTranslation(NsI18n.Account);
   const state = bookingDetailState(booking.status);
   if (state === 'absent') return null;
@@ -97,7 +97,7 @@ export function BookingReviewSection({
   booking,
   onReview,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   onReview: () => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
@@ -155,7 +155,7 @@ export function BookingReviewSection({
   );
 }
 
-function PaymentSummary({ booking, locale }: { booking: AccountBookingViewModel; locale: Locale }) {
+function PaymentSummary({ booking, locale }: { booking: BookingDetailViewModel; locale: Locale }) {
   const { t } = useTranslation(NsI18n.Account);
   const depositLabel =
     booking.status === 'completed'
@@ -240,7 +240,7 @@ function CancellationSummary({
   locale,
   settlement,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   locale: Locale;
   settlement: CustomerBookingSettlementResponse | null;
 }) {
@@ -276,7 +276,7 @@ function CancellationSummary({
   );
 }
 
-function NoShowSummary({ booking, locale }: { booking: AccountBookingViewModel; locale: Locale }) {
+function NoShowSummary({ booking, locale }: { booking: BookingDetailViewModel; locale: Locale }) {
   const { t } = useTranslation(NsI18n.Account);
   return (
     <DetailSection title={t('bookings.noShow.title')}>
@@ -326,7 +326,7 @@ function PostServiceRefundSummary({
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className={cn(ACCOUNT_SURFACE, 'px-5 py-5 sm:px-6')}>
+    <section className={cn(PANEL_SURFACE, 'px-5 py-5 sm:px-6')}>
       <h2 className="text-base font-semibold text-foreground">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>

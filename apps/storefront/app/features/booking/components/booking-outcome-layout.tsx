@@ -7,6 +7,13 @@ import { SectionCard } from '~/components/section-card';
 import { BookingStatusBadge } from '~/features/account/components/shared/booking-status-badge';
 import { storefrontPaths } from '~/constants/paths';
 import { formatVnd } from '~/lib/ui';
+import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
+import { BookingListingSummary } from './booking-listing-summary';
+import {
+  BookingContactSection,
+  BookingFinancialSection,
+  PaymentTaxNote,
+} from './booking-detail-sections';
 
 /**
  * The shell every outcome of the payment flow renders inside — awaiting, failed
@@ -19,8 +26,10 @@ import { formatVnd } from '~/lib/ui';
  * this the three outcomes each had their own width, heading scale and panel
  * treatment, and none of them matched the page they came from.
  *
- * Panels are `SectionCard`, so the tenant's radius, border, shadow and padding
- * reach here like every other storefront surface.
+ * Every panel here draws from the tenant's `--sf-surface-*` tokens — the ones
+ * this layout owns through `SectionCard`, and the booking detail sections
+ * through `PANEL_SURFACE` — so radius, border and shadow reach this page like
+ * every other storefront surface.
  */
 export function BookingOutcomeLayout({
   locale,
@@ -32,6 +41,7 @@ export function BookingOutcomeLayout({
   code,
   bookingStatus,
   paidAmount,
+  booking,
 }: {
   locale: 'en' | 'vi';
   title: string;
@@ -44,6 +54,11 @@ export function BookingOutcomeLayout({
   code: string;
   bookingStatus: BookingStatus | null;
   paidAmount?: string | null;
+  /**
+   * The booked service and its money, when the access grant let us load it.
+   * Null degrades to the code/status summary alone rather than failing the page.
+   */
+  booking?: BookingDetailViewModel | null;
 }) {
   const { t } = useTranslation(NsI18n.Booking);
 
@@ -60,62 +75,97 @@ export function BookingOutcomeLayout({
           {t('lookup.title')}
         </Link>
 
-        <div className="mt-2 grid items-start gap-4 lg:grid-cols-2 *:min-w-0">
-          <SectionCard aria-labelledby="booking-outcome-heading">
-            <div className="flex items-start gap-4">
-              {icon}
-              <div className="min-w-0">
+        {/* Checkout's two columns, in checkout's order: what was booked on the
+            left, what to do about it on the right. The left column only exists
+            when the detail loaded — otherwise the outcome centres in one column
+            rather than sitting beside an empty half. */}
+        <div
+          className={`mt-2 grid items-start gap-4 *:min-w-0 ${booking ? 'lg:grid-cols-2' : 'mx-auto max-w-2xl'}`}
+        >
+          {booking ? (
+            <div className="flex flex-col gap-4">
+              <SectionCard aria-labelledby="booking-what-heading">
                 <h2
-                  id="booking-outcome-heading"
+                  id="booking-what-heading"
                   className="text-base leading-6 font-semibold text-foreground"
                 >
-                  {title}
+                  {t('payment.bookedTitle')}
                 </h2>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
-              </div>
+                <BookingListingSummary booking={booking} className="mt-4" />
+              </SectionCard>
+
+              {/* The same blocks, in the same order, as the signed-in detail
+                  page. They frame themselves — each is already a panel — so they
+                  are not wrapped again here. The review section is deliberately
+                  absent: leaving a review needs an account, and a guest arrived
+                  with an OTP. */}
+              <BookingContactSection booking={booking} />
+              <BookingFinancialSection booking={booking} locale={locale} settlement={null} />
+              <PaymentTaxNote booking={booking} />
             </div>
-            {children}
-            <div className="mt-6">{actions}</div>
-          </SectionCard>
+          ) : null}
 
-          <SectionCard aria-labelledby="booking-summary-heading">
-            <h2
-              id="booking-summary-heading"
-              className="text-base leading-6 font-semibold text-foreground"
-            >
-              {t('payment.summaryTitle')}
-            </h2>
+          {/* Stacked, the outcome comes first: it is the one thing this page
+              exists to report, and below `lg` the booking detail is a long
+              scroll to put in front of it. Side by side both are visible, so
+              the columns return to reading order. */}
+          <div className="flex flex-col gap-4 max-lg:order-first">
+            <SectionCard aria-labelledby="booking-outcome-heading">
+              <div className="flex items-start gap-4">
+                {icon}
+                <div className="min-w-0">
+                  <h2
+                    id="booking-outcome-heading"
+                    className="text-base leading-6 font-semibold text-foreground"
+                  >
+                    {title}
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+                </div>
+              </div>
+              {children}
+              <div className="mt-6">{actions}</div>
+            </SectionCard>
 
-            <dl className="mt-4 flex flex-col gap-3">
-              <SummaryRow label={t('code')}>
-                <span className="font-mono font-semibold break-all text-foreground">{code}</span>
-              </SummaryRow>
-              {bookingStatus ? (
-                <SummaryRow label={t('status')}>
-                  <BookingStatusBadge status={bookingStatus} />
+            <SectionCard aria-labelledby="booking-summary-heading">
+              <h2
+                id="booking-summary-heading"
+                className="text-base leading-6 font-semibold text-foreground"
+              >
+                {t('payment.summaryTitle')}
+              </h2>
+
+              <dl className="mt-4 flex flex-col gap-3">
+                <SummaryRow label={t('code')}>
+                  <span className="font-mono font-semibold break-all text-foreground">{code}</span>
                 </SummaryRow>
-              ) : null}
-            </dl>
+                {bookingStatus ? (
+                  <SummaryRow label={t('status')}>
+                    <BookingStatusBadge status={bookingStatus} />
+                  </SummaryRow>
+                ) : null}
+              </dl>
 
-            {/* The tinted total block checkout uses for its price summary — the
+              {/* The tinted total block checkout uses for its price summary — the
                 amount is what a customer scans for, so it gets the same
                 treatment on both screens. */}
-            {paidAmount && paidAmount !== '0' ? (
-              <div className="mt-3 flex items-center justify-between gap-4 rounded-lg bg-muted/40 px-5 py-4">
-                <span className="text-sm leading-5 font-medium text-foreground">
-                  {t('payment.paid')}
-                </span>
-                <strong className="text-base leading-6 font-semibold text-primary tabular-nums">
-                  {formatVnd(paidAmount)}
-                </strong>
-              </div>
-            ) : null}
+              {paidAmount && paidAmount !== '0' ? (
+                <div className="mt-3 flex items-center justify-between gap-4 rounded-lg bg-muted/40 px-5 py-4">
+                  <span className="text-sm leading-5 font-medium text-foreground">
+                    {t('payment.paid')}
+                  </span>
+                  <strong className="text-base leading-6 font-semibold text-primary tabular-nums">
+                    {formatVnd(paidAmount)}
+                  </strong>
+                </div>
+              ) : null}
 
-            <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-              <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              {t('payment.webhookNote')}
-            </p>
-          </SectionCard>
+              <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+                <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                {t('payment.webhookNote')}
+              </p>
+            </SectionCard>
+          </div>
         </div>
       </main>
     </div>

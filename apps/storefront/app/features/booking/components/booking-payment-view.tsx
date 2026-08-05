@@ -5,6 +5,7 @@ import { CircleX, Clock3, Home, RefreshCw } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
+import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import { BookingOutcomeLayout } from './booking-outcome-layout';
 import { BookingSuccessView } from './booking-success-view';
 
@@ -23,6 +24,7 @@ interface BookingPaymentViewProps {
   submitting: boolean;
   signedIn: boolean;
   actionError: string | null;
+  booking: BookingDetailViewModel | null;
 }
 
 export function BookingPaymentView({
@@ -40,6 +42,7 @@ export function BookingPaymentView({
   submitting,
   signedIn,
   actionError,
+  booking,
 }: BookingPaymentViewProps) {
   const { t } = useTranslation([NsI18n.Booking, NsI18n.Error]);
 
@@ -52,6 +55,7 @@ export function BookingPaymentView({
         signedIn={signedIn}
         bookingStatus={bookingStatus}
         paidAmount={status.paidAmount}
+        booking={booking}
       />
     );
   }
@@ -68,6 +72,7 @@ export function BookingPaymentView({
       code={code}
       bookingStatus={bookingStatus}
       paidAmount={status.paidAmount}
+      booking={booking}
       icon={<StatusIcon pending={isPending} />}
       actions={
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">

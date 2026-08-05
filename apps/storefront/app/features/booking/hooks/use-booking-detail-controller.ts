@@ -38,6 +38,9 @@ export function useBookingDetailController({
   const canRetry = polled?.canRetry ?? loaderData.canRetry;
   const listingSlug = polled?.listingSlug ?? loaderData.listingSlug;
   const maskedEmail = polled?.maskedEmail ?? loaderData.maskedEmail;
+  // Polling only refreshes payment state; the booking itself does not change
+  // under the customer, so the loader's copy stays authoritative.
+  const booking = loaderData.booking;
   const paymentState = deriveBookingPaymentState(status, searchParams);
 
   useAdaptivePaymentPolling({
@@ -69,6 +72,7 @@ export function useBookingDetailController({
       canRetry,
       listingSlug,
       maskedEmail,
+      booking,
       mockEnabled,
       submitting: navigation.state === 'submitting',
       signedIn: Boolean(currentUser),

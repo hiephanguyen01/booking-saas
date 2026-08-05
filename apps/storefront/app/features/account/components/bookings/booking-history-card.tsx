@@ -6,11 +6,11 @@ import { CalendarDays, Clock3 } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import type { AccountBookingViewModel } from '~/features/account/lib/booking-history';
+import { ListingThumbnail } from '~/components/listing-thumbnail';
+import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import {
   AccountPanel,
   CancellationPolicyList,
-  ListingThumbnail,
 } from '~/features/account/components/shared/account-primitives';
 import { BookingCardHeader } from '~/features/account/components/shared/booking-card-header';
 import { BookingFinancialSummary } from './booking-financial-summary';
@@ -22,10 +22,10 @@ export function BookingHistoryCard({
   onReview,
   onCancel,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   locale: Locale;
   onReview: (review: Extract<CustomerReviewItem, { status: 'pending' }>) => void;
-  onCancel: (booking: AccountBookingViewModel) => void;
+  onCancel: (booking: BookingDetailViewModel) => void;
 }) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Booking]);
   const detailPath = storefrontPaths.account.booking(locale, booking.code);
@@ -113,11 +113,11 @@ function CardFooter({
   onReview,
   onCancel,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   detailPath: string;
   locale: Locale;
   onReview: (review: Extract<CustomerReviewItem, { status: 'pending' }>) => void;
-  onCancel: (booking: AccountBookingViewModel) => void;
+  onCancel: (booking: BookingDetailViewModel) => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
   const review = booking.review;
@@ -154,7 +154,7 @@ function CardFooter({
   );
 }
 
-function PolicyNotes({ booking, locale }: { booking: AccountBookingViewModel; locale: Locale }) {
+function PolicyNotes({ booking, locale }: { booking: BookingDetailViewModel; locale: Locale }) {
   const { t } = useTranslation(NsI18n.Account);
   if (booking.variant === 'cancelled') {
     return (

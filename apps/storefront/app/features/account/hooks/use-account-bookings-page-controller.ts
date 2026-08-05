@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useLocation, useNavigation } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
 import { isReadNavigationMethod, useMinimumPending } from '~/hooks/use-minimum-pending';
+import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import {
   parseBookingHistoryFilter,
-  type AccountBookingViewModel,
   type BookingHistoryFilter,
 } from '~/features/account/lib/booking-history';
 
@@ -20,7 +20,7 @@ export function useAccountBookingsPageController({
   filter: BookingHistoryFilter;
 }) {
   const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
-  const [activeCancellation, setActiveCancellation] = useState<AccountBookingViewModel | null>(
+  const [activeCancellation, setActiveCancellation] = useState<BookingDetailViewModel | null>(
     null,
   );
   const location = useLocation();

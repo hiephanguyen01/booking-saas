@@ -3,7 +3,7 @@ import type { Locale } from '@booking/i18n';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import type { AccountBookingViewModel } from '~/features/account/lib/booking-history';
+import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import { AccountPanel } from '~/features/account/components/shared/account-primitives';
 import { BookingDetailOverview } from './booking-detail-overview';
 import { ReviewDialog } from '~/features/account/components/reviews/review-dialog';
@@ -12,7 +12,7 @@ import {
   BookingFinancialSection,
   BookingReviewSection,
   PaymentTaxNote,
-} from './booking-detail-sections';
+} from '~/features/booking/components/booking-detail-sections';
 import { useBookingDetailPanelController } from '~/features/account/hooks/use-booking-detail-panel-controller';
 
 export function BookingDetailPanel({
@@ -22,7 +22,7 @@ export function BookingDetailPanel({
   actionError,
   settlement,
 }: {
-  booking: AccountBookingViewModel;
+  booking: BookingDetailViewModel;
   locale: Locale;
   defaultCancelOpen: boolean;
   actionError: string | null;

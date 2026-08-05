@@ -58,6 +58,7 @@ export const enBooking = {
     pageTitle: 'Booking details',
     pageDescription: 'Review the current status of your booking and payment.',
     summaryTitle: 'Booking summary',
+    bookedTitle: 'What you booked',
     title: 'Payment',
     checking: 'Checking payment status…',
     mockPay: 'Pay (mock)',
