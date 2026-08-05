@@ -38,6 +38,8 @@ export interface ListingGroupRecord {
   wardCode: string | null;
   wardName: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   workingArea: string | null;
   amenities: ListingGroupAmenity[];
   photos: string[];

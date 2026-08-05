@@ -38,11 +38,9 @@ export const apiPaths = {
     tenantDomain: (tenantId: string, domainId: string) =>
       `/admin/tenants/${segment(tenantId)}/domains/${segment(domainId)}`,
     /** PATCH the tenant's current subscription. */
-    tenantSubscription: (tenantId: string) =>
-      `/admin/tenants/${segment(tenantId)}/subscription`,
+    tenantSubscription: (tenantId: string) => `/admin/tenants/${segment(tenantId)}/subscription`,
     /** POST a new subscription for the tenant. */
-    tenantSubscriptions: (tenantId: string) =>
-      `/admin/tenants/${segment(tenantId)}/subscriptions`,
+    tenantSubscriptions: (tenantId: string) => `/admin/tenants/${segment(tenantId)}/subscriptions`,
   },
 
   platform: {
@@ -59,8 +57,7 @@ export const apiPaths = {
       tenantPath(`/affiliates/${segment(affiliateId)}/status`),
 
     bookings: tenantPath('/bookings'),
-    bookingHistory: (bookingId: string) =>
-      tenantPath(`/bookings/${segment(bookingId)}/history`),
+    bookingHistory: (bookingId: string) => tenantPath(`/bookings/${segment(bookingId)}/history`),
     bookingPartnerStats: tenantPath('/bookings/partner-stats'),
 
     cancellationPolicies: tenantPath('/cancellation-policies'),
@@ -79,8 +76,7 @@ export const apiPaths = {
     favoritesSummary: tenantPath('/favorites/summary'),
 
     commissionRules: tenantPath('/finance/commission-rules'),
-    commissionRule: (ruleId: string) =>
-      tenantPath(`/finance/commission-rules/${segment(ruleId)}`),
+    commissionRule: (ruleId: string) => tenantPath(`/finance/commission-rules/${segment(ruleId)}`),
     ledger: tenantPath('/finance/ledger'),
     payoutPolicy: tenantPath('/finance/payout-policy'),
     payouts: tenantPath('/finance/payouts'),
@@ -146,10 +142,10 @@ export const apiPaths = {
   },
 
   partner: {
+    geocode: partnerPath('/administrative-divisions/geocode'),
     bookings: partnerPath('/bookings'),
     booking: (bookingId: string) => partnerPath(`/bookings/${segment(bookingId)}`),
-    bookingHistory: (bookingId: string) =>
-      partnerPath(`/bookings/${segment(bookingId)}/history`),
+    bookingHistory: (bookingId: string) => partnerPath(`/bookings/${segment(bookingId)}/history`),
     /** `approve` · `complete` · `no-show` · `note` · `pick-up` · `reject`. */
     bookingAction: (bookingId: string, action: string) =>
       partnerPath(`/bookings/${segment(bookingId)}/${segment(action)}`),
@@ -182,8 +178,7 @@ export const apiPaths = {
     listing: (listingId: string) => partnerPath(`/listings/${segment(listingId)}`),
     listingPricingRules: (listingId: string) =>
       partnerPath(`/listings/${segment(listingId)}/pricing-rules`),
-    listingRevision: (listingId: string) =>
-      partnerPath(`/listings/${segment(listingId)}/revision`),
+    listingRevision: (listingId: string) => partnerPath(`/listings/${segment(listingId)}/revision`),
     listingDepositRequirement: partnerPath('/listings/deposit-requirement'),
     listingFeed: partnerPath('/listings/feed'),
 

@@ -9,6 +9,7 @@ export default [
   route('administrative-divisions/wards', 'routes/administrative-wards.tsx'),
   route(':locale', 'routes/locale-layout.tsx', [
     index('routes/home.tsx'),
+    route('nearby', 'routes/nearby.tsx'),
     route('t/:typeSlug', 'routes/catalog.tsx'),
     route('l/:listingSlug', 'routes/listing.tsx'),
     route('l/:listingSlug/booking-data', 'routes/listing-booking-data.tsx'),

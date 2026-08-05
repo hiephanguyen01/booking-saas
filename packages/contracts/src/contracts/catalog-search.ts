@@ -6,6 +6,7 @@ import {
   timeOfDaySchema,
 } from './common';
 import { publicListingTypeResponseSchema } from './listing-type';
+import { geographicPointInputSchema } from './administrative-division';
 
 export const publicCatalogSortSchema = z.enum(['relevance', 'bookings-desc', 'price-asc']);
 export type PublicCatalogSort = z.infer<typeof publicCatalogSortSchema>;
@@ -240,6 +241,8 @@ export const publicCatalogSearchItemSchema = z.object({
   reviewCount: z.number().int().nonnegative(),
   matchingRoomCount: z.number().int().positive(),
   rooms: z.array(publicCatalogSearchRoomSchema).max(6),
+  /** Only emitted by the privacy-preserving nearby endpoint. */
+  distanceMeters: z.number().int().nonnegative().optional(),
 });
 export type PublicCatalogSearchItem = z.infer<typeof publicCatalogSearchItemSchema>;
 
@@ -279,3 +282,33 @@ export const publicCatalogSearchResponseSchema = z.object({
   }),
 });
 export type PublicCatalogSearchResponse = z.infer<typeof publicCatalogSearchResponseSchema>;
+
+/** Privacy-sensitive device coordinates are accepted in a POST body, never a URL query. */
+export const nearbyPublicListingsInputSchema = geographicPointInputSchema.extend({
+  type: z.string().trim().min(1).max(100),
+});
+export type NearbyPublicListingsInput = z.infer<typeof nearbyPublicListingsInputSchema>;
+
+export const nearbyPublicListingSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['listing', 'group']),
+  title: z.string(),
+  slug: z.string(),
+  listingTypeSlug: z.string(),
+  photos: z.array(z.unknown()),
+  priceFrom: moneyStringSchema.nullable(),
+  ratingAvg: z.number().min(1).max(5).nullable(),
+  reviewCount: z.number().int().nonnegative(),
+  address: z.string().nullable(),
+  provinceCode: z.string().nullable(),
+  provinceName: z.string().nullable(),
+  wardCode: z.string().nullable(),
+  wardName: z.string().nullable(),
+  distanceMeters: z.number().int().nonnegative(),
+});
+export type NearbyPublicListing = z.infer<typeof nearbyPublicListingSchema>;
+
+export const nearbyPublicListingsResponseSchema = z.object({
+  items: z.array(nearbyPublicListingSchema).max(10),
+});
+export type NearbyPublicListingsResponse = z.infer<typeof nearbyPublicListingsResponseSchema>;

@@ -19,6 +19,8 @@ const LISTING_FIELD_SECTION: Record<string, RevisionDiffSection> = {
   provinceCode: 'location',
   wardCode: 'location',
   address: 'location',
+  latitude: 'location',
+  longitude: 'location',
 
   attributes: 'pricing',
   bookingModes: 'pricing',
@@ -43,6 +45,8 @@ const GROUP_FIELD_SECTION: Record<string, RevisionDiffSection> = {
   provinceCode: 'location',
   wardCode: 'location',
   address: 'location',
+  latitude: 'location',
+  longitude: 'location',
   workingArea: 'location',
 };
 

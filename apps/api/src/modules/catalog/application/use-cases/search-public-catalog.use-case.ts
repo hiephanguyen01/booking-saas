@@ -73,6 +73,7 @@ export class SearchPublicCatalogUseCase {
   async execute(
     host: string,
     query: PublicCatalogSearchQuery,
+    nearby?: { latitude: number; longitude: number; limit: number },
   ): Promise<PublicCatalogSearchResponse> {
     const tenant = await this.resolveTenant.execute(host);
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
@@ -94,6 +95,7 @@ export class SearchPublicCatalogUseCase {
             : undefined,
         exceptionTo:
           query.date || query.to ? new Date(`${query.date ?? query.to}T00:00:00.000Z`) : undefined,
+        nearby,
       });
       const facetQuery: PublicCatalogSearchQuery = {
         ...query,
@@ -155,7 +157,7 @@ export class SearchPublicCatalogUseCase {
           (!query.maxPrice || price <= BigInt(query.maxPrice))
         );
       });
-      const sorted = this.sort(priced, query.sort);
+      const sorted = this.sort(priced, query.sort, nearby);
       const total = sorted.length;
       const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
       const page = Math.min(query.page, totalPages);
@@ -589,12 +591,22 @@ export class SearchPublicCatalogUseCase {
           price: row.price.toString(),
           capacity: row.listing.capacity,
         })),
+        ...(l.distanceMeters === undefined ? {} : { distanceMeters: l.distanceMeters }),
       };
     });
   }
 
-  private sort(items: PublicCatalogSearchItem[], sort: PublicCatalogSearchQuery['sort']) {
+  private sort(
+    items: PublicCatalogSearchItem[],
+    sort: PublicCatalogSearchQuery['sort'],
+    nearby?: { latitude: number; longitude: number; limit: number },
+  ) {
     return [...items].sort((a, b) => {
+      if (nearby)
+        return (
+          (a.distanceMeters ?? Number.MAX_SAFE_INTEGER) -
+            (b.distanceMeters ?? Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title)
+        );
       if (sort === 'bookings-desc')
         return b.completedBookings - a.completedBookings || a.title.localeCompare(b.title);
       if (sort === 'price-asc') return compareBigInt(BigInt(a.priceFrom), BigInt(b.priceFrom));

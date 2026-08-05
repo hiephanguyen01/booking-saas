@@ -26,6 +26,10 @@ export interface PublicListingRecord {
   wardCode: string | null;
   wardName: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  /** Present only for a nearby query; shared by every child of one grouped card. */
+  distanceMeters?: number;
   publishedAt: Date | null;
   completedBookings: number;
   ratingAvg: number | null;
@@ -61,6 +65,8 @@ export interface PublicListingRecord {
     wardCode: string | null;
     wardName: string | null;
     address: string | null;
+    latitude: number | null;
+    longitude: number | null;
     ratingAvg: number | null;
     reviewCount: number;
   } | null;
@@ -85,6 +91,7 @@ export interface PublicListingFilter {
   attrFilters: Record<string, string>;
   exceptionFrom?: Date;
   exceptionTo?: Date;
+  nearby?: { latitude: number; longitude: number; limit: number };
 }
 
 /** Storefront reads. All methods run inside one tenant-scoped transaction. */

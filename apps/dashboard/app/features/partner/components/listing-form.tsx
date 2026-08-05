@@ -62,7 +62,13 @@ export function ListingForm({
   cancellationPolicies?: CancellationPolicyResponse[];
   minimumDepositPercent?: number | null;
   mode?: 'create-wizard' | 'edit-workspace';
-  inheritedAddress?: { provinceCode: string; wardCode: string; address: string };
+  inheritedAddress?: {
+    provinceCode: string;
+    wardCode: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+  };
 }) {
   const isEdit = Boolean(listing);
   const experience = mode ?? (isEdit ? 'edit-workspace' : 'create-wizard');
@@ -218,10 +224,16 @@ export function ListingForm({
                         });
                         form.setValue('wardCode', inheritedAddress.wardCode, { shouldDirty: true });
                         form.setValue('address', inheritedAddress.address, { shouldDirty: true });
+                        form.setValue('latitude', inheritedAddress.latitude, { shouldDirty: true });
+                        form.setValue('longitude', inheritedAddress.longitude, {
+                          shouldDirty: true,
+                        });
                       } else {
                         form.setValue('provinceCode', '', { shouldDirty: true });
                         form.setValue('wardCode', '', { shouldDirty: true });
                         form.setValue('address', '', { shouldDirty: true });
+                        form.setValue('latitude', Number.NaN, { shouldDirty: true });
+                        form.setValue('longitude', Number.NaN, { shouldDirty: true });
                       }
                     }}
                   />

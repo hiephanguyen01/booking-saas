@@ -85,6 +85,8 @@ export interface NewListing {
   wardCode: string | null;
   wardName: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   photos: string[];
   attributes: Record<string, unknown>;
   bookingModes: BookingMode[];
@@ -121,6 +123,8 @@ export interface ListingContentPatch {
   wardCode?: string;
   wardName?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   photos?: string[];
   attributes?: Record<string, unknown>;
   bookingModes?: BookingMode[];
@@ -163,6 +167,8 @@ export class Listing {
       wardCode: input.wardCode,
       wardName: input.wardName,
       address: input.address,
+      latitude: input.latitude,
+      longitude: input.longitude,
       photos: input.photos,
       attributes: input.attributes,
       bookingModes: input.bookingModes,
@@ -260,6 +266,8 @@ export class Listing {
       wardCode: patch.wardCode,
       wardName: patch.wardName,
       address: patch.address,
+      latitude: patch.latitude,
+      longitude: patch.longitude,
       photos: patch.photos,
       attributes: patch.attributes,
       bookingModes: patch.bookingModes,

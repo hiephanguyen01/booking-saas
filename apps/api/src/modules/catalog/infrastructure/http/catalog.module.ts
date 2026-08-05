@@ -15,6 +15,7 @@ import { UpdateListingTypeUseCase } from '../../application/use-cases/update-lis
 import { DeleteListingTypeUseCase } from '../../application/use-cases/delete-listing-type.use-case';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
 import { SearchPublicCatalogUseCase } from '../../application/use-cases/search-public-catalog.use-case';
+import { ListNearbyPublicListingsUseCase } from '../../application/use-cases/list-nearby-public-listings.use-case';
 import { TenantListingTypeController } from './tenant-listing-type.controller';
 import { PartnerListingTypeController } from './partner-listing-type.controller';
 import { PublicCatalogController } from './public-catalog.controller';
@@ -33,6 +34,7 @@ import { PublicCatalogController } from './public-catalog.controller';
     DeleteListingTypeUseCase,
     ListPublicListingTypesUseCase,
     SearchPublicCatalogUseCase,
+    ListNearbyPublicListingsUseCase,
   ],
   // Exported so Task 1.4 (listing creation) reads the type (allowedModes /
   // requiresIdentityVerification). Attribute validation is a pure domain function

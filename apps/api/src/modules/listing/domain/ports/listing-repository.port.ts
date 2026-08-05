@@ -31,6 +31,8 @@ export interface ListingRecord {
   wardCode: string | null;
   wardName: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   photos: string[];
   attributes: Record<string, unknown>;
   bookingModes: BookingMode[];

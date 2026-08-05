@@ -454,6 +454,7 @@ Example `attribute_schema`: "Model Booking" → height, measurements, style, por
 | listing_type_id           | Studio / Photographer / ...                                                                              |
 | title, slug, description  |                                                                                                          |
 | address, working_area     | studio address or working area                                                                           |
+| latitude, longitude       | exact WGS84 point used by the storefront's category-aware nearby recommendations; the partner picks a Nominatim/OpenStreetMap address result or captures the venue's current GPS position |
 | photos                    | the post's shared photo album (first photo used as the cover)                                            |
 | amenities                 | jsonb ordered rows `[{label, icon}]`; each icon is a tenant-chosen Lucide name from the shared allowlist |
 | status                    | `draft / pending_review / published / archived` — **moderated at the post level**                        |
@@ -482,6 +483,7 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 | group_id                                                      | parent post (`listing_groups`, nullable) — null = standalone listing needing no parent page                                                                                                                                                                                       |
 | attributes                                                    | jsonb — attribute values, **validated against the listing type's `attribute_schema`**                                                                                                                                                                                             |
 | title, slug, description, photos (jsonb)                      |                                                                                                                                                                                                                                                                                   |
+| latitude, longitude                                           | exact WGS84 point for standalone listings; grouped listings inherit the group's storefront location. The create/edit form supports explicit address geocoding and on-site GPS capture.                                                                                            |
 | booking_modes                                                 | **array of enabled modes**, e.g. `[hourly, daily]` — the partner toggles these freely (a studio/model listing can allow both hourly and daily booking); valid values are limited by the listing_type's `allowed_modes`                                                            |
 | stock_quantity                                                | number of units in stock (`inventory` mode only — e.g. 10 outfits, 3 cameras)                                                                                                                                                                                                     |
 | status                                                        | `draft / pending_review / published / archived` — if part of a group, moderation happens at the post level; a standalone listing is moderated directly as its own post                                                                                                            |
@@ -1370,7 +1372,7 @@ Items that have **already been considered** but deliberately deferred (not overl
 - **Waitlist** when a slot/date is fully booked — notify when it frees up.
 - **Recurring bookings** (e.g. renting a studio every Tuesday).
 - **Shared inventory pool** — multiple listings selling from one shared batch of equipment (section 9.4 currently limits stock to a single listing).
-- **Map/location-based search** — needed for the `rental` template; consider pulling forward into Phase 2 alongside that template.
+- **Full map/location-based search** — the Phase 1 storefront already shows the 10 nearest published offerings for the selected listing type using the customer's opt-in browser location; an interactive map, radius controls and rental-template map search remain future work.
 - **Multi-listing cart / combos** in a single checkout (studio + photographer + makeup in the same time slot — a real need in the studio industry; consider pulling forward into Phase 3) and **add-on services** (extra lighting, extra hours) attached to a primary listing.
 - **Impersonation** — a super admin "logging in as a tenant" for support purposes (with auditing).
 - **Automated dispute SLA/escalation** beyond the implemented claim → Partner response → Tenant

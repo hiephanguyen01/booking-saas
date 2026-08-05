@@ -64,6 +64,7 @@ export const dashboardPaths = {
   },
   partner: {
     home: partnerPath(),
+    geocode: partnerPath('/geocode'),
     calendar: partnerPath('/calendar'),
     bookings: partnerPath('/bookings'),
     booking: (bookingId: string) => partnerPath(`/bookings/${segment(bookingId)}`),

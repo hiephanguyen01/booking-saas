@@ -79,6 +79,8 @@ export class ApplyListingGroupUpdateUseCase {
         wardCode: location?.ward.code,
         wardName: location?.ward.name,
         address: input.address,
+        latitude: input.latitude,
+        longitude: input.longitude,
         workingArea: input.workingArea,
         amenities: input.amenities,
         photos: input.photos,

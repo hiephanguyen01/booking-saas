@@ -531,19 +531,19 @@ model User {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  sessions              Session[]
-  roleAssignments       RoleAssignment[]
-  bookings              Booking[]        @relation("CustomerBookings")
-  affiliates            Affiliate[]
-  partnerMemberships    PartnerMember[]
-  staffProfiles         Staff[]
-  reviewsWritten        Review[]         @relation("ReviewCustomer")
-  reviewRepliesAuthored ReviewReply[]    @relation("ReviewReplyAuthor")
-  favorites             Favorite[]       @relation("FavoriteCustomer")
-  contentReports        ContentReport[]  @relation("ContentReportReporter")
-  contentReportsHandled ContentReport[]  @relation("ContentReportHandler")
-  listingRevisions      ListingRevision[] @relation("ListingRevisionSubmitter")
-  listingRevisionsReviewed ListingRevision[] @relation("ListingRevisionReviewer")
+  sessions                 Session[]
+  roleAssignments          RoleAssignment[]
+  bookings                 Booking[]              @relation("CustomerBookings")
+  affiliates               Affiliate[]
+  partnerMemberships       PartnerMember[]
+  staffProfiles            Staff[]
+  reviewsWritten           Review[]               @relation("ReviewCustomer")
+  reviewRepliesAuthored    ReviewReply[]          @relation("ReviewReplyAuthor")
+  favorites                Favorite[]             @relation("FavoriteCustomer")
+  contentReports           ContentReport[]        @relation("ContentReportReporter")
+  contentReportsHandled    ContentReport[]        @relation("ContentReportHandler")
+  listingRevisions         ListingRevision[]      @relation("ListingRevisionSubmitter")
+  listingRevisionsReviewed ListingRevision[]      @relation("ListingRevisionReviewer")
   agreementAcceptances     AgreementAcceptance[]
   legalVersionsPublished   LegalDocumentVersion[]
 
@@ -707,8 +707,8 @@ model Tenant {
   resources                 Resource[]
   listings                  Listing[]
   categories                Category[]
-  cancellationPolicies      CancellationPolicy[]  @relation("TenantPolicies")
-  defaultCancellationPolicy CancellationPolicy?   @relation("TenantDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
+  cancellationPolicies      CancellationPolicy[]       @relation("TenantPolicies")
+  defaultCancellationPolicy CancellationPolicy?        @relation("TenantDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
   bookings                  Booking[]
   payments                  Payment[]
   gatewayConfigs            TenantGatewayConfig[]
@@ -751,14 +751,14 @@ model TenantDomain {
 
 /// Proof-of-acceptance for partner terms / commission schedules / promo funding (§7.2).
 model AgreementAcceptance {
-  id            String        @id @default(uuid(7)) @db.Uuid
-  tenantId      String        @map("tenant_id") @db.Uuid
-  userId        String?       @map("user_id") @db.Uuid
-  partnerId     String?       @map("partner_id") @db.Uuid
-  agreementType AgreementType @map("agreement_type")
-  version       String
-  acceptedAt    DateTime      @default(now()) @map("accepted_at") @db.Timestamptz(6)
-  ip            String?
+  id                String        @id @default(uuid(7)) @db.Uuid
+  tenantId          String        @map("tenant_id") @db.Uuid
+  userId            String?       @map("user_id") @db.Uuid
+  partnerId         String?       @map("partner_id") @db.Uuid
+  agreementType     AgreementType @map("agreement_type")
+  version           String
+  acceptedAt        DateTime      @default(now()) @map("accepted_at") @db.Timestamptz(6)
+  ip                String?
   /// The exact tenant-authored version accepted. Null for commission_schedule / promo_funding.
   documentVersionId String?       @map("document_version_id") @db.Uuid
   /// The language actually rendered on screen when the person clicked, fallback included.
@@ -814,12 +814,12 @@ model LegalDocumentVersion {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant          Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  document        LegalDocument              @relation("LegalDocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
-  publishedBy     User?                      @relation(fields: [publishedByUserId], references: [id], onDelete: SetNull)
-  translations    LegalDocumentTranslation[]
-  currentOf       LegalDocument[]            @relation("LegalDocumentCurrent")
-  acceptances     AgreementAcceptance[]
+  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document     LegalDocument              @relation("LegalDocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  publishedBy  User?                      @relation(fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  translations LegalDocumentTranslation[]
+  currentOf    LegalDocument[]            @relation("LegalDocumentCurrent")
+  acceptances  AgreementAcceptance[]
 
   @@unique([documentId, versionNo])
   @@index([tenantId])
@@ -1006,6 +1006,8 @@ model ListingGroup {
   wardCode      String?          @map("ward_code") @db.Char(5)
   wardName      String?          @map("ward_name")
   address       String?
+  latitude      Float?           @db.DoublePrecision
+  longitude     Float?           @db.DoublePrecision
   workingArea   String?          @map("working_area")
   photos        Json             @default("[]")
   /// post-level amenities (reception, parking…) — distinct from listing attributes.
@@ -1071,6 +1073,8 @@ model Listing {
   wardCode                String?          @map("ward_code") @db.Char(5)
   wardName                String?          @map("ward_name")
   address                 String?
+  latitude                Float?           @db.DoublePrecision
+  longitude               Float?           @db.DoublePrecision
   photos                  Json             @default("[]")
   /// attribute values, validated against the listing type's attribute_schema.
   attributes              Json             @default("{}")

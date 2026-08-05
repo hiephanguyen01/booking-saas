@@ -32,11 +32,7 @@ export class CreateListingGroupUseCase {
   async execute(tenantId: string, input: CreateListingGroupInput): Promise<ListingGroupRecord> {
     const slug =
       input.slug ??
-      buildPublicSlug(
-        input.title,
-        randomUUID().replaceAll('-', '').slice(0, 6),
-        'tin-dang',
-      );
+      buildPublicSlug(input.title, randomUUID().replaceAll('-', '').slice(0, 6), 'tin-dang');
     const location = await this.resolveAdministrativeAddress.execute(
       input.provinceCode,
       input.wardCode,
@@ -62,6 +58,8 @@ export class CreateListingGroupUseCase {
           wardCode: location.ward.code,
           wardName: location.ward.name,
           address: input.address,
+          latitude: input.latitude,
+          longitude: input.longitude,
           workingArea: input.workingArea ?? null,
           amenities: input.amenities,
           photos: input.photos,

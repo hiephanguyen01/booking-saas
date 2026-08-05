@@ -12,6 +12,18 @@ import type {
 @Injectable()
 export class PrismaListingReadRepository implements IListingReadRepository {
   async findPublished(tx: PrismaTx, filter: PublicListingFilter): Promise<PublicListingRecord[]> {
+    const nearbyCards = filter.nearby
+      ? await this.findNearestCardIds(tx, filter.typeSlug!, filter.nearby)
+      : [];
+    if (filter.nearby && nearbyCards.length === 0) return [];
+    const nearbyDistance = new Map<string, number>();
+    const standaloneIds: string[] = [];
+    const groupIds: string[] = [];
+    for (const card of nearbyCards) {
+      nearbyDistance.set(`${card.kind}:${card.id}`, card.distanceMeters);
+      if (card.kind === 'listing') standaloneIds.push(card.id);
+      else groupIds.push(card.id);
+    }
     const attrConditions: Prisma.ListingWhereInput[] = Object.entries(filter.attrFilters).map(
       ([key, value]) => ({ attributes: { path: [key], equals: value } }),
     );
@@ -27,6 +39,16 @@ export class PrismaListingReadRepository implements IListingReadRepository {
         AND: [
           ...attrConditions,
           { OR: [{ groupId: null }, { group: { status: 'published' } }] },
+          ...(filter.nearby
+            ? [
+                {
+                  OR: [
+                    ...(standaloneIds.length ? [{ id: { in: standaloneIds }, groupId: null }] : []),
+                    ...(groupIds.length ? [{ groupId: { in: groupIds } }] : []),
+                  ],
+                },
+              ]
+            : []),
           ...(filter.q
             ? [
                 {
@@ -89,6 +111,8 @@ export class PrismaListingReadRepository implements IListingReadRepository {
             wardCode: true,
             wardName: true,
             address: true,
+            latitude: true,
+            longitude: true,
             ratingAvg: true,
             reviewCount: true,
           },
@@ -120,6 +144,14 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       wardCode: l.wardCode,
       wardName: l.wardName,
       address: l.address,
+      latitude: l.latitude,
+      longitude: l.longitude,
+      ...(filter.nearby
+        ? {
+            distanceMeters:
+              nearbyDistance.get(`${l.group ? 'group' : 'listing'}:${l.group?.id ?? l.id}`) ?? 0,
+          }
+        : {}),
       publishedAt: l.publishedAt,
       completedBookings: l._count.bookings,
       ratingAvg: l.ratingAvg === null ? null : l.ratingAvg.toNumber(),
@@ -166,11 +198,85 @@ export class PrismaListingReadRepository implements IListingReadRepository {
             wardCode: l.group.wardCode,
             wardName: l.group.wardName,
             address: l.group.address,
+            latitude: l.group.latitude,
+            longitude: l.group.longitude,
             ratingAvg: l.group.ratingAvg === null ? null : l.group.ratingAvg.toNumber(),
             reviewCount: l.group.reviewCount,
           }
         : null,
     }));
+  }
+
+  private async findNearestCardIds(
+    tx: PrismaTx,
+    typeSlug: string,
+    nearby: { latitude: number; longitude: number; limit: number },
+  ): Promise<Array<{ id: string; kind: 'listing' | 'group'; distanceMeters: number }>> {
+    return tx.$queryRaw<Array<{ id: string; kind: 'listing' | 'group'; distanceMeters: number }>>(
+      Prisma.sql`
+        WITH origin AS (
+          SELECT ll_to_earth(${nearby.latitude}, ${nearby.longitude}) AS point
+        ),
+        standalone AS (
+          SELECT
+            l.id,
+            'listing'::text AS kind,
+            earth_distance(ll_to_earth(l.latitude, l.longitude), origin.point) AS distance,
+            l.published_at AS published_at
+          FROM listings l
+          JOIN listing_types lt ON lt.id = l.listing_type_id
+          JOIN partners p ON p.id = l.partner_id
+          CROSS JOIN origin
+          WHERE l.tenant_id = current_setting('app.tenant_id')::uuid
+            AND l.group_id IS NULL
+            AND l.status = 'published'
+            AND l.latitude IS NOT NULL
+            AND l.longitude IS NOT NULL
+            AND lt.slug = ${typeSlug}
+            AND lt.is_active = true
+            AND p.status = 'approved'
+          ORDER BY ll_to_earth(l.latitude, l.longitude) <-> origin.point,
+            l.published_at DESC NULLS LAST,
+            l.id
+          LIMIT ${nearby.limit}
+        ),
+        grouped AS (
+          SELECT
+            g.id,
+            'group'::text AS kind,
+            earth_distance(ll_to_earth(g.latitude, g.longitude), origin.point) AS distance,
+            MAX(l.published_at) AS published_at
+          FROM listing_groups g
+          JOIN listing_types lt ON lt.id = g.listing_type_id
+          JOIN partners p ON p.id = g.partner_id
+          JOIN listings l ON l.group_id = g.id AND l.status = 'published'
+          CROSS JOIN origin
+          WHERE g.tenant_id = current_setting('app.tenant_id')::uuid
+            AND g.status = 'published'
+            AND g.latitude IS NOT NULL
+            AND g.longitude IS NOT NULL
+            AND lt.slug = ${typeSlug}
+            AND lt.is_active = true
+            AND p.status = 'approved'
+          GROUP BY g.id, g.latitude, g.longitude, origin.point
+          ORDER BY ll_to_earth(g.latitude, g.longitude) <-> origin.point,
+            MAX(l.published_at) DESC NULLS LAST,
+            g.id
+          LIMIT ${nearby.limit}
+        )
+        SELECT
+          candidates.id,
+          candidates.kind,
+          ROUND(candidates.distance)::int AS "distanceMeters"
+        FROM (
+          SELECT * FROM standalone
+          UNION ALL
+          SELECT * FROM grouped
+        ) candidates
+        ORDER BY candidates.distance, candidates.published_at DESC NULLS LAST, candidates.id
+        LIMIT ${nearby.limit}
+      `,
+    );
   }
 
   async busyRanges(

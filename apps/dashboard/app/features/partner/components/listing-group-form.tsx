@@ -97,6 +97,8 @@ export function ListingGroupForm({
         provinceCode: group?.provinceCode ?? '',
         wardCode: group?.wardCode ?? '',
         address: group?.address ?? '',
+        latitude: group?.latitude ?? Number.NaN,
+        longitude: group?.longitude ?? Number.NaN,
         workingArea: group?.workingArea ?? undefined,
         amenities: group?.amenities ?? [],
         photos: group?.photos ?? [],

@@ -187,6 +187,8 @@ export class ApplyListingUpdateUseCase {
         wardCode: location?.ward.code,
         wardName: location?.ward.name,
         address: input.address,
+        latitude: input.latitude,
+        longitude: input.longitude,
         photos: input.photos,
         attributes: input.attributes,
         bookingModes: input.bookingModes,

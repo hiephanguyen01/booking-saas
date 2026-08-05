@@ -4,6 +4,7 @@ export interface ListingCardPresentation {
   originalPrice: string | null;
   discountPercent: number | null;
   priceUnit: ListingPriceUnit | null;
+  distanceMeters?: number;
 }
 
 export interface ListingFavoriteControl {

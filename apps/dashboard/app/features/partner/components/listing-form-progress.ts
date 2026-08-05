@@ -53,6 +53,8 @@ const FIELD_SECTION: Record<string, ListingFormSectionId> = {
   provinceCode: 'listing-location',
   wardCode: 'listing-location',
   address: 'listing-location',
+  latitude: 'listing-location',
+  longitude: 'listing-location',
 
   bookingModes: 'listing-pricing',
   modeConfig: 'listing-pricing',
@@ -72,7 +74,7 @@ const FIELD_SECTION: Record<string, ListingFormSectionId> = {
 /** The fields a wizard step re-validates before it lets the partner continue. */
 export const LISTING_STEP_FIELDS: Record<ListingFormSectionId, Path<CreateListingInput>[]> = {
   'listing-content': ['title', 'description', 'photos'],
-  'listing-location': ['provinceCode', 'wardCode', 'address'],
+  'listing-location': ['provinceCode', 'wardCode', 'address', 'latitude', 'longitude'],
   'listing-pricing': ['bookingModes', 'modeConfig', 'stockQuantity', 'attributes'],
   'listing-operations': ['capacity', 'bufferBefore', 'bufferAfter', 'approvalRequired'],
   'listing-payment': ['depositPercent', 'balanceDue', 'cancellationPolicyId'],

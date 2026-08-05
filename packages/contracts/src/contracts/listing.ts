@@ -15,8 +15,9 @@ import {
 } from './listing-type';
 import { partnerVerificationStatusSchema } from './partner';
 import {
-  administrativeAddressInputSchema,
   administrativeAddressSnapshotSchema,
+  geocodedAdministrativeAddressInputSchema,
+  geocodedAdministrativeAddressSnapshotSchema,
 } from './administrative-division';
 
 /** VND đồng as a digit string — money never travels as a JS number. */
@@ -245,10 +246,25 @@ export const createListingGroupInputSchema = z
     amenities: listingGroupAmenitiesSchema.default([]),
     photos: z.array(z.string().url('Đường dẫn ảnh tin đăng không hợp lệ')).default([]),
   })
-  .merge(administrativeAddressInputSchema);
+  .merge(geocodedAdministrativeAddressInputSchema);
 export type CreateListingGroupInput = z.infer<typeof createListingGroupInputSchema>;
 
-export const updateListingGroupInputSchema = createListingGroupInputSchema.partial();
+const coordinatesPatchIsComplete = (
+  value: { latitude?: number; longitude?: number },
+  ctx: z.RefinementCtx,
+): void => {
+  if ((value.latitude === undefined) !== (value.longitude === undefined)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [value.latitude === undefined ? 'latitude' : 'longitude'],
+      message: 'Vĩ độ và kinh độ phải được cập nhật cùng nhau',
+    });
+  }
+};
+
+export const updateListingGroupInputSchema = createListingGroupInputSchema
+  .partial()
+  .superRefine(coordinatesPatchIsComplete);
 export type UpdateListingGroupInput = z.infer<typeof updateListingGroupInputSchema>;
 
 const listingBaseSchema = z
@@ -295,7 +311,7 @@ const listingBaseSchema = z
     balanceDue: balanceDueSchema.default('online_before'),
     cancellationPolicyId: uuidSchema.optional(),
   })
-  .merge(administrativeAddressInputSchema);
+  .merge(geocodedAdministrativeAddressInputSchema);
 
 /** Each enabled mode must have matching mode_config; inventory needs stockQuantity. */
 const modeConfigCoversModes = (
@@ -338,9 +354,10 @@ export const depositRequirementResponseSchema = z.object({
 });
 export type DepositRequirementResponse = z.infer<typeof depositRequirementResponseSchema>;
 
-export const updateListingInputSchema = listingBaseSchema
-  .partial()
-  .superRefine(modeConfigCoversModes);
+export const updateListingInputSchema = listingBaseSchema.partial().superRefine((value, ctx) => {
+  modeConfigCoversModes(value, ctx);
+  coordinatesPatchIsComplete(value, ctx);
+});
 export type UpdateListingInput = z.infer<typeof updateListingInputSchema>;
 
 export const createResourceInputSchema = z.object({
@@ -699,7 +716,7 @@ export const listingGroupResponseSchema = z
     createdAt: z.string(),
     updatedAt: z.string(),
   })
-  .merge(administrativeAddressSnapshotSchema);
+  .merge(geocodedAdministrativeAddressSnapshotSchema);
 export type ListingGroupResponse = z.infer<typeof listingGroupResponseSchema>;
 
 export const listingResponseSchema = z
@@ -762,7 +779,7 @@ export const listingResponseSchema = z
     createdAt: z.string(),
     updatedAt: z.string(),
   })
-  .merge(administrativeAddressSnapshotSchema);
+  .merge(geocodedAdministrativeAddressSnapshotSchema);
 export type ListingResponse = z.infer<typeof listingResponseSchema>;
 
 /** A row in the partner listing management feed. */

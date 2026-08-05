@@ -94,6 +94,8 @@ export default function NewGroupedListingPage({ loaderData, actionData }: Route.
           provinceCode: loaderData.group.provinceCode ?? '',
           wardCode: loaderData.group.wardCode ?? '',
           address: loaderData.group.address ?? '',
+          latitude: loaderData.group.latitude ?? Number.NaN,
+          longitude: loaderData.group.longitude ?? Number.NaN,
         }}
       />
     </FormPage>

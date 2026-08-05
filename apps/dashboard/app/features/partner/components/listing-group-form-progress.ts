@@ -33,6 +33,8 @@ const FIELD_SECTION: Record<string, ListingGroupFormSectionId> = {
   provinceCode: 'group-location',
   wardCode: 'group-location',
   address: 'group-location',
+  latitude: 'group-location',
+  longitude: 'group-location',
   workingArea: 'group-location',
 };
 
@@ -42,7 +44,7 @@ export const LISTING_GROUP_STEP_FIELDS: Record<
   Path<CreateListingGroupInput>[]
 > = {
   'group-content': ['title', 'description', 'photos', 'amenities'],
-  'group-location': ['provinceCode', 'wardCode', 'address'],
+  'group-location': ['provinceCode', 'wardCode', 'address', 'latitude', 'longitude'],
 };
 
 /**

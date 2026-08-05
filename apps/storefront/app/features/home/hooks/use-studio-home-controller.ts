@@ -32,6 +32,7 @@ export function useStudioHomeController({
     filterPending,
     hasVisibleListings: visibleListings.length > 0,
     sections,
+    selectedType,
     selectedListingTypeName: selectedListingType?.name ?? '',
   };
 }

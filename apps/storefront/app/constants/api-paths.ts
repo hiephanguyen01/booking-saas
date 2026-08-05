@@ -73,6 +73,7 @@ export const apiPaths = {
     wards: publicPath('/administrative-divisions/wards'),
 
     listings: publicPath('/listings'),
+    nearbyListings: publicPath('/listings/nearby'),
     listing: (slug: string) => publicPath(`/listings/${segment(slug)}`),
     listingAvailability: (slug: string) => publicPath(`/listings/${segment(slug)}/availability`),
     listingQuote: (slug: string) => publicPath(`/listings/${segment(slug)}/quote`),
@@ -85,11 +86,9 @@ export const apiPaths = {
     bookings: publicPath('/bookings'),
     booking: (code: string) => publicPath(`/bookings/${segment(code)}`),
     bookingCancel: (code: string) => publicPath(`/bookings/${segment(code)}/cancel`),
-    bookingCheckout: (bookingId: string) =>
-      publicPath(`/bookings/${segment(bookingId)}/checkout`),
+    bookingCheckout: (bookingId: string) => publicPath(`/bookings/${segment(bookingId)}/checkout`),
     bookingMockPay: (code: string) => publicPath(`/bookings/${segment(code)}/mock-pay`),
-    bookingPaymentStatus: (code: string) =>
-      publicPath(`/bookings/${segment(code)}/payment-status`),
+    bookingPaymentStatus: (code: string) => publicPath(`/bookings/${segment(code)}/payment-status`),
     bookingRequestOtp: (code: string) => publicPath(`/bookings/${segment(code)}/request-otp`),
     bookingVerifyAccess: (code: string) => publicPath(`/bookings/${segment(code)}/verify-access`),
     myBookings: publicPath('/my-bookings'),

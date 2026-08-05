@@ -198,7 +198,7 @@ function applySecurityHeaders(
   cspNonce: string,
 ): void {
   headers.set('Content-Security-Policy', contentSecurityPolicy(cspNonce));
-  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=(self)');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('X-Frame-Options', 'SAMEORIGIN');

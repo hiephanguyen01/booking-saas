@@ -14,6 +14,7 @@ import { BrandCarousel } from './brand-carousel';
 import { StudioHero } from './hero';
 import { RecommendedSection } from './recommended-section';
 import { TopListingsSection } from './top-listings-section';
+import { NearbySection } from './nearby-section';
 import { useStudioHomeController } from '~/features/home/hooks/use-studio-home-controller';
 import { PANEL_SURFACE } from '~/constants/surfaces';
 import { cn } from '@booking/ui/lib/utils';
@@ -35,8 +36,14 @@ export function StudioHome({
   locations: LocationOption[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
-  const { changeType, filterPending, hasVisibleListings, sections, selectedListingTypeName } =
-    useStudioHomeController({ listingTypes, listings });
+  const {
+    changeType,
+    filterPending,
+    hasVisibleListings,
+    sections,
+    selectedListingTypeName,
+    selectedType,
+  } = useStudioHomeController({ listingTypes, listings });
 
   return (
     <div className="bg-background">
@@ -55,6 +62,11 @@ export function StudioHome({
           <>
             <TopListingsSection
               listings={sections.top}
+              listingTypeName={selectedListingTypeName}
+              pending={filterPending}
+            />
+            <NearbySection
+              listingTypeSlug={selectedType}
               listingTypeName={selectedListingTypeName}
               pending={filterPending}
             />

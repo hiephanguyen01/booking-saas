@@ -43,6 +43,52 @@ export const administrativeAddressInputSchema = z.object({
 });
 export type AdministrativeAddressInput = z.infer<typeof administrativeAddressInputSchema>;
 
+/** Exact public venue point used for distance ranking; both values always travel together. */
+export const geographicPointInputSchema = z.object({
+  latitude: z.coerce
+    .number()
+    .finite('Vĩ độ không hợp lệ')
+    .min(-90, 'Vĩ độ không được nhỏ hơn -90')
+    .max(90, 'Vĩ độ không được lớn hơn 90'),
+  longitude: z.coerce
+    .number()
+    .finite('Kinh độ không hợp lệ')
+    .min(-180, 'Kinh độ không được nhỏ hơn -180')
+    .max(180, 'Kinh độ không được lớn hơn 180'),
+});
+export type GeographicPointInput = z.infer<typeof geographicPointInputSchema>;
+
+export const geocodedAdministrativeAddressInputSchema = administrativeAddressInputSchema.merge(
+  geographicPointInputSchema,
+);
+export type GeocodedAdministrativeAddressInput = z.infer<
+  typeof geocodedAdministrativeAddressInputSchema
+>;
+
+/** Explicit, user-triggered forward-geocoding request for a Vietnamese venue address. */
+export const geocodeAdministrativeAddressInputSchema = administrativeAddressInputSchema.extend({
+  address: z.string().trim().min(3, 'Vui lòng nhập số nhà hoặc tên đường').max(200),
+});
+export type GeocodeAdministrativeAddressInput = z.infer<
+  typeof geocodeAdministrativeAddressInputSchema
+>;
+
+export const geocodingCandidateSchema = geographicPointInputSchema.extend({
+  displayName: z.string().min(1).max(1000),
+});
+export type GeocodingCandidate = z.infer<typeof geocodingCandidateSchema>;
+
+export const geocodeAdministrativeAddressResponseSchema = z.object({
+  candidates: z.array(geocodingCandidateSchema).max(5),
+  attribution: z.object({
+    label: z.string().min(1),
+    url: z.string().url(),
+  }),
+});
+export type GeocodeAdministrativeAddressResponse = z.infer<
+  typeof geocodeAdministrativeAddressResponseSchema
+>;
+
 /** Stored address fields; nullable so records created before the migration remain readable. */
 export const administrativeAddressSnapshotSchema = z.object({
   provinceCode: provinceCodeSchema.nullable(),
@@ -52,3 +98,12 @@ export const administrativeAddressSnapshotSchema = z.object({
   address: z.string().nullable(),
 });
 export type AdministrativeAddressSnapshot = z.infer<typeof administrativeAddressSnapshotSchema>;
+
+export const geocodedAdministrativeAddressSnapshotSchema =
+  administrativeAddressSnapshotSchema.extend({
+    latitude: z.number().min(-90).max(90).nullable(),
+    longitude: z.number().min(-180).max(180).nullable(),
+  });
+export type GeocodedAdministrativeAddressSnapshot = z.infer<
+  typeof geocodedAdministrativeAddressSnapshotSchema
+>;

@@ -134,7 +134,13 @@ export function listingFormDefaults(opts: {
   listing?: ListingResponse;
   groupId?: string;
   lockedListingTypeId?: string;
-  inheritedAddress?: { provinceCode: string; wardCode: string; address: string };
+  inheritedAddress?: {
+    provinceCode: string;
+    wardCode: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+  };
 }): CreateListingInput {
   const { partnerId, listingTypes, listing, groupId, lockedListingTypeId, inheritedAddress } = opts;
   const selectedType =
@@ -152,6 +158,8 @@ export function listingFormDefaults(opts: {
     provinceCode: listing?.provinceCode ?? inheritedAddress?.provinceCode ?? '',
     wardCode: listing?.wardCode ?? inheritedAddress?.wardCode ?? '',
     address: listing?.address ?? inheritedAddress?.address ?? '',
+    latitude: listing?.latitude ?? inheritedAddress?.latitude ?? Number.NaN,
+    longitude: listing?.longitude ?? inheritedAddress?.longitude ?? Number.NaN,
     photos: listing?.photos ?? [],
     bookingModes: dynamic.bookingModes as BookingMode[],
     modeConfig: buildModeConfig(

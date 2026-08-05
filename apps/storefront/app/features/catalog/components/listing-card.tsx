@@ -83,6 +83,11 @@ export function ListingCard({
                 <span className="truncate">{location}</span>
               </p>
             ) : null}
+            {presentation?.distanceMeters !== undefined ? (
+              <p className="text-xs font-medium text-primary">
+                {formatDistance(presentation.distanceMeters, locale)}
+              </p>
+            ) : null}
           </div>
           {rating !== null && ratingCount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
@@ -101,7 +106,9 @@ export function ListingCard({
                   <span className="mr-2 text-muted-foreground line-through">{originalPrice}</span>
                 ) : null}
                 <span
-                  className={presentation?.discountPercent ? 'text-brand-accent' : 'text-foreground'}
+                  className={
+                    presentation?.discountPercent ? 'text-brand-accent' : 'text-foreground'
+                  }
                 >
                   <span className="font-normal">{t('fromPriceShort')} </span>
                   <span className="text-base font-semibold">{price}</span>
@@ -149,4 +156,9 @@ export function ListingCard({
       )}
     </article>
   );
+}
+
+function formatDistance(distanceMeters: number, locale: string): string {
+  if (distanceMeters < 1_000) return `${distanceMeters.toLocaleString(locale)} m`;
+  return `${(distanceMeters / 1_000).toLocaleString(locale, { maximumFractionDigits: 1 })} km`;
 }

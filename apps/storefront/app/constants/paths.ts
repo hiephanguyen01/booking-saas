@@ -45,6 +45,7 @@ export const storefrontPaths = {
   reviewUploadPresign: '/uploads/reviews/presign',
   avatarUploadPresign: '/uploads/avatar/presign',
   home: (locale: Locale) => `/${locale}`,
+  nearby: (locale: Locale) => `/${locale}/nearby`,
   catalog: (locale: Locale, typeSlug: string) => `/${locale}/t/${segment(typeSlug)}`,
   listing: (locale: Locale, listingSlug: string) => `/${locale}/l/${segment(listingSlug)}`,
   listingGroup: (locale: Locale, groupSlug: string) => `/${locale}/g/${segment(groupSlug)}`,

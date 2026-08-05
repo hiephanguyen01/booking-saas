@@ -83,6 +83,8 @@ export interface NewListingGroup {
   wardCode: string;
   wardName: string;
   address: string;
+  latitude: number;
+  longitude: number;
   workingArea: string | null;
   amenities: ListingGroupAmenity[];
   photos: string[];
@@ -112,6 +114,8 @@ export interface ListingGroupContentPatch {
   wardCode?: string;
   wardName?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   workingArea?: string;
   amenities?: ListingGroupAmenity[];
   photos?: string[];
@@ -142,6 +146,8 @@ export class ListingGroup {
       wardCode: input.wardCode,
       wardName: input.wardName,
       address: input.address,
+      latitude: input.latitude,
+      longitude: input.longitude,
       workingArea: input.workingArea,
       amenities: input.amenities,
       photos: input.photos,
@@ -228,6 +234,8 @@ export class ListingGroup {
       wardCode: patch.wardCode,
       wardName: patch.wardName,
       address: patch.address,
+      latitude: patch.latitude,
+      longitude: patch.longitude,
       workingArea: patch.workingArea,
       amenities: patch.amenities,
       photos: patch.photos,

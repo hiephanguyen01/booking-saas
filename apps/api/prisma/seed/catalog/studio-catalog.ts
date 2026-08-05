@@ -10,6 +10,8 @@ export type LocationFixture = {
   wardCode: string;
   wardName: string;
   address: string;
+  latitude: number;
+  longitude: number;
 };
 
 export type CatalogDefinition = {
@@ -51,6 +53,8 @@ export const LOCATIONS: LocationFixture[] = [
     wardCode: '26740',
     wardName: 'Phường Sài Gòn',
     address: '12 Nguyễn Huệ',
+    latitude: 10.7756,
+    longitude: 106.7039,
   },
   {
     key: 'da-nang',
@@ -60,6 +64,8 @@ export const LOCATIONS: LocationFixture[] = [
     wardCode: '20263',
     wardName: 'Phường Sơn Trà',
     address: '86 Hoàng Sa',
+    latitude: 16.0762,
+    longitude: 108.244,
   },
   {
     key: 'ha-noi',
@@ -69,6 +75,8 @@ export const LOCATIONS: LocationFixture[] = [
     wardCode: '00004',
     wardName: 'Phường Ba Đình',
     address: '35 Phan Đình Phùng',
+    latitude: 21.0402,
+    longitude: 105.8404,
   },
   {
     key: 'sapa',
@@ -78,6 +86,8 @@ export const LOCATIONS: LocationFixture[] = [
     wardCode: '03106',
     wardName: 'Phường Sa Pa',
     address: '18 Fansipan',
+    latitude: 22.3344,
+    longitude: 103.8402,
   },
   {
     key: 'da-lat',
@@ -87,6 +97,8 @@ export const LOCATIONS: LocationFixture[] = [
     wardCode: '24787',
     wardName: 'Phường Xuân Hương - Đà Lạt',
     address: '22 Trần Phú',
+    latitude: 11.9404,
+    longitude: 108.4379,
   },
 ];
 
@@ -929,6 +941,8 @@ async function upsertStudioGroup(
     wardCode: location.wardCode,
     wardName: location.wardName,
     address: location.address,
+    latitude: location.latitude,
+    longitude: location.longitude,
     workingArea: `${location.shortName} và khu vực lân cận`,
     photos: photosFor('studio-group', index + 1),
     amenities: [
@@ -994,6 +1008,8 @@ export async function upsertListing(
     wardCode: input.location.wardCode,
     wardName: input.location.wardName,
     address: input.location.address,
+    latitude: input.location.latitude,
+    longitude: input.location.longitude,
     photos: input.photos,
     bookingModes: input.bookingModes as never,
     attributes: input.attributes,
