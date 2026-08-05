@@ -10,22 +10,42 @@
  */
 @source '../';
 
+/*
+ * The BookingOS default design system.
+ *
+ * This is the platform brand — amber on ink — and it is the default for every
+ * surface that has no tenant to override it: the platform landing, the dashboard
+ * sign-in screen, and any dashboard area whose tenant has configured no colours.
+ * It is deliberately NOT a scope on one page: `BRAND_DEFAULTS`
+ * (`../lib/brand-theme.ts`) falls back to the same values, so an un-configured
+ * tenant storefront lands here too rather than on an unrelated palette.
+ *
+ * A tenant that *has* configured colours still wins everywhere: the storefront's
+ * `themeCss()` emits every token into `:root` at SSR, and the dashboard's
+ * `tenantBrandStyle()` sets the brand channels inline on the shell. Neither reads
+ * these values — they only decide what an absent channel becomes.
+ *
+ * `--accent` is not part of the brand. It is shadcn's neutral hover/focus surface
+ * (dropdown, select, command, calendar) and tracks `--muted`; the brand accent is
+ * `--sf-accent`, emitted per tenant.
+ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #f4f5f7;
+  --foreground: #0a0e13;
+  --card: #ffffff;
+  --card-foreground: #0a0e13;
+  --popover: #ffffff;
+  --popover-foreground: #0a0e13;
+  --primary: #ffb020;
+  /* Amber is a light surface: its readable ink is the near-black, not white. */
+  --primary-foreground: #0a0e13;
+  --secondary: #fbfbfc;
+  --secondary-foreground: #0a0e13;
+  --muted: #edeff2;
+  --muted-foreground: #4a515b;
+  --accent: #edeff2;
+  --accent-foreground: #0a0e13;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --warning: oklch(0.68 0.15 65);
@@ -34,22 +54,26 @@
   --warning-foreground: oklch(0.27 0.05 60);
   --info: oklch(0.55 0.15 240);
   --info-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: #e4e6ea;
+  --input: #e4e6ea;
+  /* Deepened amber: `--primary` itself is too light to read as a focus ring on a
+     light surface. The dark scope can use the amber directly. */
+  --ring: #b87300;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* The nav rail is a panel on the tinted canvas, so it takes `--card`'s white
+     rather than sitting a shade below the page as stock shadcn has it. */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0e13;
+  --sidebar-primary: #ffb020;
+  --sidebar-primary-foreground: #0a0e13;
+  --sidebar-accent: #edeff2;
+  --sidebar-accent-foreground: #0a0e13;
+  --sidebar-border: #e4e6ea;
+  --sidebar-ring: #b87300;
   /*
    * Scrims darken, they do not tint. A modal backdrop and the wash under text on
    * a photo both exist to push what is behind them away, so both stay black and
@@ -68,20 +92,22 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #0a0e13;
+  --foreground: #f4f5f7;
+  --card: #12171f;
+  --card-foreground: #f4f5f7;
+  --popover: #12171f;
+  --popover-foreground: #f4f5f7;
+  /* The brand does not flip: amber reads on both the light page and the ink one,
+     and a rebranded primary here would make one product look like two. */
+  --primary: #ffb020;
+  --primary-foreground: #0a0e13;
+  --secondary: #1b212b;
+  --secondary-foreground: #f4f5f7;
+  --muted: #141922;
+  --muted-foreground: #c9cdd4;
+  --accent: #1b212b;
+  --accent-foreground: #f4f5f7;
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --success: oklch(0.72 0.15 145);
@@ -90,22 +116,24 @@
   --warning-foreground: oklch(0.22 0.05 60);
   --info: oklch(0.7 0.14 240);
   --info-foreground: oklch(0.145 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: #232a34;
+  --input: #2c333d;
+  /* The light scope's deepened `#b87300` is invisible on near-black, so the ring
+     is the amber itself here. */
+  --ring: #ffb020;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: #12171f;
+  --sidebar-foreground: #f4f5f7;
+  --sidebar-primary: #ffb020;
+  --sidebar-primary-foreground: #0a0e13;
+  --sidebar-accent: #1b212b;
+  --sidebar-accent-foreground: #f4f5f7;
+  --sidebar-border: #232a34;
+  --sidebar-ring: #ffb020;
   /* Heavier on dark: a 50% black backdrop over an already-dark page barely
      separates the dialog from what it covers. */
   --overlay: oklch(0 0 0 / 70%);

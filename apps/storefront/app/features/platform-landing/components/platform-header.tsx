@@ -2,6 +2,7 @@ import { Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { PlatformLocaleSwitcher } from './platform-locale-switcher';
 
 const NAV_ITEMS = [
   { href: '#capabilities', label: 'nav.product' },
@@ -19,7 +20,6 @@ export function PlatformHeader({
   dashboardLoginUrl: string;
 }) {
   const { t } = useTranslation(NsI18n.Platform);
-  const alternateLocale = locale === 'vi' ? 'en' : 'vi';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -52,13 +52,12 @@ export function PlatformHeader({
         </nav>
 
         <div className="ml-auto flex items-center gap-4">
-          <Link
-            to={`/${alternateLocale}`}
-            aria-label={t('nav.language')}
-            className="platform-icon-button hidden xl:inline-flex"
-          >
-            {alternateLocale}
-          </Link>
+          {/* From `sm:`, where it used to appear only from `xl:` — on every
+              tablet and most laptops the only way to change language was to open
+              the hamburger. Below 640px the brand, this group and the menu
+              button no longer fit on one row, so that width keeps it in the
+              sheet instead; no viewport shows both copies. */}
+          <PlatformLocaleSwitcher locale={locale} className="hidden sm:inline-flex" />
           <a
             href={dashboardLoginUrl}
             className="hidden min-h-11 items-center justify-center text-[15px] font-semibold text-(--platform-ink-soft) transition hover:text-(--platform-primary-ink) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 xl:inline-flex"
@@ -102,20 +101,29 @@ export function PlatformHeader({
                 {t(item.label)}
               </a>
             ))}
-            <div className="mt-3 grid gap-2 border-t border-foreground/8 pt-4 sm:grid-cols-3">
-              <Link
-                to={`/${alternateLocale}`}
-                className="platform-secondary-button"
-                onClick={closeMenu}
-              >
-                {alternateLocale.toUpperCase()}
-              </Link>
-              <a href={dashboardLoginUrl} className="platform-secondary-button" onClick={closeMenu}>
-                {t('nav.login')}
-              </a>
-              <a href="#consultation" className="platform-primary-button" onClick={closeMenu}>
-                {t('nav.consultation')}
-              </a>
+            <div className="mt-3 grid gap-3 border-t border-foreground/8 pt-4">
+              {/* Labelled row rather than a third button cell: a segmented pair
+                  and two full-width buttons are different shapes, and lining
+                  them up stretched the pair into something that read as a
+                  button too. Hidden from `sm:`, where the header carries it. */}
+              <div className="flex items-center justify-between gap-3 sm:hidden">
+                <span className="text-[15px] font-semibold text-(--platform-ink-soft)">
+                  {t('nav.language')}
+                </span>
+                <PlatformLocaleSwitcher locale={locale} onSwitch={closeMenu} />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <a
+                  href={dashboardLoginUrl}
+                  className="platform-secondary-button"
+                  onClick={closeMenu}
+                >
+                  {t('nav.login')}
+                </a>
+                <a href="#consultation" className="platform-primary-button" onClick={closeMenu}>
+                  {t('nav.consultation')}
+                </a>
+              </div>
             </div>
           </nav>
         </div>

@@ -2,7 +2,9 @@ import { randomBytes } from 'node:crypto';
 import type { RouterContextProvider } from 'react-router';
 import { pathLocale, storefrontPaths } from '~/constants/paths';
 import { storefrontAuthMiddleware } from '~/lib/server/auth-middleware.server';
+import { documentPathname, isDataRequestPath } from '~/lib/server/data-request.server';
 import { storefrontEnv } from '~/lib/server/env.server';
+import { localeCookie, resolveLocale } from '~/lib/server/i18n.server';
 import { runWithStorefrontRequestContext } from '~/lib/server/request-context.server';
 import { storefrontCspNonceContext } from '~/lib/server/security-context.server';
 import { resolveStorefront } from '~/lib/server/tenant.server';
@@ -225,6 +227,22 @@ function withSecurityHeaders(response: Response, request: Request, cspNonce: str
   }
 }
 
+/** Same mutable-then-clone dance as `withSecurityHeaders`, for the same reason. */
+function withLocaleCookie(response: Response, locale: 'vi' | 'en'): Response {
+  try {
+    response.headers.append('Set-Cookie', localeCookie(locale));
+    return response;
+  } catch {
+    const headers = new Headers(response.headers);
+    headers.append('Set-Cookie', localeCookie(locale));
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+}
+
 export async function storefrontRequestMiddleware(
   args: { request: Request; context: Readonly<RouterContextProvider> },
   next: () => Promise<Response>,
@@ -257,17 +275,34 @@ export async function storefrontRequestMiddleware(
     if (!isDocumentRequest) return secure(unknownHost());
 
     const url = new URL(request.url);
-    const locale = pathLocale(url.pathname);
-    const isLocalizedLanding = url.pathname === '/vi' || url.pathname === '/en';
-    if (!PLATFORM_DOCUMENT_PATHS.has(url.pathname) || (isLocalizedLanding && Boolean(url.search))) {
-      return secure(platformRedirect(locale));
+    // React Router fetches `/en.data` for a client-side navigation to `/en`, and
+    // the allowlist is written in page paths. Matching the raw pathname meant
+    // every in-page locale switch was redirected back to where it started — the
+    // landing could only change language on a full reload.
+    const isDataRequest = isDataRequestPath(url.pathname);
+    const pagePath = documentPathname(url.pathname);
+    const isLocalizedLanding = pagePath === '/vi' || pagePath === '/en';
+    // The query guard exists to strip a visitor's `?utm=…` off the landing. A
+    // `.data` request carries React Router's own params (`_routes`), which are
+    // not a query string anyone typed.
+    const hasVisitorQuery = !isDataRequest && Boolean(url.search);
+    if (!PLATFORM_DOCUMENT_PATHS.has(pagePath) || (isLocalizedLanding && hasVisitorQuery)) {
+      // `resolveLocale`, not `pathLocale`: the paths that land here — `/` above
+      // all — have no locale segment to read, so the remembered choice is the
+      // only thing that can send an English reader back to `/en`.
+      return secure(platformRedirect(resolveLocale(request, 'vi')));
     }
 
     const response = await runWithStorefrontRequestContext(
       { kind: 'platform', auth: null, suppressSessionCommit: false },
       next,
     );
-    return secure(response);
+    // Arriving at `/vi` or `/en` *is* the choice — the landing's switcher is a
+    // pair of links, and a shared `/en` link says the same thing. Persisting it
+    // here is what lets `/` remember, and it keeps this host free of the
+    // mutation endpoint a POST-based switcher would have needed: everything
+    // above answers nothing but GET and HEAD.
+    return secure(isLocalizedLanding ? withLocaleCookie(response, pathLocale(pagePath)) : response);
   }
 
   const tenant = resolution.tenant;

@@ -23,7 +23,12 @@ here — apps must not redeclare them.
 
 ## Tailwind v4, CSS-first — no per-app config
 
-Theme tokens live in `src/styles/globals.css` (apps `@import '@booking/ui/globals.css'`). There is **no**
+Theme tokens live in `src/styles/globals.css` (apps `@import '@booking/ui/globals.css'`), and its
+`:root`/`.dark` carry **the BookingOS brand** — amber `#ffb020` on ink `#0a0e13` — not stock shadcn
+grayscale. This is the platform default for every surface with no tenant to override it: the platform
+landing, the dashboard, and any tenant that has configured no colours (`BRAND_DEFAULTS` in
+`src/lib/brand-theme.ts` repeats the same values and must stay in step). A rebrand is these two blocks.
+There is **no**
 `tailwind-preset.ts` and **no** per-app `tailwind.config.ts` / `components.json` in the apps (Tailwind
 v4 via `@tailwindcss/vite`; `globals.css` is the only shared base). Style with **shadcn
 semantic tokens only** (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`,

@@ -200,8 +200,7 @@ function hslToRgb(raw: string): [number, number, number] | null {
 
 function linearToSrgb(channel: number): number {
   const clamped = clamp(channel, 0, 1);
-  const encoded =
-    clamped <= 0.0031308 ? 12.92 * clamped : 1.055 * clamped ** (1 / 2.4) - 0.055;
+  const encoded = clamped <= 0.0031308 ? 12.92 * clamped : 1.055 * clamped ** (1 / 2.4) - 0.055;
   return encoded * 255;
 }
 
@@ -337,11 +336,19 @@ export function brandContrastForeground(color: string): string | null {
   return relativeLuminance(rgb) > FG_BREAK_EVEN ? FG_DARK : FG_LIGHT;
 }
 
-/** Platform brand colors, used when a tenant channel is absent or unmeasurable. */
+/**
+ * Platform brand colors, used when a tenant channel is absent or unmeasurable.
+ *
+ * These are the same values `:root` carries in `../styles/globals.css`, and they
+ * have to stay in step: a tenant that configures nothing should look identical to
+ * a surface that has no tenant at all, not like a third brand. `accent` is the
+ * primary rather than a second hue on purpose — until a tenant differentiates the
+ * two, the brand accent *is* the brand colour.
+ */
 export const BRAND_DEFAULTS = {
-  primary: '#0ea5e9',
-  accent: '#f97316',
-  background: '#ffffff',
+  primary: '#ffb020',
+  accent: '#ffb020',
+  background: '#f4f5f7',
 } as const;
 
 export interface BrandSwatch {

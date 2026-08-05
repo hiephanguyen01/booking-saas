@@ -61,6 +61,14 @@ route-config/navigation exceptions; storefront currently has no equivalent excep
 - **Bilingual.** Every page nests under a `/:locale` (`vi` | `en`) layout backed by `@booking/i18n`;
   unlocalized legacy paths are kept as redirect route modules for inbound links. The dashboard, by
   contrast, is Vietnamese-hardcoded.
+  **Server code that reads meaning out of a pathname must go through `documentPathname()`**
+  (`lib/server/data-request.server.ts`). A client-side navigation to `/en` does not request `/en` — it
+  requests `/en.data`, and matching the raw pathname silently breaks: `resolveLocale` finds no locale
+  and falls back to the cookie, and the platform host's `PLATFORM_DOCUMENT_PATHS` allowlist redirects
+  the request away. Both bugs looked like "the language switcher does nothing".
+  The tenant switcher posts to `/set-locale`; the **platform landing cannot**, because that host
+  answers GET and HEAD only (see the security note below), so it uses links and the middleware writes
+  `sf_locale` when it serves `/vi` or `/en`.
 - **Public + guest flows.** Most pages are public; authenticated bits (bookings, checkout) use a
   Redis-backed session; guest checkout authenticates by booking code + email OTP.
 
@@ -85,16 +93,26 @@ SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--prim
 
 `features/platform-landing` renders only for `kind: 'platform'` (the configured platform base domain,
 `localhost`, or a bare IP), so `TenantThemeStyle` never mounts above it and **no tenant theme can
-reach it**. Its BookingOS brand
-(amber `#ffb020` on near-black) is fixed in the `.platform-landing` scope in `app/app.css`, which
-overrides the same shadcn **base** tokens — so its sections style themselves with ordinary semantic
-utilities (`bg-card`, `text-muted-foreground`, `bg-primary`, `ring-ring`) and never a literal color.
-`--platform-*` covers only the roles shadcn has no slot for (ink/muted steps, the amber text scale,
-status green, elevation). Dark bands opt in with `className="dark"` and read the flipped set in
-`.platform-landing .dark`; **every token a dark band uses must be restated there**, because
-`@booking/ui`'s `.dark` and `.platform-landing` have equal specificity and `.platform-landing` wins on
-source order. Do **not** move this brand into the global `:root` to make it "tenant-overridable": it
-would hand every un-themed tenant storefront BookingOS's amber, and there is no tenant here to override.
+reach it**.
+
+Its BookingOS brand (amber `#ffb020` on near-black) is **the platform default**, and lives in
+`:root`/`.dark` in `@booking/ui/globals.css` — not in a scope on this page. The same values back
+`BRAND_DEFAULTS`, so one brand covers the landing, the dashboard's un-themed surfaces, and any tenant
+that has configured no colours. Sections style themselves with ordinary semantic utilities (`bg-card`,
+`text-muted-foreground`, `bg-primary`, `ring-ring`) and never a literal colour. A tenant that *has*
+configured colours still wins everywhere, because `themeCss()` emits every token into `:root` at SSR.
+
+What remains in the `.platform-landing` scope is only landing-specific: `--platform-*` covers the roles
+shadcn has no slot for (ink/muted steps, the amber text scale, status green, elevation). Dark bands opt
+in with `className="dark"` and now read the **shared** `.dark`, so only the `--platform-*` steps are
+restated in `.platform-landing .dark`. The old rule that *every* token a dark band touched had to be
+restated there is gone with the base tokens that caused it.
+
+Two things the landing's CSS must not do. Do not set a `display` on a `platform-*` class that a caller
+needs to toggle: `app.css` is unlayered, so it outranks Tailwind's `hidden`/`sm:*` and the element can
+never be hidden at a breakpoint — supply the display as a utility through `cn` instead (see
+`.platform-locale-switcher`). And do not reintroduce base colour tokens into `.platform-landing`; a
+rebrand belongs in `@booking/ui/globals.css`, where both apps get it.
 
 ## BFF & data
 

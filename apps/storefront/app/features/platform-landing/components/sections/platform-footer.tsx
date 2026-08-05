@@ -1,10 +1,10 @@
 import type { PlatformRootLoaderPayload } from '~/features/root/server/root-loader.server';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { PlatformBrand } from '~/features/platform-landing/components/platform-header';
+import { PlatformLocaleSwitcher } from '~/features/platform-landing/components/platform-locale-switcher';
 
 export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderPayload }) {
   const { t } = useTranslation(NsI18n.Platform);
-  const alternateLocale = loaderData.locale === 'vi' ? 'en' : 'vi';
 
   return (
     <footer className="border-t border-border bg-secondary px-5 py-10 sm:px-6 sm:py-14">
@@ -14,16 +14,8 @@ export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderP
           <p className="mt-4 max-w-95 text-[15px] leading-6 text-(--platform-muted-soft)">
             {t('footer.tagline')}
           </p>
-          <div className="mt-5 flex gap-2">
-            <span className="rounded-full bg-foreground px-3 py-1.5 text-sm font-semibold text-background">
-              {loaderData.locale === 'vi' ? 'Tiếng Việt' : 'English'}
-            </span>
-            <a
-              href={`/${alternateLocale}`}
-              className="rounded-full border border-muted-foreground/30 px-3 py-1.5 text-sm font-semibold text-muted-foreground hover:border-foreground hover:text-foreground"
-            >
-              {alternateLocale === 'vi' ? 'Tiếng Việt' : 'English'}
-            </a>
+          <div className="mt-5">
+            <PlatformLocaleSwitcher locale={loaderData.locale} />
           </div>
         </div>
         <FooterGroup
