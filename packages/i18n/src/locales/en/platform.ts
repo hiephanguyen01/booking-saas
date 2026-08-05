@@ -18,7 +18,7 @@ export const enPlatform = {
     faq: 'FAQ',
     login: 'Sign in',
     consultation: 'Book a consultation',
-    language: 'Xem bằng tiếng Việt',
+    language: 'Language',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
   },

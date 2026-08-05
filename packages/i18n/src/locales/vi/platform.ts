@@ -15,7 +15,9 @@ export const viPlatform = {
     faq: 'FAQ',
     login: 'Đăng nhập',
     consultation: 'Đăng ký tư vấn',
-    language: 'View in English',
+    // Labels the switcher group, not one destination: both languages are offered
+    // at once, so "View in English" no longer describes the control.
+    language: 'Ngôn ngữ',
     openMenu: 'Mở menu',
     closeMenu: 'Đóng menu',
   },

@@ -1,60 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import '@booking/ui/globals.css';
 
 /*
- * The sign-in screen's own brand.
+ * The dashboard has no brand of its own. Colours, radius and this font are the
+ * platform default from `@booking/ui/globals.css`; a tenant that has configured
+ * a brand overrides the channels inline via `tenantBrandStyle()` on the shell,
+ * and one that has not simply keeps the default. The same family is what the
+ * storefront ships, so the two products read as one.
+ */
+body {
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+ * The sign-in screen's own scopes.
  *
  * This surface renders *before* a tenant is known — there is no `theme_config`
- * to read, so unlike every other dashboard screen it cannot inherit a brand and
- * needs one of its own. Following `.platform-landing` in the storefront, that
- * brand is expressed by overriding the shadcn **base** tokens inside a scope, so
- * the route styles itself with ordinary semantic utilities (`bg-card`,
- * `text-muted-foreground`, `bg-primary`) rather than the thirty-five literal
- * hexes it used to carry — which no theme could reach and no guard could check.
+ * to read, so it cannot inherit a brand from the session the way every other
+ * dashboard screen can. What it inherits instead is the platform default, and
+ * these two blocks only choose which side of it each half sits on: the brand
+ * half is the ink scope, the form half is a clean white sheet rather than the
+ * tinted page. Both style themselves with ordinary semantic utilities
+ * (`bg-background`, `text-primary`, `bg-auth-chip`).
  *
- * The two halves are separate surfaces sitting side by side, so each restates
- * the tokens rather than one inheriting from the other.
+ * The two halves are separate surfaces sitting side by side, so each states its
+ * own tokens rather than one inheriting from the other.
  */
 .auth-brand-panel {
-  --background: #10281f;
-  --foreground: #f4f7f5;
-  --primary: #83d5a8;
-  --primary-foreground: #10281f;
+  --background: #0a0e13;
+  --foreground: #f4f5f7;
+  --primary: #ffb020;
+  --primary-foreground: #0a0e13;
   --muted-foreground: color-mix(in oklch, var(--foreground) 62%, var(--background));
   --border: color-mix(in oklch, white 15%, transparent);
   --input: color-mix(in oklch, white 15%, transparent);
-  --ring: #83d5a8;
+  --ring: #ffb020;
   /* The panel's own tinted chip surface — `--card` would read as a raised panel
      here, and nothing on this half is a card. */
   --auth-chip: color-mix(in oklch, white 10%, transparent);
 }
 
 .auth-form-panel {
-  --background: #fbfcfb;
-  --foreground: #17211d;
-  --card: #ffffff;
-  --card-foreground: #17211d;
-  --primary: #173f30;
-  --primary-foreground: #ffffff;
-  --muted-foreground: #627069;
-  --border: #dfe5e1;
-  --input: #ccd5d0;
-  --ring: #287553;
-  /* Eyebrow text and the mobile logo chip. `--primary` is nearly black here, so
-     it cannot carry the green the brand panel uses for the same role. */
-  --auth-accent: #287553;
-  --auth-chip: #173f30;
-  --auth-chip-foreground: #a4e0bd;
+  /* White, not the default `--background`: the page tint belongs behind panels,
+     and this half *is* the panel. */
+  --background: #ffffff;
+  /* Eyebrow text and the mobile logo chip. `--primary` is amber — a surface
+     colour, not an ink — so neither role can borrow it: the eyebrow takes the
+     deepened amber that reads on white, and the chip inverts to ink-on-amber,
+     matching the brand mark. */
+  --auth-accent: #9a6200;
+  --auth-chip: #0a0e13;
+  --auth-chip-foreground: #ffb020;
 }
 
 .dark .auth-form-panel {
-  --background: #111714;
-  --foreground: #edf3ef;
-  --card: #161d19;
-  --card-foreground: #edf3ef;
-  --muted-foreground: #a4afa9;
-  --border: color-mix(in oklch, white 10%, transparent);
-  --input: color-mix(in oklch, white 15%, transparent);
-  --auth-accent: #82d4a7;
+  --background: #12171f;
+  --auth-accent: #ffb020;
+  --auth-chip: #1b212b;
+  --auth-chip-foreground: #ffb020;
 }
 
 @theme inline {
@@ -67,8 +72,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 82% 18%, rgb(110 196 148 / 18%), transparent 29%),
-    radial-gradient(circle at 12% 82%, rgb(70 137 103 / 20%), transparent 34%);
+    radial-gradient(circle at 82% 18%, rgb(255 176 32 / 14%), transparent 29%),
+    radial-gradient(circle at 12% 82%, rgb(255 176 32 / 10%), transparent 34%);
   content: '';
   pointer-events: none;
 }

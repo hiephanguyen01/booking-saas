@@ -88,38 +88,26 @@ html {
 }
 
 /*
- * BookingOS platform landing — its own brand, not a tenant surface.
+ * BookingOS platform landing.
  *
- * This page renders only when the host resolves to `kind: 'platform'` (the
- * configured platform base domain, `localhost`, or a bare IP), so
- * `TenantThemeStyle` never mounts above it and no tenant `theme_config` can reach
- * it. The brand is therefore fixed here, but it is expressed by overriding the
- * shadcn *base* tokens inside this scope — so every
- * section styles itself with the normal semantic utilities (`bg-card`,
- * `text-muted-foreground`, `bg-primary`, `ring-ring`, …) and a rebrand is one block.
+ * The brand itself is no longer here: it is the platform default, and lives in
+ * `:root`/`.dark` in `@booking/ui/globals.css` so the dashboard and any
+ * un-configured tenant inherit the same one. This page renders only when the host
+ * resolves to `kind: 'platform'`, so `TenantThemeStyle` never mounts above it and
+ * nothing overrides that default — the sections style themselves with the normal
+ * semantic utilities (`bg-card`, `text-muted-foreground`, `bg-primary`, `ring-ring`).
  *
- * `--platform-*` covers only the roles shadcn has no slot for: the softened-ink and
- * muted steps between `--foreground` and `--muted-foreground`, the amber text/soft
- * scale derived from `--primary`, and the status green.
+ * What is left below is genuinely landing-only: `--platform-*` covers the roles
+ * shadcn has no slot for — the softened-ink and muted steps between `--foreground`
+ * and `--muted-foreground`, the amber text/soft scale derived from `--primary`, and
+ * the status green.
  *
  * Dark bands (consultation, dark capability row, "after" panel) opt in with
- * `className="dark"` and get the flipped set below — same utilities, no ternaries.
+ * `className="dark"`. Because this scope no longer sets base tokens, the shared
+ * `.dark` applies to those bands normally; only the `--platform-*` steps need
+ * restating below, where the descendant selector's higher specificity is wanted.
  */
 .platform-landing {
-  --background: #f4f5f7;
-  --foreground: #0a0e13;
-  --card: #ffffff;
-  --card-foreground: #0a0e13;
-  --secondary: #fbfbfc;
-  --secondary-foreground: #0a0e13;
-  --muted: #edeff2;
-  --muted-foreground: #4a515b;
-  --border: #e4e6ea;
-  --input: #e4e6ea;
-  --primary: #ffb020;
-  --primary-foreground: #0a0e13;
-  --ring: #b87300;
-
   --platform-ink-soft: #2a303a;
   --platform-muted-soft: #6a707a;
   --platform-muted-subtle: #8a909a;
@@ -140,28 +128,9 @@ html {
   font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
-/*
- * Every token a dark band reads must be restated: `@booking/ui`'s own `.dark`
- * block and `.platform-landing` have equal specificity, and `.platform-landing`
- * comes later in source order, so an omission here silently keeps the light value.
- */
+/* The `--platform-*` steps for a dark band. Base tokens come from the shared
+   `.dark`, which now carries the same ink palette these were written against. */
 .platform-landing .dark {
-  --background: #0a0e13;
-  --foreground: #f4f5f7;
-  --card: #12171f;
-  --card-foreground: #f4f5f7;
-  --secondary: #1b212b;
-  --secondary-foreground: #f4f5f7;
-  --muted: #141922;
-  --muted-foreground: #c9cdd4;
-  --border: #232a34;
-  --input: #2c333d;
-  --primary: #ffb020;
-  --primary-foreground: #0a0e13;
-  /* amber, not the light-mode `#b87300`: that ring is invisible on near-black */
-  --ring: #ffb020;
-  --destructive: oklch(0.704 0.191 22.216);
-
   --platform-ink-soft: #f4f5f7;
   --platform-muted-soft: #d7dae0;
   --platform-muted-subtle: #9aa0a9;
@@ -338,27 +307,10 @@ html {
 .platform-primary-button:focus-visible,
 .platform-secondary-button:focus-visible,
 .platform-dark-button:focus-visible,
-.platform-icon-button:focus-visible,
 .platform-header-cta:focus-visible,
 .platform-menu-button:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 3px;
-}
-
-.platform-icon-button {
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid color-mix(in oklch, var(--foreground) 14%, transparent);
-  border-radius: 0.75rem;
-  color: var(--platform-ink-soft);
-  font-size: 0.75rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease;
 }
 
 .platform-menu-button {
@@ -371,9 +323,57 @@ html {
   color: var(--background);
 }
 
-.platform-icon-button:hover {
-  border-color: color-mix(in oklch, var(--foreground) 34%, transparent);
-  background: color-mix(in oklch, var(--primary) 10%, transparent);
+/*
+ * Language switcher — a segmented pair, not a toggle. Both languages stay on
+ * screen so the control says what it will do; the filled segment is where you
+ * already are. 44px tall overall with 40px segments, so the group and its targets
+ * both clear the touch minimum.
+ */
+/* No `display` here on purpose: this file is unlayered, so a `display` set in it
+   would outrank Tailwind's `hidden`/`sm:inline-flex` and the control could never
+   be hidden at a breakpoint. The component supplies `inline-flex` as a utility
+   instead, where `cn` can resolve the conflict. */
+.platform-locale-switcher {
+  align-items: center;
+  gap: 0.125rem;
+  border: 1px solid color-mix(in oklch, var(--foreground) 14%, transparent);
+  border-radius: 999px;
+  padding: 0.125rem;
+  color: var(--platform-muted-soft);
+}
+
+.platform-locale-option {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding-inline: 0.5rem;
+  color: var(--platform-muted-soft);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.platform-locale-option:hover {
+  background: color-mix(in oklch, var(--primary) 14%, transparent);
+  color: var(--foreground);
+}
+
+/* Declared after `:hover` on purpose — the active segment stays filled when the
+   pointer crosses it, so hover never reads as "this is the one you'd get". */
+.platform-locale-option[aria-current='true'] {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.platform-locale-option:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .platform-skip-link {
@@ -520,7 +520,8 @@ html {
   .platform-primary-button,
   .platform-secondary-button,
   .platform-dark-button,
-  .platform-header-cta {
+  .platform-header-cta,
+  .platform-locale-option {
     animation: none;
     transition: none;
   }
