@@ -104,7 +104,8 @@ export default function PartnerCancellationPolicies({
         description="Định nghĩa các mốc hoàn tiền khi khách huỷ. Gán cho từng tin đăng, hoặc đặt một chính sách làm mặc định cho các tin đăng chưa gán."
         actions={
           canWrite ? (
-            <Button asChild>
+
+            <Button asChild size="control">
               <Link to={dashboardPaths.partner.newCancellationPolicy}>
                 <Plus className="size-4" /> Thêm chính sách
               </Link>

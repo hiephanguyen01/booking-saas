@@ -14,6 +14,8 @@ import {
 import { data, redirect, useSearchParams } from 'react-router';
 import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
+import { apiPaths } from '~/constants/api-paths';
+import { actionMessages } from '~/constants/messages';
 import { dashboardPaths } from '~/constants/paths';
 import { CreateListingDialog } from '~/features/partner/components/listings/create-listing-dialog';
 import { buildListingFeedColumns } from '~/features/partner/components/listings/listing-feed-table-columns';
@@ -25,8 +27,6 @@ import { apiDelete, apiGet, apiPost } from '~/lib/api.server';
 import { hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { readListParams } from '~/lib/pagination';
 import type { Route } from './+types/_index';
-import { apiPaths } from '~/constants/api-paths';
-import { actionMessages } from '~/constants/messages';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Quản lý bài đăng · Đối tác · BookingOS' }];
@@ -60,6 +60,7 @@ function buildFilterSpec(listingTypes: ListingTypeResponse[]): FilterSpec {
       allLabel: 'Tất cả loại',
       // Only two short options — let it hug its content instead of the 160px floor.
       className: 'sm:min-w-0',
+      row: 'primary',
       options: [
         { value: 'single', label: 'Đơn' },
         { value: 'grouped', label: 'Nhóm' },
@@ -69,6 +70,7 @@ function buildFilterSpec(listingTypes: ListingTypeResponse[]): FilterSpec {
       kind: 'enum',
       key: 'status',
       label: 'Hiển thị',
+      row: 'primary',
       allLabel: 'Tất cả trạng thái',
       options: [
         { value: 'published', label: 'Đang hiển thị' },
@@ -81,6 +83,7 @@ function buildFilterSpec(listingTypes: ListingTypeResponse[]): FilterSpec {
       kind: 'enum',
       key: 'listingTypeId',
       label: 'Danh mục',
+      row: 'primary',
       allLabel: 'Tất cả danh mục',
       options: listingTypes.map((type) => ({ value: type.id, label: type.name })),
     },
@@ -105,7 +108,9 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 
   const listingsRequest =
     filters.view === 'all'
-      ? apiGet<Paginated<PartnerListingFeedItemResponse>>(apiPaths.partner.listingFeed, auth, { query })
+      ? apiGet<Paginated<PartnerListingFeedItemResponse>>(apiPaths.partner.listingFeed, auth, {
+          query,
+        })
       : filters.view === 'single'
         ? apiGet<PaginatedWithCounts<ListingResponse>>(apiPaths.partner.listings, auth, {
             query: { ...query, standaloneOnly: true },

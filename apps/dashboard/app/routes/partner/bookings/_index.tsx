@@ -1,21 +1,21 @@
-import { Link, useSearchParams } from 'react-router';
 import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import type { Route } from './+types/_index';
-import { apiGet } from '~/lib/api.server';
-import { requirePartner } from '~/features/partner/server/partner.server';
+import { Link, useSearchParams } from 'react-router';
 import { DashboardDataTable } from '~/components/dashboard-data-table';
+import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';
 import { BookingStatusBadge } from '~/components/status-badge';
-import { Money } from '~/components/money';
-import { formatDate, formatTime } from '~/lib/format';
-import { readListParams } from '~/lib/pagination';
-import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
-import { BOOKINGS_FILTER_SPEC } from '~/features/bookings/lib/booking-filters';
-import { dashboardPaths } from '~/constants/paths';
-import { runPartnerBookingAction } from '~/features/bookings/server/partner-booking-actions.server';
-import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
 import { apiPaths } from '~/constants/api-paths';
+import { dashboardPaths } from '~/constants/paths';
+import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
+import { BOOKINGS_FILTER_SPEC } from '~/features/bookings/lib/booking-filters';
+import { runPartnerBookingAction } from '~/features/bookings/server/partner-booking-actions.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
+import { apiGet } from '~/lib/api.server';
+import { formatDate, formatTime } from '~/lib/format';
+import { hasActiveFilters, readListFilters, type FilterSpec } from '~/lib/list-filters';
+import { readListParams } from '~/lib/pagination';
+import type { Route } from './+types/_index';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Lượt đặt · Đối tác · BookingOS' }];
@@ -38,6 +38,7 @@ const PARTNER_BOOKINGS_FILTER_SPEC: FilterSpec = [
     key: 'status',
     label: 'Trạng thái',
     allLabel: 'Tất cả trạng thái',
+    row: 'primary',
     options: STATUS_FILTERS.filter(({ value }) => value !== 'all'),
   },
 ];

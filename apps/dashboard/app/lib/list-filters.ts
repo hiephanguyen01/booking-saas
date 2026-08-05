@@ -14,8 +14,17 @@ export type FilterField =
       allLabel?: string;
       /** Extra classes on the select — e.g. `sm:min-w-0` to drop the compact min width. */
       className?: string;
+      /** 'primary' đặt cùng hàng search; 'secondary' (mặc định) đặt dưới. */
+      row?: 'primary' | 'secondary';
     }
-  | { kind: 'date-range'; fromKey: string; toKey: string; label: string };
+  | {
+      kind: 'date-range';
+      fromKey: string;
+      toKey: string;
+      label: string;
+      /** 'primary' đặt cùng hàng search; 'secondary' (mặc định) đặt dưới. */
+      row?: 'primary' | 'secondary';
+    };
 
 export type FilterSpec = readonly FilterField[];
 
