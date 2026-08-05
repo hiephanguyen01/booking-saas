@@ -9,7 +9,9 @@
  * storefront ships, so the two products read as one.
  */
 body {
-  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  /* `--font-tenant` is emitted by `tenantBrandCss()` when a tenant configures a
+     face; on `body` rather than the shell so portalled surfaces get it too. */
+  font-family: var(--font-tenant, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
