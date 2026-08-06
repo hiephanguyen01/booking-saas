@@ -5,6 +5,8 @@ import {
   type AvailabilityMode,
   type PublicListingDetailResponse,
 } from '@booking/contracts';
+import { data } from 'react-router';
+import { appendViewedCookie } from '~/features/account/server/recently-viewed.server';
 import { submitContentReport } from '~/features/content-reports/server/content-report.server';
 import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { fetchAvailability } from '~/features/booking/server/booking.server';
@@ -16,7 +18,6 @@ import { optionalData } from '~/lib/server/optional-data.server';
 import { selectedPackageForListing } from '~/lib/package-options';
 import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
 import { addDays, todayInTz, zonedToUtcIso } from '~/lib/time';
-
 
 export async function handleListingAction(request: Request, listingSlug?: string) {
   return submitContentReport(
@@ -151,7 +152,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
         )
       : null;
 
-  return {
+  const payload = {
     listing,
     mode,
     availability,
@@ -162,6 +163,16 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
     bookingToday,
     auxiliaryData,
   };
+
+  // Record the view for the account's "Đã xem gần đây" list. Null when this
+  // listing is already first, so a refresh costs no header. React Router
+  // prepends `Set-Cookie` from the loader headers with or without a `headers`
+  // export on the route (see the note in `routes/legal.tsx`).
+  const setCookie = await appendViewedCookie(request, {
+    kind: 'listing',
+    slug: listing.slug,
+  });
+  return setCookie ? data(payload, { headers: { 'Set-Cookie': setCookie } }) : payload;
 }
 
 function pickMode(

@@ -15,6 +15,7 @@ import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import type { ZodType } from 'zod';
 import { isStorefrontAuthPath, storefrontPaths } from '~/constants/paths';
+import { clearViewedCookie } from '~/features/account/server/recently-viewed.server';
 import {
   authFlow,
   flowView,
@@ -95,7 +96,11 @@ const CUSTOMER_REGISTRATION_LEGAL_TYPES = ['customer_terms', 'privacy_policy'] a
 export async function loadRegisterRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
   requireGuestAuth(locale);
-  const legalConsent = await loadLegalConsentBundle(request, locale, CUSTOMER_REGISTRATION_LEGAL_TYPES);
+  const legalConsent = await loadLegalConsentBundle(
+    request,
+    locale,
+    CUSTOMER_REGISTRATION_LEGAL_TYPES,
+  );
   return { legalConsent };
 }
 
@@ -331,5 +336,10 @@ export async function logoutAction(request: Request, localeParam?: string) {
   const auth = getOptionalAuth();
   if (auth) await backendLogout(request, auth.session.accessToken);
   suppressStorefrontSessionCommit();
-  return destroyUserSession(request, storefrontPaths.home(locale));
+  const response = await destroyUserSession(request, storefrontPaths.home(locale));
+  // Recently-viewed lives on the device, not the account. Without this, the next
+  // person to sign in on a shared browser inherits the previous customer's
+  // browsing history.
+  response.headers.append('Set-Cookie', await clearViewedCookie());
+  return response;
 }

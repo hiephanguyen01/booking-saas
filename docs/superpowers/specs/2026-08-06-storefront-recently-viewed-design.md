@@ -65,10 +65,10 @@ affiliate attribution cookie from a GET loader exactly this way, and the comment
 `routes/legal.tsx` records that React Router prepends `Set-Cookie` from `loaderHeaders` whether or
 not the route exports `headers`. Neither route needs a `headers` export for the cookie alone.
 
-**Verify before building on it:** the listing loader returns `auxiliaryData` as an un-awaited
-promise (streamed reviews + related listings). Confirm that wrapping the payload in `data()`
-preserves that streaming before wiring the rest. If it does not, set the cookie from the route's
-`headers` export instead.
+The listing loader returns `auxiliaryData` as an un-awaited promise (streamed reviews + related
+listings), so wrapping the payload in `data()` risked breaking that stream. Checked against the
+running app: the rendered document still carries its `streamController` chunks, so `data()` is
+transparent to streaming and no `headers` export is needed.
 
 ## Reading the list
 
@@ -107,22 +107,26 @@ are not card-shaped:
 - **Group**: `publicListingGroupDetailResponseSchema` carries `listings[].priceFrom`, so the card's
   "from" price is the minimum of the children already present in the response — a presentational
   reduction over data in hand, not a re-implementation of pricing.
-- **Listing**: `publicListingDetailResponseSchema` has **no** `priceFrom` and no `itemLabel`. The
-  value is computed backend-side by `lowestBasePrice()` and attached only to card-shaped responses.
-  Deriving it in the frontend would duplicate a shared pricing kernel, and omitting it would leave
-  studio cards priced and listing cards not.
+- **Listing**: `publicListingDetailResponseSchema` has **no** `priceFrom`. The value is computed
+  backend-side by `lowestBasePrice()` and attached only to card-shaped responses. Deriving it in the
+  frontend would duplicate a shared pricing kernel, and omitting it would leave studio cards priced
+  and listing cards not.
 
-So the detail response gains the missing fields. This is a field-level contract fix across the four
-surfaces `packages/contracts/CLAUDE.md` requires, with no migration, no new endpoint and no new
-module:
+So the detail response gains that one field. A field-level contract fix, no migration, no new
+endpoint, no new module:
 
-1. `packages/contracts/src/contracts/listing.ts` — add `priceFrom: z.string().nullable()` and
-   `itemLabel: z.string().nullable()` to `publicListingDetailResponseSchema`.
-2. `apps/api/src/modules/listing/infrastructure/http/dto/` — the matching `PublicListingDetailResponseDto` fields.
-3. `apps/api/src/modules/listing/application/listing.mapper.ts` — populate them in
-   `toPublicListingDetailResponse`; `lowestBasePrice` is already imported in that file and already
-   used at the card mapper.
-4. Rebuild `@booking/contracts` before the storefront consumes the new fields.
+1. `packages/contracts/src/contracts/listing.ts` — add `priceFrom: z.string().nullable()` to
+   `publicListingDetailResponseSchema`.
+2. `apps/api/src/modules/listing/application/listing.mapper.ts` — populate it in
+   `toPublicListingDetailResponse` from the **raw** `l.modeConfig`, not the sanitized
+   `publicModeConfig(…)` beside it. `lowestBasePrice` is already imported in that file for the card
+   mapper.
+3. Rebuild `@booking/contracts` before the storefront consumes the new field.
+
+`PublicListingDetailResponseDto` needs no edit — it is generated from the schema by `createZodDto`.
+
+`itemLabel` is deliberately *not* added: `ListingCard` never renders it, so the frontend mapper
+supplies `null` rather than the backend growing a field nothing reads.
 
 ## Customer controls
 
@@ -163,11 +167,20 @@ this, the next person to sign in on a shared browser sees the previous customer'
 
 ## Files
 
-**New (3)**
+**New (4)**
 
-- `apps/storefront/app/features/account/server/recently-viewed.server.ts`
-- `apps/storefront/app/features/account/lib/recently-viewed-item.ts`
+- `apps/storefront/app/features/account/server/recently-viewed.server.ts` — the cookie
+- `apps/storefront/app/features/account/lib/recently-viewed-ref.ts` — the `l:`/`g:` key format,
+  shared because the page submits a key back and browser code cannot value-import a `*.server` file
+- `apps/storefront/app/features/account/lib/recently-viewed-item.ts` — detail → card
 - `apps/storefront/app/features/account/hooks/use-account-recent-page-controller.ts`
+
+**Deleted (1)**
+
+- `apps/storefront/app/features/account/lib/account-listing-item.ts` — the stub loader's
+  `{ listing, presentation }` wrapper. Nothing supplies presentation metadata for a viewed item (no
+  discount, no distance), so the page now carries `PublicListingResponse[]` and renders exactly like
+  the favourites grid.
 
 **Modified**
 
@@ -182,7 +195,6 @@ this, the next person to sign in on a shared browser sees the previous customer'
 - `apps/storefront/app/features/auth/server/auth-routes.server.ts`
 - `packages/i18n/src/locales/vi/account.ts`, `packages/i18n/src/locales/en/account.ts`
 - `packages/contracts/src/contracts/listing.ts`
-- `apps/api/src/modules/listing/infrastructure/http/dto/` (public listing detail DTO)
 - `apps/api/src/modules/listing/application/listing.mapper.ts`
 
 ## Verification

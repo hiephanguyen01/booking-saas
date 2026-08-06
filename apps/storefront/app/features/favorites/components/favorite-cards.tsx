@@ -1,6 +1,7 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { ListingCard } from '~/features/catalog/components/listing-card';
 import type {
+  ListingCardDismissControl,
   ListingCardPresentation,
   ListingFavoriteControl,
 } from '~/features/catalog/lib/listing-card.types';
@@ -32,10 +33,13 @@ export function FavoriteListingCard({
   listing,
   presentation,
   className,
+  dismissControl,
 }: {
   listing: PublicListingResponse;
   presentation?: ListingCardPresentation;
   className?: string;
+  /** Only the recently-viewed grid passes one; every other caller omits it. */
+  dismissControl?: ListingCardDismissControl;
 }) {
   const favoriteControl = useFavoriteControl(listing);
   return (
@@ -44,6 +48,7 @@ export function FavoriteListingCard({
       presentation={presentation}
       className={className}
       favoriteControl={favoriteControl}
+      dismissControl={dismissControl}
     />
   );
 }

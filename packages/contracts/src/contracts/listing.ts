@@ -876,6 +876,14 @@ export const publicListingDetailResponseSchema = z
     capacity: z.number().int().positive().nullable(),
     depositPercent: z.number(),
     listingTypeSlug: z.string(),
+    /**
+     * Lowest configured price in VND đồng as a digit string, or null — the same
+     * `lowestBasePrice` kernel the card projections use. Present on the detail
+     * response so a caller holding only a detail (the storefront's
+     * recently-viewed page) can render a listing card without re-deriving a
+     * price the backend already owns.
+     */
+    priceFrom: z.string().nullable(),
     group: z.object({ title: z.string(), slug: z.string() }).nullable(),
     cancellationPolicy: cancellationPolicySummarySchema.nullable(),
     /** Policy actually applied after fallback (listing → partner default → tenant default). */

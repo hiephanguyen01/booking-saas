@@ -12,3 +12,12 @@ export interface ListingFavoriteControl {
   label: string;
   onToggle: () => void;
 }
+
+/**
+ * Removes the card from the list it is being shown in — not from anything the
+ * listing itself owns. Only the account's recently-viewed grid passes one.
+ */
+export interface ListingCardDismissControl {
+  label: string;
+  onDismiss: () => void;
+}
