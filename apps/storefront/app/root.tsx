@@ -31,6 +31,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       faviconUrl={
         loaderData?.kind === 'tenant' ? loaderData.tenant.themeConfig.faviconUrl || null : null
       }
+      pwaTenant={
+        loaderData?.kind === 'tenant'
+          ? { name: loaderData.tenant.name, themeConfig: loaderData.tenant.themeConfig }
+          : null
+      }
     >
       {children}
     </StorefrontDocument>

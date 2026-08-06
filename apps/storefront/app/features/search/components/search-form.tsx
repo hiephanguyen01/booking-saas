@@ -1,3 +1,4 @@
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import {
@@ -11,13 +12,12 @@ import { cn } from '@booking/ui/lib/utils';
 import { Info, Search, Users } from 'lucide-react';
 import { useRef } from 'react';
 import { Form } from 'react-router';
-import { NsI18n, useTranslation } from '@booking/i18n';
-import { SearchDatePicker } from './search-date-picker';
-import { CategoryPicker, LocationCombobox, ModeToggle, SearchField } from './search-form-controls';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+import { useSearchFormController } from '~/features/search/hooks/use-search-form-controller';
 import type { SearchFormProps } from '~/features/search/lib/search-form-types';
 import { modeHint } from '~/features/search/lib/search-mode-hint';
-import { useSearchFormController } from '~/features/search/hooks/use-search-form-controller';
-import { PANEL_SURFACE } from '~/constants/surfaces';
+import { SearchDatePicker } from './search-date-picker';
+import { CategoryPicker, LocationCombobox, ModeToggle, SearchField } from './search-form-controls';
 
 export type { LocationOption } from '~/features/search/lib/search-form-types';
 
@@ -91,7 +91,7 @@ export function SearchForm({
       <div
         className={cn(
           'flex flex-col gap-4',
-          isHero ? 'px-5 pt-5 pb-12 md:px-6' : 'mx-auto max-w-292.5 px-4 pb-6 lg:px-0',
+          isHero ? 'px-5 pt-5 pb-5 sm:pb-12 md:px-6' : 'mx-auto max-w-292.5 px-4 pb-6 lg:px-0',
         )}
       >
         {isHero && availableModes.length ? (
@@ -211,11 +211,16 @@ export function SearchForm({
         </div>
 
         {isHero ? (
-          <div className="absolute inset-x-0 -bottom-6 flex justify-center">
+          // In flow and full-width on a phone; from `sm` up it goes back to
+          // straddling the card's bottom edge. One button, positioned two ways —
+          // rendering a second one behind `hidden` would put two submit controls
+          // in the same form, which is a real difference to a screen reader and to
+          // an Enter keypress, not just a visual one.
+          <div className="flex justify-center sm:absolute sm:inset-x-0 sm:-bottom-6">
             <Button
               type="submit"
               size="control"
-              className="min-w-60 shadow-md"
+              className="w-full shadow-md sm:w-auto sm:min-w-60"
               disabled={!canSubmit}
             >
               {t('home.search')}

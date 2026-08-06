@@ -38,7 +38,16 @@ export function usePartnerProfilePageController({
     wards: AdministrativeWard[];
   }>();
   const form = useForm<PartnerOnboardingProfileInput>({
-    resolver: zodResolver(partnerOnboardingProfileSchema),
+    resolver: (values, context, options) =>
+      zodResolver(partnerOnboardingProfileSchema)(
+        {
+          ...values,
+          acceptedVersionIds: loaderData.legalConsent.versionIds,
+          acceptedLocale: loaderData.legalConsent.acceptedLocale,
+        },
+        context,
+        options,
+      ),
     defaultValues: {
       ...PARTNER_PROFILE_DEFAULTS,
       acceptedVersionIds: loaderData.legalConsent.versionIds,
@@ -117,10 +126,8 @@ export function usePartnerProfilePageController({
   const wardOptions = wards.map((ward) => ({ label: ward.name, value: ward.code }));
   const wardsLoading = wardsFetcher.state !== 'idle';
   const onSubmit = form.handleSubmit((values) => {
-    // `acceptedVersionIds`/`acceptedLocale` have no rendered control (they are
-    // not user-editable), so — regardless of react-hook-form's `shouldUnregister`
-    // bookkeeping for fields nobody registered — merge them from the loader in
-    // directly rather than trust they survive in `values`.
+    // Re-assert the immutable loader values at the network boundary as well as
+    // in the resolver above; browser form state must never choose legal versions.
     const payload: PartnerOnboardingProfileInput = {
       ...values,
       acceptedVersionIds: loaderData.legalConsent.versionIds,

@@ -1,12 +1,12 @@
 import type { PublicListingResponse } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
-import { HomeListingCardsSkeleton } from '~/components/loading-skeletons';
-import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import { LocationTabs } from './location-tabs';
-import { useRecommendedSectionController } from '~/features/home/hooks/use-recommended-section-controller';
-import { PANEL_SURFACE } from '~/constants/surfaces';
+import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
+import { HomeListingCardsSkeleton } from '~/components/loading-skeletons';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
+import { useRecommendedSectionController } from '~/features/home/hooks/use-recommended-section-controller';
+import { LocationTabs } from './location-tabs';
 
 /**
  * "Đề xuất dành cho bạn" — location-filtered catalog with a client-side
@@ -35,9 +35,9 @@ export function RecommendedSection({
       {pending ? (
         <HomeListingCardsSkeleton label={t('loading')} count={8} layout="grid" />
       ) : shown.length > 0 ? (
-        <div className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-5 md:grid-cols-3 lg:grid-cols-4">
           {shown.map((listing) => (
-            <FavoriteListingCard key={listing.id} listing={listing} />
+            <FavoriteListingCard key={listing.id} listing={listing} layout="responsive-row" />
           ))}
         </div>
       ) : (

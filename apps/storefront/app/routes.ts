@@ -72,5 +72,6 @@ export default [
   route('set-locale', 'routes/set-locale.tsx'),
   route('sitemap.xml', 'routes/sitemap[.]xml.tsx'),
   route('robots.txt', 'routes/robots[.]txt.tsx'),
+  route('manifest.webmanifest', 'routes/manifest[.]webmanifest.ts'),
   route('*', 'routes/not-found.tsx'),
 ] satisfies RouteConfig;

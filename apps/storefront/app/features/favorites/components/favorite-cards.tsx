@@ -1,17 +1,18 @@
 import type { PublicListingResponse } from '@booking/contracts';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { ListingCard } from '~/features/catalog/components/listing-card';
+import { SearchResultCard } from '~/features/catalog/components/search-result-card';
 import type {
   ListingCardDismissControl,
+  ListingCardLayout,
   ListingCardPresentation,
   ListingFavoriteControl,
 } from '~/features/catalog/lib/listing-card.types';
-import { SearchResultCard } from '~/features/catalog/components/search-result-card';
+import { useFavorite } from '~/features/favorites/hooks/use-favorite';
 import type {
   EnrichedSearchListing,
   SearchResultContext,
 } from '~/features/search/lib/search-state';
-import { NsI18n, useTranslation } from '@booking/i18n';
-import { useFavorite } from '~/features/favorites/hooks/use-favorite';
 
 /** The heart's persisted state and its label — the same wiring for every card shape. */
 function useFavoriteControl(listing: {
@@ -34,12 +35,14 @@ export function FavoriteListingCard({
   presentation,
   className,
   dismissControl,
+  layout,
 }: {
   listing: PublicListingResponse;
   presentation?: ListingCardPresentation;
   className?: string;
   /** Only the recently-viewed grid passes one; every other caller omits it. */
   dismissControl?: ListingCardDismissControl;
+  layout?: ListingCardLayout;
 }) {
   const favoriteControl = useFavoriteControl(listing);
   return (
@@ -49,6 +52,7 @@ export function FavoriteListingCard({
       className={className}
       favoriteControl={favoriteControl}
       dismissControl={dismissControl}
+      layout={layout}
     />
   );
 }

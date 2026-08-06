@@ -13,4 +13,11 @@ export const viNavigation = {
   logout: 'Đăng xuất',
   accountMenu: 'Mở menu tài khoản',
   switchLanguage: 'Đổi ngôn ngữ sang {locale}',
+  bottomNav: {
+    label: 'Điều hướng nhanh',
+    home: 'Trang chủ',
+    search: 'Tìm kiếm',
+    bookings: 'Đặt chỗ',
+    account: 'Tài khoản',
+  },
 } as const;

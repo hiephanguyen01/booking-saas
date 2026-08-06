@@ -53,7 +53,7 @@ export function StudioHome({
         locations={locations}
         onTypeChange={changeType}
       />
-      <div className="mx-auto flex max-w-292.5 flex-col gap-10 px-4 pb-24 sm:px-6 xl:px-0">
+      <div className="mx-auto flex max-w-292.5 flex-col gap-6 px-4 pb-12 sm:gap-10 sm:px-6 sm:pb-24 xl:px-0">
         <BrandCarousel
           images={(tenant.themeConfig.carousel ?? []).filter(Boolean)}
           tenantName={tenant.name}

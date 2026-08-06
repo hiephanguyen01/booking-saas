@@ -13,7 +13,14 @@ import { tenantUnavailableResponse } from '~/lib/tenant-availability';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const DOCUMENT_METHODS = new Set(['GET', 'HEAD']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
-const PLATFORM_DOCUMENT_PATHS = new Set(['/vi', '/en', '/robots.txt', '/sitemap.xml']);
+
+const PLATFORM_DOCUMENT_PATHS = new Set([
+  '/vi',
+  '/en',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/manifest.webmanifest',
+]);
 /**
  * `/:locale/legal/:docSlug` (and its `/v/:versionNo` historical form) — the
  * one document-serving path exempt from the `tenant.live` hard gate below.

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMatches } from 'react-router';
-import type { TenantRootLoaderPayload } from '~/features/root/server/root-loader.server';
 import type { StorefrontContext } from '~/features/root/lib/storefront-context';
+import type { TenantRootLoaderPayload } from '~/features/root/server/root-loader.server';
 
 export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayload) {
   const { tenant, listingTypes, locale, canonical, cspNonce, currentUser, accountMenuSummary } =
@@ -22,6 +22,9 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
   const bypassTenantGate = matches.some(
     (match) => (match.handle as { bypassTenantGate?: boolean } | undefined)?.bypassTenantGate,
   );
+  const hideBottomNav = matches.some(
+    (match) => (match.handle as { hideBottomNav?: boolean } | undefined)?.hideBottomNav,
+  );
   const outletContext: StorefrontContext = {
     tenant,
     listingTypes,
@@ -37,6 +40,7 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
     bypassTenantGate,
     currentUser,
     documentNonce,
+    hideBottomNav,
     isStandalone,
     listingTypes,
     locale,
