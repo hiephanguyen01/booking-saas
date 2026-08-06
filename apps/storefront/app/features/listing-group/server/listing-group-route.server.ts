@@ -3,6 +3,8 @@ import type {
   PublicListingDetailWithTimezoneResponse,
   QuoteResponse,
 } from '@booking/contracts';
+import { data } from 'react-router';
+import { appendViewedCookie } from '~/features/account/server/recently-viewed.server';
 import { submitContentReport } from '~/features/content-reports/server/content-report.server';
 import {
   parseSearchState,
@@ -93,7 +95,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
         listing.listingTypeSlug === group.listingTypeSlug,
     )
     .slice(0, 4);
-  return {
+  const payload = {
     group,
     state: renderedState,
     bookingToday,
@@ -103,6 +105,11 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
     relatedListings,
     ...reviewData,
   };
+
+  // Record the view for the account's "Đã xem gần đây" list — see the same call
+  // on the listing route for why this is null on a plain refresh.
+  const setCookie = await appendViewedCookie(request, { kind: 'group', slug: group.slug });
+  return setCookie ? data(payload, { headers: { 'Set-Cookie': setCookie } }) : payload;
 }
 
 function safe<T>(promise: Promise<T>): Promise<T | null> {

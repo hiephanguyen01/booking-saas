@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { CustomerBookingSettlementResponse } from '@booking/contracts';
 import type {
   BookingDetailViewModel,
   BookingDetailState,
@@ -10,12 +11,15 @@ export function useBookingDetailOverviewController({
   booking,
   state,
   defaultCancelOpen,
+  settlement,
 }: {
   booking: BookingDetailViewModel;
   state: BookingDetailState;
   defaultCancelOpen: boolean;
+  settlement: CustomerBookingSettlementResponse | null;
 }) {
   const [cancelOpen, setCancelOpen] = useState(defaultCancelOpen);
+  const [disputeOpen, setDisputeOpen] = useState(false);
   const mode: BookingModeLabelKey =
     booking.bookingMode === 'hourly' ||
     booking.bookingMode === 'daily' ||
@@ -25,7 +29,11 @@ export function useBookingDetailOverviewController({
   const isInventory = booking.bookingMode === 'inventory';
   const canPay = booking.status === 'pending_payment';
   const canCancel = booking.status === 'confirmed';
-  const canDispute = state === 'absent';
+  // The backend owns this decision: the settlement must sit in an open dispute
+  // window, before `disputeUntil`, with no dispute already used. Deriving it
+  // from the booking status instead both hid the button on completed bookings
+  // and offered it after the window had closed.
+  const canDispute = settlement?.canOpenDispute ?? false;
   const showPolicy =
     booking.cancellationTiers.length > 0 || state === 'cancelled' || state === 'absent';
 
@@ -34,10 +42,13 @@ export function useBookingDetailOverviewController({
     canDispute,
     canPay,
     cancelOpen,
+    disputeOpen,
+    disputeUntil: canDispute ? (settlement?.disputeUntil ?? null) : null,
     isInventory,
     mode,
     participantCount: String(isInventory ? booking.quantity : booking.guestCount),
     setCancelOpen,
+    setDisputeOpen,
     showActions: showPolicy || canPay || canCancel || canDispute,
     showPolicy,
   };

@@ -9,7 +9,7 @@ import {
   AccountListState,
   AccountTypeTabs,
 } from '~/features/account/components/shared/account-primitives';
-import { useAccountTypeFilter } from '~/features/account/hooks/use-account-type-filter';
+import { useAccountRecentPageController } from '~/features/account/hooks/use-account-recent-page-controller';
 import type { loadAccountRecentRoute } from '~/features/account/server/account-recent-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 
@@ -20,12 +20,28 @@ export function AccountRecentPage({
 }) {
   const { t } = useTranslation(NsI18n.Account);
   const { listingTypes } = useOutletContext<AccountOutletContext>();
-  const { isAllSelected, isTypeSelected, selectAll, selectType, visibleItems } =
-    useAccountTypeFilter(loaderData.items, (item) => item.listing.listingTypeSlug);
+  const {
+    clearAll,
+    hasItems,
+    isAllSelected,
+    isTypeSelected,
+    keyOf,
+    removeItem,
+    selectAll,
+    selectType,
+    visibleItems,
+  } = useAccountRecentPageController(loaderData.items);
 
   return (
     <div className="flex flex-col gap-4 py-2 font-studio">
-      <h1 className="text-base font-semibold leading-6 text-foreground">{t('recent.title')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-base font-semibold leading-6 text-foreground">{t('recent.title')}</h1>
+        {hasItems ? (
+          <Button variant="ghost" size="sm" onClick={clearAll}>
+            {t('recent.clear')}
+          </Button>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-3">
         <AccountTypeTabs
@@ -45,10 +61,13 @@ export function AccountRecentPage({
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {visibleItems.map((item) => (
               <FavoriteListingCard
-                key={item.listing.id}
-                listing={item.listing}
-                presentation={item.presentation}
+                key={keyOf(item)}
+                listing={item}
                 className="min-h-[394px]"
+                dismissControl={{
+                  label: t('recent.remove', { title: item.title }),
+                  onDismiss: () => removeItem(item),
+                }}
               />
             ))}
           </div>

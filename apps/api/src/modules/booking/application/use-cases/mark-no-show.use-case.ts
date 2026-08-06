@@ -31,7 +31,8 @@ export class MarkNoShowUseCase {
       'booking.no_show',
       {
         reason,
-        // §8.5: a no-show is only markable after the slot ends and within 48h of it.
+        // §8.5: a no-show is only markable after the slot ends and within
+        // NO_SHOW_WINDOW_HOURS of it.
         guard: (booking, tx) => this.assertNoShowWindow(tx, booking),
         // The customer never took custody of inventory, so its separately-held
         // security deposit must be returned even though the service deposit is
@@ -43,8 +44,9 @@ export class MarkNoShowUseCase {
 
   /**
    * §8.5: the partner may mark `no_show` only once the slot has ended and only
-   * within {@link NO_SHOW_WINDOW_HOURS}h of `timeslot.end`. Past that, an explicit
-   * Tenant intervention is required; the scheduler never guesses completion.
+   * within {@link NO_SHOW_WINDOW_HOURS}h of `timeslot.end`. One hour past that
+   * the scheduler auto-completes the booking, so a later mark would race a
+   * transition that recognises revenue on the wrong basis.
    */
   private async assertNoShowWindow(tx: PrismaTx, booking: BookingRecord): Promise<void> {
     Booking.rehydrate(booking).assertNoShowAllowed(await this.tenantDb.databaseNow(tx));

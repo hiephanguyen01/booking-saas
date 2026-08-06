@@ -25,6 +25,8 @@ export interface BookingEventPayload {
   refundAmount?: string;
   refundPercent?: number;
   reason?: string;
+  /** Set by the scheduler's post-grace sweep, never by a partner/tenant action. */
+  auto?: boolean;
 }
 
 /**

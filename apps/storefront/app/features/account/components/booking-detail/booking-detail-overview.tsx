@@ -1,21 +1,22 @@
-import type { Locale } from '@booking/i18n';
+import type { CustomerBookingSettlementResponse } from '@booking/contracts';
+import { formatDateTime, type Locale } from '@booking/i18n';
 import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, Clock3, PackageCheck, Users } from 'lucide-react';
-import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import { storefrontPaths } from '~/constants/paths';
 import { ListingThumbnail } from '~/components/listing-thumbnail';
 import type {
   BookingDetailViewModel,
   BookingDetailState,
 } from '~/features/booking/lib/booking-detail-model';
 import { PANEL_SURFACE } from '~/constants/surfaces';
+import { DEFAULT_TZ } from '~/lib/time';
 import { CancellationPolicyList } from '~/features/account/components/shared/account-primitives';
 import { BookingCardHeader } from '~/features/account/components/shared/booking-card-header';
 import { BookingPaymentForm } from '~/features/account/components/bookings/booking-payment-form';
 import { CancelBookingDialog } from '~/features/account/components/bookings/cancel-booking-dialog';
+import { DisputeBookingDialog } from './dispute-booking-dialog';
 import { useBookingDetailOverviewController } from '~/features/account/hooks/use-booking-detail-overview-controller';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 
@@ -24,13 +25,20 @@ export function BookingDetailOverview({
   locale,
   state,
   defaultCancelOpen,
+  settlement,
 }: {
   booking: BookingDetailViewModel;
   locale: Locale;
   state: BookingDetailState;
   defaultCancelOpen: boolean;
+  settlement: CustomerBookingSettlementResponse | null;
 }) {
-  const controller = useBookingDetailOverviewController({ booking, state, defaultCancelOpen });
+  const controller = useBookingDetailOverviewController({
+    booking,
+    state,
+    defaultCancelOpen,
+    settlement,
+  });
 
   return (
     <section className={cn(PANEL_SURFACE, 'overflow-hidden')}>
@@ -55,8 +63,11 @@ export function BookingDetailOverview({
         canPay={controller.canPay}
         canCancel={controller.canCancel}
         canDispute={controller.canDispute}
+        disputeUntil={controller.disputeUntil}
         cancelOpen={controller.cancelOpen}
         setCancelOpen={controller.setCancelOpen}
+        disputeOpen={controller.disputeOpen}
+        setDisputeOpen={controller.setDisputeOpen}
         showActions={controller.showActions}
       />
     </section>
@@ -167,8 +178,11 @@ function PolicyActions({
   canPay,
   canCancel,
   canDispute,
+  disputeUntil,
   cancelOpen,
   setCancelOpen,
+  disputeOpen,
+  setDisputeOpen,
   showActions,
 }: {
   booking: BookingDetailViewModel;
@@ -177,30 +191,35 @@ function PolicyActions({
   canPay: boolean;
   canCancel: boolean;
   canDispute: boolean;
+  disputeUntil: string | null;
   cancelOpen: boolean;
   setCancelOpen: (open: boolean) => void;
+  disputeOpen: boolean;
+  setDisputeOpen: (open: boolean) => void;
   showActions: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Account);
+  const deadlineLabel = disputeUntil ? formatDateTime(disputeUntil, locale, DEFAULT_TZ) : null;
 
   if (!showActions) return null;
 
   return (
     <div className="mx-5 flex flex-col gap-4 border-t border-border py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0 text-xs leading-5 text-muted-foreground">
+      <div className="min-w-0 space-y-1 text-xs leading-5 text-muted-foreground">
         {state === 'cancelled' ? (
-          <div className="space-y-1">
+          <>
             <p>· {t('bookings.refundPreview', { percent: booking.refundPercent ?? 0 })}</p>
             <p>· {t('bookings.refundTiming')}</p>
-          </div>
+          </>
         ) : state === 'absent' ? (
-          <div className="space-y-1">
+          <>
             <p>· {t('bookings.noRefund')}</p>
             <p>· {t('bookings.disputeHint')}</p>
-          </div>
+          </>
         ) : (
           <CancellationPolicyList booking={booking} locale={locale} />
         )}
+        {deadlineLabel ? <p>· {t('bookings.disputeDeadline', { date: deadlineLabel })}</p> : null}
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">
         {canPay ? (
@@ -232,13 +251,21 @@ function PolicyActions({
           </>
         ) : null}
         {canDispute ? (
-          <Button
-            asChild
-            variant="outline"
-            className="h-10 rounded-sm border-foreground px-6 text-foreground"
-          >
-            <Link to={storefrontPaths.account.help(locale)}>{t('bookings.dispute')}</Link>
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-sm border-foreground px-6 text-foreground"
+              onClick={() => setDisputeOpen(true)}
+            >
+              {t('bookings.dispute')}
+            </Button>
+            <DisputeBookingDialog
+              deadlineLabel={deadlineLabel}
+              open={disputeOpen}
+              onOpenChange={setDisputeOpen}
+            />
+          </>
         ) : null}
       </div>
     </div>

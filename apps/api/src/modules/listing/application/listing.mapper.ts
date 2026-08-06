@@ -194,6 +194,9 @@ export function toPublicListingDetailResponse(
     capacity: l.capacity,
     depositPercent: l.depositPercent,
     listingTypeSlug: l.listingTypeSlug,
+    // Read off the raw mode config, not the sanitized `publicModeConfig` above —
+    // same kernel, same answer as the card projections.
+    priceFrom: lowestBasePrice(l),
     timezone: l.resourceTimezone,
     group: l.group,
     cancellationPolicy: l.cancellationPolicy,

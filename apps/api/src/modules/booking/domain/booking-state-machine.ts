@@ -35,7 +35,9 @@ const EDGES: readonly Edge[] = [
   { from: 'pending_payment', to: 'expired', actors: ['system'] },
   { from: 'expired', to: 'confirmed', actors: ['system'] }, // late webhook, slot still free
   { from: 'confirmed', to: 'cancelled', actors: ['customer', 'partner', 'tenant'] },
-  { from: 'confirmed', to: 'completed', actors: ['partner', 'tenant'] },
+  // `system` is the post-grace-period sweep (§8.5), never an inferred success:
+  // it only fires once the partner has had their whole window to say otherwise.
+  { from: 'confirmed', to: 'completed', actors: ['partner', 'tenant', 'system'] },
   { from: 'confirmed', to: 'no_show', actors: ['partner', 'tenant'] },
   { from: 'cancelled', to: 'refunded', actors: ['system'] },
   { from: 'completed', to: 'refunded', actors: ['tenant', 'system'] },

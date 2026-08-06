@@ -1,4 +1,4 @@
-import { Heart, MapPin } from 'lucide-react';
+import { Heart, MapPin, X } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
 import { Image } from '@booking/ui/components/media/image';
@@ -7,6 +7,7 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { useLocale } from '~/hooks/use-locale';
 import type {
+  ListingCardDismissControl,
   ListingCardPresentation,
   ListingFavoriteControl,
 } from '~/features/catalog/lib/listing-card.types';
@@ -24,11 +25,13 @@ export function ListingCard({
   listing,
   className = '',
   favoriteControl,
+  dismissControl,
   presentation,
 }: {
   listing: PublicListingResponse;
   className?: string;
   favoriteControl?: ListingFavoriteControl;
+  dismissControl?: ListingCardDismissControl;
   presentation?: ListingCardPresentation;
 }) {
   const locale = useLocale();
@@ -154,6 +157,18 @@ export function ListingCard({
           <Heart className="size-5" />
         </span>
       )}
+      {dismissControl ? (
+        // Opposite corner from the heart, which owns `right-4 top-4`. Same chip
+        // geometry and same 44px tap target through the `after` box.
+        <button
+          type="button"
+          aria-label={dismissControl.label}
+          onClick={dismissControl.onDismiss}
+          className="absolute left-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-background/95 text-muted-foreground shadow-md transition-transform after:absolute after:-inset-0.5 after:content-[''] hover:scale-105 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <X className="size-5" />
+        </button>
+      ) : null}
     </article>
   );
 }
