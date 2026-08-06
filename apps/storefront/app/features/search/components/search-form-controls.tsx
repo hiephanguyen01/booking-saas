@@ -1,4 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import {
   Command,
   CommandEmpty,
@@ -10,14 +11,13 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { cn } from '@booking/ui/lib/utils';
-import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ListingTypeGlyph } from '~/components/listing-type-glyph';
-import { NsI18n, useTranslation } from '@booking/i18n';
-import type { SearchMode } from '~/features/search/lib/search-state';
-import type { SearchFormVariant } from '~/features/search/lib/search-form-types';
 import { useLocationComboboxController } from '~/features/search/hooks/use-location-combobox-controller';
+import type { SearchFormVariant } from '~/features/search/lib/search-form-types';
+import type { SearchMode } from '~/features/search/lib/search-state';
 
 type ModeAppearance = 'pills' | 'tabs';
 
@@ -136,25 +136,33 @@ export function CategoryPicker({
       onValueChange={(value) => value && onSelectType(value)}
       aria-label={t('home.listingTypes')}
       className={cn(
-        'w-full overflow-x-auto overscroll-x-contain rounded-none',
-        isHero ? 'rounded-t-lg bg-muted shadow-sm' : 'mx-auto max-w-292.5 px-4 pt-5 pb-4 lg:px-0',
+        'w-full overscroll-x-contain rounded-none',
+        isHero
+          ? 'grid grid-cols-3 gap-1 rounded-t-lg bg-muted p-2 shadow-sm sm:flex sm:gap-0 sm:overflow-x-auto sm:p-0'
+          : 'mx-auto max-w-292.5 overflow-x-auto px-4 pt-5 pb-4 lg:px-0',
       )}
     >
       {types.map((type) => {
-        const iconClass = cn(isHero ? 'size-7 md:size-8' : 'size-5');
+        const iconClass = cn(isHero ? 'size-6 sm:size-7 md:size-8' : 'size-5');
         return (
           <ToggleGroupItem
             key={type.id}
             value={type.slug}
             className={cn(
-              'font-medium whitespace-nowrap',
+              'font-medium',
               isHero
-                ? 'h-14 min-w-40 flex-1 gap-3 rounded-none! px-6 text-base leading-6 text-foreground hover:bg-foreground/5 hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm! md:min-w-48 md:px-10'
-                : 'min-h-11 gap-2 rounded-full! border border-transparent px-4 py-2 text-sm text-background/75 hover:bg-background/10 hover:text-background data-[state=on]:border-background data-[state=on]:bg-transparent data-[state=on]:text-background',
+                ? 'h-auto min-h-18 flex-col gap-1.5 rounded-lg! px-1 py-2.5 text-[0.6875rem] leading-tight whitespace-normal text-muted-foreground hover:bg-foreground/5 data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[state=on]:shadow-none! sm:h-14 sm:min-h-0 sm:min-w-40 sm:flex-1 sm:flex-row sm:gap-3 sm:rounded-none! sm:px-6 sm:text-base sm:leading-6 sm:whitespace-nowrap sm:text-foreground sm:hover:text-foreground sm:data-[state=on]:bg-card sm:data-[state=on]:text-foreground sm:data-[state=on]:shadow-sm! md:min-w-48 md:px-10'
+                : 'min-h-11 gap-2 rounded-full! border border-transparent px-4 py-2 text-sm whitespace-nowrap text-background/75 hover:bg-background/10 hover:text-background data-[state=on]:border-background data-[state=on]:bg-transparent data-[state=on]:text-background',
             )}
           >
-            <ListingTypeGlyph type={type} className={cn(iconClass, isHero && 'text-foreground')} />
-            {type.name}
+            {/* The tile inherits its colour from the selected state, so the glyph
+                must not pin `text-foreground` on mobile the way the desktop row
+                does. */}
+            <ListingTypeGlyph
+              type={type}
+              className={cn(iconClass, isHero && 'sm:text-foreground')}
+            />
+            <span className="line-clamp-2 sm:line-clamp-none">{type.name}</span>
           </ToggleGroupItem>
         );
       })}

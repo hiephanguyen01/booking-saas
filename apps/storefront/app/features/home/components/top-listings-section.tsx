@@ -1,3 +1,5 @@
+import type { PublicListingResponse } from '@booking/contracts';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import {
   Carousel,
   CarouselContent,
@@ -5,12 +7,10 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@booking/ui/components/ui/carousel';
-import type { PublicListingResponse } from '@booking/contracts';
-import { HomeListingCardsSkeleton } from '~/components/loading-skeletons';
-import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
-import { NsI18n, useTranslation } from '@booking/i18n';
-import { PANEL_SURFACE } from '~/constants/surfaces';
 import { cn } from '@booking/ui/lib/utils';
+import { HomeListingCardsSkeleton } from '~/components/loading-skeletons';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
 
 /** The home page's lead rail of listings. */
 export function TopListingsSection({
@@ -66,11 +66,11 @@ export function TopListingsSection({
             </div>
           }
         />
-        <CarouselContent className="-ml-5 py-4">
+        <CarouselContent className="-ml-3 py-4 sm:-ml-5">
           {listings.map((listing) => (
             <CarouselItem
               key={listing.id}
-              className="basis-[88%] pl-5 sm:basis-1/2 md:basis-1/3 lg:basis-1/4"
+              className="basis-1/2 pl-3 sm:pl-5 md:basis-1/3 lg:basis-1/4"
             >
               <FavoriteListingCard listing={listing} />
             </CarouselItem>

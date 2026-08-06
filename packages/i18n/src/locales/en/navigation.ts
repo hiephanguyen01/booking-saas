@@ -16,4 +16,11 @@ export const enNavigation = {
   logout: 'Log out',
   accountMenu: 'Open account menu',
   switchLanguage: 'Switch language to {locale}',
+  bottomNav: {
+    label: 'Quick navigation',
+    home: 'Home',
+    search: 'Search',
+    bookings: 'Bookings',
+    account: 'Account',
+  },
 } satisfies TranslationShape<typeof viNavigation>;

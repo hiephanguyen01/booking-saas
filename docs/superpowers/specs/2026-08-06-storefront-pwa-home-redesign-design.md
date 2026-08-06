@@ -75,6 +75,11 @@ features/pwa/
 | `icons` | `themeConfig.faviconUrl` when present, declared `sizes: 'any'`; always followed by the platform PNG set below |
 | `categories` | `['travel', 'lifestyle', 'business']` |
 
+`short_name` is shortened **only at a word boundary**. A single long word is passed
+through whole and left to the launcher: hard-cutting turned "BookingStudio" into
+"BookingStudi", which reads as a typo, where every launcher would have shown
+"BookingStudio…" or simply fitted it.
+
 Two notes on `icons`. A tenant favicon is a single unknown-dimension URL, so it is declared
 `sizes: "any"` with `purpose: "any"` rather than claimed to be 192 or 512 — a lie there makes
 Chrome reject the icon. The platform PNG set (`/pwa/icon-192.png`, `/pwa/icon-512.png`,
@@ -165,9 +170,18 @@ mark inside the inner 80% safe zone. Generated once and committed; no generator 
 `features/pwa/hooks/use-service-worker.ts` runs in an effect from `StorefrontAppShell` — a normal
 module, so no inline script and no CSP nonce is involved.
 
-Registration is gated on `import.meta.env.PROD`. In development the hook instead **unregisters** any
-worker it finds and clears its caches, because a worker that caches `/assets/*` fights Vite's HMR
-and would leave a stale worker behind on a developer's `localhost` after a single production test.
+Registration is gated on `import.meta.hot` — present only under the dev server, statically replaced
+with `undefined` when building. Under the dev server the hook instead **unregisters** any worker it
+finds and clears its caches, so a single production test does not leave a stale worker serving that
+build to every later `pnpm dev` session on the same origin.
+
+**`import.meta.env.PROD` cannot be used here, and this was caught by inspecting the built bundle.**
+`PROD` derives from `NODE_ENV`, the root `.env` every app in this repo reads pins
+`NODE_ENV=development`, and the storefront's build script loads that file
+(`--env-file-if-exists=../../.env`). So `PROD` is false *during `pnpm build`*, and gating on it
+dead-code-eliminated the registration out of the production bundle entirely — leaving a storefront
+that could never install, with nothing in lint, typecheck or build to say so. `import.meta.hot`
+keys off the Vite *command* instead of `NODE_ENV`, which is the distinction this actually needs.
 
 The hook also guards on `'serviceWorker' in navigator` and swallows registration rejection —
 private-mode Firefox and some embedded webviews throw there, and a failed registration must not
@@ -189,8 +203,10 @@ needed.
   under the shadcn dialog/sheet overlay (`z-50`), so a booking sheet still covers it.
 - Four items, each a `NavLink` with a lucide icon above an 11px label; active item takes
   `text-primary`, inactive `text-muted-foreground`. Tap targets are the full 56px cell height.
-- `<main>` gains `pb-16 lg:pb-0` so the last section is not hidden behind the bar. The existing
-  `pb-24` on the home content container is reduced accordingly on mobile.
+- Clearance comes from a `lg:hidden` spacer element of exactly
+  `calc(3.5rem + env(safe-area-inset-bottom))` rendered **after** the footer, not from padding on
+  `<main>`. The bar is `fixed`, so padding on `<main>` would still leave the *footer's* last row
+  underneath it.
 
 | Item | Destination |
 | --- | --- |

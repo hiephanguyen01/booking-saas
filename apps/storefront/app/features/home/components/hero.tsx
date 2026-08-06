@@ -28,8 +28,8 @@ export function StudioHero({
   const subtitle = tenant.themeConfig.hero?.subtitle || t('home.heroSubtitleFallback');
 
   return (
-    <section className="pb-18">
-      <div className="relative h-68 overflow-hidden bg-primary sm:h-70">
+    <section className="pb-6 sm:pb-18">
+      <div className="relative h-56 overflow-hidden bg-primary sm:h-70">
         {image ? (
           <>
             <Image
@@ -62,7 +62,7 @@ export function StudioHero({
           </p>
         </div>
       </div>
-      <div className="relative mx-auto -mt-42 max-w-292.5 px-4 sm:px-6 xl:px-0">
+      <div className="relative mx-auto -mt-38 max-w-292.5 px-4 sm:-mt-42 sm:px-6 xl:px-0">
         <SearchForm
           listingTypes={listingTypes}
           locations={locations}
