@@ -5,7 +5,9 @@ import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import { AccountPanel } from '~/features/account/components/shared/account-primitives';
+import { bookingActionErrorKey } from '~/features/account/lib/booking-dispute';
 import { BookingDetailOverview } from './booking-detail-overview';
+import { BookingDisputeSection } from './booking-dispute-section';
 import { ReviewDialog } from '~/features/account/components/reviews/review-dialog';
 import {
   BookingContactSection,
@@ -60,7 +62,7 @@ export function BookingDetailPanel({
           role="alert"
           className="mt-3 rounded-(--sf-surface-radius) border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          {t('bookings.actionFailed')}
+          {t(bookingActionErrorKey(actionError))}
         </p>
       ) : null}
 
@@ -70,12 +72,16 @@ export function BookingDetailPanel({
           locale={locale}
           state={state}
           defaultCancelOpen={defaultCancelOpen}
+          settlement={settlement}
         />
         {showReviewSection ? (
           <BookingReviewSection booking={booking} onReview={openPendingReview} />
         ) : null}
         <BookingContactSection booking={booking} />
         <BookingFinancialSection booking={booking} locale={locale} settlement={settlement} />
+        {settlement?.dispute ? (
+          <BookingDisputeSection dispute={settlement.dispute} locale={locale} />
+        ) : null}
         <PaymentTaxNote booking={booking} />
       </div>
 

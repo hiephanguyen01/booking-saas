@@ -21,10 +21,15 @@ export interface PartnerActionableBooking {
   endUtc: string;
 }
 
-/** No-show may be reported from slot end through end + 48h. */
-export const NO_SHOW_WINDOW_MS = 48 * 60 * 60 * 1000;
+/**
+ * No-show may be reported from slot end through end + 23h — mirroring the
+ * backend's `NO_SHOW_WINDOW_HOURS`. Keep the two in step: one hour later the
+ * scheduler auto-completes the booking, so a button offered past this point
+ * would only ever produce a rejected request.
+ */
+export const NO_SHOW_WINDOW_MS = 23 * 60 * 60 * 1000;
 
-/** A confirmed booking currently inside the backend's 48h no-show window. */
+/** A confirmed booking currently inside the backend's no-show window. */
 export function isNoShowEligible(booking: PartnerActionableBooking, now: number): boolean {
   const end = new Date(booking.endUtc).getTime();
   return (

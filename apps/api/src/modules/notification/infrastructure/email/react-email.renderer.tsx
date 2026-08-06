@@ -107,6 +107,10 @@ const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
     vi: { subject: 'Cảm ơn bạn đã sử dụng dịch vụ', title: 'Đơn đặt đã hoàn tất', intro: 'Cảm ơn bạn đã đặt dịch vụ với {tenantName}.', cta: 'Xem đơn đặt' },
     en: { subject: 'Thanks for your booking', title: 'Booking completed', intro: 'Thank you for booking with {tenantName}.', cta: 'View booking' },
   },
+  booking_auto_completed_partner: {
+    vi: { subject: 'Đơn {bookingCode} đã tự động hoàn tất', title: 'Hệ thống đã hoàn tất đơn thay bạn', intro: 'Đơn {bookingCode} cho “{listingTitle}” đã quá 24 giờ kể từ khi kết thúc mà chưa được xác nhận, nên hệ thống tự chuyển sang hoàn tất. Phần tiền còn lại được ghi nhận là bạn đã thu tại chỗ, và cửa sổ khiếu nại của khách đã bắt đầu chạy.', cta: 'Xem đơn đặt' },
+    en: { subject: 'Booking {bookingCode} was completed automatically', title: 'We completed this booking for you', intro: 'Booking {bookingCode} for “{listingTitle}” went 24 hours past its end without being confirmed, so the system completed it. The outstanding balance is recorded as collected on site, and the customer’s dispute window has started.', cta: 'View booking' },
+  },
   booking_no_show_customer: {
     vi: { subject: 'Xác nhận Vắng mặt - Mã Booking: {bookingCode}', title: 'Quý khách không thực hiện đơn', intro: 'Xác nhận vắng mặt đơn {bookingCode}. Việc hoàn tiền được áp dụng theo chính sách của đơn.', cta: 'Đơn đặt của tôi', status: 'Vắng mặt', statusIcon: 'noShow' },
     en: { subject: 'No-show recorded - Booking: {bookingCode}', title: 'Booking marked as no-show', intro: 'Booking {bookingCode} has been marked as a no-show. Refund eligibility follows the booking policy.', cta: 'View my booking', status: 'No-show', statusIcon: 'noShow' },

@@ -15,7 +15,11 @@ import {
   OnsiteAmountMismatch,
 } from '../errors/booking-domain-errors';
 import { remainingStock } from '../inventory-stock';
-import { isWithinNoShowWindow, NO_SHOW_WINDOW_HOURS } from '../no-show-window';
+import {
+  isAutoCompleteDue,
+  isWithinNoShowWindow,
+  NO_SHOW_WINDOW_HOURS,
+} from '../no-show-window';
 import { BookingMoney } from '../value-objects/booking-money.value-object';
 import {
   FulfillmentState,
@@ -204,6 +208,22 @@ export class Booking {
     return intent;
   }
 
+  /**
+   * The sweep's completion once the partner's grace period elapsed (§8.5).
+   *
+   * It carries no on-site figure on purpose: nobody witnessed a cash handover,
+   * so there is nothing to validate against and the settlement falls back to
+   * its own `expectedOnsite` default. Callers must still reject `inventory`
+   * bookings — those settle through the return flow, not this one.
+   */
+  planAutoCompletion(now: Date): BookingTransitionIntent {
+    if (!isAutoCompleteDue(this.state.endUtc, now)) throw new BookingServiceNotEnded();
+    return this.transitionTo('completed', 'system', {
+      actorId: null,
+      reason: 'system auto-completed after the partner grace period',
+    });
+  }
+
   fulfillment(): FulfillmentState {
     return FulfillmentState.rehydrate({
       status: this.state.status,
@@ -245,6 +265,30 @@ export class Booking {
     return {
       ...result,
       completion: this.assertReturnable(actorId),
+    };
+  }
+
+  /**
+   * The inventory counterpart of {@link planAutoCompletion}: an `inventory`
+   * booking cannot take that path because its security deposit is only released
+   * by a return, so the sweep drives the return itself.
+   */
+  planAutoReturn(now: Date): {
+    patch: { returnedAt: Date; damageAmount: bigint };
+    completion: BookingTransitionIntent;
+    lateFee: bigint;
+    depositRefund: bigint;
+    depositShortfall: bigint;
+  } {
+    if (this.state.bookingMode !== 'inventory') throw new BookingNotInventory();
+    if (this.state.status !== 'confirmed') throw new BookingStateChanged();
+    if (!isAutoCompleteDue(this.state.endUtc, now)) throw new BookingServiceNotEnded();
+    return {
+      ...this.fulfillment().planAutoReturn(now),
+      completion: this.transitionTo('completed', 'system', {
+        actorId: null,
+        reason: 'system auto-returned after the partner grace period',
+      }),
     };
   }
 

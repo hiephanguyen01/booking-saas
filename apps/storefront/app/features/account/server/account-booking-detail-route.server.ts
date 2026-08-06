@@ -7,6 +7,11 @@ import {
 } from '@booking/contracts';
 import { data, redirect } from 'react-router';
 import { z } from 'zod';
+import {
+  DISPUTE_EVIDENCE_MAX,
+  DISPUTE_REASON_MAX,
+  DISPUTE_REASON_MIN,
+} from '~/features/account/lib/booking-dispute';
 import { apiGet, apiPost } from '~/lib/server/api.server';
 import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { checkoutBooking, fetchPaymentOptions } from '~/features/booking/server/booking.server';
@@ -27,10 +32,25 @@ const bookingActionSchema = z.discriminatedUnion('intent', [
   z.object({ intent: z.literal('pay') }),
   z.object({
     intent: z.literal('dispute'),
-    reason: z.string().trim().min(10, 'DISPUTE_REASON_REQUIRED').max(2000),
-    evidence: z.string().max(5000).optional(),
+    reason: z
+      .string()
+      .trim()
+      .min(DISPUTE_REASON_MIN, 'DISPUTE_REASON_REQUIRED')
+      .max(DISPUTE_REASON_MAX),
+    evidence: z.string().max(DISPUTE_EVIDENCE_MAX).optional(),
   }),
 ]);
+
+/**
+ * The dispute dialog posts through its own fetcher, so it needs to recognise
+ * its own result: the page-level `actionData` carries the pay/review/cancel
+ * replies as well.
+ */
+export interface BookingDisputeActionData {
+  ok: boolean;
+  error: string | null;
+  intent: 'dispute';
+}
 
 export async function loadAccountBookingDetailRoute(
   request: Request,
@@ -87,9 +107,15 @@ export async function handleAccountBookingDetailAction(
   }
 
   const auth = requireCustomerAuth(request, locale, { includeSearch: false });
+  const isDispute = formData.get('intent') === 'dispute';
   const parsed = bookingActionSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return data({ ok: false, error: 'CANCEL_REASON_REQUIRED' }, { status: 400 });
+    return isDispute
+      ? data<BookingDisputeActionData>(
+          { ok: false, error: 'DISPUTE_REASON_REQUIRED', intent: 'dispute' },
+          { status: 400 },
+        )
+      : data({ ok: false, error: 'CANCEL_REASON_REQUIRED' }, { status: 400 });
   }
 
   const booking = await loadAccountBooking(
@@ -98,7 +124,14 @@ export async function handleAccountBookingDetailAction(
     locale,
     auth.session.accessToken,
   );
-  if (!booking) return data({ ok: false, error: 'BOOKING_NOT_FOUND' }, { status: 404 });
+  if (!booking) {
+    return isDispute
+      ? data<BookingDisputeActionData>(
+          { ok: false, error: 'BOOKING_NOT_FOUND', intent: 'dispute' },
+          { status: 404 },
+        )
+      : data({ ok: false, error: 'BOOKING_NOT_FOUND' }, { status: 404 });
+  }
 
   if (parsed.data.intent === 'dispute') {
     const dispute = openSettlementDisputeInputSchema.safeParse({
@@ -111,7 +144,10 @@ export async function handleAccountBookingDetailAction(
         .slice(0, 10),
     });
     if (!dispute.success) {
-      return data({ ok: false, error: 'DISPUTE_INVALID' }, { status: 400 });
+      return data<BookingDisputeActionData>(
+        { ok: false, error: 'DISPUTE_INVALID', intent: 'dispute' },
+        { status: 400 },
+      );
     }
 
     const result = await apiPost<SettlementDisputeResponse>(
@@ -122,12 +158,16 @@ export async function handleAccountBookingDetailAction(
       { schema: settlementDisputeResponseSchema },
     );
     if (!result.ok) {
-      return data(
-        { ok: false, error: result.error ?? result.code ?? 'DISPUTE_FAILED' },
+      // The envelope's `code` is the only translatable half; `error` is an
+      // English backend message that the account UI must never surface.
+      return data<BookingDisputeActionData>(
+        { ok: false, error: result.code ?? 'DISPUTE_FAILED', intent: 'dispute' },
         { status: errorStatus(result.status) },
       );
     }
-    return redirect(storefrontPaths.account.booking(locale, booking.code));
+    // Data, not a redirect: the dialog's fetcher needs a result to close on, and
+    // the fetcher submission revalidates the loader that reloads the settlement.
+    return data<BookingDisputeActionData>({ ok: true, error: null, intent: 'dispute' });
   }
 
   if (booking.status !== 'pending_payment') {

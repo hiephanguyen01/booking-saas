@@ -160,9 +160,17 @@ handler sau đó đóng băng số thu tại chỗ, split dự kiến và hạn 
 `POST /partner/bookings/:id/return`; event không có số báo cáo nên Finance dùng đúng số còn lại đã tính
 từ booking/settlement.
 
-Không có auto-complete theo thời gian: việc tự suy đoán “dịch vụ đã hoàn tất” có thể giải phóng tiền
-trong khi chưa có bằng chứng Partner đã phục vụ. Partner/Tenant phải xác nhận hoàn thành. No-show chỉ
-được đánh dấu từ lúc slot kết thúc đến `+48h`, sau đó mở dispute window riêng thay vì ghi revenue ngay.
+Partner/Tenant vẫn là người xác nhận hoàn thành, nhưng họ có hạn: 24h sau `timeslot.end`,
+`BookingSchedulerWorker` tự đóng đơn còn `confirmed`. Không phải suy đoán dịch vụ đã tốt — đây là hạn
+chót, vì một settlement kẹt ở `held` sẽ không bao giờ mở dispute window, khách không khiếu nại được
+và tiền nằm trong custody vĩnh viễn.
+
+- `sweepAutoCompletions()` lo đơn thường: phát `booking.completed` không kèm số thu tại chỗ nên
+  Finance dùng `expectedOnsite` mặc định, và partner nhận email `booking_auto_completed_partner`.
+- `sweepAutoReturns()` lo đơn `inventory`: phát `booking.returned` (không hư hỏng, không phí trễ) rồi
+  `booking.completed`, vì chỉ `booking.returned` mới nhả cọc bảo đảm.
+
+No-show chỉ được đánh dấu từ lúc slot kết thúc đến `+23h`, chừa một tiếng đệm trước khi sweep chạy.
 
 ### 5.3 Đến hạn → RELEASED
 

@@ -66,4 +66,29 @@ export class FulfillmentState {
       depositShortfall: shortfall,
     };
   }
+
+  /**
+   * The sweep's return, once the partner's grace period elapsed (§8.5/§9.4).
+   *
+   * It charges neither damage nor a late fee, and that is deliberate rather
+   * than lenient: nobody inspected the item, and the overdue time this path
+   * would bill was created by the partner not processing the return — the
+   * customer must not pay for that. So the deposit comes back whole, and
+   * `settleDeposit` still runs to keep one place deciding deposit money.
+   */
+  planAutoReturn(now: Date): {
+    patch: { returnedAt: Date; damageAmount: Vnd };
+    lateFee: Vnd;
+    depositRefund: Vnd;
+    depositShortfall: Vnd;
+  } {
+    if (this.bookingMode !== 'inventory') throw new BookingNotInventory();
+    const { refund, shortfall } = settleDeposit(this.securityDeposit, 0n, 0n);
+    return {
+      patch: { returnedAt: now, damageAmount: 0n },
+      lateFee: 0n,
+      depositRefund: refund,
+      depositShortfall: shortfall,
+    };
+  }
 }

@@ -144,9 +144,12 @@ function CardFooter({
             {t('bookings.review')}
           </Button>
         ) : null}
-        {booking.variant === 'no-show' ? (
+        {/* The list has no settlement projection, so it cannot know whether the
+            dispute window is still open — it hands off to the detail page,
+            which does. */}
+        {booking.variant === 'no-show' || booking.variant === 'completed' ? (
           <Button asChild variant="outline" size="sm">
-            <Link to={storefrontPaths.account.help(locale)}>{t('bookings.dispute')}</Link>
+            <Link to={detailPath}>{t('bookings.dispute')}</Link>
           </Button>
         ) : null}
       </div>

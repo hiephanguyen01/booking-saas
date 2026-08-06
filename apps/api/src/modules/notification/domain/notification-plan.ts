@@ -18,6 +18,7 @@ export type NotificationTemplateId =
   | 'booking_refunded_customer'
   | 'booking_refunded_partner'
   | 'booking_completed_customer'
+  | 'booking_auto_completed_partner'
   | 'booking_no_show_customer'
   | 'booking_rejected_customer'
   | 'booking_reminder_customer'
@@ -72,10 +73,15 @@ export const PAYOUT_NOTIFICATION_EVENTS: readonly string[] = ['payout.paid'];
  * The audiences + templates for an event. `booking.created` branches on the draft
  * outcome: an approval-gated booking pings the partner to review; a pay-now booking
  * produces no immediate email because confirmation follows successful payment.
+ *
+ * `booking.completed` branches on `auto`: a partner who pressed the button needs
+ * no email about it, but one whose booking the scheduler closed for them does —
+ * their payable was computed assuming they collected the outstanding balance on
+ * site, and the dispute window is now running.
  */
 export function planForEvent(
   eventType: string,
-  payload: { status?: string },
+  payload: { status?: string; auto?: boolean },
 ): NotificationPlanItem[] {
   switch (eventType) {
     case 'booking.created':
@@ -95,7 +101,12 @@ export function planForEvent(
         { audience: 'partner', templateId: 'booking_cancelled_partner' },
       ];
     case 'booking.completed':
-      return [{ audience: 'customer', templateId: 'booking_completed_customer' }];
+      return payload.auto
+        ? [
+            { audience: 'customer', templateId: 'booking_completed_customer' },
+            { audience: 'partner', templateId: 'booking_auto_completed_partner' },
+          ]
+        : [{ audience: 'customer', templateId: 'booking_completed_customer' }];
     case 'booking.no_show':
       return [{ audience: 'customer', templateId: 'booking_no_show_customer' }];
     case 'booking.rejected':
