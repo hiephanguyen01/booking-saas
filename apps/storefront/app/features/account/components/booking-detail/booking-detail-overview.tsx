@@ -16,7 +16,7 @@ import { CancellationPolicyList } from '~/features/account/components/shared/acc
 import { BookingCardHeader } from '~/features/account/components/shared/booking-card-header';
 import { BookingPaymentForm } from '~/features/account/components/bookings/booking-payment-form';
 import { CancelBookingDialog } from '~/features/account/components/bookings/cancel-booking-dialog';
-import { DisputeBookingDialog } from './dispute-booking-dialog';
+import { DisputeBookingDialog } from '~/features/account/components/bookings/dispute-booking-dialog';
 import { useBookingDetailOverviewController } from '~/features/account/hooks/use-booking-detail-overview-controller';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 

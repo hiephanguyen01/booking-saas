@@ -19,13 +19,17 @@ import { BookingPaymentForm } from './booking-payment-form';
 export function BookingHistoryCard({
   booking,
   locale,
+  canDispute,
   onReview,
   onCancel,
+  onDispute,
 }: {
   booking: BookingDetailViewModel;
   locale: Locale;
+  canDispute: boolean;
   onReview: (review: Extract<CustomerReviewItem, { status: 'pending' }>) => void;
   onCancel: (booking: BookingDetailViewModel) => void;
+  onDispute: (booking: BookingDetailViewModel) => void;
 }) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Booking]);
   const detailPath = storefrontPaths.account.booking(locale, booking.code);
@@ -99,8 +103,10 @@ export function BookingHistoryCard({
         booking={booking}
         detailPath={detailPath}
         locale={locale}
+        canDispute={canDispute}
         onReview={onReview}
         onCancel={onCancel}
+        onDispute={onDispute}
       />
     </AccountPanel>
   );
@@ -110,25 +116,31 @@ function CardFooter({
   booking,
   detailPath,
   locale,
+  canDispute,
   onReview,
   onCancel,
+  onDispute,
 }: {
   booking: BookingDetailViewModel;
   detailPath: string;
   locale: Locale;
+  canDispute: boolean;
   onReview: (review: Extract<CustomerReviewItem, { status: 'pending' }>) => void;
   onCancel: (booking: BookingDetailViewModel) => void;
+  onDispute: (booking: BookingDetailViewModel) => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
   const review = booking.review;
-  if (booking.variant === 'completed' && review?.status === 'reviewed') {
+  if (booking.variant === 'completed' && review?.status === 'reviewed' && !canDispute) {
     return null;
   }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/15 px-5 py-4 sm:px-6">
       <PolicyNotes booking={booking} locale={locale} />
-      <div className="flex flex-wrap gap-2">
+      {/* `ml-auto` rather than relying on `justify-between`: PolicyNotes renders
+          nothing for a completed booking, and a lone child would drift left. */}
+      <div className="ml-auto flex flex-wrap justify-end gap-2">
         {booking.status === 'confirmed' ? (
           <Button type="button" variant="outline" size="sm" onClick={() => onCancel(booking)}>
             {t('bookings.cancel')}
@@ -144,12 +156,9 @@ function CardFooter({
             {t('bookings.review')}
           </Button>
         ) : null}
-        {/* The list has no settlement projection, so it cannot know whether the
-            dispute window is still open — it hands off to the detail page,
-            which does. */}
-        {booking.variant === 'no-show' || booking.variant === 'completed' ? (
-          <Button asChild variant="outline" size="sm">
-            <Link to={detailPath}>{t('bookings.dispute')}</Link>
+        {canDispute ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => onDispute(booking)}>
+            {t('bookings.dispute')}
           </Button>
         ) : null}
       </div>

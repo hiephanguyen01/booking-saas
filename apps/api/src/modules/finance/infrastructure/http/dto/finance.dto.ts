@@ -25,6 +25,7 @@ import {
   settlementDisputeResponseSchema,
   partnerBookingSettlementResponseSchema,
   customerBookingSettlementResponseSchema,
+  customerDisputeStateSchema,
   partnerSettlementDisputeResponseSchema,
   settlementSummaryResponseSchema,
   payoutPolicySchema,
@@ -85,6 +86,7 @@ export class PartnerBookingSettlementResponseDto extends createZodDto(
 export class CustomerBookingSettlementResponseDto extends createZodDto(
   customerBookingSettlementResponseSchema,
 ) {}
+export class CustomerDisputeStateDto extends createZodDto(customerDisputeStateSchema) {}
 export class PartnerSettlementDisputeResponseDto extends createZodDto(
   partnerSettlementDisputeResponseSchema,
 ) {}

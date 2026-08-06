@@ -385,6 +385,19 @@ export type CustomerBookingSettlementResponse = z.infer<
   typeof customerBookingSettlementResponseSchema
 >;
 
+/**
+ * Dispute eligibility for a whole booking list, in one call. The full
+ * settlement projection is per-booking; a customer's history page would need
+ * one request per row to decide whether to offer the button, so it reads this
+ * slim shape instead and joins on `bookingId`.
+ */
+export const customerDisputeStateSchema = z.object({
+  bookingId: uuidSchema,
+  canOpenDispute: z.boolean(),
+  disputeUntil: z.string().nullable(),
+});
+export type CustomerDisputeState = z.infer<typeof customerDisputeStateSchema>;
+
 export const bookingSettlementsQuerySchema = paginationQuerySchema.extend({
   status: settlementStatusSchema.optional(),
   partnerId: uuidSchema.optional(),

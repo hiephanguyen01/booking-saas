@@ -11,8 +11,10 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
+import { cn } from '@booking/ui/lib/utils';
 import { CircleAlert } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 import {
   DISPUTE_EVIDENCE_MAX,
   DISPUTE_REASON_MAX,
@@ -28,7 +30,10 @@ export function DisputeBookingDialog({
 }: {
   deadlineLabel: string | null;
   open: boolean;
-  /** Defaults to the current route, which owns the `dispute` intent. */
+  /**
+   * Where to post. Omit on the booking detail route, which owns the `dispute`
+   * intent; the history list must pass that route's path explicitly.
+   */
   action?: string;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -49,7 +54,15 @@ export function DisputeBookingDialog({
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-none border-0 p-6 shadow-2xl sm:max-w-[562px] sm:p-8">
+      {/* The radius, border and shadow come from the tenant's surface config
+          (`--sf-surface-*`), so the modal matches the panels behind it instead
+          of hardcoding a square, borderless sheet. */}
+      <DialogContent
+        className={cn(
+          PANEL_SURFACE,
+          'max-h-[calc(100vh-2rem)] overflow-y-auto p-6 sm:max-w-[562px] sm:p-8',
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-foreground">
             {t('bookings.disputeDialog.title')}

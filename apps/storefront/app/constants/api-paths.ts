@@ -50,6 +50,7 @@ export const apiPaths = {
     reviewMediaPresign: '/customer/reviews/media/presign',
     contentReports: '/customer/content-reports',
     financeDisputes: '/customer/finance/disputes',
+    financeDisputeStates: '/customer/finance/dispute-states',
   },
 
   partner: {

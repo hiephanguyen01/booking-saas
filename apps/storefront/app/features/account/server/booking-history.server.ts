@@ -1,4 +1,9 @@
-import { bookingResponseSchema, type BookingResponse } from '@booking/contracts';
+import {
+  bookingResponseSchema,
+  customerDisputeStateSchema,
+  type BookingResponse,
+  type CustomerDisputeState,
+} from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { z } from 'zod';
 import { apiGet } from '~/lib/server/api.server';
@@ -14,18 +19,40 @@ import {
 import { loadCustomerReviewsByBooking } from './customer-reviews.server';
 import { apiPaths } from '~/constants/api-paths';
 
+/** Dispute eligibility keyed by booking id, for the list's action buttons. */
+export type DisputeStateMap = Record<string, { canOpenDispute: boolean; disputeUntil: string | null }>;
+
 export async function loadAccountBookings(
   request: Request,
   accessToken: string,
   locale: Locale,
   filter: BookingHistoryFilter,
-): Promise<{ bookings: BookingDetailViewModel[]; error: string | null }> {
-  const [result, reviews] = await Promise.all([
+): Promise<{
+  bookings: BookingDetailViewModel[];
+  disputeStates: DisputeStateMap;
+  error: string | null;
+}> {
+  const [result, reviews, disputes] = await Promise.all([
     apiGet<BookingResponse[]>(request, apiPaths.public.myBookings, accessToken, {
       schema: z.array(bookingResponseSchema),
     }),
     loadCustomerReviewsByBooking(request, accessToken),
+    // One bulk read rather than one per row. A failure here only costs the
+    // dispute button, so the list still renders without it.
+    apiGet<CustomerDisputeState[]>(request, apiPaths.customer.financeDisputeStates, accessToken, {
+      schema: z.array(customerDisputeStateSchema),
+    }),
   ]);
+
+  const disputeStates: DisputeStateMap = {};
+  if (disputes.ok) {
+    for (const state of disputes.data ?? []) {
+      disputeStates[state.bookingId] = {
+        canOpenDispute: state.canOpenDispute,
+        disputeUntil: state.disputeUntil,
+      };
+    }
+  }
 
   if (result.ok) {
     const bookings = (result.data ?? []).map((item) =>
@@ -33,12 +60,14 @@ export async function loadAccountBookings(
     );
     return {
       bookings: bookings.filter((item) => bookingMatchesFilter(item, filter)),
+      disputeStates,
       error: null,
     };
   }
 
   return {
     bookings: [],
+    disputeStates,
     error: result.error ?? 'BOOKINGS_UNAVAILABLE',
   };
 }

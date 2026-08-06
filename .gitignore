@@ -21,3 +21,5 @@ test-results/
 /.claude
 /.worktrees
 /.superpowers
+# Snapshots, console dumps and screenshots left by browser-driven manual runs.
+/.playwright-mcp

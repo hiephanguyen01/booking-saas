@@ -56,6 +56,7 @@ import { ListPlatformSettlementsUseCase } from '../../application/use-cases/list
 import { GetTenantPayoutPolicyUseCase } from '../../application/use-cases/get-tenant-payout-policy.use-case';
 import { UpdatePayoutPolicyUseCase } from '../../application/use-cases/update-payout-policy.use-case';
 import { GetCustomerBookingSettlementUseCase } from '../../application/use-cases/get-customer-booking-settlement.use-case';
+import { ListCustomerDisputeStatesUseCase } from '../../application/use-cases/list-customer-dispute-states.use-case';
 import { RespondSettlementDisputeUseCase } from '../../application/use-cases/respond-settlement-dispute.use-case';
 import { EnsureDefaultCommissionRuleUseCase } from '../../application/use-cases/ensure-default-commission-rule.use-case';
 import { SettlementReleaseWorker } from '../settlement-release.worker';
@@ -122,6 +123,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     GetTenantPayoutPolicyUseCase,
     UpdatePayoutPolicyUseCase,
     GetCustomerBookingSettlementUseCase,
+    ListCustomerDisputeStatesUseCase,
     RespondSettlementDisputeUseCase,
     EnsureDefaultCommissionRuleUseCase,
     SettlementReleaseWorker,

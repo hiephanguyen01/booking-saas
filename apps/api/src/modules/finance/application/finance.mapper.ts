@@ -11,6 +11,7 @@ import type {
   SettlementDisputeResponse,
   PartnerBookingSettlementResponse,
   CustomerBookingSettlementResponse,
+  CustomerDisputeState,
   PartnerSettlementDisputeResponse,
   SettlementSummaryResponse,
 } from '@booking/contracts';
@@ -25,6 +26,7 @@ import type { PlatformFinance } from './use-cases/get-platform-finance.use-case'
 import type { SettlementDisputeRecord } from '../domain/ports/settlement-dispute-repository.port';
 import type { SettlementSummary } from '../domain/ports/settlement-repository.port';
 import type { CustomerBookingSettlementView } from './use-cases/get-customer-booking-settlement.use-case';
+import type { CustomerDisputeStateView } from './use-cases/list-customer-dispute-states.use-case';
 
 export function toCommissionRuleResponse(r: CommissionRuleRecord): CommissionRuleResponse {
   return {
@@ -166,6 +168,16 @@ export function toPartnerBookingSettlementResponse(
     releasedAt: full.releasedAt,
     createdAt: full.createdAt,
     updatedAt: full.updatedAt,
+  };
+}
+
+export function toCustomerDisputeStateResponse(
+  view: CustomerDisputeStateView,
+): CustomerDisputeState {
+  return {
+    bookingId: view.bookingId,
+    canOpenDispute: view.canOpenDispute,
+    disputeUntil: view.disputeUntil?.toISOString() ?? null,
   };
 }
 

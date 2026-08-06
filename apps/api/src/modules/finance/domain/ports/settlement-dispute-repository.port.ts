@@ -1,4 +1,8 @@
-import type { SettlementDisputeResolution, SettlementDisputeStatus } from '@prisma/client';
+import type {
+  SettlementDisputeResolution,
+  SettlementDisputeStatus,
+  SettlementStatus,
+} from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RepoPage } from '../../../../shared/pagination/pagination';
 
@@ -43,8 +47,24 @@ export interface SettlementDisputeListFilters {
   q?: string;
 }
 
+/**
+ * The minimum a caller needs to apply `Settlement.canOpenDispute` without
+ * loading whole settlement records for a customer's entire booking history.
+ */
+export interface CustomerSettlementDisputeState {
+  bookingId: string;
+  status: SettlementStatus;
+  disputeUntil: Date | null;
+  hasDispute: boolean;
+}
+
 export interface ISettlementDisputeRepository {
   customerOwnsBooking(tx: PrismaTx, bookingId: string, customerId: string): Promise<boolean>;
+  /** Every settlement belonging to this customer, reduced to the dispute decision. */
+  listCustomerStates(
+    tx: PrismaTx,
+    customerId: string,
+  ): Promise<CustomerSettlementDisputeState[]>;
   findById(tx: PrismaTx, id: string): Promise<SettlementDisputeRecord | null>;
   findLatestBySettlement(
     tx: PrismaTx,
