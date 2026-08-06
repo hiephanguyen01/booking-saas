@@ -1,5 +1,6 @@
 import type {
   CustomerBookingSettlementResponse,
+  CustomerDisputeState,
   SettlementDisputeResponse,
 } from '@booking/contracts';
 import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
@@ -10,13 +11,16 @@ import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import {
   toCustomerBookingSettlementResponse,
+  toCustomerDisputeStateResponse,
   toSettlementDisputeResponse,
 } from '../../application/finance.mapper';
 import { GetCustomerBookingSettlementUseCase } from '../../application/use-cases/get-customer-booking-settlement.use-case';
+import { ListCustomerDisputeStatesUseCase } from '../../application/use-cases/list-customer-dispute-states.use-case';
 import { OpenSettlementDisputeUseCase } from '../../application/use-cases/open-settlement-dispute.use-case';
 import {
   OpenSettlementDisputeDto,
   CustomerBookingSettlementResponseDto,
+  CustomerDisputeStateDto,
   SettlementDisputeResponseDto,
 } from './dto/finance.dto';
 
@@ -26,7 +30,24 @@ export class CustomerFinanceController {
   constructor(
     private readonly openDispute: OpenSettlementDisputeUseCase,
     private readonly getSettlement: GetCustomerBookingSettlementUseCase,
+    private readonly listDisputeStates: ListCustomerDisputeStatesUseCase,
   ) {}
+
+  @AuthenticatedOnly()
+  @Get('dispute-states')
+  @ApiOperation({ summary: 'Dispute eligibility for every booking the caller owns' })
+  @ApiOkResponse({ type: CustomerDisputeStateDto, isArray: true })
+  async disputeStates(
+    @Headers('x-forwarded-host') forwardedHost: string | undefined,
+    @Headers('host') host: string | undefined,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<CustomerDisputeState[]> {
+    const states = await this.listDisputeStates.execute(
+      forwardedHost ?? host ?? '',
+      principal.userId,
+    );
+    return states.map(toCustomerDisputeStateResponse);
+  }
 
   @AuthenticatedOnly()
   @Get('settlements/:bookingId')

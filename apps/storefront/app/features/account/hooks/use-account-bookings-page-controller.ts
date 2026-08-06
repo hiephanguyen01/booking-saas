@@ -23,6 +23,7 @@ export function useAccountBookingsPageController({
   const [activeCancellation, setActiveCancellation] = useState<BookingDetailViewModel | null>(
     null,
   );
+  const [activeDispute, setActiveDispute] = useState<BookingDetailViewModel | null>(null);
   const location = useLocation();
   const navigation = useNavigation();
   const readNavigationActive =
@@ -47,16 +48,30 @@ export function useAccountBookingsPageController({
     }
   }
 
+  function handleDisputeOpenChange(open: boolean) {
+    if (!open) {
+      setActiveDispute(null);
+    }
+  }
+
   return {
     action,
     activeCancellation,
+    activeDispute,
     activeFilter,
     activeReview,
+    // The dispute intent is owned by the booking detail route's action, so the
+    // list posts there rather than growing a second copy of the handler.
+    disputeAction: activeDispute
+      ? storefrontPaths.account.booking(locale, activeDispute.code)
+      : undefined,
     handleCancellationOpenChange,
+    handleDisputeOpenChange,
     handleReviewOpenChange,
     locale,
     pending,
     setActiveCancellation,
+    setActiveDispute,
     setActiveReview,
   };
 }

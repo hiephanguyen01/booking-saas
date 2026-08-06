@@ -12,9 +12,11 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { Textarea } from '@booking/ui/components/ui/textarea';
+import { cn } from '@booking/ui/lib/utils';
 import { CircleAlert } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 import { CancellationPolicyList } from '~/features/account/components/shared/account-primitives';
 import { useCancelBookingDialogController } from '~/features/account/hooks/use-cancel-booking-dialog-controller';
 
@@ -59,7 +61,13 @@ export function CancelBookingDialog({
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-none border-0 p-6 shadow-2xl sm:max-w-[562px] sm:p-8">
+      {/* Tenant surface config, same as the dispute modal beside it. */}
+      <DialogContent
+        className={cn(
+          PANEL_SURFACE,
+          'max-h-[calc(100vh-2rem)] overflow-y-auto p-6 sm:max-w-[562px] sm:p-8',
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-foreground">
             {t('bookings.cancelDialog.title')}

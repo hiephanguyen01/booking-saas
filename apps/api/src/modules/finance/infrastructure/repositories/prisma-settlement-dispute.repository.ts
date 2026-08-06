@@ -4,6 +4,7 @@ import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type {
+  CustomerSettlementDisputeState,
   ISettlementDisputeRepository,
   SettlementDisputeListFilters,
   SettlementDisputeRecord,
@@ -77,6 +78,29 @@ export class PrismaSettlementDisputeRepository implements ISettlementDisputeRepo
   constructor(private readonly prisma: PrismaService) {}
   async customerOwnsBooking(tx: PrismaTx, bookingId: string, customerId: string): Promise<boolean> {
     return (await tx.booking.count({ where: { id: bookingId, customerId } })) > 0;
+  }
+
+  async listCustomerStates(
+    tx: PrismaTx,
+    customerId: string,
+  ): Promise<CustomerSettlementDisputeState[]> {
+    const rows = await tx.bookingSettlement.findMany({
+      where: { booking: { customerId } },
+      select: {
+        bookingId: true,
+        status: true,
+        disputeUntil: true,
+        // One settlement carries at most one dispute, so presence is the whole
+        // question — `select: { id }` keeps the row out of the result.
+        dispute: { select: { id: true } },
+      },
+    });
+    return rows.map((row) => ({
+      bookingId: row.bookingId,
+      status: row.status,
+      disputeUntil: row.disputeUntil,
+      hasDispute: row.dispute !== null,
+    }));
   }
 
   async findById(tx: PrismaTx, id: string): Promise<SettlementDisputeRecord | null> {

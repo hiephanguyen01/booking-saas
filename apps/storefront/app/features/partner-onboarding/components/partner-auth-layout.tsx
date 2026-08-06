@@ -1,6 +1,7 @@
 import { cn } from '@booking/ui/lib/utils';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { SectionCard } from '~/components/section-card';
 
 export function PromoPanel({ tenantName }: { tenantName: string }) {
   const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
@@ -36,14 +37,17 @@ export function AuthSplit({
       <div className="hidden lg:block">
         <PromoPanel tenantName={tenantName} />
       </div>
-      <section
+      {/* `SectionCard` so the tenant's radius, border and shadow reach this
+          panel. Its padding is overridden on purpose: `--sf-surface-pad` sizes
+          the content panels, and a 566px-wide form needs the roomier inset. */}
+      <SectionCard
         className={cn(
-          'w-full self-center bg-card px-6 py-10 text-card-foreground shadow-sm sm:px-10',
+          'w-full self-center px-6 py-10 sm:px-10',
           tall && 'min-h-[548px]',
         )}
       >
         {children}
-      </section>
+      </SectionCard>
     </main>
   );
 }

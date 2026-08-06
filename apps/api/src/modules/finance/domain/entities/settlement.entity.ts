@@ -264,11 +264,23 @@ export class Settlement {
   }
 
   canOpenDispute(now: Date, hasExistingDispute: boolean): boolean {
+    return Settlement.allowsDispute(this.state, now, hasExistingDispute);
+  }
+
+  /**
+   * The same rule without a whole record to rehydrate, so the list projection
+   * and the per-booking read cannot drift into two definitions of "disputable".
+   */
+  static allowsDispute(
+    state: Pick<SettlementRecord, 'status' | 'disputeUntil'>,
+    now: Date,
+    hasExistingDispute: boolean,
+  ): boolean {
     return (
       !hasExistingDispute &&
-      this.state.status === 'dispute_window' &&
-      this.state.disputeUntil !== null &&
-      this.state.disputeUntil > now
+      state.status === 'dispute_window' &&
+      state.disputeUntil !== null &&
+      state.disputeUntil > now
     );
   }
 

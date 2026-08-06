@@ -1,4 +1,5 @@
 import { CircleCheck } from 'lucide-react';
+import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function PartnerDonePage({
@@ -11,7 +12,8 @@ export function PartnerDonePage({
   const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
   return (
     <main className="flex flex-1 items-start justify-center px-5 pb-16 pt-10 sm:px-6 sm:pt-16">
-      <section className="w-full max-w-[570px] bg-card p-8 text-center text-card-foreground shadow-sm sm:p-10">
+      {/* Tenant surface shape; padding stays bespoke — see partner-auth-layout. */}
+      <SectionCard className="w-full max-w-[570px] p-8 text-center sm:p-10">
         <span
           className="mx-auto grid size-26 place-items-center rounded-full bg-primary/10 text-primary"
           aria-hidden="true"
@@ -31,7 +33,7 @@ export function PartnerDonePage({
         >
           {t('common:becomePartner.goToDashboard')}
         </a>
-      </section>
+      </SectionCard>
     </main>
   );
 }

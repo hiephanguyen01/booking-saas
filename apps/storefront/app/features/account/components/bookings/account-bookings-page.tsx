@@ -3,15 +3,17 @@ import { cn } from '@booking/ui/lib/utils';
 import { ReceiptText, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router';
 import { AccountResultsSkeleton } from '~/components/loading-skeletons';
-import { NsI18n, useTranslation } from '@booking/i18n';
+import { formatDateTime, NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { PANEL_SURFACE } from '~/constants/surfaces';
+import { DEFAULT_TZ } from '~/lib/time';
 import {
   AccountPanel,
   PageHeading,
 } from '~/features/account/components/shared/account-primitives';
 import { BookingHistoryCard } from '~/features/account/components/bookings/booking-history-card';
 import { CancelBookingDialog } from '~/features/account/components/bookings/cancel-booking-dialog';
+import { DisputeBookingDialog } from '~/features/account/components/bookings/dispute-booking-dialog';
 import { ReviewDialog } from '~/features/account/components/reviews/review-dialog';
 import { BOOKING_HISTORY_FILTERS } from '~/features/account/lib/booking-history';
 import { useAccountBookingsPageController } from '~/features/account/hooks/use-account-bookings-page-controller';
@@ -27,18 +29,25 @@ export function AccountBookingsPage({
   const {
     action,
     activeCancellation,
+    activeDispute,
     activeFilter,
     activeReview,
+    disputeAction,
     handleCancellationOpenChange,
+    handleDisputeOpenChange,
     handleReviewOpenChange,
     locale,
     pending,
     setActiveCancellation,
+    setActiveDispute,
     setActiveReview,
   } = useAccountBookingsPageController({
     locale: loaderData.locale,
     filter: loaderData.filter,
   });
+  const activeDisputeUntil = activeDispute
+    ? (loaderData.disputeStates[activeDispute.id]?.disputeUntil ?? null)
+    : null;
 
   return (
     <div className="space-y-3">
@@ -67,8 +76,10 @@ export function AccountBookingsPage({
               key={booking.id}
               booking={booking}
               locale={locale}
+              canDispute={loaderData.disputeStates[booking.id]?.canOpenDispute ?? false}
               onReview={setActiveReview}
               onCancel={setActiveCancellation}
+              onDispute={setActiveDispute}
             />
           ))}
         </div>
@@ -87,6 +98,16 @@ export function AccountBookingsPage({
           open
           action={action}
           onOpenChange={handleCancellationOpenChange}
+        />
+      ) : null}
+      {activeDispute ? (
+        <DisputeBookingDialog
+          deadlineLabel={
+            activeDisputeUntil ? formatDateTime(activeDisputeUntil, locale, DEFAULT_TZ) : null
+          }
+          open
+          action={disputeAction}
+          onOpenChange={handleDisputeOpenChange}
         />
       ) : null}
     </div>
