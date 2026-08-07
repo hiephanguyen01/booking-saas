@@ -21,7 +21,10 @@ import { PageHeader } from '~/components/page-header';
 import { LegalDocumentsCard } from '~/features/tenant/components/settings/legal-documents-card';
 import { PartnerPromotionsCard } from '~/features/tenant/components/settings/partner-promotions-card';
 import { TenantDefaultCancellationPolicyCard } from '~/features/tenant/components/settings/tenant-default-cancellation-policy-card';
-import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-domains-card';
+import {
+  TenantDomainsCard,
+  type DomainDnsCheckState,
+} from '~/features/tenant/components/settings/tenant-domains-card';
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
 import { PaymentGatewayCard } from '~/features/tenant/components/settings/payment-gateway-card';
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
@@ -34,6 +37,7 @@ const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   theme: 'brand',
   domain: 'domains',
   'domain-verify': 'domains',
+  'domain-dns-check': 'domains',
   'domain-primary': 'domains',
   'domain-delete': 'domains',
   flags: 'operations',
@@ -71,6 +75,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     themeError,
     domains,
     domainsError,
+    tenancyConfig,
     canTheme,
     canSettings,
     canFinance,
@@ -105,6 +110,12 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
   };
   const okFor = (form: string): boolean =>
     Boolean(actionData && 'form' in actionData && actionData.form === form && 'ok' in actionData);
+  // The dns-check action reports which row it ran on, so its verdict renders
+  // inside that domain instead of as one banner over the whole list.
+  const dnsCheckResult: DomainDnsCheckState | null =
+    actionData && 'dnsCheck' in actionData && 'domainId' in actionData
+      ? { domainId: actionData.domainId, result: actionData.dnsCheck }
+      : null;
   const fieldErrorsFor = (form: string): Record<string, string[]> | null =>
     actionData && 'form' in actionData && actionData.form === form && 'fieldErrors' in actionData
       ? ((actionData.fieldErrors as Record<string, string[]> | undefined) ?? null)
@@ -235,13 +246,18 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
             <TabsContent value="domains" forceMount className="w-full data-[state=inactive]:hidden">
               <TenantDomainsCard
                 domains={domains}
+                tenancyConfig={tenancyConfig}
                 loadError={domainsError}
                 readOnly={readOnly}
                 actionError={
-                  errFor('domain-verify') ?? errFor('domain-primary') ?? errFor('domain-delete')
+                  errFor('domain-verify') ??
+                  errFor('domain-dns-check') ??
+                  errFor('domain-primary') ??
+                  errFor('domain-delete')
                 }
                 domainError={errFor('domain')}
                 domainFieldErrors={fieldErrorsFor('domain')}
+                dnsCheck={dnsCheckResult}
                 successMessage={
                   okFor('domain')
                     ? 'Đã thêm tên miền. Hãy cấu hình DNS để hoàn tất xác minh.'

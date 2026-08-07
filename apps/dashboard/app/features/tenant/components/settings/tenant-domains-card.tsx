@@ -1,5 +1,11 @@
+import type { ReactNode } from 'react';
 import { useNavigation, useSubmit } from 'react-router';
-import { addDomainInputSchema, type DomainResponse } from '@booking/contracts';
+import {
+  addDomainInputSchema,
+  type DomainDnsCheckResponse,
+  type DomainResponse,
+  type TenancyConfigResponse,
+} from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import {
   AlertDialog,
@@ -21,31 +27,56 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
-import { CheckCircle2, Clock, ExternalLink, Globe2, RefreshCw, Star, Trash2 } from 'lucide-react';
+import {
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  Globe2,
+  Radar,
+  RefreshCw,
+  Star,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react';
 import { formatDate } from '~/lib/format';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { CopyableCode } from '~/components/copyable-code';
+import { DateTimeValue } from '~/components/date-time-value';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { domainFields } from './settings-fields';
 
-type DomainActionIntent = 'set-primary-domain' | 'verify-domain' | 'delete-domain';
+type DomainActionIntent =
+  | 'set-primary-domain'
+  | 'verify-domain'
+  | 'dns-check-domain'
+  | 'delete-domain';
+
+/** The last "Kiểm tra kết nối" result, scoped to the row it was run on. */
+export interface DomainDnsCheckState {
+  domainId: string;
+  result: DomainDnsCheckResponse;
+}
 
 export function TenantDomainsCard({
   domains,
+  tenancyConfig,
   loadError,
   readOnly,
   actionError,
   domainError,
   domainFieldErrors,
   successMessage,
+  dnsCheck,
 }: {
   domains: DomainResponse[] | null;
+  tenancyConfig: TenancyConfigResponse | null;
   loadError: string | null;
   readOnly: boolean;
   actionError: string | null;
   domainError: string | null;
   domainFieldErrors: Record<string, string[]> | null;
   successMessage: string | null;
+  dnsCheck: DomainDnsCheckState | null;
 }) {
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -75,6 +106,8 @@ export function TenantDomainsCard({
               <DomainRow
                 key={domain.id}
                 domain={domain}
+                tenancyConfig={tenancyConfig}
+                dnsCheck={dnsCheck?.domainId === domain.id ? dnsCheck.result : null}
                 busy={busy}
                 readOnly={readOnly}
                 onAction={submitDomainAction}
@@ -122,17 +155,26 @@ export function TenantDomainsCard({
 
 function DomainRow({
   domain,
+  tenancyConfig,
+  dnsCheck,
   busy,
   readOnly,
   onAction,
 }: {
   domain: DomainResponse;
+  tenancyConfig: TenancyConfigResponse | null;
+  dnsCheck: DomainDnsCheckResponse | null;
   busy: boolean;
   readOnly: boolean;
   onAction: (intent: DomainActionIntent, domainId: string) => void;
 }) {
   const verified = Boolean(domain.verifiedAt);
   const url = storefrontUrl(domain.hostname);
+  // Two independent conditions, and a tenant hits the second one blind: TXT
+  // proves ownership, pointing the record is what makes the domain load. Keep
+  // the pointing step on screen until a check confirms it — including for a
+  // domain that is already "Đã xác minh".
+  const pointed = dnsCheck?.pointsToUs === true;
 
   return (
     <li className="rounded-xl border bg-background p-4 sm:p-5">
@@ -161,10 +203,7 @@ function DomainRow({
           </div>
           {verified ? (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CheckCircle2
-                className="size-3.5 text-success"
-                aria-hidden="true"
-              />
+              <CheckCircle2 className="size-3.5 text-success" aria-hidden="true" />
               Xác minh ngày {formatDate(domain.verifiedAt)}
             </p>
           ) : (
@@ -200,20 +239,26 @@ function DomainRow({
         </div>
       </div>
 
-      {!verified && domain.verificationToken ? (
-        <div className="mt-4 rounded-lg border bg-muted/35 p-4">
-          <p className="text-sm font-semibold">Cấu hình DNS</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Tạo một bản ghi TXT trong trang quản trị DNS. Nhà cung cấp có thể yêu cầu nhập hostname
-            hoặc ký hiệu @ ở trường tên bản ghi.
-          </p>
-          <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-center">
+      {!verified && domain.verification ? (
+        <DomainStep
+          label={pointed ? 'Chứng minh sở hữu' : 'Bước 1 · Chứng minh sở hữu'}
+          description="Tạo bản ghi TXT dưới đây trong trang quản trị DNS của bạn. Một số nhà cung cấp chỉ nhận phần đứng trước tên miền ở ô tên bản ghi."
+        >
+          <dl className="grid gap-3 text-xs sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-center">
+            <dt className="text-muted-foreground">Tên bản ghi</dt>
+            <dd className="min-w-0">
+              <CopyableCode
+                value={domain.verification.recordName}
+                label={`tên bản ghi TXT của ${domain.hostname}`}
+                className="max-w-full"
+              />
+            </dd>
             <dt className="text-muted-foreground">Loại bản ghi</dt>
-            <dd className="font-mono font-semibold">TXT</dd>
+            <dd className="font-mono font-semibold">{domain.verification.recordType}</dd>
             <dt className="text-muted-foreground">Giá trị</dt>
             <dd className="min-w-0">
               <CopyableCode
-                value={domain.verificationToken}
+                value={domain.verification.recordValue}
                 label={`giá trị TXT của ${domain.hostname}`}
                 className="max-w-full"
               />
@@ -229,9 +274,139 @@ function DomainRow({
           >
             <RefreshCw className="size-3.5" /> Kiểm tra lại DNS
           </Button>
+        </DomainStep>
+      ) : null}
+
+      {!pointed ? (
+        <DomainStep
+          label={!verified && domain.verification ? 'Bước 2 · Trỏ tên miền' : 'Trỏ tên miền'}
+          description="Xác minh chỉ chứng minh bạn sở hữu tên miền. Để khách mở được trang, tên miền còn phải trỏ về BookingOS bằng một trong hai bản ghi dưới đây."
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DnsTargetBlock
+              title="Tên miền con"
+              hint="Ví dụ booking.cuahang.vn"
+              recordType="CNAME"
+              value={tenancyConfig?.storefrontCname || null}
+              hostname={domain.hostname}
+            />
+            <DnsTargetBlock
+              title="Tên miền gốc"
+              hint="Ví dụ cuahang.vn — bản ghi gốc không dùng được CNAME"
+              recordType="A"
+              value={tenancyConfig?.storefrontIpv4 || null}
+              hostname={domain.hostname}
+            />
+          </div>
+          <Button
+            type="button"
+            className="mt-4"
+            variant="outline"
+            size="sm"
+            disabled={busy || readOnly}
+            onClick={() => onAction('dns-check-domain', domain.id)}
+          >
+            <Radar className="size-3.5" /> Kiểm tra kết nối
+          </Button>
+          {dnsCheck ? <DnsCheckResult check={dnsCheck} /> : null}
+        </DomainStep>
+      ) : dnsCheck ? (
+        <div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-xs text-success">
+          <CheckCircle2 className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="font-medium">Tên miền đã trỏ về BookingOS.</span>
+          <span className="text-success/80">
+            Kiểm tra lúc <DateTimeValue iso={dnsCheck.checkedAt} className="text-xs" />
+          </span>
         </div>
       ) : null}
     </li>
+  );
+}
+
+/** One numbered instruction block inside a domain row. */
+function DomainStep({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mt-4 rounded-lg border bg-muted/35 p-4">
+      <p className="text-sm font-semibold">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+      <div className="mt-4">{children}</div>
+    </div>
+  );
+}
+
+/** Where one flavour of hostname (subdomain vs apex) must point. */
+function DnsTargetBlock({
+  title,
+  hint,
+  recordType,
+  value,
+  hostname,
+}: {
+  title: string;
+  hint: string;
+  recordType: 'CNAME' | 'A';
+  value: string | null;
+  hostname: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border bg-background p-3">
+      <p className="text-xs font-semibold">{title}</p>
+      <p className="mt-0.5 text-[0.6875rem] leading-4 text-muted-foreground">{hint}</p>
+      <dl className="mt-3 space-y-2 text-xs">
+        <div className="flex items-center gap-2">
+          <dt className="w-16 shrink-0 text-muted-foreground">Loại</dt>
+          <dd className="font-mono font-semibold">{recordType}</dd>
+        </div>
+        <div className="flex items-center gap-2">
+          <dt className="w-16 shrink-0 text-muted-foreground">Trỏ về</dt>
+          <dd className="min-w-0">
+            {value ? (
+              <CopyableCode
+                value={value}
+                label={`đích ${recordType} của ${hostname}`}
+                className="max-w-full"
+              />
+            ) : (
+              <span className="text-muted-foreground">
+                Chưa cấu hình — liên hệ quản trị nền tảng.
+              </span>
+            )}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+/** What DNS answered just now, in the row it was checked from. */
+function DnsCheckResult({ check }: { check: DomainDnsCheckResponse }) {
+  const observed =
+    check.observedCname !== null
+      ? `Đang trỏ CNAME về ${check.observedCname}.`
+      : check.observedIpv4.length > 0
+        ? `Đang trỏ về ${check.observedIpv4.join(', ')}.`
+        : 'Chưa tìm thấy bản ghi A hoặc CNAME nào cho tên miền này.';
+
+  return (
+    <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/35 bg-warning/10 px-3 py-2.5 text-xs text-warning-foreground">
+      <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+      <div className="min-w-0 space-y-0.5">
+        <p className="font-medium">Tên miền chưa trỏ về BookingOS.</p>
+        <p>{observed}</p>
+        <p className="text-warning-foreground/80">
+          Thay đổi DNS có thể mất tới vài giờ để lan truyền. Kiểm tra lúc{' '}
+          <DateTimeValue iso={check.checkedAt} className="text-xs" />
+        </p>
+      </div>
+    </div>
   );
 }
 

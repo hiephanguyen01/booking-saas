@@ -7,6 +7,7 @@ import {
   type Paginated,
   type PlanResponse,
   type SubscriptionHistoryItem,
+  type TenancyConfigResponse,
   type TenantDetailResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -61,7 +62,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     pageKey: 'subPage',
     pageSizeKey: 'subPageSize',
   });
-  const [tenantRes, subRes, historyRes, domainsRes, plansRes] = await Promise.all([
+  const [tenantRes, subRes, historyRes, domainsRes, tenancyConfigRes, plansRes] = await Promise.all([
     apiGet<TenantDetailResponse>(apiPaths.admin.tenant(id), auth),
     apiGet(apiPaths.admin.tenantSubscription(id), auth, {
       schema: currentSubscriptionResponseSchema.nullable(),
@@ -70,6 +71,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       query: toApiQuery(),
     }),
     apiGet<DomainResponse[]>(apiPaths.admin.tenantDomains(id), auth),
+    apiGet<TenancyConfigResponse>(apiPaths.admin.tenancyConfig, auth),
     apiGet<PlanResponse[]>(apiPaths.admin.plans, auth),
   ]);
   if (!tenantRes.ok || !tenantRes.data) {
@@ -82,6 +84,9 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     history: historyRes.ok ? (historyRes.data?.items ?? []) : null,
     historyTotal: historyRes.ok ? (historyRes.data?.total ?? 0) : 0,
     domains: domainsRes.ok ? (domainsRes.data ?? []) : [],
+    // Only the "point your domain here" hints depend on it; the rest of the card
+    // works without it.
+    tenancyConfig: tenancyConfigRes.ok ? (tenancyConfigRes.data ?? null) : null,
     plans: plansRes.ok ? (plansRes.data ?? []) : [],
     subscriptionDates,
   };
@@ -99,7 +104,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function TenantDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { tenant, subscription, history, historyTotal, domains, plans, subscriptionDates } = loaderData;
+  const { tenant, subscription, history, historyTotal, domains, tenancyConfig, plans, subscriptionDates } =
+    loaderData;
   const busy = useBusy();
   const [searchParams] = useSearchParams();
   const {
@@ -217,6 +223,12 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
 
         <TenantDomainsCard
           domains={domains}
+          tenancyConfig={tenancyConfig}
+          dnsCheck={
+            result?.scope === 'domain' && result.domainId && result.dnsCheck
+              ? { domainId: result.domainId, result: result.dnsCheck }
+              : null
+          }
           busy={busy}
           customDomainAllowed={subscription?.plan?.limits.customDomain ?? true}
           serverError={scopedError('domain')}

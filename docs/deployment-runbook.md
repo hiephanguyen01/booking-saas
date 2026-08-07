@@ -11,11 +11,15 @@ Tài liệu này là trình tự triển khai staging chính thức cho BookingO
 - PostgreSQL 16 và Redis 7 của staging chạy trong Docker trên cùng EC2 bằng
   `docker-compose.stg-data.yml`.
 - GitHub Actions build ba image `linux/amd64`, push lên GHCR, SSH vào EC2 và deploy.
-- Compose nginx chỉ bind `127.0.0.1:8080`.
-- Nginx cài trực tiếp trên EC2 giữ public port 80/443, terminate certificate Let’s Encrypt cho
-  `stg.bookingos.vn` và `*.stg.bookingos.vn`, rồi proxy vào compose nginx.
-- Wildcard staging trên Cloudflare để **DNS only**. Bật Proxied sẽ đưa TLS trở lại Cloudflare edge và
-  certificate Universal SSL miễn phí không phủ hostname sâu như `api.stg.bookingos.vn`.
+- Compose nginx chỉ bind `127.0.0.1:8080`, cộng một listener `127.0.0.1:8081` mở đúng một path cho
+  Caddy hỏi trước khi cấp certificate.
+- **Caddy** cài trực tiếp trên EC2 giữ public port 80/443 và proxy vào compose nginx. Nó terminate
+  TLS bằng **on-demand TLS**: certificate được xin cho từng hostname ở request đầu tiên, nên tenant
+  thêm tên miền riêng là chạy, không cần thao tác ops và không cần wildcard certificate.
+- Nginx host + certbot là **đường lùi**, giữ nguyên trên máy 1–2 tuần sau khi cắt.
+- Mọi record staging trên Cloudflare để **DNS only**. Bật Proxied sẽ đưa TLS trở lại Cloudflare edge
+  (certificate Universal SSL miễn phí không phủ hostname sâu như `api.stg.bookingos.vn`) và làm hỏng
+  cả việc xin certificate lẫn hướng dẫn trỏ A về Elastic IP mà ta đưa cho tenant.
 - Cloudflare R2 giữ media; Resend gửi email.
 
 Đây là staging một máy, không có high availability. Không dùng topology này cho production.
@@ -29,6 +33,7 @@ Tài liệu này là trình tự triển khai staging chính thức cho BookingO
 | BookingStudio | `bookingstudio.stg.bookingos.vn` |
 | BookingStad | `bookingstad.stg.bookingos.vn` |
 | Wildcard tenant | `*.stg.bookingos.vn` |
+| Đích CNAME cho tên miền riêng của tenant | `connect.stg.bookingos.vn` |
 | Public media | `cdn.stg.bookingos.vn` |
 
 ## Phase 0 — Chuẩn bị local
@@ -230,12 +235,15 @@ Trên EC2:
 
 ```bash
 sudo dnf upgrade -y
-sudo dnf install -y docker git nginx python3 python3-devel augeas-devel gcc openssl curl cronie
+sudo dnf install -y docker git nginx openssl curl cronie
 sudo systemctl enable --now docker
 sudo systemctl enable --now crond
 sudo usermod -aG docker ec2-user
 sudo reboot
 ```
+
+`nginx` ở đây **không** phải thứ giữ 80/443 — Caddy (Phase 6) làm việc đó. Cài sẵn để có đường lùi;
+đừng `systemctl enable` nó.
 
 Chờ instance boot lại, sau đó trên máy local SSH lại để kernel/package update và group `docker` có
 hiệu lực:
@@ -250,7 +258,6 @@ Kiểm tra:
 docker version
 docker compose version
 nginx -v
-python3 --version
 ```
 
 Nếu `docker compose version` chưa chạy được, cài Compose plugin:
@@ -313,12 +320,12 @@ crontab -l
 
 ## Phase 4 — Đưa deploy files lên EC2
 
-Server không build source; nó chỉ cần compose files, nginx template và env template.
+Server không build source; nó chỉ cần compose files, nginx template, Caddyfile và env template.
 
 Trên EC2:
 
 ```bash
-mkdir -p /home/ec2-user/bookingos/docker/nginx
+mkdir -p /home/ec2-user/bookingos/docker/nginx /home/ec2-user/bookingos/docker/caddy
 ```
 
 Trên máy local:
@@ -336,7 +343,13 @@ scp -i /path/to/bookingos-staging.pem \
   docker/nginx/deploy.conf.template \
   docker/nginx/staging-host.conf \
   ec2-user@STAGING_EIP:/home/ec2-user/bookingos/docker/nginx/
+
+scp -i /path/to/bookingos-staging.pem \
+  docker/caddy/Caddyfile \
+  ec2-user@STAGING_EIP:/home/ec2-user/bookingos/docker/caddy/
 ```
+
+`staging-host.conf` không còn là config đang chạy — nó là đường lùi khi cần tắt Caddy (Phase 7).
 
 Trên EC2:
 
@@ -353,6 +366,7 @@ Phải thấy:
 ./.env.deploy.example
 ./docker/nginx/deploy.conf.template
 ./docker/nginx/staging-host.conf
+./docker/caddy/Caddyfile
 ```
 
 ## Phase 5 — Cloudflare DNS cho staging
@@ -363,8 +377,15 @@ Sau khi có Elastic IP, Cloudflare → `bookingos.vn` → DNS → Records, tạo
 | --- | --- | --- | --- | --- |
 | A | `stg` | `STAGING_EIP` | DNS only | Auto |
 | A | `*.stg` | `STAGING_EIP` | DNS only | Auto |
+| A | `connect.stg` | `STAGING_EIP` | DNS only | Auto |
 
-Hai record phải là mây xám **DNS only**. Không bật Proxied.
+Cả ba record phải là mây xám **DNS only**. Bật Proxied là hỏng cả việc xin certificate lẫn việc
+hướng tenant trỏ A về Elastic IP.
+
+`connect.stg.bookingos.vn` là **đích CNAME** cho tên miền con của tenant (`PLATFORM_STOREFRONT_CNAME`).
+Nó không nằm trong `tenant_domains` và không cần certificate riêng — TLS luôn diễn ra trên hostname
+của chính tenant. Record `*.stg` đã phủ nó, nhưng tạo record tường minh để nó không biến mất nếu
+wildcard bị thu hẹp.
 
 Kiểm tra:
 
@@ -380,117 +401,101 @@ Tất cả phải trả về Elastic IP.
 Record `cdn.stg.bookingos.vn` sẽ được Cloudflare R2 quản lý ở Phase 8. Exact record đó ưu tiên hơn
 wildcard `*.stg`.
 
-## Phase 6 — Cài Certbot và cấp wildcard certificate
+## Phase 6 — Cài Caddy và bật on-demand TLS
 
-Wildcard certificate bắt buộc dùng DNS-01 challenge. Certbot sẽ tạo và xóa TXT
-`_acme-challenge.stg.bookingos.vn` qua Cloudflare API.
+> **Máy đã chạy nginx host + certbot?** Đừng dùng Phase 6–7. Chúng viết cho máy trắng, không có bước
+> cắt và không có đường lùi. Dùng [`nginx-to-caddy-cutover.md`](./nginx-to-caddy-cutover.md) — thứ tự
+> khác, có cổng nghiệm thu trước khi cắt và có rollback.
 
-### 6.1. Tạo Cloudflare API token
+Tenant tự thêm tên miền riêng trong dashboard bất cứ lúc nào, nên một certificate cố định là không
+đủ: `booking.tenant-example.vn` trỏ về Elastic IP sẽ hỏng ngay ở bắt tay TLS và request chưa bao giờ
+tới ứng dụng. Caddy **on-demand TLS** xin certificate ngay ở request đầu tiên cho từng hostname —
+không thao tác ops, không deploy lại cho mỗi tenant.
 
-Cloudflare → profile → **API Tokens → Create Token → Edit Zone DNS**:
+Hệ quả: **không cần wildcard certificate nữa.** Subdomain tenant (`bookingstudio.stg.bookingos.vn`)
+cũng là một row đã verified trong `tenant_domains`, nên nó đi chung đường on-demand HTTP-01 như custom
+domain. Không cần DNS-01, không cần build `xcaddy` với plugin Cloudflare, không cần đặt Cloudflare API
+token trên máy.
 
-- Permission: `Zone → DNS → Edit`.
-- Zone Resources: `Include → Specific zone → bookingos.vn`.
-- Không cấp quyền account-wide.
-- Không dùng Global API Key.
+### 6.1. Cài Caddy từ repo chính thức
 
-Lưu token vào password manager; Cloudflare chỉ hiển thị secret một lần.
-
-### 6.2. Cài Certbot trong Python virtual environment
-
-Trên EC2:
-
-```bash
-sudo python3 -m venv /opt/certbot
-sudo /opt/certbot/bin/pip install --upgrade pip
-sudo /opt/certbot/bin/pip install certbot certbot-nginx certbot-dns-cloudflare
-sudo ln -s /opt/certbot/bin/certbot /usr/local/bin/certbot
-certbot --version
-```
-
-### 6.3. Lưu token an toàn
+Trên EC2 (Amazon Linux 2023):
 
 ```bash
-sudo install -d -m 700 /root/.secrets/certbot
-sudoedit /root/.secrets/certbot/cloudflare.ini
+sudo dnf install -y 'dnf-command(copr)'
+sudo dnf copr enable -y @caddy/caddy
+sudo dnf install -y caddy
+caddy version
 ```
 
-Nội dung:
+Dùng đúng package chính thức để systemd unit và thư mục certificate
+`/var/lib/caddy/.local/share/caddy` do nó quản lý. **Xoá thư mục đó là phải xin lại toàn bộ
+certificate.**
 
-```ini
-dns_cloudflare_api_token = REPLACE_WITH_CLOUDFLARE_DNS_TOKEN
-```
-
-Sau khi thay token thật:
+### 6.2. Đặt Caddyfile
 
 ```bash
-sudo chmod 600 /root/.secrets/certbot/cloudflare.ini
-sudo stat -c '%a %n' /root/.secrets/certbot/cloudflare.ini
+sudo cp /home/ec2-user/bookingos/docker/caddy/Caddyfile /etc/caddy/Caddyfile
+sudoedit /etc/caddy/Caddyfile
 ```
 
-Kết quả permission phải là `600`.
+Sửa `email` thành hộp thư vận hành thật — Let's Encrypt gửi cảnh báo hết hạn về đó. Với production
+thì đổi hai hostname tường minh thành `admin.bookingos.vn` / `api.bookingos.vn`.
 
-### 6.4. Cấp certificate
+Validate bằng đúng bản Caddy vừa cài (cú pháp on-demand đã đổi giữa các bản 2.x, các tuỳ chọn
+rate-limit cũ đã bị gỡ):
 
 ```bash
-sudo certbot certonly \
-  --dns-cloudflare \
-  --dns-cloudflare-credentials /root/.secrets/certbot/cloudflare.ini \
-  --dns-cloudflare-propagation-seconds 60 \
-  --cert-name stg.bookingos.vn \
-  -d stg.bookingos.vn \
-  -d '*.stg.bookingos.vn' \
-  --email REPLACE_WITH_OPERATIONS_EMAIL \
-  --agree-tos \
-  --no-eff-email
+sudo caddy validate --config /etc/caddy/Caddyfile
 ```
 
-Thay `REPLACE_WITH_OPERATIONS_EMAIL` bằng email vận hành thật.
+### 6.3. Nghiệm thu endpoint `ask` trước khi cắt
 
-Kiểm tra:
+Caddy gọi `GET /public/domains/tls-allowed?domain=<host>` **ngay trong lúc bắt tay TLS**; 2xx thì cấp
+certificate, khác thì từ chối. Đây là thứ duy nhất chặn người lạ trỏ tên miền bừa vào Elastic IP để ép
+hệ thống đi xin certificate — và cũng là thứ chặn việc đốt rate limit Let's Encrypt.
+
+Stack phải đang chạy (Phase 10–11). Kiểm tra:
 
 ```bash
-sudo certbot certificates
-sudo ls -la /etc/letsencrypt/live/stg.bookingos.vn/
+curl -i "http://127.0.0.1:8081/public/domains/tls-allowed?domain=bookingstudio.stg.bookingos.vn"
+curl -i "http://127.0.0.1:8081/public/domains/tls-allowed?domain=khong-ton-tai.example"
+curl -i "http://127.0.0.1:8081/health/ready"
 ```
 
-Phải có:
+Lần lượt phải là **200**, **404**, **404**. Lượt thứ ba xác nhận listener `:8081` chỉ mở đúng một path
+chứ không phải cả API trên một cổng thứ hai.
 
-```text
-fullchain.pem
-privkey.pem
-cert.pem
-chain.pem
-```
-
-## Phase 7 — Host nginx terminate HTTPS
-
-### 7.1. Cài config
+Kiểm tra cổng chỉ bind loopback:
 
 ```bash
-sudo cp \
-  /home/ec2-user/bookingos/docker/nginx/staging-host.conf \
-  /etc/nginx/conf.d/bookingos-stg.conf
+ss -ltnp | grep 8081
 ```
 
-Nếu tồn tại default config trong `conf.d`, di chuyển nó ra khỏi nginx config:
+Phải thấy `127.0.0.1:8081`, không phải `0.0.0.0:8081`.
+
+## Phase 7 — Cắt sang Caddy
+
+### 7.1. Dừng nginx host, bật Caddy
+
+Cả hai cùng muốn cổng 80/443, nên đây là một lần cắt — gián đoạn vài giây:
 
 ```bash
-if [ -f /etc/nginx/conf.d/default.conf ]; then
-  sudo mv /etc/nginx/conf.d/default.conf /etc/nginx/default.conf.disabled
-fi
+sudo systemctl disable --now nginx
+sudo systemctl enable --now caddy
+sudo systemctl status caddy --no-pager
 ```
 
-Validate và start:
+Certificate cho `admin.` và `api.` được xin ngay lúc start. Subdomain tenant và custom domain xin ở
+request đầu tiên tới hostname đó — request đó chậm khoảng 1–3 giây, các request sau bình thường.
+
+Theo dõi lượt xin certificate đầu tiên:
 
 ```bash
-sudo nginx -t
-sudo systemctl enable --now nginx
-sudo systemctl status nginx --no-pager
+sudo journalctl -u caddy -f
 ```
 
-Trước khi container chạy, request HTTPS có thể trả `502 Bad Gateway`; điều quan trọng ở checkpoint
-này là TLS handshake thành công.
+### 7.2. Nghiệm thu
 
 ```bash
 openssl s_client \
@@ -498,30 +503,36 @@ openssl s_client \
   -servername api.stg.bookingos.vn \
   </dev/null 2>/dev/null |
   openssl x509 -noout -subject -issuer -dates
+
+curl -sS https://api.stg.bookingos.vn/health/ready
 ```
 
-### 7.2. Auto-renew và reload nginx
+Rồi bằng trình duyệt: đăng nhập `admin.stg.bookingos.vn`, mở một subdomain tenant
+(`bookingstudio.stg.bookingos.vn`), và mở một custom domain thật đã verified.
 
-Tạo cron:
+Certificate của mỗi hostname phải là certificate **riêng của hostname đó**, không phải wildcard.
+
+### 7.3. Rollback
+
+Certificate certbot cũ vẫn còn trên đĩa và config cũ vẫn còn trong repo, nên đường lùi là hai lệnh:
 
 ```bash
-sudoedit /etc/cron.d/certbot-renew
+sudo systemctl stop caddy
+sudo systemctl start nginx
 ```
 
-Nội dung:
+Ở trạng thái lùi này custom domain lại hỏng TLS — đó chính là vấn đề Caddy sinh ra để giải quyết.
 
-```text
-0 0,12 * * * root /opt/certbot/bin/python -c 'import random; import time; time.sleep(random.random() * 3600)' && /usr/local/bin/certbot renew -q --deploy-hook 'systemctl reload nginx'
-```
+### 7.4. Tắt certbot sau khi ổn định
 
-Set permission và test:
+Giữ certbot và cron renewal **1–2 tuần**. Sau đó mới:
 
 ```bash
-sudo chmod 644 /etc/cron.d/certbot-renew
-sudo certbot renew --dry-run
+sudo rm /etc/cron.d/certbot-renew
 ```
 
-Không chuyển sang phase tiếp theo nếu dry-run thất bại.
+Nếu máy này chưa từng chạy certbot (deploy mới hoàn toàn) thì bỏ qua toàn bộ mục này — Caddy tự lo
+renewal, không có cron nào cần tạo.
 
 ## Phase 8 — Cloudflare R2
 
@@ -534,7 +545,8 @@ Cloudflare → R2:
 3. Nhập `cdn.stg.bookingos.vn`.
 4. Chờ domain status Active.
 
-R2 tự quản lý certificate cho custom domain này; không đưa `cdn.stg.bookingos.vn` vào host nginx.
+R2 tự quản lý certificate cho custom domain này; không đưa `cdn.stg.bookingos.vn` vào Caddyfile. DNS
+của nó trỏ về R2 chứ không về Elastic IP, nên site catch-all của Caddy không bao giờ thấy hostname đó.
 
 ### 8.2. Tạo R2 access key
 
@@ -557,17 +569,30 @@ Bucket → Settings → CORS:
 ```json
 [
   {
-    "AllowedOrigins": [
-      "https://bookingstudio.stg.bookingos.vn",
-      "https://bookingstad.stg.bookingos.vn",
-      "https://admin.stg.bookingos.vn"
-    ],
+    "AllowedOrigins": ["*"],
     "AllowedMethods": ["PUT"],
     "AllowedHeaders": ["content-type"],
     "MaxAgeSeconds": 3600
   }
 ]
 ```
+
+**Vì sao là `*`, ghi lại để lần audit sau khỏi phải suy luận lại.** Khách upload ảnh hồ sơ partner và
+ảnh đánh giá đi thẳng từ trình duyệt lên R2 bằng presigned URL, nên **mỗi origin storefront** phải nằm
+trong CORS của bucket. Liệt kê tay ba origin nghĩa là **mỗi tenant mới đều hỏng upload cho tới khi ops
+sửa tay** — kể cả tenant chỉ dùng subdomain. Custom domain chỉ làm lỗ hổng sẵn có này lộ ra.
+
+Đây không phải nới lỏng bảo mật: điều kiện duy nhất để ghi được object là **chữ ký trong presigned
+URL**. Muốn có chữ ký phải gọi `/uploads/presign` của BFF — route yêu cầu đăng nhập, cookie
+`httpOnly`, và `request-security.server.ts` chặn POST khác origin bằng kiểm tra `Origin` +
+`sec-fetch-site`. Ai đã cầm URL đã ký thì dùng `curl` cũng PUT được; CORS chưa bao giờ chặn request
+ngoài trình duyệt. Cấu hình trên cũng không bật credentials nên không có cookie nào đi kèm request PUT.
+
+Phương án sinh CORS tự động từ `tenant_domains` đã cân nhắc và loại: nó cần thêm secret R2 quyền admin
+cho API và thêm một điểm hỏng, mà không làm hệ thống an toàn hơn một cách thực chất.
+
+`STORAGE_UPLOAD_ORIGINS` là chuyện khác và **không** đổi theo số tenant: đó là danh sách origin *của
+R2* để đưa vào CSP `connect-src` của storefront.
 
 `S3_ENDPOINT` là nơi browser PUT bằng presigned URL. `S3_PUBLIC_URL` là nơi browser đọc object:
 
@@ -642,11 +667,14 @@ DASHBOARD_IMAGE=bookingos/dashboard:local
 DASHBOARD_HOST=admin.stg.bookingos.vn
 API_HOST=api.stg.bookingos.vn
 HTTP_PORT=127.0.0.1:8080
+TLS_ASK_PORT=127.0.0.1:8081
 
 PUBLIC_API_URL=https://api.stg.bookingos.vn
 DASHBOARD_URL=https://admin.stg.bookingos.vn
 STOREFRONT_URL=https://bookingstudio.stg.bookingos.vn
 PLATFORM_BASE_DOMAIN=stg.bookingos.vn
+PLATFORM_STOREFRONT_CNAME=connect.stg.bookingos.vn
+PLATFORM_STOREFRONT_IPV4=STAGING_EIP
 INTERNAL_API_URL=http://api:3000
 
 MIGRATE_DATABASE_URL=postgresql://postgres:REPLACE_WITH_STG_POSTGRES_PASSWORD@postgres:5432/bookingos
@@ -690,12 +718,14 @@ LOG_LEVEL=info
 SWAGGER_ENABLED=false
 ```
 
-Thay toàn bộ giá trị `REPLACE_WITH_*`.
+Thay toàn bộ giá trị `REPLACE_WITH_*`, và thay `STAGING_EIP` bằng Elastic IP thật —
+`PLATFORM_STOREFRONT_IPV4` được hiển thị nguyên văn trong dashboard của tenant, nên sai giá trị ở đây
+là đưa hướng dẫn sai cho mọi tenant.
 
 Kiểm tra:
 
 ```bash
-grep -n 'CHANGE_ME\|REPLACE_WITH_' .env.stg
+grep -n 'CHANGE_ME\|REPLACE_WITH_\|STAGING_EIP' .env.stg
 ```
 
 Lệnh phải không trả dòng nào.
@@ -858,9 +888,12 @@ docker compose \
   -f docker-compose.stg-data.yml \
   logs --tail=200 api storefront dashboard nginx postgres redis
 
-sudo journalctl -u nginx --since '30 minutes ago' --no-pager
-sudo nginx -t
+sudo journalctl -u caddy --since '30 minutes ago' --no-pager
+sudo caddy validate --config /etc/caddy/Caddyfile
 ```
+
+Lỗi TLS trên một hostname cụ thể thì bắt đầu từ `journalctl -u caddy` — nó ghi cả câu trả lời của
+endpoint `ask` lẫn kết quả xin certificate cho từng hostname.
 
 ### 13.3. Smoke check bằng trình duyệt
 
@@ -980,7 +1013,7 @@ Trong console: EventBridge → Scheduler → Create schedule → **All APIs** �
 tương ứng. Có thể để console tạo execution role riêng cho từng schedule; role chỉ cần quyền
 `ec2:StartInstances` hoặc `ec2:StopInstances` trên đúng staging instance.
 
-Elastic IP và EBS vẫn tồn tại khi instance stopped. Docker, nginx và crond đã được systemd enable;
+Elastic IP và EBS vẫn tồn tại khi instance stopped. Docker, Caddy và crond đã được systemd enable;
 các container dùng `restart: unless-stopped`, nên stack tự trở lại sau khi EC2 start. GitHub deploy
 qua SSH chỉ chạy được trong khung giờ EC2 đang bật hoặc sau khi start instance thủ công.
 
@@ -991,21 +1024,48 @@ timedatectl | grep 'Time zone'
 ```
 
 Amazon Linux mặc định UTC. Khi đó Docker image cleanup lúc `04:00` UTC tương ứng `11:00` Việt Nam,
-và một trong hai lượt Certbot renewal lúc `12:00` UTC tương ứng `19:00` Việt Nam; cả hai vẫn nằm
-trong thời gian staging hoạt động.
+vẫn nằm trong thời gian staging hoạt động.
+
+Caddy tự gia hạn certificate khi đang chạy, không có cron nào phải canh giờ. Nhưng máy tắt 12 tiếng
+mỗi ngày, nên certificate có thể chạm ngưỡng gia hạn trong lúc máy tắt — Caddy sẽ gia hạn ở lượt start
+kế tiếp. Với cửa sổ 30 ngày của Let's Encrypt thì lịch 10:00–22:00 hàng ngày là dư sức.
 
 ## Tenant custom domain
 
-Wildcard Let’s Encrypt `*.stg.bookingos.vn` chỉ phủ subdomain của BookingOS. Nó không phủ domain
-riêng của tenant như `booking.tenant-example.vn`.
+Quy trình đầy đủ, tenant tự làm được trong dashboard; ops **không** thao tác gì cho từng tenant.
 
-Để hỗ trợ custom domain có HTTPS tự động, cần một trong hai hướng:
+Điều kiện nền tảng (làm một lần, đã nằm trong các phase trên):
 
-- Cloudflare for SaaS Custom Hostnames;
-- hệ thống tự động issue/renew certificate cho từng tenant domain và cập nhật host nginx.
+- record A `connect.stg.bookingos.vn` → Elastic IP, DNS only (Phase 5);
+- `PLATFORM_STOREFRONT_CNAME` + `PLATFORM_STOREFRONT_IPV4` trong `.env.stg` (Phase 10);
+- Caddy chạy với on-demand TLS và endpoint `ask` trả đúng (Phase 6–7);
+- CORS của R2 là wildcard PUT (Phase 8.3) — nếu không, tenant nào cũng hỏng upload;
+- gói dịch vụ của tenant bật `customDomain` (gói `Studio Pro` trong seed đã bật).
 
-Không thêm custom domain public trước khi có một trong hai cơ chế TLS này. Sau khi custom domain hoạt
-động, thêm origin đó vào R2 CORS nếu tenant upload media từ domain riêng.
+Tenant làm, trong **Dashboard → Cài đặt cửa hàng → Tên miền**:
+
+1. Thêm tên miền (`booking.tenant-example.vn`).
+2. **Bước 1 · Chứng minh sở hữu** — tạo bản ghi TXT đúng cả ba cột card hiển thị:
+   tên `_bookingos-verify.booking.tenant-example.vn`, loại `TXT`, giá trị `bookingos-verify=…`.
+   Bấm **Kiểm tra lại DNS**; worker nền sẽ đặt `verified_at` khi bản ghi lan truyền.
+3. **Bước 2 · Trỏ tên miền** — TXT chỉ chứng minh sở hữu, chưa làm tên miền hoạt động:
+   - tên miền con → `CNAME` về `connect.stg.bookingos.vn`;
+   - tên miền gốc → `A` về Elastic IP (bản ghi gốc không dùng được CNAME).
+4. Bấm **Kiểm tra kết nối** để xem đã trỏ đúng chưa. Đây là truy vấn DNS tại thời điểm bấm, không lưu
+   trạng thái — nếu báo chưa trỏ, card sẽ nói tên miền đang trỏ về đâu.
+5. Mở tên miền bằng HTTPS. Request đầu tiên chậm khoảng 1–3 giây vì Caddy đang xin certificate; các
+   request sau bình thường.
+
+Thứ tự quan trọng: **verify trước, mở tên miền sau.** Nếu tenant mở tên miền trước khi verify xong,
+`ask` trả 404 và Caddy backoff, cộng thêm negative cache 60 giây — đợi khoảng một phút rồi thử lại.
+Sau `markVerified` đã có `invalidateHost` nên đường thuận không bị trễ.
+
+Rate limit Let's Encrypt là 50 certificate mỗi tuần cho một registered domain, và mọi
+`*.stg.bookingos.vn` tính chung vào `bookingos.vn`. Vài tenant thì thoải mái; khi test lặp thì trỏ
+`acme_ca` trong Caddyfile sang staging CA của Let's Encrypt.
+
+Tên miền bị xoá khỏi `tenant_domains` vẫn còn certificate tới khi hết hạn — vô hại, storefront trả
+trang không tìm thấy tenant.
 
 ## Final acceptance checklist
 
@@ -1016,10 +1076,15 @@ Không thêm custom domain public trước khi có một trong hai cơ chế TLS
 - [ ] Elastic IP đã associate.
 - [ ] Security Group chỉ public 22/80/443.
 - [ ] SSH password và root login đã tắt.
-- [ ] `stg` và `*.stg` là DNS only, trỏ đúng Elastic IP.
-- [ ] Let’s Encrypt certificate phủ `stg.bookingos.vn` và `*.stg.bookingos.vn`.
-- [ ] `certbot renew --dry-run` thành công.
-- [ ] Host nginx 80/443 proxy vào `127.0.0.1:8080`.
+- [ ] `stg`, `*.stg` và `connect.stg` là DNS only, trỏ đúng Elastic IP.
+- [ ] `caddy validate` thành công với đúng bản Caddy đã cài.
+- [ ] Caddy giữ 80/443 và proxy vào `127.0.0.1:8080`; nginx host đã tắt.
+- [ ] `:8081` chỉ bind loopback; `tls-allowed` trả 200 cho domain đã verified, 404 cho domain lạ, và
+      404 cho mọi path khác.
+- [ ] Mỗi hostname có certificate riêng của nó (không phải wildcard).
+- [ ] `PLATFORM_STOREFRONT_IPV4` trong `.env.stg` đúng Elastic IP thật.
+- [ ] CORS của R2 là `AllowedOrigins: ["*"]` cho PUT.
+- [ ] Một custom domain thật đã verify, đã trỏ, và mở được bằng HTTPS.
 - [ ] PostgreSQL/Redis không publish ra host.
 - [ ] API readiness báo DB và Redis up.
 - [ ] Dashboard đăng nhập được.

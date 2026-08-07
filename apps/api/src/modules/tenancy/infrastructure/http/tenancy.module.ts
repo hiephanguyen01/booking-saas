@@ -12,7 +12,7 @@ import { TENANT_DOMAIN_REPOSITORY } from '../../domain/ports/tenant-domain-repos
 import { TENANT_CACHE } from '../../domain/ports/tenant-cache.port';
 import { DNS_VERIFIER } from '../../domain/ports/dns-verifier.port';
 import { DOMAIN_VERIFICATION_QUEUE } from '../../domain/ports/domain-verification-queue.port';
-import { TENANCY_CONFIG } from '../../domain/ports/tenancy-config.port';
+import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config.port';
 import { PrismaTenantRepository } from '../repositories/prisma-tenant.repository';
 import { PrismaPlanRepository } from '../repositories/prisma-plan.repository';
 import { PrismaSubscriptionRepository } from '../repositories/prisma-subscription.repository';
@@ -41,6 +41,8 @@ import { SetPartnerPromotionsUseCase } from '../../application/use-cases/set-par
 import { SetTenantDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-tenant-default-cancellation-policy.use-case';
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
+import { CheckDomainDnsUseCase } from '../../application/use-cases/check-domain-dns.use-case';
+import { CheckDomainTlsAllowedUseCase } from '../../application/use-cases/check-domain-tls-allowed.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { SetPrimaryDomainUseCase } from '../../application/use-cases/set-primary-domain.use-case';
@@ -59,6 +61,21 @@ import { AdminPlanController } from './admin-plan.controller';
 import { PlatformHealthController } from './platform-health.controller';
 import { PublicTenantController } from './public-tenant.controller';
 import { TenantSettingsController } from './tenant-settings.controller';
+
+/**
+ * Platform DNS facts, from env. `storefrontCname` defaults to `connect.<base>`
+ * because that is the record the runbook has ops create; `storefrontIpv4` has no
+ * sensible default — an empty string means "unset", and the dns-check use case
+ * answers "chưa trỏ" rather than matching every domain against a made-up IP.
+ */
+function tenancyConfigFromEnv(): TenancyConfig {
+  const baseDomain = process.env.PLATFORM_BASE_DOMAIN ?? 'bookingos.vn';
+  return {
+    baseDomain,
+    storefrontCname: process.env.PLATFORM_STOREFRONT_CNAME ?? `connect.${baseDomain}`,
+    storefrontIpv4: process.env.PLATFORM_STOREFRONT_IPV4 ?? '',
+  };
+}
 
 /** Wire shape of `legal.readiness_changed` — four required documents, so 0..4. */
 const LEGAL_READINESS_PAYLOAD = z.object({
@@ -86,10 +103,7 @@ const LEGAL_READINESS_PAYLOAD = z.object({
     { provide: DNS_VERIFIER, useClass: NodeDnsVerifier },
     DomainVerificationWorker,
     { provide: DOMAIN_VERIFICATION_QUEUE, useExisting: DomainVerificationWorker },
-    {
-      provide: TENANCY_CONFIG,
-      useValue: { baseDomain: process.env.PLATFORM_BASE_DOMAIN ?? 'bookingos.vn' },
-    },
+    { provide: TENANCY_CONFIG, useValue: tenancyConfigFromEnv() },
     CreateTenantUseCase,
     ListTenantsUseCase,
     GetTenancyConfigUseCase,
@@ -109,6 +123,8 @@ const LEGAL_READINESS_PAYLOAD = z.object({
     SetTenantDefaultCancellationPolicyUseCase,
     AddDomainUseCase,
     VerifyDomainUseCase,
+    CheckDomainDnsUseCase,
+    CheckDomainTlsAllowedUseCase,
     ListDomainsUseCase,
     DeleteDomainUseCase,
     SetPrimaryDomainUseCase,

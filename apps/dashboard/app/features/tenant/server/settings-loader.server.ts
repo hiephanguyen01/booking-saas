@@ -3,6 +3,7 @@ import {
   type CancellationPolicyResponse,
   type DomainResponse,
   type PayoutPolicyDto,
+  type TenancyConfigResponse,
   type TenantThemeResponse,
 } from '@booking/contracts';
 import { apiGet } from '~/lib/api.server';
@@ -32,10 +33,22 @@ export async function loadTenantSettings(request: Request) {
   const canFinance = can('tenant.finance.read');
   const canLegal = can('tenant.legal.manage');
 
-  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes, legalRes] =
+  const [
+    themeRes,
+    domainsRes,
+    tenancyConfigRes,
+    flagsRes,
+    policiesRes,
+    gatewayRes,
+    payoutPolicyRes,
+    legalRes,
+  ] =
     await Promise.all([
       canTheme ? apiGet<TenantThemeResponse>(apiPaths.tenant.theme, auth) : Promise.resolve(null),
       canSettings ? apiGet<DomainResponse[]>(apiPaths.tenant.domains, auth) : Promise.resolve(null),
+      canSettings
+        ? apiGet<TenancyConfigResponse>(apiPaths.tenant.tenancyConfig, auth)
+        : Promise.resolve(null),
       canSettings ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth) : Promise.resolve(null),
       canSettings
         ? apiGet<CancellationPolicyResponse[]>(apiPaths.tenant.cancellationPolicies, auth)
@@ -54,6 +67,9 @@ export async function loadTenantSettings(request: Request) {
     themeError: apiError(themeRes, 'Không tải được cấu hình thương hiệu.'),
     domains: domainsRes?.ok ? (domainsRes.data ?? []) : null,
     domainsError: apiError(domainsRes, 'Không tải được danh sách tên miền.'),
+    // Null only fails the "point your domain here" instructions, not the whole
+    // card — the TXT step still works without it.
+    tenancyConfig: tenancyConfigRes?.ok ? (tenancyConfigRes.data ?? null) : null,
     canTheme,
     canSettings,
     canFinance,

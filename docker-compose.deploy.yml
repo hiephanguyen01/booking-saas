@@ -52,6 +52,10 @@ services:
       MIGRATE_DATABASE_URL: ${MIGRATE_DATABASE_URL:?MIGRATE_DATABASE_URL is required}
       REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
       PLATFORM_BASE_DOMAIN: ${PLATFORM_BASE_DOMAIN:?PLATFORM_BASE_DOMAIN is required}
+      # Where a tenant points a custom domain. Served to the dashboard so it can
+      # show the tenant the exact records — never hardcoded in a frontend.
+      PLATFORM_STOREFRONT_CNAME: ${PLATFORM_STOREFRONT_CNAME:-}
+      PLATFORM_STOREFRONT_IPV4: ${PLATFORM_STOREFRONT_IPV4:-}
       PUBLIC_API_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL is required}
       # Master key for tenant gateway credentials. There is no boot guard for
       # this in the API — omit it and every stored secret is encrypted with the
@@ -156,8 +160,9 @@ services:
     security_opt: ['no-new-privileges:true']
 
   # Terminates HTTP and routes by Host. TLS is expected to be terminated in front
-  # of this (cloud LB / Cloudflare); it forwards X-Forwarded-Proto so the apps
-  # still emit secure cookies and absolute https URLs.
+  # of this (host Caddy on staging — see docker/caddy/Caddyfile — or a cloud LB);
+  # it forwards X-Forwarded-Proto so the apps still emit secure cookies and
+  # absolute https URLs.
   nginx:
     image: nginx:1.27-alpine
     depends_on:
@@ -173,6 +178,9 @@ services:
       - ./docker/nginx/deploy.conf.template:/etc/nginx/templates/default.conf.template:ro
     ports:
       - '${HTTP_PORT:-80}:80'
+      # Caddy's on-demand-TLS `ask` endpoint. Loopback by default — this listener
+      # must never be reachable from outside the box.
+      - '${TLS_ASK_PORT:-127.0.0.1:8081}:8081'
     restart: unless-stopped
     logging: *logging
     security_opt: ['no-new-privileges:true']

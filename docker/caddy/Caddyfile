@@ -1,0 +1,80 @@
+# BookingOS — host TLS terminator (staging: stg.bookingos.vn).
+#
+# Runs as the OFFICIAL systemd `caddy` unit on the EC2 box, NOT in compose. It
+# replaces docker/nginx/staging-host.conf; that file stays in the repo as the
+# rollback path (see docs/deployment.md → TLS).
+#
+#   sudo cp docker/caddy/Caddyfile /etc/caddy/Caddyfile
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl disable --now nginx && sudo systemctl enable --now caddy
+#
+# Those three lines assume the compose stack is already up WITH its :8081 listener
+# (docker-compose.deploy.yml + docker/nginx/deploy.conf.template). Start Caddy
+# before that listener answers and it comes up unable to obtain a certificate for
+# anything — verify the ask endpoint first, see deployment-runbook.md § 6.3.
+#
+# WHY CADDY: a tenant custom domain (booking.giangstudio.vn) can be added at any
+# moment through the dashboard. Terminating TLS with a fixed Let's Encrypt
+# certificate means every such domain fails at the TLS handshake — the browser
+# reports the wrong certificate and the request never reaches the app. On-demand
+# TLS obtains a certificate at the first handshake for a hostname, with no ops
+# step and no redeploy per tenant.
+#
+# On-demand syntax has moved between Caddy 2.x releases (the old rate-limit
+# options were removed). ALWAYS run `caddy validate` with the version actually
+# installed before cutting traffic over.
+#
+# PRODUCTION: copy this file, swap the two explicit hostnames for
+# admin.bookingos.vn / api.bookingos.vn. Everything else is identical.
+
+{
+  # Let's Encrypt sends expiry warnings here — a real operated mailbox, not a
+  # personal address.
+  email ops@bookingos.vn
+
+  on_demand_tls {
+    # THE gate. Caddy blocks the TLS handshake on this call and only obtains a
+    # certificate on a 2xx, so it is what stops a stranger pointing any domain
+    # at our Elastic IP and making us issue certificates on their behalf (which
+    # is also how the ACME account burns its rate limit).
+    #
+    # Caddy appends ?domain=<hostname> itself.
+    #
+    # Loopback, NOT https://api.stg.bookingos.vn: that request would loop back
+    # through this very Caddy instance while it is mid-handshake, and would also
+    # depend on public DNS and die whenever Caddy had just restarted.
+    ask http://127.0.0.1:8081/public/domains/tls-allowed
+  }
+}
+
+# Everything terminates here and goes to the compose nginx, which routes by Host
+# and keeps the storefront as its default_server.
+(app) {
+  reverse_proxy 127.0.0.1:8080 {
+    header_up X-Forwarded-Proto https
+    header_up X-Forwarded-Host {host}
+  }
+}
+
+# Explicit hosts: certificates are obtained at startup, not at first request.
+admin.stg.bookingos.vn, api.stg.bookingos.vn {
+  import app
+}
+
+# Catch-all for EVERY other hostname: tenant subdomains (bookingstudio.stg…) and
+# tenant custom domains alike. Both are verified rows in `tenant_domains`, so
+# both pass the same `ask` check and take the same HTTP-01 path — which is why
+# the wildcard certificate (and the DNS-01 plugin build it required) is gone.
+https:// {
+  tls {
+    on_demand
+  }
+  import app
+}
+
+# Plain HTTP for a host Caddy has no explicit site for. Caddy answers ACME
+# HTTP-01 challenges on :80 ahead of these routes, so the redirect does not
+# interfere with issuing certificates.
+http:// {
+  redir https://{host}{uri} permanent
+}

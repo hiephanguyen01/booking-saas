@@ -2,6 +2,7 @@ import {
   uuidSchema,
   type CreatedTenantResponse,
   type CurrentSubscriptionResponse,
+  type DomainDnsCheckResponse,
   type DomainResponse,
   type DomainVerificationResult,
   type Paginated,
@@ -28,6 +29,7 @@ import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import {
+  toDomainDnsCheckResponse,
   toDomainResponse,
   toPlanResponse,
   toSubscriptionHistoryItem,
@@ -37,6 +39,7 @@ import {
 } from '../../application/tenancy.mapper';
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
+import { CheckDomainDnsUseCase } from '../../application/use-cases/check-domain-dns.use-case';
 import { CheckSlugAvailabilityUseCase } from '../../application/use-cases/check-slug-availability.use-case';
 import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
@@ -54,6 +57,7 @@ import {
   CreatedTenantDto,
   CreateTenantDto,
   CurrentSubscriptionDto,
+  DomainDnsCheckResponseDto,
   DomainResponseDto,
   DomainVerificationResultDto,
   ListTenantsQueryDto,
@@ -82,6 +86,7 @@ export class AdminTenantController {
     private readonly listSubscriptions: ListSubscriptionsUseCase,
     private readonly addDomain: AddDomainUseCase,
     private readonly verifyDomain: VerifyDomainUseCase,
+    private readonly checkDomainDns: CheckDomainDnsUseCase,
     private readonly listDomains: ListDomainsUseCase,
     private readonly deleteDomain: DeleteDomainUseCase,
     private readonly getTenancyConfig: GetTenancyConfigUseCase,
@@ -230,6 +235,21 @@ export class AdminTenantController {
   ): Promise<DomainVerificationResult> {
     const { status, domain } = await this.verifyDomain.execute(id, domainId);
     return { status, domain: toDomainResponse(domain) };
+  }
+
+  /** The tenant-facing diagnostic, so support can answer "đã trỏ chưa?" for a tenant. */
+  @RequirePermissions('platform.tenants.write')
+  @Post(':id/domains/:domainId/dns-check')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Check whether a tenant domain points at the platform' })
+  @UuidParam()
+  @UuidParam('domainId')
+  @ApiOkResponse({ type: DomainDnsCheckResponseDto })
+  async dnsCheck(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Param('domainId', new ZodValidationPipe(uuidSchema)) domainId: string,
+  ): Promise<DomainDnsCheckResponse> {
+    return toDomainDnsCheckResponse(await this.checkDomainDns.execute(id, domainId));
   }
 
   /**
