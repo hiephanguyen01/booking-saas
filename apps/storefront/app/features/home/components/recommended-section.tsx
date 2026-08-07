@@ -37,7 +37,7 @@ export function RecommendedSection({
       ) : shown.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-5 md:grid-cols-3 lg:grid-cols-4">
           {shown.map((listing) => (
-            <FavoriteListingCard key={listing.id} listing={listing} layout="responsive-row" />
+            <FavoriteListingCard key={listing.id} listing={listing} />
           ))}
         </div>
       ) : (

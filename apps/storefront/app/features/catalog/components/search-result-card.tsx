@@ -1,7 +1,7 @@
 import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import { Image } from '@booking/ui/components/media/image';
-import { RatingStars } from '~/components/rating-stars';
+import { RatingStars, RatingSummary } from '~/components/rating-stars';
 import { DiscountBadge } from '~/components/discount-badge';
 import type {
   EnrichedSearchListing,
@@ -37,12 +37,15 @@ export function SearchResultCard({
   const priceUnit = priceUnitLabel(context, listing.priceUnit);
 
   return (
+    // Below `md` this is the same compact row as `ListingCard`: a phone showed
+    // one result per screen when the photo alone was 208px tall.
+    //
     // `md:grid-rows-1` is load-bearing: without an explicit row the implicit one
     // is content-sized, so the photo below never had a definite height to
     // resolve its `h-full` against and sized itself from its own aspect ratio
     // instead. A 4:3 source happened to land on this card's 184px, which is why
     // only portrait uploads broke out of the card.
-    <article className="group relative grid overflow-hidden bg-card transition-[border-color,box-shadow] rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) hover:border-primary/50 md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)] md:grid-rows-1 md:gap-x-1.5">
+    <article className="group relative flex min-h-30 overflow-hidden bg-card transition-[border-color,box-shadow] rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) hover:border-primary/50 md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:grid-rows-1 md:gap-x-1.5">
       {favoriteControl ? (
         <button
           type="button"
@@ -61,9 +64,10 @@ export function SearchResultCard({
       ) : null}
       <Link
         to={href}
-        // `h-52`, not `min-h-52`: a min-height is not a definite height, so the
-        // image inside could not resolve `h-full` on the stacked layout either.
-        className="relative h-52 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:h-full"
+        // No height below `md`: as a flex child the photo stretches to the row,
+        // which is both a definite height for the `h-full` image inside and a
+        // photo that is always exactly as tall as the card beside it.
+        className="relative w-28 shrink-0 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:h-full md:w-auto"
       >
         {photos[0] ? (
           <Image
@@ -93,52 +97,72 @@ export function SearchResultCard({
         ))}
       </div>
 
-      <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4 md:pr-6 md:pl-[18px]">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 p-3 md:justify-center md:gap-3 md:px-5 md:py-4 md:pr-6 md:pl-[18px]">
         <div className="min-w-0">
           <Link
             to={href}
-            className="block truncate text-lg leading-7 font-semibold text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            // `pr-9` keeps the title clear of the favourite chip, which sits over
+            // the text column on the row layout instead of over the photo.
+            className="line-clamp-2 pr-9 text-base leading-5 font-semibold text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:line-clamp-1 md:pr-0 md:text-lg md:leading-7"
           >
             {listing.title}
           </Link>
           {location ? (
-            <p className="mt-1 flex items-center gap-2 text-sm leading-5 text-muted-foreground">
-              <MapPin className="size-5 shrink-0" aria-hidden="true" />
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground md:mt-1 md:gap-2 md:text-sm md:leading-5">
+              <MapPin className="size-3.5 shrink-0 md:size-5" aria-hidden="true" />
               <span className="truncate">{location}</span>
             </p>
           ) : null}
         </div>
 
-        <div className="flex items-center justify-between gap-3 text-sm leading-5 text-muted-foreground">
-          {listing.ratingAvg === null || listing.reviewCount === 0 ? (
-            <span>{t('catalog:noReviews')}</span>
-          ) : (
-            <RatingStars rating={listing.ratingAvg} />
-          )}
-          <span className="shrink-0 text-right">
-            {t('catalog:completedBookings', { count: listing.completedBookings })}
-          </span>
-        </div>
+        {/* Rating and price share the last line of the row; from `md:` up the
+            column has the room to give each its own. */}
+        <div className="mt-auto flex items-end justify-between gap-2 md:mt-0 md:flex-col md:items-stretch md:gap-3">
+          <div className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground md:justify-between md:text-sm md:leading-5">
+            {listing.ratingAvg === null || listing.reviewCount === 0 ? (
+              // "Chưa có đánh giá" is an absence, and on the row it competes
+              // with the price for a column that truncates it to "Chưa có đánh
+              // g…". The empty half-line says the same thing.
+              <span className="truncate max-md:hidden">{t('catalog:noReviews')}</span>
+            ) : (
+              <>
+                <RatingSummary
+                  rating={listing.ratingAvg}
+                  count={listing.reviewCount}
+                  className="md:hidden"
+                />
+                <RatingStars rating={listing.ratingAvg} className="max-md:hidden" />
+              </>
+            )}
+            <span className="shrink-0 text-right max-md:hidden">
+              {t('catalog:completedBookings', { count: listing.completedBookings })}
+            </span>
+          </div>
 
-        <div className="flex items-end justify-end text-right">
-          <p className="text-sm leading-5 text-muted-foreground">
-            <span className="flex flex-wrap items-baseline justify-end gap-x-2">
-              {discountPercent !== null && regularPrice ? (
-                <span className="text-base leading-6 text-muted-foreground/65 line-through">
-                  {regularPrice}
+          <div className="flex shrink-0 items-end justify-end text-right">
+            <p className="text-xs leading-4 text-muted-foreground md:text-sm md:leading-5">
+              <span className="flex flex-wrap items-baseline justify-end gap-x-2">
+                {discountPercent !== null && regularPrice ? (
+                  <span className="text-xs text-muted-foreground/65 line-through md:text-base md:leading-6">
+                    {regularPrice}
+                  </span>
+                ) : null}
+                <span
+                  className={discountPercent !== null ? 'text-brand-accent' : 'text-foreground'}
+                >
+                  {t('listing:fromPriceShort')}{' '}
+                  <strong className="text-base leading-5 font-semibold md:text-lg md:leading-7">
+                    {price}
+                  </strong>
                 </span>
-              ) : null}
-              <span className={discountPercent !== null ? 'text-brand-accent' : 'text-foreground'}>
-                {t('listing:fromPriceShort')}{' '}
-                <strong className="text-lg leading-7 font-semibold">{price}</strong>
               </span>
-            </span>
-            <span
-              className={`block ${discountPercent !== null ? 'text-brand-accent' : 'text-muted-foreground'}`}
-            >
-              {t(priceUnit.key, priceUnit.count === undefined ? {} : { count: priceUnit.count })}
-            </span>
-          </p>
+              <span
+                className={`block ${discountPercent !== null ? 'text-brand-accent' : 'text-muted-foreground'}`}
+              >
+                {t(priceUnit.key, priceUnit.count === undefined ? {} : { count: priceUnit.count })}
+              </span>
+            </p>
+          </div>
         </div>
       </div>
     </article>

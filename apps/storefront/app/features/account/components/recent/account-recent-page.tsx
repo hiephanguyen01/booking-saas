@@ -63,7 +63,7 @@ export function AccountRecentPage({
               <FavoriteListingCard
                 key={keyOf(item)}
                 listing={item}
-                className="min-h-[394px]"
+                className="sm:min-h-98.5"
                 dismissControl={{
                   label: t('recent.remove', { title: item.title }),
                   onDismiss: () => removeItem(item),

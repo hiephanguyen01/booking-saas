@@ -8,6 +8,7 @@ import {
   type SimpleIcon,
 } from 'simple-icons';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { cn } from '@booking/ui/lib/utils';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { useLocale } from '~/hooks/use-locale';
@@ -32,7 +33,17 @@ export function SiteFooter({
   });
 
   return (
-    <footer className={`${className} bg-background pb-6 font-studio text-foreground`}>
+    <footer
+      className={cn(
+        // Temporarily off on phones and tablets: below `lg` the bottom tab bar
+        // is the navigation, and a four-column sitemap under it is a second one
+        // nobody scrolls to. `lg` — not `md` — because that is exactly where
+        // `SiteBottomNav` hands navigation back to the header.
+        'max-lg:hidden',
+        className,
+        'bg-background pb-6 font-studio text-foreground',
+      )}
+    >
       <div className="mx-auto w-full max-w-292.5 px-4 pt-8 sm:px-6 xl:pb-0 xl:pt-10 xl:px-0">
         <div className="grid gap-10 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <section aria-labelledby="footer-brand" className="flex flex-col items-start gap-4">

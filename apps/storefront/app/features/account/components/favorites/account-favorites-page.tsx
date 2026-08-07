@@ -45,8 +45,10 @@ export function AccountFavoritesPage({
           <AccountListState icon={Heart} tone="destructive" message={t('favorites.loadError')} />
         ) : visibleItems.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {/* The evening-out height belongs to the stacked card only; below
+                `sm` these are compact rows and must not be padded to 394px. */}
             {visibleItems.map((item) => (
-              <FavoriteListingCard key={item.id} listing={item} className="min-h-[394px]" />
+              <FavoriteListingCard key={item.id} listing={item} className="sm:min-h-98.5" />
             ))}
           </div>
         ) : (

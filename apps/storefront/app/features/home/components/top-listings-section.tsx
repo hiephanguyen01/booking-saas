@@ -72,7 +72,9 @@ export function TopListingsSection({
               key={listing.id}
               className="basis-1/2 pl-3 sm:pl-5 md:basis-1/3 lg:basis-1/4"
             >
-              <FavoriteListingCard listing={listing} />
+              {/* A rail slide is ~165px wide; the row layout would leave a 55px
+                  photo beside it, so the rails keep the stacked card. */}
+              <FavoriteListingCard listing={listing} layout="stacked" />
             </CarouselItem>
           ))}
         </CarouselContent>
