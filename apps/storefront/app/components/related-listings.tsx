@@ -34,7 +34,8 @@ export function RelatedListings({
             key={listing.id}
             className="w-[78vw] max-w-69.5 shrink-0 snap-start sm:w-69.5 xl:w-auto xl:max-w-none"
           >
-            <FavoriteListingCard listing={listing} />
+            {/* A fixed-width snap slide, not a full-width row: stacked. */}
+            <FavoriteListingCard listing={listing} layout="stacked" />
           </div>
         ))}
       </div>

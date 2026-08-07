@@ -139,10 +139,13 @@ export function HomeListingCardsSkeleton({
 }) {
   return (
     <LoadingRegion label={label}>
+      {/* The grid variant mirrors `ListingCard`'s `responsive-row`: a phone-width
+          grid resolves to compact rows, so a stacked skeleton would hand the
+          page a layout jump the moment the data lands. */}
       <div
         className={cn(
           layout === 'grid'
-            ? 'grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+            ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-4'
             : 'flex gap-4 overflow-hidden',
         )}
       >
@@ -151,12 +154,18 @@ export function HomeListingCardsSkeleton({
             key={index}
             className={cn(
               'min-w-0 overflow-hidden rounded-lg border bg-background',
-              layout === 'carousel' &&
-                'basis-[88%] shrink-0 sm:basis-[calc(50%-0.5rem)] md:basis-[calc(33.333%-0.667rem)] lg:basis-[calc(25%-0.75rem)]',
+              layout === 'carousel'
+                ? 'basis-[88%] shrink-0 sm:basis-[calc(50%-0.5rem)] md:basis-[calc(33.333%-0.667rem)] lg:basis-[calc(25%-0.75rem)]'
+                : 'flex min-h-30 sm:block',
             )}
           >
-            <StorefrontSkeleton className="aspect-4/3 rounded-none" />
-            <div className="space-y-2 p-4">
+            <StorefrontSkeleton
+              className={cn(
+                'rounded-none',
+                layout === 'grid' ? 'w-28 shrink-0 sm:aspect-4/3 sm:w-auto' : 'aspect-4/3',
+              )}
+            />
+            <div className={cn('space-y-2', layout === 'grid' ? 'flex-1 p-3 sm:p-4' : 'p-4')}>
               <StorefrontSkeleton className="h-5 w-4/5" />
               <StorefrontSkeleton className="h-3.5 w-3/5" />
               <StorefrontSkeleton className="ml-auto h-5 w-28" />

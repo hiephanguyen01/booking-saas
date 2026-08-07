@@ -121,8 +121,10 @@ export function NearbySection({
                 key={item.id}
                 className="basis-1/2 pl-3 sm:pl-5 md:basis-1/3 lg:basis-1/4"
               >
+                {/* Rail slide — see `ListingCard`'s note on why rails stay stacked. */}
                 <FavoriteListingCard
                   listing={listing}
+                  layout="stacked"
                   presentation={{
                     originalPrice: null,
                     discountPercent: null,
