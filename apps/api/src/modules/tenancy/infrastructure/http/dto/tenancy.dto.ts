@@ -6,6 +6,7 @@ import {
   createTenantInputSchema,
   createdTenantResponseSchema,
   currentSubscriptionResponseSchema,
+  domainDnsCheckResponseSchema,
   domainResponseSchema,
   domainVerificationResultSchema,
   listTenantsQuerySchema,
@@ -58,6 +59,7 @@ export class TenancyConfigResponseDto extends createZodDto(tenancyConfigResponse
 export class SlugAvailabilityResponseDto extends createZodDto(slugAvailabilityResponseSchema) {}
 export class DomainResponseDto extends createZodDto(domainResponseSchema) {}
 export class DomainVerificationResultDto extends createZodDto(domainVerificationResultSchema) {}
+export class DomainDnsCheckResponseDto extends createZodDto(domainDnsCheckResponseSchema) {}
 export class SubscriptionStatusResponseDto extends createZodDto(subscriptionStatusResponseSchema) {}
 export class PublicTenantResponseDto extends createZodDto(publicTenantResponseSchema) {}
 export class PlatformHealthResponseDto extends createZodDto(platformHealthResponseSchema) {}

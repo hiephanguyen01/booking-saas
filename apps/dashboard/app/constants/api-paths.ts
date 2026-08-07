@@ -34,9 +34,15 @@ export const apiPaths = {
     plan: (planId: string) => `/admin/plans/${segment(planId)}`,
     tenants: '/admin/tenants',
     tenant: (tenantId: string) => `/admin/tenants/${segment(tenantId)}`,
+    /** Platform DNS facts: base domain + the CNAME/A targets a custom domain points at. */
+    tenancyConfig: '/admin/tenants/config',
     tenantDomains: (tenantId: string) => `/admin/tenants/${segment(tenantId)}/domains`,
     tenantDomain: (tenantId: string, domainId: string) =>
       `/admin/tenants/${segment(tenantId)}/domains/${segment(domainId)}`,
+    tenantDomainVerify: (tenantId: string, domainId: string) =>
+      `/admin/tenants/${segment(tenantId)}/domains/${segment(domainId)}/verify`,
+    tenantDomainDnsCheck: (tenantId: string, domainId: string) =>
+      `/admin/tenants/${segment(tenantId)}/domains/${segment(domainId)}/dns-check`,
     /** PATCH the tenant's current subscription. */
     tenantSubscription: (tenantId: string) => `/admin/tenants/${segment(tenantId)}/subscription`,
     /** POST a new subscription for the tenant. */
@@ -71,6 +77,10 @@ export const apiPaths = {
     domain: (domainId: string) => tenantPath(`/domains/${segment(domainId)}`),
     domainPrimary: (domainId: string) => tenantPath(`/domains/${segment(domainId)}/primary`),
     domainVerify: (domainId: string) => tenantPath(`/domains/${segment(domainId)}/verify`),
+    /** Live "is it pointed at us yet" lookup — on demand, never from a loader. */
+    domainDnsCheck: (domainId: string) => tenantPath(`/domains/${segment(domainId)}/dns-check`),
+    /** Where a custom domain must point. Same use case as the admin route, tenant-scoped. */
+    tenancyConfig: tenantPath('/tenancy-config'),
 
     favorites: tenantPath('/favorites'),
     favoritesSummary: tenantPath('/favorites/summary'),

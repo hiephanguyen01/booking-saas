@@ -1,4 +1,5 @@
 import type {
+  DomainDnsCheckResponse,
   DomainResponse,
   PartnerPromotionsToggle,
   PlanResponse,
@@ -14,6 +15,7 @@ import type {
   Vertical,
 } from '@booking/contracts';
 import { themeConfigSchema } from '@booking/contracts';
+import { domainVerificationRecord } from '../domain/hostname';
 import type { TenantRecord } from '../domain/ports/tenant-repository.port';
 import type { PlanWithSubscribers } from '../domain/ports/plan-repository.port';
 import type {
@@ -21,6 +23,7 @@ import type {
   SubscriptionRecord,
 } from '../domain/ports/subscription-repository.port';
 import type { DomainRecord } from '../domain/ports/tenant-domain-repository.port';
+import type { DomainDnsCheck } from './use-cases/check-domain-dns.use-case';
 import type { PlatformHealth } from './use-cases/get-platform-health.use-case';
 import type { SubscriptionStatusView } from './use-cases/get-subscription-status.use-case';
 import type { TenantDetailView } from './use-cases/get-tenant-detail.use-case';
@@ -139,13 +142,35 @@ export function toSubscriptionStatusResponse(
 }
 
 export function toDomainResponse(d: DomainRecord): DomainResponse {
+  // The whole record, not just the token: a DNS provider asks for name, type and
+  // value, and `domainVerificationRecord` is the one place that spells the name.
+  const record = d.verificationToken
+    ? domainVerificationRecord(d.hostname, d.verificationToken)
+    : null;
   return {
     id: d.id,
     tenantId: d.tenantId,
     hostname: d.hostname,
     isPrimary: d.isPrimary,
     verifiedAt: d.verifiedAt ? d.verifiedAt.toISOString() : null,
-    ...(d.verificationToken ? { verificationToken: d.verificationToken } : {}),
+    ...(record
+      ? {
+          verification: {
+            recordType: 'TXT' as const,
+            recordName: record.name,
+            recordValue: record.value,
+          },
+        }
+      : {}),
+  };
+}
+
+export function toDomainDnsCheckResponse(c: DomainDnsCheck): DomainDnsCheckResponse {
+  return {
+    pointsToUs: c.pointsToUs,
+    observedCname: c.observedCname,
+    observedIpv4: c.observedIpv4,
+    checkedAt: c.checkedAt.toISOString(),
   };
 }
 

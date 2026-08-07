@@ -2,7 +2,9 @@ import { data, redirect } from 'react-router';
 import {
   addDomainInputSchema,
   assignSubscriptionInputSchema,
+  domainDnsCheckResponseSchema,
   updateTenantInputSchema,
+  type DomainDnsCheckResponse,
   type DomainResponse,
   type DomainVerificationResult,
   type SubscriptionResponse,
@@ -24,6 +26,9 @@ export interface ActionResult {
   message?: string;
   error?: string;
   fieldErrors?: Partial<Record<string, string[] | undefined>>;
+  /** Set by `dns-check-domain` only, so the verdict renders in the row it came from. */
+  domainId?: string;
+  dnsCheck?: DomainDnsCheckResponse;
 }
 
 /**
@@ -85,7 +90,7 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
   if (intent === 'verify-domain') {
     const domainId = String(form.get('domainId') ?? '');
     const res = await apiPost<DomainVerificationResult>(
-      `/admin/tenants/${id}/domains/${domainId}/verify`,
+      apiPaths.admin.tenantDomainVerify(id, domainId),
       {},
       auth,
     );
@@ -95,6 +100,23 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
         ? 'Tên miền đã được xác minh.'
         : 'Đang kiểm tra bản ghi DNS, vui lòng thử lại sau ít phút.';
     return data<ActionResult>({ scope: 'domain', ok: true, message });
+  }
+
+  if (intent === 'dns-check-domain') {
+    const domainId = String(form.get('domainId') ?? '');
+    const res = await apiPost<DomainDnsCheckResponse>(
+      apiPaths.admin.tenantDomainDnsCheck(id, domainId),
+      {},
+      auth,
+      { schema: domainDnsCheckResponseSchema },
+    );
+    if (!res.ok || !res.data) {
+      return data<ActionResult>(
+        { scope: 'domain', error: res.error ?? 'Không kiểm tra được kết nối tên miền.' },
+        { status: 400 },
+      );
+    }
+    return data<ActionResult>({ scope: 'domain', ok: true, domainId, dnsCheck: res.data });
   }
 
   if (intent === 'remove-domain') {

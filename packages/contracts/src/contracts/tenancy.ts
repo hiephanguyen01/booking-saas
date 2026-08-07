@@ -313,16 +313,46 @@ export const currentSubscriptionResponseSchema = z.object({
 });
 export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;
 
+/**
+ * The complete TXT record a tenant must publish to prove ownership (§6.1). The
+ * name matters as much as the value — a provider asks for all three columns, and
+ * a response that carried only the token left the tenant guessing at
+ * `_bookingos-verify.<host>`.
+ */
+export const domainVerificationRecordSchema = z.object({
+  recordType: z.literal('TXT'),
+  recordName: z.string(),
+  recordValue: z.string(),
+});
+export type DomainVerificationRecord = z.infer<typeof domainVerificationRecordSchema>;
+
 export const domainResponseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
   hostname: z.string(),
   isPrimary: z.boolean(),
   verifiedAt: z.string().nullable(),
-  /** TXT record the tenant must publish to verify a custom domain. */
-  verificationToken: z.string().optional(),
+  /** Ownership-proof record; absent once the domain is verified. */
+  verification: domainVerificationRecordSchema.optional(),
 });
 export type DomainResponse = z.infer<typeof domainResponseSchema>;
+
+/**
+ * `POST …/domains/:id/dns-check` — a point-in-time DNS read, not stored state.
+ * TXT verification proves ownership; this answers the *other* question a tenant
+ * has ("đã trỏ chưa?"), which is what actually makes the hostname serve traffic.
+ * `pointsToUs` is true when the host resolves to the platform's IPv4, whether it
+ * got there via a CNAME to `storefrontCname` or a direct A record.
+ */
+export const domainDnsCheckResponseSchema = z.object({
+  pointsToUs: z.boolean(),
+  /** CNAME target the host currently carries, null when it has no CNAME. */
+  observedCname: z.string().nullable(),
+  /** Every A record the host resolves to; empty when it resolves to none. */
+  observedIpv4: z.array(z.string()),
+  checkedAt: z.string(),
+});
+export type DomainDnsCheckResponse = z.infer<typeof domainDnsCheckResponseSchema>;
 
 /** `POST /admin/tenants` — tenant plus the primary domain provisioned atomically with it. */
 export const createdTenantResponseSchema = tenantResponseSchema.extend({
@@ -362,10 +392,18 @@ export const tenantDetailResponseSchema = tenantResponseSchema.extend({
 });
 export type TenantDetailResponse = z.infer<typeof tenantDetailResponseSchema>;
 
-/** Platform-level tenancy config the admin UI needs to render subdomain previews. */
+/**
+ * Platform-level tenancy config: subdomain previews for the admin create form,
+ * and the two DNS targets a tenant must point a custom domain at. Both targets
+ * come from platform env — never hardcode either one in a frontend.
+ */
 export const tenancyConfigResponseSchema = z.object({
   /** Base domain every tenant's default `<slug>.<baseDomain>` subdomain hangs off. */
   baseDomain: z.string(),
+  /** CNAME target for a tenant *subdomain*, e.g. `connect.stg.bookingos.vn`. */
+  storefrontCname: z.string(),
+  /** A-record target for an *apex* domain — the platform's public IPv4. */
+  storefrontIpv4: z.string(),
 });
 export type TenancyConfigResponse = z.infer<typeof tenancyConfigResponseSchema>;
 

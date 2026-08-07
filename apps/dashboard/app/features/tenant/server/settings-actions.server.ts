@@ -6,6 +6,8 @@ import {
   zalopayGatewaySettingsFormSchema,
   themeConfigSchema,
   tenantThemeResponseSchema,
+  domainDnsCheckResponseSchema,
+  type DomainDnsCheckResponse,
   type DomainResponse,
   type TenantThemeResponse,
   payoutPolicySchema,
@@ -350,6 +352,25 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
         { status: 400 },
       );
     return { form: 'domain-verify', ok: true };
+  }
+
+  if (intent === 'dns-check-domain') {
+    const id = String(formData.get('domainId'));
+    const res = await apiPost<DomainDnsCheckResponse>(
+      apiPaths.tenant.domainDnsCheck(id),
+      {},
+      auth,
+      { schema: domainDnsCheckResponseSchema },
+    );
+    if (!res.ok || !res.data) {
+      return routeData(
+        { form: 'domain-dns-check', error: res.error ?? 'Không kiểm tra được kết nối tên miền.' },
+        { status: 400 },
+      );
+    }
+    // The domainId travels back so the card can render the result inside the row
+    // that was checked, instead of as one banner for the whole list.
+    return { form: 'domain-dns-check', ok: true, domainId: id, dnsCheck: res.data };
   }
 
   if (intent === 'set-primary-domain') {

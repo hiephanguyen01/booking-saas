@@ -19,10 +19,12 @@ import {
 } from '@nestjs/swagger';
 import {
   uuidSchema,
+  type DomainDnsCheckResponse,
   type DomainResponse,
   type DomainVerificationResult,
   type PartnerPromotionsToggle,
   type SubscriptionStatusResponse,
+  type TenancyConfigResponse,
   type TenantResponse,
   type TenantThemeResponse,
 } from '@booking/contracts';
@@ -36,12 +38,15 @@ import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.u
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
+import { CheckDomainDnsUseCase } from '../../application/use-cases/check-domain-dns.use-case';
+import { GetTenancyConfigUseCase } from '../../application/use-cases/get-tenancy-config.use-case';
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { SetPrimaryDomainUseCase } from '../../application/use-cases/set-primary-domain.use-case';
 import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
 import { SetPartnerPromotionsUseCase } from '../../application/use-cases/set-partner-promotions.use-case';
 import { SetTenantDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-tenant-default-cancellation-policy.use-case';
 import {
+  toDomainDnsCheckResponse,
   toDomainResponse,
   toPartnerPromotionsToggle,
   toSubscriptionStatusResponse,
@@ -50,11 +55,13 @@ import {
 } from '../../application/tenancy.mapper';
 import {
   AddDomainDto,
+  DomainDnsCheckResponseDto,
   DomainResponseDto,
   DomainVerificationResultDto,
   PartnerPromotionsToggleDto,
   SetDefaultCancellationPolicyDto,
   SubscriptionStatusResponseDto,
+  TenancyConfigResponseDto,
   TenantResponseDto,
   TenantThemeResponseDto,
   UpdateThemeDto,
@@ -74,6 +81,8 @@ export class TenantSettingsController {
     private readonly addDomain: AddDomainUseCase,
     private readonly listDomains: ListDomainsUseCase,
     private readonly verifyDomain: VerifyDomainUseCase,
+    private readonly checkDomainDns: CheckDomainDnsUseCase,
+    private readonly getTenancyConfig: GetTenancyConfigUseCase,
     private readonly deleteDomain: DeleteDomainUseCase,
     private readonly setPrimaryDomain: SetPrimaryDomainUseCase,
     private readonly getSubscriptionStatus: GetSubscriptionStatusUseCase,
@@ -165,6 +174,19 @@ export class TenantSettingsController {
 
   // ── Domains ─────────────────────────────────────────────────────────────────
 
+  /**
+   * The same platform config the admin console reads, opened to the tenant: it
+   * carries the CNAME/A targets a custom domain must point at. Without it the
+   * dashboard would have to hardcode an Elastic IP.
+   */
+  @RequirePermissions('tenant.settings.manage')
+  @Get('tenancy-config')
+  @ApiOperation({ summary: 'Platform DNS targets for pointing a custom domain' })
+  @ApiOkResponse({ type: TenancyConfigResponseDto })
+  tenancyConfig(): TenancyConfigResponse {
+    return this.getTenancyConfig.execute();
+  }
+
   @RequirePermissions('tenant.settings.manage')
   @Get('domains')
   @ApiOperation({ summary: "List the tenant's custom domains" })
@@ -200,6 +222,26 @@ export class TenantSettingsController {
       id,
     );
     return { status, domain: toDomainResponse(domain) };
+  }
+
+  /**
+   * "Đã trỏ chưa?" — a live DNS read, deliberately not part of the loader: one
+   * lookup per domain on every settings page load would make the page slow and
+   * flaky for a fact the tenant only cares about while setting the domain up.
+   * Reads nothing and writes nothing, so no subscription guard.
+   */
+  @RequirePermissions('tenant.settings.manage')
+  @Post('domains/:id/dns-check')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Check whether a custom domain points at the platform' })
+  @UuidParam()
+  @ApiOkResponse({ type: DomainDnsCheckResponseDto })
+  async dnsCheck(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<DomainDnsCheckResponse> {
+    return toDomainDnsCheckResponse(
+      await this.checkDomainDns.execute(this.tenantContext.tenantIdOrThrow(), id),
+    );
   }
 
   @RequirePermissions('tenant.settings.manage')

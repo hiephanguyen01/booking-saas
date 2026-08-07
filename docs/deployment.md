@@ -51,10 +51,19 @@ schedule if staging data matters to you.
 ## Topology
 
 ```
+   internet :80/:443
+          │
+          ▼
+   ┌─────────────────────────────────┐
+   │ Caddy (systemd, host)           │   staging — production may use an LB instead
+   │  admin.*, api.*  → explicit     │
+   │  everything else → on_demand TLS│──ask──▶ 127.0.0.1:8081 (nginx, one path)
+   └──────────────┬──────────────────┘              └──▶ api /public/domains/tls-allowed
+                  ▼ 127.0.0.1:8080
                       ┌──────────────────────────────┐
-   TLS terminates     │ nginx :80                    │
-   in front (LB /  ───▶ routes by Host               │
-   Cloudflare)        │  admin.* → dashboard         │
+                      │ nginx :80  (compose)         │
+                      │ routes by Host               │
+                      │  admin.* → dashboard         │
                       │  api.*   → api               │
                       │  _       → storefront (default)
                       └──────┬───────┬───────┬───────┘
@@ -72,17 +81,46 @@ Both frontends reach the API over the compose network (`INTERNAL_API_URL=http://
 public URL — that is the "frontends never fetch the backend from the browser" rule (`AGENTS.md`)
 holding at the infrastructure level too.
 
-### Staging TLS without Cloudflare Zero Trust
+### TLS — Caddy on-demand, one certificate per hostname
 
-Staging publishes the compose nginx only on `127.0.0.1:8080`. A host-installed nginx owns public
-ports 80/443, terminates a Let's Encrypt wildcard certificate for `*.stg.bookingos.vn`, and proxies
-to the compose nginx. Cloudflare is authoritative DNS but the staging wildcard A record is **DNS
-only**, so browsers connect directly to EC2 and do not depend on Cloudflare's paid multi-level edge
-certificates.
+Staging publishes the compose nginx only on `127.0.0.1:8080`. **Caddy**, installed on the host from
+the official repo and run by its own systemd unit, owns public 80/443 and proxies there. Cloudflare
+is authoritative DNS, and every record involved must stay **DNS only** — turning on Proxied breaks
+both certificate issuance and the "point an A record at the Elastic IP" instruction we give tenants.
 
-The host config is [`docker/nginx/staging-host.conf`](../docker/nginx/staging-host.conf). Certificate
-issuance and renewal use Certbot's Cloudflare DNS plugin; see
-[`deployment-runbook.md`](./deployment-runbook.md).
+A tenant can add a custom domain from the dashboard at any moment, so a fixed certificate is not
+enough: `booking.giangstudio.vn` pointed at the Elastic IP would fail at the TLS handshake and never
+reach the app. Caddy's **on-demand TLS** obtains a certificate at the first handshake for a hostname
+instead — no ops step, no redeploy per tenant.
+
+What decides whether a hostname gets one is a single gate:
+
+```
+Caddy handshake for <host>
+   └── GET http://127.0.0.1:8081/public/domains/tls-allowed?domain=<host>
+          2xx → obtain certificate      404 → refuse
+```
+
+That endpoint answers exactly the rule the storefront already lives by — only a **verified** row in
+`tenant_domains` resolves — reusing the 60s Redis host cache. Without it, anyone pointing any domain
+at the Elastic IP could make us request certificates on their behalf and burn the Let's Encrypt rate
+limit (50 certificates/week per registered domain, so every `*.stg.bookingos.vn` counts against
+`bookingos.vn`). The `:8081` listener is loopback-bound and serves that one path; everything else on
+it is 404. It is deliberately not `https://api.stg.bookingos.vn`: that request would loop back through
+the Caddy instance that is mid-handshake.
+
+**No wildcard certificate is needed any more.** A tenant subdomain (`bookingstudio.stg.bookingos.vn`)
+is also a verified `tenant_domains` row, so it takes the same on-demand HTTP-01 path as a custom
+domain — no DNS-01, no `xcaddy` build with the Cloudflare plugin, no Cloudflare API token on the box.
+
+Config: [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile).
+[`docker/nginx/staging-host.conf`](../docker/nginx/staging-host.conf) is kept as the rollback path —
+the certbot certificates are still on disk, so `systemctl stop caddy && systemctl start nginx`
+restores the previous setup. Retire certbot only after Caddy has been stable for 1–2 weeks. Install
+steps: [`deployment-runbook.md`](./deployment-runbook.md) Phase 6–7.
+
+Caddy's certificate store (`/var/lib/caddy/.local/share/caddy`) belongs to the official systemd unit.
+Deleting it means re-requesting every certificate.
 
 ## First deploy
 
@@ -274,8 +312,10 @@ shares one Redis.
 
 - **Postgres / Redis** — managed instances. Running stateful services from this compose file would
   put production data in a container with no backup story.
-- **TLS** — terminated by the load balancer or Cloudflare in front of nginx. nginx forwards
-  `X-Forwarded-Proto` so the apps still set `Secure` cookies and build https URLs.
+- **TLS** — terminated in front of the compose nginx, by host Caddy (staging) or a load balancer.
+  Either way `X-Forwarded-Proto` is forwarded so the apps still set `Secure` cookies and build https
+  URLs. A terminator that is not Caddy has to solve tenant custom domains some other way — see
+  *TLS — Caddy on-demand* above for what the requirement actually is.
 - **Gateway credentials** — SePay / MoMo / ZaloPay keys are **tenant-owned** and entered in
   Dashboard → Settings, encrypted at rest with `PAYMENTS_ENC_KEY`. They are never process env vars,
   because one process serves many tenants each with a different merchant account.

@@ -33,6 +33,21 @@ server {
   location / { proxy_pass http://$api_target; }
 }
 
+# TLS-ASK LISTENER — published on 127.0.0.1:8081 only (docker-compose.deploy.yml).
+#
+# Caddy calls this during a TLS handshake to ask whether a hostname may be issued
+# a certificate. It must not go through the public API hostname: that request
+# would loop back through the Caddy instance that is mid-handshake.
+#
+# Exactly one path is reachable here. Everything else 404s, so binding an extra
+# port does not quietly expose the whole API on a second listener.
+server {
+  listen 8081;
+  set $api_ask_target api:3000;
+  location = /public/domains/tls-allowed { proxy_pass http://$api_ask_target; }
+  location / { return 404; }
+}
+
 # DEFAULT SERVER — deliberately last and catch-all.
 #
 # The storefront resolves its tenant from the Host header against
