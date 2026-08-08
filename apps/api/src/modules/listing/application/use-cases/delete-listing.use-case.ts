@@ -10,6 +10,7 @@ import {
   type IListingGroupRepository,
 } from '../../domain/ports/listing-group-repository.port';
 import { Listing } from '../../domain/entities/listing.entity';
+import { ListingGroup } from '../../domain/entities/listing-group.entity';
 import { ListingHasBookings, ListingNotFound } from '../../domain/errors/listing-errors';
 import { ListingGroupReadOnlyForDelete } from '../../domain/errors/listing-group-errors';
 
@@ -37,9 +38,10 @@ export class DeleteListingUseCase {
       listing.assertOwnedForDelete(options.requirePartnerId);
       if (options.requirePartnerId && existing.groupId) {
         const group = await this.groups.findById(tx, existing.groupId);
-        if (!group || group.status !== 'draft') {
+        if (!group) {
           throw new ListingGroupReadOnlyForDelete();
         }
+        ListingGroup.rehydrate(group).assertItemsDeletable();
       }
       const bookings = await this.listings.countBookings(tx, id);
       if (bookings > 0) {

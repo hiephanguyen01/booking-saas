@@ -34,6 +34,7 @@ import {
   validateAndNormalizeModeConfig,
 } from '../../../../shared/domain/pricing/package-config';
 import { Listing } from '../../domain/entities/listing.entity';
+import { ListingGroup } from '../../domain/entities/listing-group.entity';
 import {
   ListingSlugTaken,
   ResourceNotFound,
@@ -45,7 +46,6 @@ import { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-fo
 import {
   ListingGroupNotFound,
   ListingGroupNotOwned,
-  ListingGroupReadOnlyForEdit,
   ListingGroupTypeMismatch,
 } from '../../domain/errors/listing-group-errors';
 import { buildPublicSlug } from '../../../../shared/domain/public-slug';
@@ -136,9 +136,7 @@ export class CreateListingUseCase {
         if (group.listingTypeId !== input.listingTypeId) {
           throw new ListingGroupTypeMismatch();
         }
-        if (group.status !== 'draft') {
-          throw new ListingGroupReadOnlyForEdit();
-        }
+        ListingGroup.rehydrate(group).assertItemsAddable();
       }
 
       // Reuse a shared resource, or auto-create a dedicated 1:1 one.

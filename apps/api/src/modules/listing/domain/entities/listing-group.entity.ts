@@ -1,6 +1,8 @@
 import type { ListingGroupAmenity, ModerationActor, PublishStatus } from '@booking/contracts';
 import {
   ListingGroupNotOwnedForManage,
+  ListingGroupReadOnlyForDelete,
+  ListingGroupReadOnlyForEdit,
   ListingGroupReadOnlyForOwnEdit,
   ListingTypeNotGroupable,
 } from '../errors/listing-group-errors';
@@ -196,6 +198,26 @@ export class ListingGroup {
   assertEditableStatus(): void {
     if (!['draft', 'archived'].includes(this.state.status)) {
       throw new ListingGroupReadOnlyForOwnEdit();
+    }
+  }
+
+  /**
+   * The child-listing binding gates: a partner may add or remove items only
+   * while the post is not live. `archived` counts as not-live — hiding IS what
+   * both error messages tell the partner to do, so a gate that accepted only
+   * `draft` made those messages unreachable (a hidden post is `archived`, never
+   * back to `draft`). Same predicate as {@link assertEditableStatus}; the two
+   * errors stay distinct because their messages are frozen wire copy.
+   */
+  assertItemsAddable(): void {
+    if (!['draft', 'archived'].includes(this.state.status)) {
+      throw new ListingGroupReadOnlyForEdit();
+    }
+  }
+
+  assertItemsDeletable(): void {
+    if (!['draft', 'archived'].includes(this.state.status)) {
+      throw new ListingGroupReadOnlyForDelete();
     }
   }
 
