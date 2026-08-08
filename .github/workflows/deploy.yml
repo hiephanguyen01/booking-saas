@@ -106,9 +106,9 @@ jobs:
             -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
-      # The box holds no checkout, so without this every compose/nginx/Caddy
-      # change would be a manual scp somebody eventually forgets — and a deploy
-      # that "succeeded" would silently keep running the previous topology.
+      # The box holds no checkout, so without this every compose or Caddy change
+      # would be a manual scp somebody eventually forgets — and a deploy that
+      # "succeeded" would silently keep running the previous topology.
       # `.env.<env>` is deliberately NOT synced: it holds the secrets and the
       # image pins this workflow rewrites in place.
       - name: Sync deploy config to the box
@@ -124,7 +124,7 @@ jobs:
           # matches no file, and fails as "tar: Cowardly refusing to create an
           # empty archive". Relative paths are preserved on extraction, so
           # docker/... lands under DEPLOY_PATH/docker/...
-          source: 'docker-compose.deploy.yml,docker-compose.stg-data.yml,docker/nginx/deploy.conf.template,docker/caddy/Caddyfile'
+          source: 'docker-compose.deploy.yml,docker-compose.stg-data.yml,docker/caddy/Caddyfile'
           overwrite: true
 
       - name: Deploy over SSH
@@ -166,13 +166,13 @@ jobs:
 
             # Did the config the previous step just synced actually change? A
             # bind-mounted file changing content is invisible to compose — the
-            # mount path is identical — so `up -d` alone would leave nginx
-            # serving a template it rendered at its last start. Recreating on
-            # every deploy instead would mean needless seconds of 502 behind
-            # Caddy, so compare and only act when something moved.
+            # mount path is identical — so `up -d` alone would leave Caddy serving
+            # the routes it loaded at its last start. Recreating on every deploy
+            # instead would mean needless seconds of downtime at the edge, so
+            # compare and only act when something moved.
             CONFIG_SUM=$(
               for f in docker-compose.deploy.yml docker-compose.stg-data.yml \
-                       docker/nginx/deploy.conf.template docker/caddy/Caddyfile; do
+                       docker/caddy/Caddyfile; do
                 if [ -f "$f" ]; then sha256sum "$f"; fi
               done | sha256sum | cut -d' ' -f1
             )
@@ -226,18 +226,18 @@ jobs:
               *)          $COMPOSE up -d "$APP" ;;
             esac
 
-            # An `app=api` deploy never touches nginx or caddy, so the edge is
-            # recreated here on its own terms. Force, because the changed file is
-            # a bind mount: nginx re-runs envsubst only at container start, and
-            # Caddy reads its Caddyfile only at load.
+            # An `app=api` deploy never touches the edge, so it is recreated here
+            # on its own terms. Force, because the Caddyfile is a bind mount:
+            # compose sees an identical mount path and Caddy reads its config only
+            # at load, so `up -d` alone would keep serving the previous routes.
             if [ "$CONFIG_CHANGED" = "true" ]; then
-              EDGE=nginx
-              # `set -e` would kill the script on a plain `grep && …` miss.
-              if grep -q '^COMPOSE_PROFILES=.*tls' "$ENV_FILE"; then
-                EDGE="$EDGE caddy"
-              fi
-              echo "recreating edge: ${EDGE}"
-              $COMPOSE up -d --force-recreate $EDGE
+              # --remove-orphans retires containers whose service was DELETED from
+              # the compose file. That is how the old `nginx` goes away on a box
+              # deployed before Caddy took over routing — left alone it keeps
+              # running and holding its published ports. (`compose rm nginx` cannot
+              # do this: the service no longer exists to name.)
+              echo "recreating edge: caddy"
+              $COMPOSE up -d --remove-orphans --force-recreate caddy
               echo "$CONFIG_SUM" > .deploy-config.sha
             fi
 

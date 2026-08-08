@@ -80,8 +80,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
     healthcheck:
-      # /health/ready checks Postgres AND Redis, so nginx never receives traffic
-      # for an API that cannot serve it.
+      # /health/ready checks Postgres AND Redis. Caddy does NOT gate its own
+      # start on this (see the caddy service) — it is what makes `docker compose
+      # ps` and a rolling restart tell the truth about whether the API can serve.
       test:
         [
           'CMD',
@@ -159,57 +160,30 @@ services:
     logging: *logging
     security_opt: ['no-new-privileges:true']
 
-  # Terminates HTTP and routes by Host. TLS is terminated in front of this — by
-  # the `caddy` service below, or by a cloud LB where the `tls` profile is off;
-  # it forwards X-Forwarded-Proto so the apps still emit secure cookies and
-  # absolute https URLs.
-  nginx:
-    image: nginx:1.27-alpine
-    depends_on:
-      storefront: { condition: service_healthy }
-      dashboard: { condition: service_healthy }
-      api: { condition: service_healthy }
-    environment:
-      # Storefront is the DEFAULT server: it serves every tenant domain by Host,
-      # so it must catch hostnames nginx has never heard of (§6.1).
-      DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}
-      API_HOST: ${API_HOST:?API_HOST is required}
-    volumes:
-      - ./docker/nginx/deploy.conf.template:/etc/nginx/templates/default.conf.template:ro
-    ports:
-      # With the `tls` profile on, Caddy reaches nginx over the compose network,
-      # so this publish is only a loopback debugging door (127.0.0.1:8080). It is
-      # the real ingress only where a cloud LB terminates TLS instead.
-      - '${HTTP_PORT:-80}:80'
-      # Caddy's on-demand-TLS `ask` endpoint. Caddy calls it as `nginx:8081` on
-      # the compose network; publishing it on loopback is what lets ops curl the
-      # acceptance check. It must never be reachable from outside the box.
-      - '${TLS_ASK_PORT:-127.0.0.1:8081}:8081'
-    restart: unless-stopped
-    logging: *logging
-    security_opt: ['no-new-privileges:true']
-
-  # PUBLIC 80/443. On-demand TLS: one Let's Encrypt certificate per hostname,
-  # obtained at the first handshake and gated by nginx:8081 — which is what makes
-  # a tenant custom domain work with no ops step. See docker/caddy/Caddyfile.
+  # THE INGRESS — public 80/443, TLS and Host routing in one process.
   #
-  # PROFILE `tls`: set COMPOSE_PROFILES=tls in the env file to run it. Left off,
-  # the stack ends at nginx and something else (a cloud LB) must terminate TLS —
-  # in which case it has to solve tenant custom domains some other way.
+  # On-demand TLS gets one Let's Encrypt certificate per hostname at the first
+  # handshake, gated by an `ask` call to the API, which is what makes a tenant
+  # custom domain work with no ops step. Routing sends admin.* → dashboard,
+  # api.* → api, and EVERY other hostname → storefront. See docker/caddy/Caddyfile.
+  #
+  # There is no compose `nginx` any more: Caddy does both jobs natively and the
+  # second hop bought nothing. The trade is that the terminator is no longer
+  # swappable for a cloud LB without re-expressing these routes in its own rules.
   caddy:
     image: caddy:2-alpine
-    profiles: ['tls']
+    # DELIBERATELY NOT service_healthy. Caddy must hold 80/443 to answer ACME
+    # challenges and to serve the two apps that ARE up; gating it on app health
+    # would take TLS down for the whole platform whenever one app is restarting.
+    # It resolves upstreams per request, so a container that is not listening yet
+    # is a 502 on that hostname only, and self-heals.
     depends_on:
-      # Not service_healthy: nginx has no healthcheck, and Caddy must be up to
-      # answer ACME challenges regardless. It retries the `ask` call per
-      # handshake, so a few seconds of nginx not yet listening is self-healing.
-      nginx: { condition: service_started }
+      api: { condition: service_started }
+      storefront: { condition: service_started }
+      dashboard: { condition: service_started }
     environment:
       # Read by {$VAR} placeholders in the Caddyfile, so one file serves staging
       # and production. A wrong ACME_EMAIL means expiry warnings go nowhere.
-      # Interpolation happens for the WHOLE file, profile or not, so this is
-      # required on the box even before `tls` is switched on. A missing value
-      # fails every compose command loudly and leaves the running stack alone.
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required — add it to .env.<env>, see docs/deployment.md}
       DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}
       API_HOST: ${API_HOST:?API_HOST is required}

@@ -143,8 +143,9 @@ All three apps are containerised: `apps/{api,storefront,dashboard}/Dockerfile`, 
 `turbo prune … --docker`. **`docker-compose.deploy.yml` runs staging and production from one file** —
 they differ only by env file (`.env.stg` / `.env.prod`, template in `.env.deploy.example`) and the
 hostnames in it. A one-shot `migrate` service applies `prisma migrate deploy` from the API image
-before `api` starts; `nginx:1.27-alpine` routes by Host with the storefront as the **default server**
-so tenant custom domains work without an nginx change. Postgres, Redis and S3 are managed services
+before `api` starts; `caddy:2-alpine` is the single ingress — it terminates TLS with per-hostname
+on-demand certificates and routes by Host, with the storefront as the **catch-all** so tenant custom
+domains work without an edge config change. Postgres, Redis and S3 are managed services
 outside the compose file. The manual Deploy workflow publishes selected images to GHCR and pins the
 server to immutable commit tags.
 

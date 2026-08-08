@@ -19,7 +19,7 @@
  * same minute was already over the limit.
  *
  * So treat these as a CAPACITY CEILING, not an abuse control. Per-user limiting
- * has to happen where the real client IP still exists: at the edge (Caddy/nginx),
+ * has to happen where the real client IP still exists: at the edge (Caddy),
  * or by forwarding the client IP from the frontends and teaching ThrottlerGuard
  * to key on it. Neither exists yet. Until one does, raising a number here costs
  * nothing in real protection, and lowering one locks out real users first.

@@ -1,5 +1,11 @@
 import { Controller, Get, Headers, Query } from '@nestjs/common';
-import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { PublicTenantResponse } from '@booking/contracts';
 import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
@@ -42,18 +48,17 @@ export class PublicTenantController {
   /**
    * Caddy's on-demand-TLS `ask` endpoint. Caddy blocks the TLS handshake on this
    * call and only obtains a certificate on a 2xx, so it must stay cheap and must
-   * fail closed. Reachable ONLY through nginx's loopback-bound `:8081` listener,
-   * which exposes this single path — never over the public API hostname, since
-   * that request would loop back through the very Caddy instance that is
-   * mid-handshake.
+   * fail closed. Caddy reaches it as `http://api:3000/...` on the compose
+   * network — never over the public API hostname, since that request would loop
+   * back through the very Caddy instance that is mid-handshake.
    */
   @Public()
-  // Every call arrives from one loopback client (Caddy), so a per-IP limit does
-  // not shed load from an attacker — it just guarantees that a burst of unknown
-  // SNI makes the NEXT genuine tenant domain fail to get a certificate. The real
-  // protections are the loopback-only listener, the verified-domain rule, and
-  // the Redis host cache, which answers repeats (including misses) without a
-  // query.
+  // Every call arrives from one client on the compose network (Caddy), so a
+  // per-IP limit does not shed load from an attacker — it just guarantees that a
+  // burst of unknown SNI makes the NEXT genuine tenant domain fail to get a
+  // certificate. The real protections are that this port is never published, the
+  // verified-domain rule, and the Redis host cache, which answers repeats
+  // (including misses) without a query.
   @SkipThrottle()
   @Get('domains/tls-allowed')
   @ApiOperation({ summary: 'Whether a hostname may be issued a certificate (Caddy on-demand TLS)' })

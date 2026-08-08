@@ -11,12 +11,11 @@ Tài liệu này là trình tự triển khai staging chính thức cho BookingO
 - PostgreSQL 16 và Redis 7 của staging chạy trong Docker trên cùng EC2 bằng
   `docker-compose.stg-data.yml`.
 - GitHub Actions build ba image `linux/amd64`, push lên GHCR, SSH vào EC2 và deploy.
-- Compose nginx chỉ bind `127.0.0.1:8080`, cộng một listener `127.0.0.1:8081` mở đúng một path cho
-  Caddy hỏi trước khi cấp certificate.
-- **Caddy** là một service trong chính compose stack (profile `tls`), giữ public 80/443 và proxy vào
-  compose nginx. Nó terminate TLS bằng **on-demand TLS**: certificate được xin cho từng hostname ở
-  request đầu tiên, nên tenant thêm tên miền riêng là chạy, không cần thao tác ops và không cần
-  wildcard certificate. Config của nó được workflow Deploy đồng bộ như mọi file khác.
+- **Caddy** là ingress duy nhất, một service trong compose stack. Nó vừa terminate TLS vừa định tuyến
+  theo `Host` (`admin.*` → dashboard, `api.*` → api, còn lại → storefront). TLS là **on-demand**:
+  certificate xin cho từng hostname ở request đầu tiên, nên tenant thêm tên miền riêng là chạy, không
+  cần thao tác ops và không cần wildcard certificate. Không còn compose nginx — Caddy làm cả hai việc.
+  Config của nó được workflow Deploy đồng bộ như mọi file khác.
 - Mọi record staging trên Cloudflare để **DNS only**. Bật Proxied sẽ đưa TLS trở lại Cloudflare edge
   (certificate Universal SSL miễn phí không phủ hostname sâu như `api.stg.bookingos.vn`) và làm hỏng
   cả việc xin certificate lẫn hướng dẫn trỏ A về Elastic IP mà ta đưa cho tenant.
@@ -201,7 +200,7 @@ Không mở public:
 
 - PostgreSQL `5432`;
 - Redis `6379`;
-- compose nginx `8080`;
+- các container ứng dụng (chỉ nghe trong mạng compose);
 - API/frontend container port `3000`.
 
 ### 2.3. Elastic IP
@@ -235,16 +234,16 @@ Trên EC2:
 
 ```bash
 sudo dnf upgrade -y
-sudo dnf install -y docker git nginx openssl curl cronie
+sudo dnf install -y docker git openssl curl cronie
 sudo systemctl enable --now docker
 sudo systemctl enable --now crond
 sudo usermod -aG docker ec2-user
 sudo reboot
 ```
 
-`nginx` ở đây **không** phải thứ giữ 80/443 — container `caddy` (Phase 6) làm việc đó, và cũng không
-phải nginx trong compose. Cài sẵn chỉ để có đường lùi thủ công; đừng `systemctl enable` nó, còn enable
-là lần reboot sau nó giành cổng 80/443 với Caddy.
+**Không cài nginx trên host.** Container `caddy` (Phase 6) giữ 80/443. Một nginx host còn `enable` sẽ
+giành cổng với nó ở lần reboot sau, và một trong hai chết ngẫu nhiên tuỳ thứ tự khởi động. Máy nào
+trước đây đã cài thì `sudo systemctl disable --now nginx`.
 
 Chờ instance boot lại, sau đó trên máy local SSH lại để kernel/package update và group `docker` có
 hiệu lực:
@@ -258,7 +257,6 @@ Kiểm tra:
 ```bash
 docker version
 docker compose version
-nginx -v
 ```
 
 Nếu `docker compose version` chưa chạy được, cài Compose plugin:
@@ -321,12 +319,12 @@ crontab -l
 
 ## Phase 4 — Đưa deploy files lên EC2
 
-Server không build source; nó chỉ cần compose files, nginx template, Caddyfile và env template.
+Server không build source; nó chỉ cần compose files, Caddyfile và env template.
 
 Trên EC2:
 
 ```bash
-mkdir -p /home/ec2-user/bookingos/docker/nginx /home/ec2-user/bookingos/docker/caddy
+mkdir -p /home/ec2-user/bookingos/docker/caddy
 ```
 
 Trên máy local:
@@ -341,16 +339,9 @@ scp -i /path/to/bookingos-staging.pem \
   ec2-user@STAGING_EIP:/home/ec2-user/bookingos/
 
 scp -i /path/to/bookingos-staging.pem \
-  docker/nginx/deploy.conf.template \
-  docker/nginx/staging-host.conf \
-  ec2-user@STAGING_EIP:/home/ec2-user/bookingos/docker/nginx/
-
-scp -i /path/to/bookingos-staging.pem \
   docker/caddy/Caddyfile \
   ec2-user@STAGING_EIP:/home/ec2-user/bookingos/docker/caddy/
 ```
-
-`staging-host.conf` không còn là config đang chạy — nó là đường lùi khi cần tắt Caddy (Phase 7).
 
 Trên EC2:
 
@@ -365,16 +356,14 @@ Phải thấy:
 ./docker-compose.deploy.yml
 ./docker-compose.stg-data.yml
 ./.env.deploy.example
-./docker/nginx/deploy.conf.template
-./docker/nginx/staging-host.conf
 ./docker/caddy/Caddyfile
 ```
 
 **Chỉ lần này phải copy tay.** Từ lần deploy đầu tiên trở đi, workflow Deploy tự đồng bộ
-`docker-compose.deploy.yml`, `docker-compose.stg-data.yml`, `docker/nginx/deploy.conf.template` và
-`docker/caddy/Caddyfile` lên đúng thư mục này ở mỗi lần chạy, rồi recreate nginx/caddy khi nội dung
-đổi ([`deployment.md`](./deployment.md) → *What the deploy syncs*). Cái **không** bao giờ được đồng bộ
-là `.env.stg` — nó giữ secret, và biến mới trong `.env.deploy.example` vẫn phải tự thêm vào đó.
+`docker-compose.deploy.yml`, `docker-compose.stg-data.yml` và `docker/caddy/Caddyfile` lên đúng thư
+mục này ở mỗi lần chạy, rồi recreate caddy khi nội dung đổi
+([`deployment.md`](./deployment.md) → *What the deploy syncs*). Cái **không** bao giờ được đồng bộ là
+`.env.stg` — nó giữ secret, và biến mới trong `.env.deploy.example` vẫn phải tự thêm vào đó.
 
 ## Phase 5 — Cloudflare DNS cho staging
 
@@ -429,14 +418,12 @@ token trên máy.
 Điền cùng lúc với phần còn lại của env file ở **Phase 10**:
 
 ```dotenv
-# Bật service caddy. Bỏ trống chỉ khi có load balancer terminate TLS thay.
-COMPOSE_PROFILES=tls
 # Let's Encrypt gửi cảnh báo hết hạn về đây. Hộp thư vận hành thật.
 ACME_EMAIL=ops@bookingos.vn
-# Caddy giữ 80/443; nginx chỉ còn cửa loopback để debug.
-HTTP_PORT=127.0.0.1:8080
-TLS_ASK_PORT=127.0.0.1:8081
 ```
+
+Chỉ một biến. Caddy là ingress duy nhất và tự bind 80/443, nên không còn `HTTP_PORT`,
+`TLS_ASK_PORT` hay `COMPOSE_PROFILES` — chúng tồn tại để phục vụ compose nginx, thứ đã bị gỡ.
 
 `DASHBOARD_HOST` và `API_HOST` (đã có ở Phase 10) chính là hai hostname tường minh Caddy xin
 certificate ngay lúc start — Caddyfile đọc chúng qua `{$VAR}`, nên **production không phải sửa
@@ -482,22 +469,27 @@ Caddy gọi `GET /public/domains/tls-allowed?domain=<host>` **ngay trong lúc b�
 certificate, khác thì từ chối. Đây là thứ duy nhất chặn người lạ trỏ tên miền bừa vào Elastic IP để ép
 hệ thống đi xin certificate — và cũng là thứ chặn việc đốt rate limit Let's Encrypt.
 
-Caddy gọi nó qua compose network (`nginx:8081`); publish `127.0.0.1:8081` tồn tại chỉ để kiểm tra
-được từ shell:
+Caddy gọi thẳng `api:3000` qua compose network — không có cổng nào publish ra host, nên kiểm tra từ
+chính container caddy, đúng đường mà Caddy đi:
 
 ```bash
-curl -i "http://127.0.0.1:8081/public/domains/tls-allowed?domain=bookingstudio.stg.bookingos.vn"
-curl -i "http://127.0.0.1:8081/public/domains/tls-allowed?domain=khong-ton-tai.example"
-curl -i "http://127.0.0.1:8081/health/ready"
+COMPOSE="docker compose --env-file .env.stg -f docker-compose.deploy.yml -f docker-compose.stg-data.yml"
+
+$COMPOSE exec caddy sh -c '
+  for d in bookingstudio.stg.bookingos.vn khong-ton-tai.example; do
+    printf "%-34s → " "$d"
+    curl -s -o /dev/null -w "%{http_code}\n" \
+      "http://api:3000/public/domains/tls-allowed?domain=$d"
+  done'
 ```
 
-Lần lượt phải là **200**, **404**, **404**. Lượt thứ ba xác nhận listener `:8081` chỉ mở đúng một path
-chứ không phải cả API trên một cổng thứ hai.
+Phải là **200** rồi **404**. Sai theo hướng "luôn 404" thì không tên miền nào lên được HTTPS; sai theo
+hướng "luôn 200" thì người lạ trỏ tên miền bừa vào Elastic IP là ép được hệ thống đi xin certificate.
 
-Cổng phải chỉ bind loopback:
+Và xác nhận không có cổng nội bộ nào lọt ra host — chỉ `caddy` được publish:
 
 ```bash
-ss -ltnp | grep 8081     # 127.0.0.1:8081, KHÔNG phải 0.0.0.0:8081
+$COMPOSE ps --format 'table {{.Service}}\t{{.Ports}}'
 ```
 
 ### 7.2. Certificate riêng cho từng hostname
@@ -533,23 +525,30 @@ việc này sinh ra để làm được.**
 
 ### 7.3. Rollback
 
-Trên máy trắng, đường lùi duy nhất là tắt TLS đi (site chạy HTTP qua `HTTP_PORT=80`) — vì không có
-terminator nào khác:
+> **Đọc kỹ mục này.** Từ khi Caddy nhận cả định tuyến, **không còn đường lùi bằng một lệnh.** Tắt Caddy
+> là không còn gì định tuyến cả. Đường lùi cũ qua nginx host + certbot đã chết theo compose nginx — nó
+> proxy vào `127.0.0.1:8080`, cổng không còn ai publish — nên `docker/nginx/` đã bị xoá khỏi repo thay
+> vì để lại một file trông như đường lùi mà chạy là hỏng.
+
+Đường lùi thật là **deploy lại commit trước đó**. Workflow Deploy đồng bộ `docker-compose.deploy.yml`
+và `docker/caddy/Caddyfile` từ đúng ref bạn chọn, nên chạy nó từ commit cũ sẽ khôi phục **cả hai file
+cùng lúc** — compose nginx quay lại, Caddyfile quay lại bản chỉ-lo-TLS. `git log` giữ mọi thứ đã xoá.
+
+GitHub → Actions → **Deploy** → *Use workflow from*: chọn commit/tag trước khi gộp, `environment=stg`,
+`app=all`, `migrate=false`.
+
+Cần lùi ngay trong lúc đang SSH mà không đợi workflow:
 
 ```bash
+cd /home/ec2-user/bookingos
 COMPOSE="docker compose --env-file .env.stg -f docker-compose.deploy.yml -f docker-compose.stg-data.yml"
 
-sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=/' .env.stg
-sed -i 's/^HTTP_PORT=.*/HTTP_PORT=80/' .env.stg
-$COMPOSE --profile tls stop caddy
-$COMPOSE --profile tls rm -f caddy
-$COMPOSE up -d
+# Lấy lại hai file ở bản trước từ máy local rồi scp lên, sau đó:
+$COMPOSE up -d --remove-orphans
 ```
 
-Hai lệnh `stop`/`rm` phải có cờ `--profile tls`: tắt `COMPOSE_PROFILES` chỉ khiến `up -d` bỏ qua
-service đó, **container đang chạy vẫn chạy** — kể cả với `--remove-orphans` — và vẫn giữ 80/443.
-
-Certificate đã có vẫn nằm trong volume `caddy_data`, nên bật lại là dùng tiếp, không xin lại.
+Certificate đã xin vẫn nằm trong volume `caddy_data` qua mọi lượt lùi — nó chỉ mất khi bạn
+`docker compose down -v`.
 
 ### 7.4. Không có cron nào phải tạo
 
@@ -689,10 +688,6 @@ DASHBOARD_IMAGE=bookingos/dashboard:local
 
 DASHBOARD_HOST=admin.stg.bookingos.vn
 API_HOST=api.stg.bookingos.vn
-HTTP_PORT=127.0.0.1:8080
-TLS_ASK_PORT=127.0.0.1:8081
-
-COMPOSE_PROFILES=tls
 ACME_EMAIL=ops@bookingos.vn
 
 PUBLIC_API_URL=https://api.stg.bookingos.vn
@@ -818,7 +813,7 @@ Workflow sẽ:
 5. Pin ba image SHA vào `.env.stg`.
 6. Start PostgreSQL và Redis.
 7. Chạy `prisma migrate deploy`.
-8. Start API, Storefront, Dashboard và compose nginx.
+8. Start API, Storefront, Dashboard và Caddy.
 
 ### 12.1. Kiểm tra container
 
@@ -841,14 +836,11 @@ redis
 api
 storefront
 dashboard
-nginx
 caddy
 ```
 
-`migrate` là one-shot nên có thể ở trạng thái exited 0.
-
-Không thấy `caddy` nghĩa là `COMPOSE_PROFILES=tls` chưa có trong `.env.stg` — stack sẽ chạy nhưng
-không có TLS. Thêm vào rồi `up -d` lại.
+`migrate` là one-shot nên có thể ở trạng thái exited 0. `caddy` phải giữ `0.0.0.0:80` và `0.0.0.0:443`
+— đó là container duy nhất publish cổng ra ngoài.
 
 ### 12.2. Seed tenant settings
 
@@ -916,7 +908,7 @@ docker compose \
   --env-file .env.stg \
   -f docker-compose.deploy.yml \
   -f docker-compose.stg-data.yml \
-  logs --tail=200 api storefront dashboard nginx caddy postgres redis
+  logs --tail=200 api storefront dashboard caddy postgres redis
 ```
 
 Lỗi TLS trên một hostname cụ thể thì bắt đầu từ log của `caddy` — nó ghi cả câu trả lời của endpoint
@@ -1111,11 +1103,11 @@ trang không tìm thấy tenant.
 - [ ] SSH password và root login đã tắt.
 - [ ] `stg`, `*.stg` và `connect.stg` là DNS only, trỏ đúng Elastic IP.
 - [ ] `caddy validate` thành công với đúng image `caddy:2-alpine` compose chạy.
-- [ ] `COMPOSE_PROFILES=tls` và `ACME_EMAIL` có trong `.env.stg`; `docker compose ps` thấy service
-      `caddy` đang chạy và giữ `0.0.0.0:80` + `0.0.0.0:443`.
-- [ ] nginx host (`systemctl`) đã tắt và **không** enable.
-- [ ] `:8081` chỉ bind loopback; `tls-allowed` trả 200 cho domain đã verified, 404 cho domain lạ, và
-      404 cho mọi path khác.
+- [ ] `ACME_EMAIL` có trong `.env.stg`; `docker compose ps` thấy `caddy` đang chạy và giữ
+      `0.0.0.0:80` + `0.0.0.0:443`, và không container nào khác publish cổng.
+- [ ] Không có nginx nào chạy trên host (`systemctl is-enabled nginx` → disabled hoặc not-found).
+- [ ] `tls-allowed` trả 200 cho domain đã verified và 404 cho domain lạ.
+- [ ] Cả ba hostname đi đúng đích: `admin.*` → dashboard, `api.*` → api, tên miền tenant → storefront.
 - [ ] Mỗi hostname có certificate riêng của nó (không phải wildcard).
 - [ ] `PLATFORM_STOREFRONT_IPV4` trong `.env.stg` đúng Elastic IP thật.
 - [ ] CORS của R2 là `AllowedOrigins: ["*"]` cho PUT.

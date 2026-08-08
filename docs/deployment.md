@@ -30,7 +30,7 @@ must be present beside `docker-compose.deploy.yml` on the server. Production nev
 
 Production omits the overlay and points at managed instances. Application config is identical in both
 — only the connection strings differ, which is the point: staging still exercises the same images,
-the same migration path and the same nginx routing.
+the same migration path and the same Caddy routing.
 
 Measured with the overlay (all six containers, idle): **~380 MB**, of which Postgres ~37 MB and Redis
 ~12 MB. That fits a 2 GB box with room to spare.
@@ -54,28 +54,33 @@ schedule if staging data matters to you.
    internet :80/:443
           │
           ▼
-   ┌─────────────────────────────────┐
-   │ Caddy (compose, profile `tls`)  │   off where a cloud LB terminates instead
-   │  admin.*, api.*  → explicit     │
-   │  everything else → on_demand TLS│──ask──▶ nginx:8081 (one path)
-   └──────────────┬──────────────────┘              └──▶ api /public/domains/tls-allowed
-                  ▼ nginx:80
-                      ┌──────────────────────────────┐
-                      │ nginx :80  (compose)         │
-                      │ routes by Host               │
-                      │  admin.* → dashboard         │
-                      │  api.*   → api               │
-                      │  _       → storefront (default)
-                      └──────┬───────┬───────┬───────┘
-                             ▼       ▼       ▼
-                        storefront dashboard api :3000
-                             │       │       │
-                             └───────┴───────┴──▶ managed Postgres + Redis + S3
+   ┌───────────────────────────────────────────┐
+   │ Caddy (compose) — THE ingress             │
+   │                                           │
+   │ TLS:    admin.*, api.*  → at startup      │
+   │         everything else → on_demand ──ask──▶ api:3000 /public/domains/tls-allowed
+   │                                           │
+   │ Routes: admin.*  → dashboard              │
+   │         api.*    → api                    │
+   │         _        → storefront (catch-all) │
+   └──────────────┬───────────┬───────────┬────┘
+                  ▼           ▼           ▼
+             storefront   dashboard      api :3000
+                  │           │           │
+                  └───────────┴───────────┴──▶ managed Postgres + Redis + S3
 ```
 
-The **storefront is the nginx default server** on purpose. It resolves its tenant from the `Host`
-header against `tenant_domains` (§6.1), so a tenant adding a custom domain must start working without
-an nginx change. Naming hostnames there would make every tenant onboarding a deploy.
+**One proxy, not two.** Until 2026-08-08 a compose `nginx` sat behind Caddy and owned the Host
+routing while Caddy owned only TLS. Caddy does both natively, so that hop is gone along with its
+config language, its envsubst-at-container-start rendering, its `resolver`/`set $var` workaround for
+nginx's permanent upstream-DNS caching, and the `X-Forwarded-Proto` relay that existed only because
+there were two layers. What it cost, deliberately: the terminator is no longer swappable — putting a
+cloud load balancer in front now means re-expressing these routes in that balancer's rule language.
+
+The **storefront is the catch-all** on purpose. It resolves its tenant from the `Host` header against
+`tenant_domains` (§6.1), so a tenant adding a custom domain must start working without an edge config
+change. Naming hostnames there would make every tenant onboarding a deploy. Caddy passes the original
+`Host` through untouched, which is what that resolution rests on.
 
 Both frontends reach the API over the compose network (`INTERNAL_API_URL=http://api:3000`), never the
 public URL — that is the "frontends never fetch the backend from the browser" rule (`AGENTS.md`)
@@ -83,12 +88,10 @@ holding at the infrastructure level too.
 
 ### TLS — Caddy on-demand, one certificate per hostname
 
-**Caddy owns public 80/443** and proxies to the compose nginx. It is the `caddy` service in
-`docker-compose.deploy.yml` under the **`tls` profile** — enabled by `COMPOSE_PROFILES=tls` in the env
-file. nginx then publishes on `127.0.0.1:8080` as a loopback debugging door only; Caddy reaches it as
-`nginx:80` over the compose network. Cloudflare is authoritative DNS, and every record involved must
-stay **DNS only** — turning on Proxied breaks both certificate issuance and the "point an A record at
-the Elastic IP" instruction we give tenants.
+**Caddy owns public 80/443** — the `caddy` service in `docker-compose.deploy.yml`, the only service
+publishing a port. Cloudflare is authoritative DNS, and every record involved must stay **DNS only** —
+turning on Proxied breaks both certificate issuance and the "point an A record at the Elastic IP"
+instruction we give tenants.
 
 Caddy is in compose rather than a host systemd unit so that its config ships like every other change:
 the Deploy workflow syncs `docker/caddy/Caddyfile` to the box and recreates the container. A host unit
@@ -106,7 +109,7 @@ What decides whether a hostname gets one is a single gate:
 
 ```
 Caddy handshake for <host>
-   └── GET http://nginx:8081/public/domains/tls-allowed?domain=<host>
+   └── GET http://api:3000/public/domains/tls-allowed?domain=<host>
           2xx → obtain certificate      404 → refuse
 ```
 
@@ -114,21 +117,26 @@ That endpoint answers exactly the rule the storefront already lives by — only 
 `tenant_domains` resolves — reusing the 60s Redis host cache. Without it, anyone pointing any domain
 at the Elastic IP could make us request certificates on their behalf and burn the Let's Encrypt rate
 limit (50 certificates/week per registered domain, so every `*.stg.bookingos.vn` counts against
-`bookingos.vn`). The `:8081` listener serves that one path; everything else on it is 404, and it is
-published on the host only as `127.0.0.1:8081` so ops can curl the acceptance check. It is
-deliberately not `https://api.stg.bookingos.vn`: that request would loop back through the Caddy
-instance that is mid-handshake.
+`bookingos.vn`). Caddy reaches the API over the compose network, the same way the frontends do; it is
+deliberately not `https://api.stg.bookingos.vn`, because that request would loop back through the
+Caddy instance that is mid-handshake and would also depend on public DNS. The single-path
+`nginx:8081` listener this used to go through existed only because Caddy once ran outside compose and
+needed a published port — with Caddy inside, there is nothing to publish and nothing to restrict.
 
 **No wildcard certificate is needed any more.** A tenant subdomain (`bookingstudio.stg.bookingos.vn`)
 is also a verified `tenant_domains` row, so it takes the same on-demand HTTP-01 path as a custom
 domain — no DNS-01, no `xcaddy` build with the Cloudflare plugin, no Cloudflare API token on the box.
 
-Config: [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile). Install steps:
-[`deployment-runbook.md`](./deployment-runbook.md) Phase 6–7.
-[`docker/nginx/staging-host.conf`](../docker/nginx/staging-host.conf) is kept as the rollback path for
-a box that came from host nginx + certbot — those certificates are still on disk, so stopping Caddy
-and starting the host nginx restores the previous setup. Retire certbot only after Caddy has been
-stable for 1–2 weeks.
+Config: [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile) — one file, TLS and routes together.
+Install steps: [`deployment-runbook.md`](./deployment-runbook.md) Phase 6–7.
+
+**There is no host-nginx + certbot fallback any more**, and `docker/nginx/` is gone with it. That path
+only ever worked while a compose nginx published `127.0.0.1:8080` for the host nginx to proxy into;
+with routing inside Caddy nothing publishes that port, so the old config would have proxied into
+nothing. Keeping a rollback file that cannot work is worse than having none. Rolling the edge back
+means deploying an earlier commit — the workflow syncs the compose file and the Caddyfile together
+from whichever ref you run it on. The certbot certificates still on the box are inert; retire the cron
+whenever convenient.
 
 **Certificates live in the `caddy_data` volume.** Deleting it means re-requesting every certificate,
 which can hit the rate limit above. `docker compose down` keeps it; `down -v` does not.
@@ -229,14 +237,13 @@ then runs the same image this deploy shipped, instead of silently drifting.
 
 ### What the deploy syncs, and what it never touches
 
-The box holds no checkout, so every deploy copies these four files over — otherwise a compose or edge
+The box holds no checkout, so every deploy copies these three files over — otherwise a compose or edge
 change would only take effect once somebody remembered to `scp` it, and a deploy that reported success
 would keep running the previous topology:
 
 ```
 docker-compose.deploy.yml
 docker-compose.stg-data.yml
-docker/nginx/deploy.conf.template
 docker/caddy/Caddyfile
 ```
 
@@ -244,11 +251,14 @@ docker/caddy/Caddyfile
 workflow rewrites in place. A new variable in `.env.deploy.example` still has to be added on the box
 by hand — and compose fails fast (`${VAR:?}`) rather than starting without it.
 
-The workflow hashes those four files and recreates `nginx` (and `caddy`, when the `tls` profile is on)
-**only when the hash moved**, recording it in `.deploy-config.sha`. Forcing matters because they are
-bind mounts: compose sees an identical mount path and would not restart anything, while nginx renders
-its template only at container start and Caddy reads its Caddyfile only at load. Recreating on every
-deploy instead would mean needless seconds of 502 on each release.
+The workflow hashes those three files and recreates `caddy` **only when the hash moved**, recording it
+in `.deploy-config.sha`. Forcing matters because the Caddyfile is a bind mount: compose sees an
+identical mount path and would not restart anything, while Caddy reads its config only at load.
+Recreating on every deploy instead would mean needless seconds of 502 on each release.
+
+That recreate also passes `--remove-orphans`, which is what retires a container whose service was
+deleted from the compose file — the mechanism that clears the old `nginx` off a box deployed before
+Caddy took over routing. Left alone it keeps running and holding its published ports.
 
 ### Why migrations run explicitly
 
@@ -333,8 +343,10 @@ docker image prune -af --filter until=168h
 | api | `/health/ready` | Postgres + Redis — this is the compose healthcheck |
 | storefront / dashboard | `/healthz` | liveness |
 
-nginx starts only once all three report healthy, so it never proxies to an API that cannot reach its
-database.
+Caddy deliberately does **not** wait for these. It has to hold 80/443 to answer ACME challenges and to
+serve whichever apps are up, so gating its start on app health would take TLS down for the whole
+platform whenever one app restarts. An upstream that is not listening yet is a 502 on that hostname
+alone, and it self-heals — Caddy resolves upstreams per request.
 
 ## Scaling
 
@@ -348,11 +360,10 @@ shares one Redis.
 
 - **Postgres / Redis** — managed instances. Running stateful services from this compose file would
   put production data in a container with no backup story.
-- **TLS on any path other than Caddy.** Caddy itself IS in the compose file, under the `tls` profile;
-  what is not modelled is a load balancer terminating instead. Either way `X-Forwarded-Proto` reaches
-  the apps so they still set `Secure` cookies and build https URLs — but a terminator that is not
-  Caddy has to solve tenant custom domains some other way. See *TLS — Caddy on-demand* above for what
-  the requirement actually is.
+- **Any ingress other than Caddy.** Caddy owns TLS *and* routing, so there is no longer a seam to put
+  a load balancer into: an LB in front would have to re-express the Host routes in its own rule
+  language and still solve tenant custom domains some other way. That was the accepted cost of
+  dropping the second proxy — see *TLS — Caddy on-demand* above for what the requirement actually is.
 - **Gateway credentials** — SePay / MoMo / ZaloPay keys are **tenant-owned** and entered in
   Dashboard → Settings, encrypted at rest with `PAYMENTS_ENC_KEY`. They are never process env vars,
   because one process serves many tenants each with a different merchant account.
