@@ -43,8 +43,8 @@ export function SiteBottomNav({
   return (
     <nav
       aria-label={t('bottomNav.label')}
-      // `pb-[env(...)]` clears the iPhone home indicator in standalone mode; it
-      // resolves to 0 everywhere else, so nothing shifts in a browser tab.
+      // The safe-area padding clears the iPhone home indicator in standalone
+      // mode; it resolves to 0 elsewhere, so nothing shifts in a browser tab.
       className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 font-studio pb-[env(safe-area-inset-bottom)] backdrop-blur-sm lg:hidden"
     >
       <ul className="mx-auto flex max-w-lg items-stretch">

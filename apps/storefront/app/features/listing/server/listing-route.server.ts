@@ -88,10 +88,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
     ),
     [],
   );
-  const relatedPromise =
-    listing.bookingSelection === 'fixed_packages'
-      ? optionalData(fetchListings(request, relatedSearch), [])
-      : Promise.resolve([]);
+  const relatedPromise = optionalData(fetchListings(request, relatedSearch), []);
   const auxiliaryData = Promise.all([reviewsPromise, relatedPromise]).then(
     ([reviewData, relatedCandidates]) => ({
       ...reviewData,

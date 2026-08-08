@@ -1,10 +1,10 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
 import { MapPin, Users } from 'lucide-react';
 import { Suspense } from 'react';
-import { Await, Link, useOutletContext } from 'react-router';
+import { Await, Link, useOutletContext, useSearchParams } from 'react-router';
 import { DetailPageLayout } from '~/components/detail-page-layout';
 import { ListingRatingSummary } from '~/components/listing-rating-summary';
-import { ReviewsSectionSkeleton } from '~/components/loading-skeletons';
+import { RelatedListingsSkeleton, ReviewsSectionSkeleton } from '~/components/loading-skeletons';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
@@ -24,6 +24,10 @@ import { listingCapacity, specCards } from '~/lib/listing-attributes';
 import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
 import { supportsScheduledBooking } from '~/features/booking-widget/lib/booking-modes';
 import { ScheduledBookingCard } from './scheduled-booking-card';
+import { MobileDetailHeader } from '~/components/mobile-detail-header';
+import { MobileDetailSummary } from '~/components/mobile-detail-summary';
+import { catalogReturnHref } from '~/features/search/lib/catalog-return-href';
+import { RelatedListings } from '~/components/related-listings';
 
 export interface ListingPageProps {
   loaderData: ServerDataFrom<typeof loadListingRoute>;
@@ -43,6 +47,7 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
   } = loaderData;
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
+  const [searchParams] = useSearchParams();
   const { listingTypes } = useOutletContext<StorefrontContext>();
 
   if (!listing) {
@@ -61,6 +66,19 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
   const usesSchedulingDialog =
     supportsOnlineBooking && supportsScheduledBooking(listing.bookingModes);
   const preferredMode = mode === 'daily' ? 'daily' : 'hourly';
+  const bookingContent = usesSchedulingDialog ? (
+    <ScheduledBookingCard listing={listing} preferredMode={preferredMode} today={bookingToday} />
+  ) : supportsOnlineBooking ? (
+    <BookingPanel
+      listing={listing}
+      mode={mode}
+      availability={availability}
+      quote={quote}
+      initialStart={selectionStart}
+      initialEnd={selectionEnd}
+      initialToday={bookingToday}
+    />
+  ) : null;
 
   return (
     <DetailPageLayout
@@ -72,10 +90,37 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
           today={bookingToday}
         />
       }
+      mobileHeader={
+        <MobileDetailHeader
+          backHref={catalogReturnHref(locale, listing.listingTypeSlug, searchParams)}
+          title={listing.title}
+          favorite={{ kind: 'listing', id: listing.id }}
+        />
+      }
       header={
         <ListingHeader listing={listing} location={location} mapsHref={googleMapsHref(location)} />
       }
       gallery={<ListingGallery photos={listing.photos} title={listing.title} />}
+      mobileSummary={
+        <MobileDetailSummary
+          title={listing.title}
+          location={location}
+          mapsHref={googleMapsHref(location)}
+          ratingAvg={listing.ratingAvg}
+          reviewCount={listing.reviewCount}
+          completedBookings={listing.trust.completedBookings}
+          eyebrow={
+            listing.group ? (
+              <Link
+                to={storefrontPaths.listingGroup(locale, listing.group.slug)}
+                className="font-medium text-primary"
+              >
+                {listing.group.title}
+              </Link>
+            ) : undefined
+          }
+        />
+      }
       main={
         <>
           <SectionCard aria-labelledby="introduction-title">
@@ -90,40 +135,38 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
             attributeSchema={listing.attributeSchema}
             capacity={listing.capacity}
           />
-          <Suspense fallback={<ReviewsSectionSkeleton label={t('common:loading')} />}>
-            <Await resolve={loaderData.auxiliaryData}>
-              {(reviewData) => <PublicReviewsSection {...reviewData} locale={locale} />}
-            </Await>
-          </Suspense>
+          <div className="order-5 md:order-none">
+            <Suspense
+              fallback={
+                <>
+                  <ReviewsSectionSkeleton label={t('common:loading')} />
+                  <div className="md:hidden">
+                    <RelatedListingsSkeleton label={t('common:loading')} />
+                  </div>
+                </>
+              }
+            >
+              <Await resolve={loaderData.auxiliaryData}>
+                {({ relatedListings, ...reviewData }) => (
+                  <>
+                    <PublicReviewsSection {...reviewData} locale={locale} />
+                    <div className="md:hidden">
+                      <RelatedListings
+                        listings={relatedListings}
+                        title={t('group.related')}
+                        titleId="related-listings-title"
+                      />
+                    </div>
+                  </>
+                )}
+              </Await>
+            </Suspense>
+          </div>
         </>
       }
-      aside={
-        usesSchedulingDialog ? (
-          <>
-            <ScheduledBookingCard
-              listing={listing}
-              preferredMode={preferredMode}
-              today={bookingToday}
-            />
-            <ProviderCard trust={listing.trust} />
-          </>
-        ) : (
-          <>
-            <ProviderCard trust={listing.trust} />
-            {supportsOnlineBooking ? (
-              <BookingPanel
-                listing={listing}
-                mode={mode}
-                availability={availability}
-                quote={quote}
-                initialStart={selectionStart}
-                initialEnd={selectionEnd}
-                initialToday={bookingToday}
-              />
-            ) : null}
-          </>
-        )
-      }
+      booking={bookingContent ? <div id="listing-booking">{bookingContent}</div> : undefined}
+      provider={<ProviderCard trust={listing.trust} />}
+      desktopAsideOrder={usesSchedulingDialog ? 'booking-first' : 'provider-first'}
     />
   );
 }

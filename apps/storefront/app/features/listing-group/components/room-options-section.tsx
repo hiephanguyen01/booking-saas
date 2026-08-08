@@ -68,7 +68,11 @@ export function RoomOptionsSection({
   );
 
   return (
-    <SectionCard id="room-options" aria-labelledby="room-options-title" className="scroll-mt-28">
+    <SectionCard
+      id="room-options"
+      aria-labelledby="room-options-title"
+      className="scroll-mt-20 md:scroll-mt-28"
+    >
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="room-options-title" className="text-base font-semibold">
@@ -119,7 +123,7 @@ export function RoomOptionsSection({
               </tbody>
             </table>
           </div>
-          <div className="flex flex-col gap-4 xl:hidden">
+          <div className="flex flex-col gap-3 md:gap-4 xl:hidden">
             {visibleOptions.map((option) => (
               <RoomCard key={option.child.id} {...cellProps(option)} />
             ))}
@@ -213,15 +217,15 @@ function RoomCard({
 }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card">
+    <article className="overflow-hidden rounded-(--sf-surface-radius) border border-border bg-card shadow-(--sf-surface-shadow)">
       <RoomPhotoStrip
         photos={option.child.photos}
         title={option.child.title}
         onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
       />
-      <div className="flex flex-col gap-5 p-5">
+      <div className="flex flex-col gap-4 p-4 md:gap-5 md:p-5">
         <RoomDetails option={option} attributeSchema={attributeSchema} hidePhotos />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <GuestCapacityRules capacity={option.child.capacity} />
           <RoomPrice option={option} mode={mode} state={state} />
         </div>

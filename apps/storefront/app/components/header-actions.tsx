@@ -12,13 +12,16 @@ import { ContentReportDialog } from '~/features/content-reports/components/conte
 import { FavoriteHeartButton } from '~/features/favorites/components/favorite-heart-button';
 import { useHeaderActionsController } from '~/hooks/use-header-actions-controller';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { cn } from '@booking/ui/lib/utils';
 
 export function HeaderActions({
   title,
   favorite,
+  inverted = false,
 }: {
   title: string;
   favorite: { kind: FavoriteTargetKind; id: string };
+  inverted?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const { copied, copyLink, reportOpen, setReportOpen } = useHeaderActionsController();
@@ -29,7 +32,11 @@ export function HeaderActions({
         kind={favorite.kind}
         id={favorite.id}
         title={title}
-        className="size-11"
+        className={cn(
+          'size-11',
+          inverted && 'text-background hover:bg-background/10 hover:text-background',
+        )}
+        iconClassName={inverted ? 'text-background' : undefined}
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -37,7 +44,10 @@ export function HeaderActions({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-11"
+            className={cn(
+              'size-11',
+              inverted && 'text-background hover:bg-background/10 hover:text-background',
+            )}
             aria-label={t('group.moreOptions')}
           >
             <EllipsisVertical />

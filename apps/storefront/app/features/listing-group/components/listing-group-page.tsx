@@ -1,6 +1,6 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { MapPin } from 'lucide-react';
-import { useOutletContext } from 'react-router';
+import { useOutletContext, useSearchParams } from 'react-router';
 import { DetailPageLayout } from '~/components/detail-page-layout';
 import { DetailPriceCard } from '~/components/detail-price-card';
 import { ListingRatingSummary } from '~/components/listing-rating-summary';
@@ -21,6 +21,9 @@ import { RoomOptionsSection } from './room-options-section';
 import { ListingGallery } from '~/components/listing-gallery';
 import type { ListingGroupData } from '~/features/listing-group/lib/listing-group-types';
 import { minimumRoomPrice } from '~/features/listing-group/lib/room-attributes';
+import { MobileDetailHeader } from '~/components/mobile-detail-header';
+import { MobileDetailSummary } from '~/components/mobile-detail-summary';
+import { catalogReturnHref } from '~/features/search/lib/catalog-return-href';
 
 /**
  * A listing group ("studio") and the rooms bookable inside it.
@@ -33,6 +36,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   const { listingTypes } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
+  const [searchParams] = useSearchParams();
   const location = formatListingLocation(group, 'full');
   const trust = group.trust;
   const minimumPrice = minimumRoomPrice(
@@ -54,6 +58,13 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           locations={locations}
           variant="bar"
           typeChangeBehavior="navigate-to-catalog"
+        />
+      }
+      mobileHeader={
+        <MobileDetailHeader
+          backHref={catalogReturnHref(locale, group.listingTypeSlug, searchParams)}
+          title={group.title}
+          favorite={{ kind: 'group', id: group.id }}
         />
       }
       header={
@@ -84,6 +95,16 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
         </header>
       }
       gallery={<ListingGallery photos={group.photos} title={group.title} />}
+      mobileSummary={
+        <MobileDetailSummary
+          title={group.title}
+          location={location}
+          mapsHref={mapsHref}
+          ratingAvg={group.ratingAvg}
+          reviewCount={group.reviewCount}
+          completedBookings={group.trust?.completedBookings}
+        />
+      }
       main={
         <>
           <SectionCard aria-labelledby="introduction-title">
@@ -96,8 +117,8 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           <AmenitiesSection amenities={group.amenities} />
         </>
       }
-      aside={
-        <>
+      booking={
+        <div className="max-md:hidden">
           <DetailPriceCard>
             <p className="text-sm text-muted-foreground">
               {t('fromPriceShort')}{' '}
@@ -116,9 +137,10 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
               <a href="#room-options">{t('group.viewRooms')}</a>
             </Button>
           </DetailPriceCard>
-          <ProviderCard trust={trust} />
-        </>
+        </div>
       }
+      mobileBooking={false}
+      provider={<ProviderCard trust={trust} />}
       footerSections={
         <>
           <RoomOptionsSection

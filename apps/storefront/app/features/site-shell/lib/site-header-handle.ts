@@ -9,7 +9,20 @@
  */
 export interface SiteHeaderRouteHandle {
   overlayHeader?: boolean;
+  /** Keep the compact mobile header but omit its hamburger trigger. */
+  hideMobileMenuTrigger?: boolean;
+  /** A page-owned app bar below `md`; the shared tenant chrome stays unchanged above it. */
+  mobileChrome?: 'search' | 'detail';
 }
 
 /** Export this as a route module's `handle` to float the header over its hero. */
 export const OVERLAY_HEADER_HANDLE: SiteHeaderRouteHandle = { overlayHeader: true };
+
+export const HOME_HEADER_HANDLE: SiteHeaderRouteHandle = {
+  overlayHeader: true,
+  hideMobileMenuTrigger: true,
+};
+
+export const SEARCH_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = { mobileChrome: 'search' };
+
+export const DETAIL_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = { mobileChrome: 'detail' };

@@ -29,6 +29,7 @@ import {
   type CatalogSortItem,
   useCatalogPageController,
 } from '~/features/catalog/hooks/use-catalog-page-controller';
+import { MobileCatalogPage } from './mobile-catalog-page';
 
 export interface CatalogPageProps {
   loaderData: ServerDataFrom<typeof loadCatalogRoute>;
@@ -49,102 +50,114 @@ export function CatalogPage({ loaderData, params }: CatalogPageProps) {
     });
 
   return (
-    // A plain <div>: root.tsx already wraps the outlet in the page's one <main>.
-    <div className="bg-muted/20 pb-20 font-studio">
-      <SearchForm
-        // SearchForm owns uncontrolled inputs. Remount from the complete URL so
-        // browser history and query-only navigations cannot leave stale values.
-        key={searchFormKey}
+    // Plain divs: root.tsx already wraps the outlet in the page's one <main>.
+    <>
+      <MobileCatalogPage
+        loaderData={loaderData}
+        params={params}
         listingTypes={listingTypes}
-        currentType={params.typeSlug}
-        initialState={state}
-        locations={search.locations}
-        variant="bar"
-        typeChangeBehavior="navigate-to-catalog"
+        pending={pending}
+        booleanFacetKeys={booleanFacetKeys}
+        searchFormKey={searchFormKey}
+        sortItems={sortItems}
+        resultContext={resultContext}
       />
+      <div className="hidden bg-muted/20 pb-20 font-studio md:block">
+        <SearchForm
+          // SearchForm owns uncontrolled inputs. Remount from the complete URL so
+          // browser history and query-only navigations cannot leave stale values.
+          key={searchFormKey}
+          listingTypes={listingTypes}
+          currentType={params.typeSlug}
+          initialState={state}
+          locations={search.locations}
+          variant="bar"
+          typeChangeBehavior="navigate-to-catalog"
+        />
 
-      <div className="mx-auto grid max-w-292.5 gap-8 px-4 py-8 lg:grid-cols-[270px_minmax(0,1fr)] lg:px-0">
-        <aside className="hidden lg:block">
-          <FilterPanel state={state} facets={search.facets} booleanFacetKeys={booleanFacetKeys} />
-        </aside>
+        <div className="mx-auto grid max-w-292.5 gap-8 px-4 py-8 lg:grid-cols-[270px_minmax(0,1fr)] lg:px-0">
+          <aside className="hidden lg:block">
+            <FilterPanel state={state} facets={search.facets} booleanFacetKeys={booleanFacetKeys} />
+          </aside>
 
-        <section aria-labelledby="search-results-title" aria-busy={pending} className="min-w-0">
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <h1 id="search-results-title" className="text-2xl font-semibold text-foreground">
-                {t('resultsTitle', { name: type.name })}
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t('resultsCount', { count: search.total })}
-              </p>
+          <section aria-labelledby="search-results-title" aria-busy={pending} className="min-w-0">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <h1 id="search-results-title" className="text-2xl font-semibold text-foreground">
+                  {t('resultsTitle', { name: type.name })}
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {t('resultsCount', { count: search.total })}
+                </p>
+              </div>
+              <Drawer>
+                <DrawerTrigger asChild>
+                  <Button size="control" variant="outline" className="lg:hidden">
+                    <SlidersHorizontal data-icon="inline-start" /> {t('filters.open')}
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="max-h-[92vh]">
+                  <DrawerHeader>
+                    <DrawerTitle>{t('filters.drawerTitle')}</DrawerTitle>
+                    <DrawerDescription>{t('filters.drawerDescription')}</DrawerDescription>
+                  </DrawerHeader>
+                  <div className="overflow-y-auto px-4 pb-8">
+                    <FilterPanel
+                      state={state}
+                      facets={search.facets}
+                      booleanFacetKeys={booleanFacetKeys}
+                    />
+                  </div>
+                </DrawerContent>
+              </Drawer>
             </div>
-            <Drawer>
-              <DrawerTrigger asChild>
-                <Button size="control" variant="outline" className="lg:hidden">
-                  <SlidersHorizontal data-icon="inline-start" /> {t('filters.open')}
+
+            <SortBar items={sortItems} />
+
+            {pending ? (
+              <div
+                className="flex flex-col gap-6"
+                role="status"
+                aria-live="polite"
+                aria-busy="true"
+                aria-label={t('common:loading')}
+              >
+                {Array.from({ length: 4 }, (_, index) => (
+                  <CatalogResultSkeleton key={index} />
+                ))}
+              </div>
+            ) : search.items.length === 0 ? (
+              <Empty className="border bg-background py-20">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <SlidersHorizontal />
+                  </EmptyMedia>
+                  <EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+                  <EmptyDescription>{t('emptyDescription')}</EmptyDescription>
+                </EmptyHeader>
+                <Button asChild variant="outline">
+                  <Link to="?">{t('clearFilters')}</Link>
                 </Button>
-              </DrawerTrigger>
-              <DrawerContent className="max-h-[92vh]">
-                <DrawerHeader>
-                  <DrawerTitle>{t('filters.drawerTitle')}</DrawerTitle>
-                  <DrawerDescription>{t('filters.drawerDescription')}</DrawerDescription>
-                </DrawerHeader>
-                <div className="overflow-y-auto px-4 pb-8">
-                  <FilterPanel
-                    state={state}
-                    facets={search.facets}
-                    booleanFacetKeys={booleanFacetKeys}
+              </Empty>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {search.items.map((listing) => (
+                  <FavoriteSearchResultCard
+                    key={`${listing.kind}:${listing.id}`}
+                    listing={listing}
+                    context={resultContext}
                   />
-                </div>
-              </DrawerContent>
-            </Drawer>
-          </div>
+                ))}
+              </div>
+            )}
 
-          <SortBar items={sortItems} />
-
-          {pending ? (
-            <div
-              className="flex flex-col gap-6"
-              role="status"
-              aria-live="polite"
-              aria-busy="true"
-              aria-label={t('common:loading')}
-            >
-              {Array.from({ length: 4 }, (_, index) => (
-                <CatalogResultSkeleton key={index} />
-              ))}
-            </div>
-          ) : search.items.length === 0 ? (
-            <Empty className="border bg-background py-20">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <SlidersHorizontal />
-                </EmptyMedia>
-                <EmptyTitle>{t('emptyTitle')}</EmptyTitle>
-                <EmptyDescription>{t('emptyDescription')}</EmptyDescription>
-              </EmptyHeader>
-              <Button asChild variant="outline">
-                <Link to="?">{t('clearFilters')}</Link>
-              </Button>
-            </Empty>
-          ) : (
-            <div className="flex flex-col gap-6">
-              {search.items.map((listing) => (
-                <FavoriteSearchResultCard
-                  key={`${listing.kind}:${listing.id}`}
-                  listing={listing}
-                  context={resultContext}
-                />
-              ))}
-            </div>
-          )}
-
-          {!pending && search.totalPages > 1 ? (
-            <CatalogPagination currentPage={search.page} totalPages={search.totalPages} />
-          ) : null}
-        </section>
+            {!pending && search.totalPages > 1 ? (
+              <CatalogPagination currentPage={search.page} totalPages={search.totalPages} />
+            ) : null}
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

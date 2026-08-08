@@ -46,7 +46,11 @@ export function PackageTable({
   );
 
   return (
-    <SectionCard id="packages" aria-labelledby="packages-title" className="scroll-mt-28">
+    <SectionCard
+      id="packages"
+      aria-labelledby="packages-title"
+      className="scroll-mt-20 md:scroll-mt-28"
+    >
       <h2 id="packages-title" className="text-base font-semibold">
         {t('packages.servicePackages')}
       </h2>
@@ -97,7 +101,7 @@ export function PackageTable({
             </table>
           </div>
 
-          <div className="mt-5 grid gap-4 xl:hidden">
+          <div className="mt-4 grid gap-3 md:mt-5 md:gap-4 xl:hidden">
             {packages.map((item) => (
               <PackageCard
                 key={item.id}
@@ -151,7 +155,7 @@ function PackageCard(props: PackageProps) {
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-lg border bg-card',
+        'overflow-hidden rounded-(--sf-surface-radius) border bg-card shadow-(--sf-surface-shadow)',
         props.selected && 'border-primary bg-primary/5',
       )}
     >
@@ -160,13 +164,13 @@ function PackageCard(props: PackageProps) {
         title={props.item.name}
         onOpenPhoto={(index, trigger) => props.onOpenMedia(props.item.id, index, trigger)}
       />
-      <div className="grid gap-5 p-5 sm:grid-cols-2">
-        <div className="sm:col-span-2">
+      <div className="grid grid-cols-2 gap-4 p-4 md:gap-5 md:p-5">
+        <div className="col-span-2">
           <PackageSummary {...props} hidePhotos />
         </div>
         <GuestCapacityRules capacity={props.listing.capacity} />
         <PackagePrice item={props.item} />
-        <div className="sm:col-span-2">
+        <div className="col-span-2">
           <PackageChoice {...props} />
         </div>
       </div>

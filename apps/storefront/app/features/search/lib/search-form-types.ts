@@ -3,7 +3,7 @@ import type { StorefrontSearchState } from '~/features/search/lib/search-state';
 
 export type DateRange = { from: Date | undefined; to?: Date | undefined };
 export type LocationOption = string | { value: string; label: string };
-export type SearchFormVariant = 'hero' | 'bar';
+export type SearchFormVariant = 'hero' | 'bar' | 'mobile-sheet';
 export type TypeChangeBehavior = 'local' | 'navigate-to-catalog';
 
 export interface SearchFormOptions {
@@ -18,4 +18,5 @@ export interface SearchFormOptions {
 export interface SearchFormProps extends Omit<SearchFormOptions, 'locations'> {
   locations?: LocationOption[];
   variant: SearchFormVariant;
+  onSubmit?: () => void;
 }

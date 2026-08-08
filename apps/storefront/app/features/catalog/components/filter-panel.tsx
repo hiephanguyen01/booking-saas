@@ -38,16 +38,18 @@ export function FilterPanel({
   state,
   facets,
   booleanFacetKeys = [],
+  onSubmit,
 }: {
   state: StorefrontSearchState;
   facets: PublicCatalogFacet[];
   booleanFacetKeys?: string[];
+  onSubmit?: () => void;
 }) {
   const { t } = useTranslation(NsI18n.Catalog);
   const { facetModels, formKey } = useFilterPanelController({ facets, booleanFacetKeys });
 
   return (
-    <Form key={formKey} method="get" className="flex flex-col gap-6">
+    <Form key={formKey} method="get" onSubmit={onSubmit} className="flex flex-col gap-6">
       <input type="hidden" name="q" value={state.q} />
       {state.mode !== 'none' ? <input type="hidden" name="mode" value={state.mode} /> : null}
       <input type="hidden" name="guests" value={state.guests} />

@@ -7,6 +7,15 @@ export const viCatalog = {
   completedBookings: '{count} đã đặt',
   noReviews: 'Chưa có đánh giá',
   reviewCount: '{count} đánh giá',
+  mobile: {
+    backHome: 'Về trang chủ',
+    edit: 'Chỉnh sửa',
+    editTitle: 'Chỉnh sửa tìm kiếm',
+    editDescription: 'Cập nhật từ khóa, địa điểm, ngày và số khách.',
+    anyLocation: 'Mọi địa điểm',
+    oneGuest: '1 khách',
+    guestCount: '{count} khách',
+  },
   provider: {
     metaTitle: 'Nhà cung cấp',
     metaDescriptionFallback: '{name} trên BookingOS',

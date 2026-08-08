@@ -1,5 +1,6 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
+import { cn } from '@booking/ui/lib/utils';
 import {
   Sheet,
   SheetClose,
@@ -23,6 +24,7 @@ export function SiteHeaderMobileMenu({
   currentUser,
   overlay,
   redirectTo,
+  hideMenuTrigger = false,
 }: {
   brand: ReactNode;
   /** The header's own controls, rendered to the left of the menu trigger. */
@@ -32,6 +34,7 @@ export function SiteHeaderMobileMenu({
   currentUser: CurrentUser | null;
   overlay: boolean;
   redirectTo: string;
+  hideMenuTrigger?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Navigation);
   const { accountItems, catalogPath, localeFetcher, localeRedirectTo, nextLocale, paths } =
@@ -52,11 +55,12 @@ export function SiteHeaderMobileMenu({
               type="button"
               variant="ghost"
               size="icon"
-              className={
-                overlay
-                  ? 'size-11 border border-white/40 bg-white/12 text-white backdrop-blur-sm hover:bg-white/25 hover:text-white'
-                  : 'size-11'
-              }
+              className={cn(
+                'size-11',
+                overlay &&
+                  'border border-white/40 bg-white/12 text-white backdrop-blur-sm hover:bg-white/25 hover:text-white',
+                hideMenuTrigger && 'max-md:hidden',
+              )}
               aria-label={t('openMenu')}
             >
               <Menu aria-hidden="true" />

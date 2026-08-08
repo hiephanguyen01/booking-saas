@@ -10,6 +10,15 @@ export const enCatalog = {
   completedBookings: '{count} bookings',
   noReviews: 'No reviews yet',
   reviewCount: '{count} reviews',
+  mobile: {
+    backHome: 'Back to home',
+    edit: 'Edit',
+    editTitle: 'Edit search',
+    editDescription: 'Update the keyword, location, dates, and guest count.',
+    anyLocation: 'Any location',
+    oneGuest: '1 guest',
+    guestCount: '{count} guests',
+  },
   provider: {
     metaTitle: 'Provider',
     metaDescriptionFallback: '{name} on BookingOS',
