@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMatches } from 'react-router';
 import type { StorefrontContext } from '~/features/root/lib/storefront-context';
 import type { TenantRootLoaderPayload } from '~/features/root/server/root-loader.server';
+import type { SiteHeaderRouteHandle } from '~/features/site-shell/lib/site-header-handle';
 
 export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayload) {
   const { tenant, listingTypes, locale, canonical, cspNonce, currentUser, accountMenuSummary } =
@@ -10,6 +11,14 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
   // later revalidates and receives a nonce generated for a data request.
   const [documentNonce] = useState(cspNonce);
   const matches = useMatches();
+  const mobileChrome = matches.reduce<SiteHeaderRouteHandle['mobileChrome']>(
+    (active, match) => (match.handle as SiteHeaderRouteHandle | undefined)?.mobileChrome ?? active,
+    undefined,
+  );
+  const hideMobileMenuTrigger = matches.some(
+    (match) =>
+      (match.handle as SiteHeaderRouteHandle | undefined)?.hideMobileMenuTrigger === true,
+  );
   const isStandalone = matches.some(
     (match) => (match.handle as { standalone?: boolean } | undefined)?.standalone,
   );
@@ -41,9 +50,11 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
     currentUser,
     documentNonce,
     hideBottomNav,
+    hideMobileMenuTrigger,
     isStandalone,
     listingTypes,
     locale,
+    mobileChrome,
     outletContext,
     tenant,
   };

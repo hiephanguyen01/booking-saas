@@ -5,6 +5,7 @@ import { Expand, ImageIcon } from 'lucide-react';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { useListingGalleryController } from '~/hooks/use-listing-gallery-controller';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { cn } from '@booking/ui/lib/utils';
 
 const TILE_COUNT = 6;
 
@@ -22,10 +23,65 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
     visiblePhotos,
   } = useListingGalleryController(photos);
   const mediaItems = usePhotoMediaItems(photos, title);
+  const activePhoto = photos[activeIndex] ?? photos[0];
 
   return (
     <>
-      <div className="grid h-64 overflow-hidden bg-muted rounded-(--sf-image-radius) md:h-85 md:grid-cols-[460px_1fr] md:gap-3">
+      <div className="bg-muted md:hidden">
+        <button
+          type="button"
+          onClick={(event) => showPhoto(activeIndex, event.currentTarget)}
+          disabled={!activePhoto}
+          className="group relative block h-60 w-full overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          aria-label={
+            activePhoto ? t('group.viewMainPhoto', { title }) : t('group.noPhotoOf', { title })
+          }
+        >
+          {activePhoto ? (
+            <Image
+              src={activePhoto}
+              alt={title}
+              width={780}
+              height={480}
+              priority
+              className="size-full object-cover object-top"
+            />
+          ) : (
+            <GalleryPlaceholder title={title} />
+          )}
+          {activePhoto ? (
+            <span className="absolute right-3 bottom-3 rounded-full bg-foreground/80 px-2.5 py-1 text-[11px] font-semibold text-background backdrop-blur-sm">
+              {t('group.photoCounter', { current: activeIndex + 1, total: photos.length })}
+            </span>
+          ) : null}
+        </button>
+        {photos.length > 1 ? (
+          <div className="sf-scroll-x flex gap-2 overflow-x-auto bg-card px-3 py-3">
+            {photos.slice(0, 12).map((photo, index) => (
+              <button
+                type="button"
+                key={`${photo}-${index}`}
+                onClick={() => setActiveIndex(index)}
+                aria-label={t('group.viewPhoto', { index: index + 1, title })}
+                aria-current={activeIndex === index ? 'true' : undefined}
+                className={cn(
+                  'relative h-14 w-18 shrink-0 overflow-hidden rounded-(--sf-image-radius) border-2 border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  activeIndex === index && 'border-primary',
+                )}
+              >
+                <Image
+                  src={photo}
+                  alt=""
+                  width={144}
+                  height={112}
+                  className="size-full object-cover object-top"
+                />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <div className="hidden h-64 overflow-hidden bg-muted rounded-(--sf-image-radius) md:grid md:h-85 md:grid-cols-[460px_1fr] md:gap-3">
         <button
           type="button"
           onClick={(event) => showPhoto(0, event.currentTarget)}

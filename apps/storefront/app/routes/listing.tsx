@@ -12,6 +12,9 @@ import {
 import { PackageListingPage } from '~/features/packages/components/package-listing-page';
 import { jsonLd } from '~/lib/seo';
 import type { StorefrontContext } from '~/root';
+import { DETAIL_MOBILE_CHROME_HANDLE } from '~/features/site-shell/lib/site-header-handle';
+
+export const handle = DETAIL_MOBILE_CHROME_HANDLE;
 
 export async function action({ request, params }: Route.ActionArgs) {
   return handleListingAction(request, params.listingSlug);

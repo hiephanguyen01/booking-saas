@@ -12,6 +12,9 @@ import {
 } from '~/features/listing-group/server/listing-group-route.server';
 import { jsonLd } from '~/lib/seo';
 import type { StorefrontContext } from '~/root';
+import { DETAIL_MOBILE_CHROME_HANDLE } from '~/features/site-shell/lib/site-header-handle';
+
+export const handle = DETAIL_MOBILE_CHROME_HANDLE;
 
 export function action({ request, params }: Route.ActionArgs) {
   return handleListingGroupAction(request, params.groupSlug);

@@ -32,12 +32,16 @@ export function SiteHeader({
   locale,
   currentUser = null,
   accountMenuSummary = null,
+  hideBelowMd = false,
+  hideMobileMenuTrigger = false,
 }: {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
   currentUser?: CurrentUser | null;
   accountMenuSummary?: AccountMenuSummary | null;
+  hideBelowMd?: boolean;
+  hideMobileMenuTrigger?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Navigation);
   const location = useLocation();
@@ -48,6 +52,7 @@ export function SiteHeader({
     <header
       className={cn(
         'z-40 font-studio',
+        hideBelowMd && 'max-md:hidden',
         overlay
           ? // Out of flow, so the page's artwork starts at the top of the document
             // and the bar sits *on* it. It scrolls away with the hero rather than
@@ -59,7 +64,7 @@ export function SiteHeader({
     >
       <div className="mx-auto w-full max-w-292.5 px-4 sm:px-6 xl:px-0">
         <div className="hidden h-18 items-center justify-between lg:flex">
-          <BrandHomeLink locale={locale} tenant={tenant} overlay={overlay} />
+          <BrandHomeLink locale={locale} tenant={tenant} />
 
           <nav aria-label={t('mainNavigation')} className="flex items-center gap-4">
             <Button
@@ -119,7 +124,7 @@ export function SiteHeader({
         </div>
 
         <SiteHeaderMobileMenu
-          brand={<BrandHomeLink locale={locale} tenant={tenant} overlay={overlay} />}
+          brand={<BrandHomeLink locale={locale} tenant={tenant} />}
           actions={
             currentUser ? (
               <SiteHeaderAccountMenu
@@ -143,21 +148,14 @@ export function SiteHeader({
           currentUser={currentUser}
           overlay={overlay}
           redirectTo={redirectTo}
+          hideMenuTrigger={hideMobileMenuTrigger}
         />
       </div>
     </header>
   );
 }
 
-function BrandHomeLink({
-  locale,
-  tenant,
-  overlay,
-}: {
-  locale: Locale;
-  tenant: StorefrontTenant;
-  overlay: boolean;
-}) {
+function BrandHomeLink({ locale, tenant }: { locale: Locale; tenant: StorefrontTenant }) {
   const { t } = useTranslation([NsI18n.Navigation]);
   return (
     <Link

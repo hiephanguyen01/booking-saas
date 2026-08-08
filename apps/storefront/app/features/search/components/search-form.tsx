@@ -31,9 +31,11 @@ export function SearchForm({
   variant,
   onTypeChange,
   typeChangeBehavior,
+  onSubmit,
 }: SearchFormProps) {
   const { t } = useTranslation(NsI18n.Common);
   const isHero = variant === 'hero';
+  const isMobileSheet = variant === 'mobile-sheet';
   const formRef = useRef<HTMLFormElement>(null);
   const {
     action,
@@ -149,16 +151,21 @@ export function SearchForm({
       : null,
   ].filter((field) => field !== null);
 
-  if (isHero) {
+  if (isHero || isMobileSheet) {
     return (
       <Form
         ref={formRef}
         method="get"
         action={action}
+        onSubmit={onSubmit}
         aria-label={t('home.search')}
-        className={cn(PANEL_SURFACE, 'bg-card font-studio text-card-foreground')}
+        className={cn(
+          'bg-card font-studio text-card-foreground',
+          isHero && PANEL_SURFACE,
+          isMobileSheet && 'rounded-none',
+        )}
       >
-        {types.length ? (
+        {isHero && types.length ? (
           <CategoryPicker
             types={types}
             selectedType={selectedType}
@@ -167,7 +174,7 @@ export function SearchForm({
           />
         ) : null}
 
-        <div className="flex flex-col gap-3 p-4 sm:p-5">
+        <div className={cn('flex flex-col gap-3', isMobileSheet ? 'px-4 pb-8' : 'p-4 sm:p-5')}>
           {availableModes.length ? (
             <div className="flex flex-col items-start gap-2">
               {/* Only offer the day/hour toggle when the type actually supports both.
@@ -192,13 +199,19 @@ export function SearchForm({
             mode={mode}
           />
 
-          <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:gap-3">
-            <div className="min-w-0 lg:flex-1">{queryField}</div>
-            <div className="min-w-0 lg:flex-1">{locationField}</div>
+          <div
+            className={cn(
+              'flex flex-col gap-2.5',
+              !isMobileSheet && 'lg:flex-row lg:items-start lg:gap-3',
+            )}
+          >
+            <div className={cn('min-w-0', !isMobileSheet && 'lg:flex-1')}>{queryField}</div>
+            <div className={cn('min-w-0', !isMobileSheet && 'lg:flex-1')}>{locationField}</div>
             {compactFields.length ? (
               <div
                 className={cn(
-                  'grid gap-2.5 lg:flex-1 lg:auto-cols-fr lg:grid-flow-col lg:gap-3',
+                  'grid gap-2.5',
+                  !isMobileSheet && 'lg:flex-1 lg:auto-cols-fr lg:grid-flow-col lg:gap-3',
                   compactFields.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
                 )}
               >
@@ -218,7 +231,10 @@ export function SearchForm({
           <Button
             type="submit"
             size="control"
-            className="mt-0.5 w-full font-bold lg:w-auto lg:min-w-44 lg:self-end"
+            className={cn(
+              'mt-0.5 w-full font-bold',
+              !isMobileSheet && 'lg:w-auto lg:min-w-44 lg:self-end',
+            )}
             disabled={!canSubmit}
           >
             {t('home.search')}
@@ -233,6 +249,7 @@ export function SearchForm({
       ref={formRef}
       method="get"
       action={action}
+      onSubmit={onSubmit}
       aria-label={t('home.search')}
       className="bg-foreground font-studio text-background"
     >

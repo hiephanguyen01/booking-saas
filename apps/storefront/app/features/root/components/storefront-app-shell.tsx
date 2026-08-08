@@ -34,9 +34,11 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
     currentUser,
     documentNonce,
     hideBottomNav,
+    hideMobileMenuTrigger,
     isStandalone,
     listingTypes,
     locale,
+    mobileChrome,
     outletContext,
     tenant,
   } = useStorefrontAppShellController(loaderData);
@@ -59,11 +61,13 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
             locale={locale}
             currentUser={currentUser}
             accountMenuSummary={accountMenuSummary}
+            hideBelowMd={Boolean(mobileChrome)}
+            hideMobileMenuTrigger={hideMobileMenuTrigger}
           />
           <main className="flex-1">
             <Outlet context={outletContext} />
           </main>
-          <SiteFooter tenant={tenant} />
+          <SiteFooter tenant={tenant} hideBelowMd={Boolean(mobileChrome)} />
           {showBottomNav ? (
             <>
               <div

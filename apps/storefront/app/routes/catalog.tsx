@@ -3,6 +3,9 @@ import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-erro
 import { CatalogPage } from '~/features/catalog/components/catalog-page';
 import { buildCatalogMeta } from '~/features/catalog/lib/catalog-meta';
 import { loadCatalogRoute } from '~/features/catalog/server/catalog-route.server';
+import { SEARCH_MOBILE_CHROME_HANDLE } from '~/features/site-shell/lib/site-header-handle';
+
+export const handle = SEARCH_MOBILE_CHROME_HANDLE;
 
 export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
   return buildCatalogMeta(loaderData, params.typeSlug);

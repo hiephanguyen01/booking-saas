@@ -1,7 +1,7 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { parseSearchState } from '~/features/search/lib/search-state';
+import { parseSearchState, type StorefrontSearchState } from '~/features/search/lib/search-state';
 
 const COMMON_SEARCH_FIELDS = ['q', 'location', 'guests', 'quantity'] as const;
 
@@ -25,7 +25,15 @@ export function buildTypeChangeCatalogHref(
     }
   }
 
-  const state = parseSearchState(current);
+  return buildTypeChangeCatalogHrefFromState(locale, parseSearchState(current), targetType);
+}
+
+/** State-based sibling used by mobile category rails that are links rather than form controls. */
+export function buildTypeChangeCatalogHrefFromState(
+  locale: Locale,
+  state: StorefrontSearchState,
+  targetType: PublicListingTypeResponse,
+): string {
   const next = new URLSearchParams();
   if (state.q) next.set('q', state.q);
   if (state.location) next.set('location', state.location);

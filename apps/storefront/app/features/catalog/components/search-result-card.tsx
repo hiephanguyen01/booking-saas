@@ -1,4 +1,4 @@
-import { Heart, MapPin } from 'lucide-react';
+import { Heart, Images, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import { Image } from '@booking/ui/components/media/image';
 import { RatingStars, RatingSummary } from '~/components/rating-stars';
@@ -45,7 +45,7 @@ export function SearchResultCard({
     // resolve its `h-full` against and sized itself from its own aspect ratio
     // instead. A 4:3 source happened to land on this card's 184px, which is why
     // only portrait uploads broke out of the card.
-    <article className="group relative flex min-h-30 overflow-hidden bg-card transition-[border-color,box-shadow] rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) hover:border-primary/50 md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:grid-rows-1 md:gap-x-1.5">
+    <article className="group relative flex min-h-32 gap-3 overflow-hidden bg-card p-2.5 transition-[border-color,box-shadow] rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) hover:border-primary/50 md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:grid-rows-1 md:gap-x-1.5 md:p-0">
       {favoriteControl ? (
         <button
           type="button"
@@ -54,7 +54,7 @@ export function SearchResultCard({
           onClick={favoriteControl.onToggle}
           // `after:-inset-1.5` extends the 32px chip to a 44px tap target while
           // the visible circle keeps the size the card layout is built around.
-          className="absolute top-3 right-3 z-10 flex size-8 items-center justify-center rounded-full bg-background text-primary shadow-md transition-transform after:absolute after:-inset-1.5 after:content-[''] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:top-6 md:right-auto md:left-[310px] md:size-10"
+          className="absolute top-2.5 right-2.5 z-10 flex size-8 items-center justify-center rounded-full bg-background/95 text-primary shadow-md transition-transform after:absolute after:-inset-1.5 after:content-[''] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:top-6 md:right-auto md:left-[310px] md:size-10"
         >
           <Heart
             className="size-4 md:size-5"
@@ -67,7 +67,7 @@ export function SearchResultCard({
         // No height below `md`: as a flex child the photo stretches to the row,
         // which is both a definite height for the `h-full` image inside and a
         // photo that is always exactly as tall as the card beside it.
-        className="relative w-28 shrink-0 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:h-full md:w-auto"
+        className="relative w-28 shrink-0 overflow-hidden rounded-[calc(var(--sf-surface-radius)-0.2rem)] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:h-full md:w-auto md:rounded-none"
       >
         {photos[0] ? (
           <Image
@@ -79,6 +79,12 @@ export function SearchResultCard({
           />
         ) : null}
         {discountPercent !== null ? <DiscountBadge percent={discountPercent} /> : null}
+        {listing.photos.length ? (
+          <span className="absolute right-1.5 bottom-1.5 flex items-center gap-1 rounded-full bg-foreground/80 px-2 py-1 text-[10px] font-medium text-background backdrop-blur-sm md:hidden">
+            <Images className="size-3" aria-hidden="true" />
+            {listing.photos.length}
+          </span>
+        ) : null}
       </Link>
 
       <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
@@ -97,13 +103,13 @@ export function SearchResultCard({
         ))}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1 p-3 md:justify-center md:gap-3 md:px-5 md:py-4 md:pr-6 md:pl-[18px]">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 py-0.5 pr-0.5 md:justify-center md:gap-3 md:px-5 md:py-4 md:pr-6 md:pl-[18px]">
         <div className="min-w-0">
           <Link
             to={href}
             // `pr-9` keeps the title clear of the favourite chip, which sits over
             // the text column on the row layout instead of over the photo.
-            className="line-clamp-2 pr-9 text-base leading-5 font-semibold text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:line-clamp-1 md:pr-0 md:text-lg md:leading-7"
+            className="line-clamp-2 pr-9 text-[13px] leading-[18px] font-semibold text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:line-clamp-1 md:pr-0 md:text-lg md:leading-7"
           >
             {listing.title}
           </Link>
@@ -123,17 +129,20 @@ export function SearchResultCard({
               // "Chưa có đánh giá" is an absence, and on the row it competes
               // with the price for a column that truncates it to "Chưa có đánh
               // g…". The empty half-line says the same thing.
-              <span className="truncate max-md:hidden">{t('catalog:noReviews')}</span>
+              <span className="truncate text-[11px] md:text-sm">{t('catalog:noReviews')}</span>
             ) : (
               <>
                 <RatingSummary
                   rating={listing.ratingAvg}
                   count={listing.reviewCount}
-                  className="md:hidden"
+                  className="text-[11px] md:hidden"
                 />
                 <RatingStars rating={listing.ratingAvg} className="max-md:hidden" />
               </>
             )}
+            <span className="shrink-0 text-[10px] md:hidden">
+              {t('catalog:completedBookings', { count: listing.completedBookings })}
+            </span>
             <span className="shrink-0 text-right max-md:hidden">
               {t('catalog:completedBookings', { count: listing.completedBookings })}
             </span>

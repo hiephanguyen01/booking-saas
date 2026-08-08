@@ -1,12 +1,6 @@
 import { Link } from 'react-router';
 import { Mail, Phone } from 'lucide-react';
-import {
-  siFacebook,
-  siInstagram,
-  siTiktok,
-  siYoutube,
-  type SimpleIcon,
-} from 'simple-icons';
+import { siFacebook, siInstagram, siTiktok, siYoutube, type SimpleIcon } from 'simple-icons';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { cn } from '@booking/ui/lib/utils';
 import { storefrontPaths } from '~/constants/paths';
@@ -18,9 +12,11 @@ import { TenantBrand } from './tenant-brand';
 export function SiteFooter({
   tenant,
   className = 'mt-16',
+  hideBelowMd = false,
 }: {
   tenant: StorefrontTenant;
   className?: string;
+  hideBelowMd?: boolean;
 }) {
   const { t } = useTranslation([NsI18n.Common, NsI18n.Navigation, NsI18n.Legal]);
   const locale = useLocale();
@@ -39,6 +35,7 @@ export function SiteFooter({
         // the tab bar owns navigation, so this is the end of the document and it
         // should read as one.
         className,
+        hideBelowMd && 'max-md:hidden',
         'bg-card pb-6 font-studio text-foreground max-lg:border-t max-lg:border-border lg:bg-background',
       )}
     >
@@ -168,12 +165,7 @@ function SocialIcon({ network }: { network: SocialKey }) {
   const icon = SOCIAL_ICONS[network];
 
   return (
-    <svg
-      aria-hidden="true"
-      className="size-6"
-      fill={`#${icon.hex}`}
-      viewBox="0 0 24 24"
-    >
+    <svg aria-hidden="true" className="size-6" fill={`#${icon.hex}`} viewBox="0 0 24 24">
       <path d={icon.path} />
     </svg>
   );

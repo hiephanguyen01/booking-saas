@@ -26,15 +26,15 @@ function LoadingRegion({
 export function CatalogResultSkeleton() {
   return (
     <div
-      className="grid overflow-hidden rounded-lg border-[1.4px] border-border bg-card md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5"
+      className="flex min-h-32 gap-3 overflow-hidden rounded-lg border-[1.4px] border-border bg-card p-2.5 md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5 md:p-0"
       aria-hidden="true"
     >
-      <StorefrontSkeleton className="min-h-52 rounded-none md:min-h-0" />
+      <StorefrontSkeleton className="w-28 shrink-0 rounded-md md:w-auto md:min-h-0 md:rounded-none" />
       <div className="hidden min-h-0 grid-rows-2 gap-1.5 bg-muted md:grid">
         <StorefrontSkeleton className="min-h-0 rounded-none" />
         <StorefrontSkeleton className="min-h-0 rounded-none" />
       </div>
-      <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4 md:pr-6 md:pl-[18px]">
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 py-1 md:gap-3 md:px-5 md:py-4 md:pr-6 md:pl-[18px]">
         <div className="flex flex-col gap-2">
           <StorefrontSkeleton className="h-7 w-3/5" />
           <StorefrontSkeleton className="h-5 w-2/5" />

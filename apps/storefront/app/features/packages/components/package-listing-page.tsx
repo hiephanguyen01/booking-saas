@@ -1,7 +1,7 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { MapPin } from 'lucide-react';
 import { Suspense } from 'react';
-import { Await, useOutletContext } from 'react-router';
+import { Await, useOutletContext, useSearchParams } from 'react-router';
 import { DetailPageLayout } from '~/components/detail-page-layout';
 import { DetailPriceCard } from '~/components/detail-price-card';
 import { ListingRatingSummary } from '~/components/listing-rating-summary';
@@ -24,6 +24,9 @@ import { listingPackages, minimumPackagePrice } from '~/features/packages/lib/pa
 import { PackageTable } from './package-table';
 import { RelatedListings } from '~/components/related-listings';
 import { usePackageBookingController } from '~/features/packages/hooks/use-package-booking-controller';
+import { MobileDetailHeader } from '~/components/mobile-detail-header';
+import { MobileDetailSummary } from '~/components/mobile-detail-summary';
+import { catalogReturnHref } from '~/features/search/lib/catalog-return-href';
 
 export function PackageListingPage({
   loaderData,
@@ -33,6 +36,7 @@ export function PackageListingPage({
   const { listing, locations, auxiliaryData, bookingToday } = loaderData;
   const { listingTypes, locale } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
+  const [searchParams] = useSearchParams();
   const packages = listingPackages(listing);
   const {
     bookingOpen,
@@ -54,6 +58,13 @@ export function PackageListingPage({
             currentType={listing.listingTypeSlug}
             locations={locations}
             today={bookingToday}
+          />
+        }
+        mobileHeader={
+          <MobileDetailHeader
+            backHref={catalogReturnHref(locale, listing.listingTypeSlug, searchParams)}
+            title={listing.title}
+            favorite={{ kind: 'listing', id: listing.id }}
           />
         }
         header={
@@ -90,6 +101,15 @@ export function PackageListingPage({
             title={selectedPackage ? `${listing.title} — ${selectedPackage.name}` : listing.title}
           />
         }
+        mobileSummary={
+          <MobileDetailSummary
+            title={listing.title}
+            location={location}
+            ratingAvg={listing.ratingAvg}
+            reviewCount={listing.reviewCount}
+            completedBookings={listing.trust.completedBookings}
+          />
+        }
         main={
           <>
             <SectionCard aria-labelledby="packages-introduction-title">
@@ -106,8 +126,8 @@ export function PackageListingPage({
             />
           </>
         }
-        aside={
-          <>
+        booking={
+          <div className="max-md:hidden">
             <DetailPriceCard>
               {minimumPrice ? (
                 <p className="text-sm text-muted-foreground">
@@ -122,9 +142,10 @@ export function PackageListingPage({
                 <a href="#packages">{t('packages.viewPackages')}</a>
               </Button>
             </DetailPriceCard>
-            <ProviderCard trust={listing.trust} />
-          </>
+          </div>
         }
+        mobileBooking={false}
+        provider={<ProviderCard trust={listing.trust} />}
         footerSections={
           <>
             <PackageTable
