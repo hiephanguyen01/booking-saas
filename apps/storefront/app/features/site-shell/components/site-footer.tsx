@@ -35,17 +35,15 @@ export function SiteFooter({
   return (
     <footer
       className={cn(
-        // Temporarily off on phones and tablets: below `lg` the bottom tab bar
-        // is the navigation, and a four-column sitemap under it is a second one
-        // nobody scrolls to. `lg` — not `md` — because that is exactly where
-        // `SiteBottomNav` hands navigation back to the header.
-        'max-lg:hidden',
+        // On a phone it is a card-coloured band rather than more page: below `lg`
+        // the tab bar owns navigation, so this is the end of the document and it
+        // should read as one.
         className,
-        'bg-background pb-6 font-studio text-foreground',
+        'bg-card pb-6 font-studio text-foreground max-lg:border-t max-lg:border-border lg:bg-background',
       )}
     >
-      <div className="mx-auto w-full max-w-292.5 px-4 pt-8 sm:px-6 xl:pb-0 xl:pt-10 xl:px-0">
-        <div className="grid gap-10 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mx-auto w-full max-w-292.5 px-4 pt-8 sm:px-6 xl:px-0 xl:pt-10 xl:pb-0">
+        <div className="grid gap-8 sm:grid-cols-2 sm:gap-10 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <section aria-labelledby="footer-brand" className="flex flex-col items-start gap-4">
             <h2 id="footer-brand" className="sr-only">
               {tenant.name}
@@ -111,33 +109,45 @@ export function SiteFooter({
             ) : null}
           </section>
 
-          <FooterList
-            title={t('footer.aboutUs')}
-            items={[
-              { label: t('footer.aboutLinks.intro', { tenant: tenant.name }) },
-              { label: t('footer.aboutLinks.privacy'), href: storefrontPaths.legal(locale, 'privacy_policy') },
-              { label: t('footer.aboutLinks.terms'), href: storefrontPaths.legal(locale, 'customer_terms') },
-            ]}
-          />
-          <FooterList
-            title={t('footer.support')}
-            items={[
-              { label: t('footer.supportLinks.help') },
-              { label: t('footer.supportLinks.rules') },
-              ...(!contact?.phone && !contact?.email ? [{ label: t('footer.supportLinks.contact') }] : []),
-              {
-                label: t('legal:documentLabels.partner_terms'),
-                href: storefrontPaths.legal(locale, 'partner_terms'),
-              },
-              {
-                label: t('legal:documentLabels.affiliate_terms'),
-                href: storefrontPaths.legal(locale, 'affiliate_terms'),
-              },
-            ]}
-          />
+          {/* Side by side on a phone, then `contents` hands both back to the
+              parent grid so the desktop three-column rhythm is unchanged. */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:contents">
+            <FooterList
+              title={t('footer.aboutUs')}
+              items={[
+                { label: t('footer.aboutLinks.intro', { tenant: tenant.name }) },
+                {
+                  label: t('footer.aboutLinks.privacy'),
+                  href: storefrontPaths.legal(locale, 'privacy_policy'),
+                },
+                {
+                  label: t('footer.aboutLinks.terms'),
+                  href: storefrontPaths.legal(locale, 'customer_terms'),
+                },
+              ]}
+            />
+            <FooterList
+              title={t('footer.support')}
+              items={[
+                { label: t('footer.supportLinks.help') },
+                { label: t('footer.supportLinks.rules') },
+                ...(!contact?.phone && !contact?.email
+                  ? [{ label: t('footer.supportLinks.contact') }]
+                  : []),
+                {
+                  label: t('legal:documentLabels.partner_terms'),
+                  href: storefrontPaths.legal(locale, 'partner_terms'),
+                },
+                {
+                  label: t('legal:documentLabels.affiliate_terms'),
+                  href: storefrontPaths.legal(locale, 'affiliate_terms'),
+                },
+              ]}
+            />
+          </div>
         </div>
 
-        <div className="mt-10 flex min-h-14 items-end justify-center border-t border-border pt-5 xl:min-h-[70px]">
+        <div className="mt-8 flex min-h-14 items-end justify-center border-t border-border pt-5 xl:mt-10 xl:min-h-[70px]">
           <p className="text-center text-sm leading-5 text-muted-foreground">
             {t('footer.copyright')}
           </p>
@@ -180,7 +190,9 @@ function FooterList({
     // Links get `min-h-11` rather than the plain 20px line box they had, so a
     // thumb has something to hit; the static labels keep the tighter rhythm.
     <section className="flex flex-col items-start gap-1">
-      <h2 className="mb-1 text-base font-semibold uppercase leading-6">{title}</h2>
+      <h2 className="mb-1 text-sm leading-5 font-bold uppercase sm:text-base sm:leading-6">
+        {title}
+      </h2>
       {items.map((item) =>
         item.href ? (
           <Link

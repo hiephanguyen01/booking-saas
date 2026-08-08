@@ -21,7 +21,10 @@ export function DiscountBadge({
   return (
     <span
       className={cn(
-        'absolute top-6 left-0 flex h-10 w-18 items-center bg-brand-accent px-2 text-base font-semibold text-brand-accent-foreground',
+        // Pinned near the top corner and sized to the number it holds. It used to
+        // stand 40px tall and start 24px down, which on a 112px grid thumbnail
+        // covered a third of the photo.
+        'absolute top-2.5 left-0 flex h-6 w-14 items-center rounded-r-xs bg-brand-accent px-2 text-xs font-bold text-brand-accent-foreground sm:h-7 sm:w-16 sm:text-sm',
         '[clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]',
         className,
       )}

@@ -2,7 +2,13 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import type { HomeLocationKey } from '~/features/home/lib/home-listing-presentation';
 
-/** Location filter tabs for the home recommendation catalog. */
+/**
+ * Location filter tabs for the home recommendation catalog.
+ *
+ * A scrolling row of underlined labels with a hairline running the width of the
+ * section beneath it — the same shape the search card's listing-type tabs use, so
+ * the two rows of tabs on this page do not read as two different controls.
+ */
 export function LocationTabs({
   value,
   onValueChange,
@@ -22,17 +28,17 @@ export function LocationTabs({
     <Tabs
       value={value}
       onValueChange={(next) => onValueChange(next as HomeLocationKey)}
-      className="mt-2 min-w-0 gap-0"
+      className="min-w-0 gap-0 border-b border-border"
     >
       <TabsList
         variant="line"
-        className="h-13! w-full justify-start gap-0 overflow-x-auto rounded-none bg-transparent p-0"
+        className="sf-scroll-x h-10! w-full justify-start gap-0 rounded-none bg-transparent p-0"
       >
         {locations.map((loc) => (
           <TabsTrigger
             key={loc.key}
             value={loc.key}
-            className="h-13! flex-none rounded-none border-x-0 border-t-0 border-b-2 border-b-transparent px-4 py-4 text-sm leading-5 font-semibold text-muted-foreground shadow-none after:hidden data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-10"
+            className="h-10! flex-none rounded-none border-x-0 border-t-0 border-b-2 border-b-transparent px-3 py-2 text-xs leading-4 font-medium text-muted-foreground shadow-none after:hidden data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:font-bold data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5 sm:text-sm"
           >
             {loc.label}
           </TabsTrigger>

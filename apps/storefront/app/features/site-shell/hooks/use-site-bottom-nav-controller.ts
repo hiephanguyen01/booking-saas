@@ -3,7 +3,7 @@ import { useLocation } from 'react-router';
 import type { Locale } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 
-export type BottomNavKey = 'home' | 'search' | 'bookings' | 'account';
+export type BottomNavKey = 'home' | 'search' | 'bookings' | 'favorites' | 'account';
 
 export interface BottomNavItem {
   key: BottomNavKey;
@@ -12,12 +12,14 @@ export interface BottomNavItem {
 }
 
 /**
- * The four mobile tabs, their destinations and which one is current.
+ * The five mobile tabs, their destinations and which one is current.
  *
- * Two destinations depend on whether anyone is signed in. "Đặt chỗ" points at the
- * account's booking list for a signed-in visitor and at the guest lookup
+ * Three destinations depend on whether anyone is signed in. "Đặt chỗ" points at
+ * the account's booking list for a signed-in visitor and at the guest lookup
  * (`/bookings`, booking code + email OTP) otherwise — the tab must work for the
- * guest-checkout flow, which is the majority of storefront traffic.
+ * guest-checkout flow, which is the majority of storefront traffic. "Đã lưu" and
+ * the account tab send a signed-out visitor to the login page with a return path,
+ * because neither surface exists without a session.
  */
 export function useSiteBottomNavController({
   listingTypes,
@@ -53,12 +55,22 @@ export function useSiteBottomNavController({
       active: startsWith(`/${locale}/bookings`) || startsWith(`/${locale}/account/bookings`),
     },
     {
+      key: 'favorites',
+      to: signedIn
+        ? storefrontPaths.account.favorites(locale)
+        : storefrontPaths.login(locale, redirectTo),
+      active: startsWith(`/${locale}/account/favorites`),
+    },
+    {
       key: 'account',
       to: signedIn
         ? storefrontPaths.account.root(locale)
         : storefrontPaths.login(locale, redirectTo),
-      // `/account/bookings` belongs to the bookings tab, not this one.
-      active: startsWith(`/${locale}/account`) && !startsWith(`/${locale}/account/bookings`),
+      // `/account/bookings` and `/account/favorites` each have their own tab.
+      active:
+        startsWith(`/${locale}/account`) &&
+        !startsWith(`/${locale}/account/bookings`) &&
+        !startsWith(`/${locale}/account/favorites`),
     },
   ];
 }

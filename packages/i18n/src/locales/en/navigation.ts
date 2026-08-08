@@ -21,6 +21,7 @@ export const enNavigation = {
     home: 'Home',
     search: 'Search',
     bookings: 'Bookings',
+    favorites: 'Saved',
     account: 'Account',
   },
 } satisfies TranslationShape<typeof viNavigation>;

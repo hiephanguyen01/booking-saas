@@ -1,6 +1,6 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
-import { CalendarCheck, Home, Search, User } from 'lucide-react';
+import { CalendarCheck, Heart, Home, Search, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router';
 import { type Locale, NsI18n, useTranslation } from '@booking/i18n';
@@ -13,6 +13,7 @@ const ICONS: Record<BottomNavKey, LucideIcon> = {
   home: Home,
   search: Search,
   bookings: CalendarCheck,
+  favorites: Heart,
   account: User,
 };
 
@@ -62,7 +63,7 @@ export function SiteBottomNav({
               >
                 <Icon
                   aria-hidden="true"
-                  className="size-5.5"
+                  className="size-5"
                   // The active tab reads as filled in the mockup; lucide has no
                   // filled variants, so a translucent fill of the current colour
                   // does the same job without a second icon set.

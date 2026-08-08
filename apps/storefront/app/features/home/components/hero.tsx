@@ -8,6 +8,12 @@ import type { StorefrontTenant } from '~/lib/server/tenant.server';
  * Studio-vertical hero. Copy + image come from `theme_config.hero` (§16.2) with
  * i18n fallbacks; the floating search card's listing-type tabs are
  * auto-generated from the tenant's active listing types (§16.1 dynamic nav).
+ *
+ * The photo is a backdrop, not a band. It starts at the top of the document
+ * (behind the transparent header this page opts into) and fades into
+ * `--background` under the search card, so the card lands on the picture rather
+ * than on a hard seam below it — and a tenant that has configured no hero image
+ * gets the same shape in its own primary colour instead of an empty strip.
  */
 export function StudioHero({
   tenant,
@@ -28,41 +34,25 @@ export function StudioHero({
   const subtitle = tenant.themeConfig.hero?.subtitle || t('home.heroSubtitleFallback');
 
   return (
-    <section className="pb-6 sm:pb-18">
-      <div className="relative h-56 overflow-hidden bg-primary sm:h-70">
+    <section className="relative isolate pb-6 sm:pb-10">
+      <div className="absolute inset-x-0 top-0 -z-10 h-104 overflow-hidden bg-primary sm:h-120">
         {image ? (
-          <>
-            <Image
-              src={image}
-              alt=""
-              priority
-              className="absolute inset-0 size-full object-cover"
-            />
-            <div className="absolute inset-0 bg-scrim-soft" />
-          </>
+          <Image src={image} alt="" priority className="size-full object-cover" />
         ) : null}
-        <div className="absolute inset-x-4 top-8 flex flex-col items-center gap-1.5 text-center">
-          <h1
-            className={
-              image
-                ? 'text-base font-semibold text-white sm:text-lg'
-                : 'text-base font-semibold text-primary-foreground sm:text-lg'
-            }
-          >
+        {/* Two stops of scrim over the picture, then the page background — the
+            same ramp with or without an image, so the headline keeps its
+            contrast either way. */}
+        <div className="absolute inset-0 bg-linear-to-b from-scrim-strong via-scrim to-background" />
+      </div>
+
+      <div className="mx-auto w-full max-w-292.5 px-4 pt-18 sm:px-6 sm:pt-22 xl:px-0">
+        <div className="flex flex-col items-center gap-2 px-2 pb-6 text-center sm:pb-8">
+          <h1 className="text-xl leading-7 font-semibold text-balance text-white sm:text-2xl sm:leading-8">
             {title}
           </h1>
-          <p
-            className={
-              image
-                ? 'max-w-2xl text-sm text-white/90'
-                : 'max-w-2xl text-sm text-primary-foreground/90'
-            }
-          >
-            {subtitle}
-          </p>
+          <p className="max-w-2xl text-sm leading-5 text-pretty text-white/85">{subtitle}</p>
         </div>
-      </div>
-      <div className="relative mx-auto -mt-38 max-w-292.5 px-4 sm:-mt-42 sm:px-6 xl:px-0">
+
         <SearchForm
           listingTypes={listingTypes}
           locations={locations}

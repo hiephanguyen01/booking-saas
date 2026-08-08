@@ -1,9 +1,8 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
-import { cn } from '@booking/ui/lib/utils';
 import { HomeListingCardsSkeleton } from '~/components/loading-skeletons';
-import { PANEL_SURFACE } from '~/constants/surfaces';
+import { SectionHeading } from '~/components/section-heading';
 import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
 import { useRecommendedSectionController } from '~/features/home/hooks/use-recommended-section-controller';
 import { LocationTabs } from './location-tabs';
@@ -27,17 +26,18 @@ export function RecommendedSection({
   if (!pending && listings.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-6">
-      <div className={cn(PANEL_SURFACE, 'min-h-29 bg-card px-4 pt-6 pb-1 font-studio sm:px-6')}>
-        <h2 className="text-lg leading-7 font-semibold text-foreground">{t('home.recommended')}</h2>
-        <LocationTabs value={location} onValueChange={changeLocation} />
-      </div>
+    <section className="flex flex-col gap-4">
+      <SectionHeading title={t('home.recommended')} />
+      <LocationTabs value={location} onValueChange={changeLocation} />
       {pending ? (
         <HomeListingCardsSkeleton label={t('loading')} count={8} layout="grid" />
       ) : shown.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-5 md:grid-cols-3 lg:grid-cols-4">
+        // Two up on a phone. One card per row spent ~250px on a single result and
+        // pushed everything under this section below three screenfuls of scroll;
+        // the card already has a compact treatment for exactly this width.
+        <div className="grid grid-cols-2 gap-3 sm:gap-x-5 sm:gap-y-5 md:grid-cols-3 lg:grid-cols-4">
           {shown.map((listing) => (
-            <FavoriteListingCard key={listing.id} listing={listing} />
+            <FavoriteListingCard key={listing.id} listing={listing} layout="stacked" />
           ))}
         </div>
       ) : (
@@ -46,16 +46,14 @@ export function RecommendedSection({
         </p>
       )}
       {!pending && hasMore ? (
-        <div className="flex justify-center pt-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-60 border-primary text-primary hover:bg-primary/10 hover:text-primary"
-            onClick={loadMore}
-          >
-            {t('home.loadMore')}
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full border-primary/40 font-semibold text-primary hover:bg-primary/10 hover:text-primary sm:mx-auto sm:w-60"
+          onClick={loadMore}
+        >
+          {t('home.loadMore')}
+        </Button>
       ) : null}
     </section>
   );

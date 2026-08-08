@@ -540,32 +540,24 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-.brand-coverflow-surface {
-  isolation: isolate;
-  overflow: hidden;
+/*
+ * A horizontal rail: scrolls, and keeps its scrollbar out of the layout.
+ *
+ * Deliberately geometry only — no `display`, so a caller still owns whether the
+ * rail is a flex row or a grid (app.css is unlayered and would otherwise outrank
+ * the utility that says so). No scroll snapping either: the rails carry their
+ * side gutter as `padding`, and a snap point on the first child resolves to the
+ * container's edge rather than to its padding box — so snapping silently scrolled
+ * every rail 16px past its own gutter on load.
+ */
+.sf-scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.brand-coverflow {
-  margin-inline: auto;
-  width: 100%;
+.sf-scroll-x::-webkit-scrollbar {
+  display: none;
 }
 
-.brand-coverflow .swiper-slide,
-.brand-coverflow-single {
-  aspect-ratio: 1;
-  height: auto;
-  overflow: hidden;
-  background: var(--muted);
-}
-
-.brand-coverflow-single {
-  margin-inline: auto;
-  width: min(100%, 21.875rem);
-}
-
-@media (min-width: 640px) {
-  .brand-coverflow .swiper-slide {
-    aspect-ratio: auto;
-    height: 21.875rem;
-  }
-}

@@ -92,21 +92,30 @@ export function ListingCard({
 
   const priceNode =
     price && presentation ? (
+      // Left-aligned once the card is a column: the old right rail put the price
+      // as far as it could get from the title it belongs to, and on a 172px cell
+      // that is the full width of the card.
       <div
         className={cn(
-          'text-right',
-          isRow ? 'shrink-0 text-xs sm:text-sm' : 'mt-auto text-sm @max-[220px]:text-xs',
+          isRow
+            ? 'shrink-0 text-right text-xs sm:text-sm'
+            : 'mt-auto text-sm @max-[220px]:text-xs',
         )}
       >
-        <p>
+        <p
+          className={cn(
+            'flex flex-wrap items-baseline gap-x-1.5',
+            isRow ? 'justify-end' : 'justify-start',
+          )}
+        >
           {originalPrice ? (
-            <span className="mr-2 text-muted-foreground line-through">{originalPrice}</span>
+            <span className="text-muted-foreground line-through">{originalPrice}</span>
           ) : null}
           <span className={presentation?.discountPercent ? 'text-brand-accent' : 'text-foreground'}>
             <span className="font-normal">{t('fromPriceShort')} </span>
             <span
               className={cn(
-                'font-semibold',
+                'font-bold',
                 isRow ? 'text-sm sm:text-base' : 'text-base @max-[220px]:text-sm',
               )}
             >
@@ -115,9 +124,10 @@ export function ListingCard({
           </span>
         </p>
         <p
-          className={`mt-1 ${
-            presentation?.discountPercent ? 'text-brand-accent' : 'text-muted-foreground'
-          }`}
+          className={cn(
+            'mt-0.5 text-xs',
+            presentation?.discountPercent ? 'text-brand-accent' : 'text-muted-foreground',
+          )}
         >
           {presentation?.priceUnit ? t(`priceUnit.${presentation.priceUnit}`) : t('fromPrice')}
         </p>
@@ -125,14 +135,15 @@ export function ListingCard({
     ) : price ? (
       <p
         className={cn(
-          'text-right',
-          isRow ? 'shrink-0 text-xs sm:text-sm' : 'mt-auto text-sm @max-[220px]:text-xs',
+          isRow
+            ? 'shrink-0 text-right text-xs sm:text-sm'
+            : 'mt-auto text-sm @max-[220px]:text-xs',
         )}
       >
-        <span className="font-semibold text-primary">
+        <span className="font-bold text-primary">
           {t('fromPriceShort')} {price}
         </span>{' '}
-        <span className="text-muted-foreground">{t('fromPrice')}</span>
+        <span className="text-xs text-muted-foreground">{t('fromPrice')}</span>
       </p>
     ) : null;
 
@@ -157,8 +168,8 @@ export function ListingCard({
           // actually need; before this the row was whatever its text came to and
           // a rated card stood 52px taller than an unrated one beside it.
           isRow
-            ? 'min-h-30 flex-row sm:min-h-80 sm:flex-col'
-            : 'min-h-80 flex-col @max-[220px]:min-h-64',
+            ? 'min-h-30 flex-row sm:min-h-76 sm:flex-col'
+            : 'min-h-72 flex-col @max-[220px]:min-h-64 @max-[190px]:min-h-60',
         )}
       >
         <div
@@ -167,7 +178,11 @@ export function ListingCard({
             // No height on the row photo on purpose: as a flex child it stretches
             // to the row, so the photo is always exactly as tall as the card
             // instead of leaving a strip of empty card under it.
-            isRow ? 'w-28 sm:h-46 sm:w-auto' : 'h-46 @max-[220px]:h-32',
+            //
+            // Three photo heights, one per width the card actually gets rendered
+            // at: a full-width column, a ~208px rail slide, and a ~172px cell of
+            // the two-up recommendation grid.
+            isRow ? 'w-28 sm:h-40 sm:w-auto' : 'h-40 @max-[220px]:h-34 @max-[190px]:h-28',
           )}
         >
           {cover ? (
@@ -190,21 +205,21 @@ export function ListingCard({
         <div
           className={cn(
             'flex min-w-0 flex-1 flex-col',
-            isRow ? 'gap-1 p-3 sm:gap-3 sm:p-4' : 'gap-3 p-4 @max-[220px]:gap-2 @max-[220px]:p-2.5',
+            isRow ? 'gap-1 p-3 sm:gap-2.5 sm:p-3.5' : 'gap-2.5 p-3.5 @max-[220px]:gap-2 @max-[220px]:p-3',
           )}
         >
           <div
             className={cn(
               'flex flex-col',
-              isRow ? 'gap-0.5 sm:gap-2' : 'gap-2 @max-[220px]:gap-1.5',
+              isRow ? 'gap-0.5 sm:gap-1.5' : 'gap-1.5 @max-[220px]:gap-1',
             )}
           >
             <h3
               className={cn(
-                'line-clamp-2 font-semibold text-foreground transition-colors group-hover:text-primary',
+                'line-clamp-2 font-bold text-foreground transition-colors group-hover:text-primary',
                 isRow
-                  ? 'pr-9 text-base leading-5 sm:pr-0 sm:text-lg sm:leading-7'
-                  : 'text-lg leading-7 @max-[220px]:text-sm @max-[220px]:leading-5',
+                  ? 'pr-9 text-base leading-5 sm:pr-0 sm:text-base sm:leading-6'
+                  : 'text-base leading-6 @max-[220px]:text-sm @max-[220px]:leading-5',
               )}
             >
               {listing.title}
@@ -221,7 +236,7 @@ export function ListingCard({
                 <MapPin
                   className={cn(
                     'shrink-0',
-                    isRow ? 'size-3.5 sm:size-4' : 'size-4 @max-[220px]:size-3.5',
+                    isRow ? 'size-3.5 sm:size-4' : 'size-4 @max-[220px]:size-3',
                   )}
                   aria-hidden="true"
                 />
@@ -259,7 +274,7 @@ export function ListingCard({
           className={cn(CHIP_CLASS, 'text-primary', CHIP_PLACEMENT.right[chipLayout])}
         >
           <Heart
-            className="size-5 @max-[220px]:size-4"
+            className="size-4.5 @max-[220px]:size-4"
             fill={favoriteControl.selected ? 'currentColor' : 'none'}
           />
         </button>
@@ -268,7 +283,7 @@ export function ListingCard({
           aria-hidden="true"
           className={cn(CHIP_CLASS, 'text-primary', CHIP_PLACEMENT.right[chipLayout])}
         >
-          <Heart className="size-5 @max-[220px]:size-4" />
+          <Heart className="size-4.5 @max-[220px]:size-4" />
         </span>
       )}
       {dismissControl ? (
@@ -300,27 +315,29 @@ function ListingRating({ rating, count, row }: { rating: number; count: number; 
   const full = (
     <div
       className={cn(
-        'items-center justify-between gap-3 text-sm text-muted-foreground',
-        row
-          ? 'hidden sm:flex'
-          : 'flex @max-[220px]:flex-col @max-[220px]:items-start @max-[220px]:gap-1 @max-[220px]:text-xs',
+        'items-center justify-between gap-2 text-sm text-muted-foreground',
+        // Five stars plus the score and the count need ~165px, which is more than
+        // a rail slide or a two-up grid cell has — so under 220px the compact
+        // summary takes over instead of the block wrapping or overflowing.
+        row ? 'hidden sm:flex' : 'flex @max-[220px]:hidden',
       )}
     >
       <RatingStars rating={rating} />
-      <span>
+      <span className="shrink-0 tabular-nums">
         {rating.toFixed(1)} · {t('reviewCount', { count })}
       </span>
     </div>
   );
-
-  if (!row) return full;
 
   return (
     <>
       <RatingSummary
         rating={rating}
         count={count}
-        className="text-xs text-muted-foreground sm:hidden"
+        className={cn(
+          'text-xs text-muted-foreground',
+          row ? 'sm:hidden' : 'hidden @max-[220px]:inline-flex',
+        )}
       />
       {full}
     </>
@@ -332,12 +349,12 @@ const CHIP_CLASS =
 
 const CHIP_PLACEMENT = {
   right: {
-    stacked: 'right-4 top-4 size-10 @max-[220px]:size-8',
-    row: 'right-2 top-2 size-9 sm:right-4 sm:top-4 sm:size-10',
+    stacked: 'right-2.5 top-2.5 size-9 @max-[220px]:size-8',
+    row: 'right-2 top-2 size-9 sm:right-2.5 sm:top-2.5',
   },
   left: {
-    stacked: 'left-4 top-4 size-10 @max-[220px]:size-8',
-    row: 'left-2 top-2 size-9 sm:left-4 sm:top-4 sm:size-10',
+    stacked: 'left-2.5 top-2.5 size-9 @max-[220px]:size-8',
+    row: 'left-2 top-2 size-9 sm:left-2.5 sm:top-2.5',
   },
 } as const;
 

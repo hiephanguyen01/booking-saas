@@ -138,12 +138,16 @@ export function CategoryPicker({
       className={cn(
         'w-full overscroll-x-contain rounded-none',
         isHero
-          ? 'grid grid-cols-3 gap-1 rounded-t-lg bg-muted p-2 shadow-sm sm:flex sm:gap-0 sm:overflow-x-auto sm:p-0'
+          ? // One scrolling row of underlined tabs at every width. The tiled grid
+            // this replaced spent 100px of the card's height on a phone before the
+            // first field, and it could not show more than six types without
+            // growing a third row; a rail shows the seventh by scrolling.
+            'sf-scroll-x flex justify-start gap-0 rounded-t-(--sf-surface-radius) border-b border-border bg-card px-1'
           : 'mx-auto max-w-292.5 overflow-x-auto px-4 pt-5 pb-4 lg:px-0',
       )}
     >
       {types.map((type) => {
-        const iconClass = cn(isHero ? 'size-6 sm:size-7 md:size-8' : 'size-5');
+        const iconClass = cn(isHero ? 'size-4 sm:size-4.5' : 'size-5');
         return (
           <ToggleGroupItem
             key={type.id}
@@ -151,18 +155,14 @@ export function CategoryPicker({
             className={cn(
               'font-medium',
               isHero
-                ? 'h-auto min-h-18 flex-col gap-1.5 rounded-lg! px-1 py-2.5 text-[0.6875rem] leading-tight whitespace-normal text-muted-foreground hover:bg-foreground/5 data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[state=on]:shadow-none! sm:h-14 sm:min-h-0 sm:min-w-40 sm:flex-1 sm:flex-row sm:gap-3 sm:rounded-none! sm:px-6 sm:text-base sm:leading-6 sm:whitespace-nowrap sm:text-foreground sm:hover:text-foreground sm:data-[state=on]:bg-card sm:data-[state=on]:text-foreground sm:data-[state=on]:shadow-sm! md:min-w-48 md:px-10'
+                ? 'h-auto min-h-12 flex-none gap-1.5 rounded-none! border-b-2 border-transparent bg-transparent px-3 py-3 text-xs leading-4 whitespace-nowrap text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:border-b-primary data-[state=on]:bg-transparent data-[state=on]:font-bold data-[state=on]:text-primary data-[state=on]:shadow-none! sm:px-4 sm:text-sm'
                 : 'min-h-11 gap-2 rounded-full! border border-transparent px-4 py-2 text-sm whitespace-nowrap text-background/75 hover:bg-background/10 hover:text-background data-[state=on]:border-background data-[state=on]:bg-transparent data-[state=on]:text-background',
             )}
           >
-            {/* The tile inherits its colour from the selected state, so the glyph
-                must not pin `text-foreground` on mobile the way the desktop row
-                does. */}
-            <ListingTypeGlyph
-              type={type}
-              className={cn(iconClass, isHero && 'sm:text-foreground')}
-            />
-            <span className="line-clamp-2 sm:line-clamp-none">{type.name}</span>
+            {/* The tab inherits its colour from the selected state, so the glyph
+                must not pin a colour of its own. */}
+            <ListingTypeGlyph type={type} className={iconClass} />
+            <span>{type.name}</span>
           </ToggleGroupItem>
         );
       })}
@@ -172,7 +172,7 @@ export function CategoryPicker({
 
 const MODE_ITEM_CLASS: Record<ModeAppearance, string> = {
   pills:
-    'h-10 rounded-full border-border px-4 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary',
+    'h-9 rounded-full border-border px-4 text-xs font-semibold data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary',
   tabs: 'h-14 rounded-none! border-0 border-b-2 border-transparent bg-transparent data-[state=on]:border-primary data-[state=on]:bg-transparent data-[state=on]:text-primary',
 };
 

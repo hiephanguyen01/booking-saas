@@ -17,7 +17,8 @@ export const viNavigation = {
     label: 'Điều hướng nhanh',
     home: 'Trang chủ',
     search: 'Tìm kiếm',
-    bookings: 'Đặt chỗ',
+    bookings: 'Lịch đặt',
+    favorites: 'Đã lưu',
     account: 'Tài khoản',
   },
 } as const;

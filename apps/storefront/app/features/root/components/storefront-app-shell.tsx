@@ -43,7 +43,9 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
   const showBottomNav = !hideBottomNav;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+    // `relative`: the header takes itself out of flow on pages that float it over
+    // their own hero, and it anchors to this box rather than to the document.
+    <div className="relative flex min-h-dvh flex-col bg-background text-foreground">
       <TenantThemeStyle theme={tenant.themeConfig} nonce={documentNonce} />
       {!tenant.live && !bypassTenantGate ? (
         <SuspendedNotice name={tenant.name} />

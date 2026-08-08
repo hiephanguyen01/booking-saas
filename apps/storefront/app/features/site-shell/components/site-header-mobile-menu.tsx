@@ -17,15 +17,20 @@ import { useSiteHeaderMobileMenuController } from '~/features/site-shell/hooks/u
 
 export function SiteHeaderMobileMenu({
   brand,
+  actions,
   listingTypes,
   locale,
   currentUser,
+  overlay,
   redirectTo,
 }: {
   brand: ReactNode;
+  /** The header's own controls, rendered to the left of the menu trigger. */
+  actions?: ReactNode;
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
   currentUser: CurrentUser | null;
+  overlay: boolean;
   redirectTo: string;
 }) {
   const { t } = useTranslation(NsI18n.Navigation);
@@ -34,21 +39,30 @@ export function SiteHeaderMobileMenu({
 
   return (
     <Sheet>
-      <div className="flex h-18 items-center justify-between lg:hidden">
+      <div className="flex h-18 items-center justify-between gap-2 lg:hidden">
         {brand}
-        <SheetTrigger asChild>
-          {/* `size-11`: this is the only navigation affordance on mobile, so it
-              takes the 44px touch target rather than the 36px icon default. */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-11"
-            aria-label={t('openMenu')}
-          >
-            <Menu aria-hidden="true" />
-          </Button>
-        </SheetTrigger>
+        <div className="flex items-center gap-2">
+          {actions}
+          <SheetTrigger asChild>
+            {/* `size-11` — the sheet is still where most of the navigation lives
+                on a phone, so its trigger takes the 44px touch target rather than
+                the 36px icon default. On the hero it wears the same glass as the
+                header's other controls so it does not disappear into the photo. */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={
+                overlay
+                  ? 'size-11 border border-white/40 bg-white/12 text-white backdrop-blur-sm hover:bg-white/25 hover:text-white'
+                  : 'size-11'
+              }
+              aria-label={t('openMenu')}
+            >
+              <Menu aria-hidden="true" />
+            </Button>
+          </SheetTrigger>
+        </div>
       </div>
       <SheetContent side="right" className="w-80 font-studio" showCloseButton>
         <SheetTitle className="sr-only">{t('openMenu')}</SheetTitle>
