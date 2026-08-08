@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import { GLOBAL_THROTTLE } from './shared/http/throttle-limits';
 import { ZodDtoValidationPipe } from './shared/validation/zod-dto-validation.pipe';
 import { DomainExceptionFilter } from './shared/domain/domain-exception.filter';
 import { HealthModule } from './shared/health/health.module';
@@ -61,7 +62,9 @@ const prettyLogs =
           : undefined,
       },
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    // A SITE-WIDE ceiling, not a per-user one — SSR means every visitor reaches
+    // the API from the same container address. See throttle-limits.ts.
+    ThrottlerModule.forRoot([GLOBAL_THROTTLE]),
     PrismaModule,
     RedisModule,
     TenantContextModule,

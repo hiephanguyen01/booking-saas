@@ -11,6 +11,12 @@ import { Body, Controller, Get, HttpCode, Ip, Patch, Post, Req, Res } from '@nes
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import {
+  THROTTLE_AUTH_ATTEMPT,
+  THROTTLE_AUTH_FLOW,
+  THROTTLE_AUTH_RESEND,
+  THROTTLE_PROFILE_WRITE,
+} from '../../../../shared/http/throttle-limits';
 import { ChangeMyPasswordUseCase } from '../../application/use-cases/change-my-password.use-case';
 import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
@@ -97,7 +103,7 @@ export class PublicAuthController {
   ) {}
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Throttle(THROTTLE_AUTH_FLOW)
   @Post('registration/start')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthChallengeResponseDto })
@@ -106,7 +112,7 @@ export class PublicAuthController {
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @Throttle(THROTTLE_AUTH_RESEND)
   @Post('registration/resend')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthChallengeResponseDto })
@@ -115,7 +121,7 @@ export class PublicAuthController {
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle(THROTTLE_AUTH_ATTEMPT)
   @Post('registration/verify')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthOtpVerifiedResponseDto })
@@ -124,7 +130,7 @@ export class PublicAuthController {
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Throttle(THROTTLE_AUTH_FLOW)
   @Post('registration/complete')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthFlowCompleteResponseDto })
@@ -136,7 +142,7 @@ export class PublicAuthController {
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Throttle(THROTTLE_AUTH_FLOW)
   @Post('password-reset/start')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthChallengeResponseDto })
@@ -145,7 +151,7 @@ export class PublicAuthController {
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @Throttle(THROTTLE_AUTH_RESEND)
   @Post('password-reset/resend')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthChallengeResponseDto })
@@ -154,7 +160,7 @@ export class PublicAuthController {
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle(THROTTLE_AUTH_ATTEMPT)
   @Post('password-reset/verify')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthOtpVerifiedResponseDto })
@@ -163,7 +169,7 @@ export class PublicAuthController {
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Throttle(THROTTLE_AUTH_FLOW)
   @Post('password-reset/complete')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthFlowCompleteResponseDto })
@@ -195,7 +201,7 @@ export class PublicAuthController {
    * refuses an email that already owns a password account.
    */
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle(THROTTLE_AUTH_ATTEMPT)
   @Post('upgrade-guest')
   @HttpCode(200)
   @ApiOperation({ summary: 'Set a password on a guest account and sign in' })
@@ -215,7 +221,7 @@ export class PublicAuthController {
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Throttle(THROTTLE_AUTH_ATTEMPT)
   @Post('login')
   @HttpCode(200)
   @ApiOperation({ summary: 'Log in with email + password' })
@@ -274,7 +280,7 @@ export class PublicAuthController {
    * it is the login identity and would need its own verified change flow.
    */
   @AuthenticatedOnly()
-  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @Throttle(THROTTLE_PROFILE_WRITE)
   @Patch('me')
   @ApiOperation({ summary: 'Update the signed-in user’s own profile' })
   @ApiOkResponse({ type: CurrentUserDto })
@@ -291,7 +297,7 @@ export class PublicAuthController {
    * that made the change is not logged out of itself.
    */
   @AuthenticatedOnly()
-  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Throttle(THROTTLE_AUTH_FLOW)
   @Post('me/password')
   @HttpCode(200)
   @ApiOperation({ summary: 'Change the signed-in user’s password' })
