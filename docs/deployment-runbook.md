@@ -410,10 +410,6 @@ wildcard `*.stg`.
 
 ## Phase 6 — Bật TLS on-demand (service `caddy` trong compose)
 
-> **Máy đã chạy nginx host + certbot?** Đừng dùng Phase 6–7. Chúng viết cho máy trắng, không có bước
-> cắt và không có đường lùi. Dùng [`nginx-to-caddy-cutover.md`](./nginx-to-caddy-cutover.md) — thứ tự
-> khác, có cổng nghiệm thu trước khi cắt và có rollback.
-
 Caddy **chạy trong compose**, không phải systemd unit trên host. Nghĩa là Phase này không cài gì cả:
 nó chỉ là ba dòng trong `.env.stg` và một record DNS. Caddyfile đã nằm sẵn trên máy (Phase 4) và từ
 lần deploy đầu tiên trở đi workflow tự đồng bộ nó.
@@ -554,9 +550,6 @@ Hai lệnh `stop`/`rm` phải có cờ `--profile tls`: tắt `COMPOSE_PROFILES`
 service đó, **container đang chạy vẫn chạy** — kể cả với `--remove-orphans` — và vẫn giữ 80/443.
 
 Certificate đã có vẫn nằm trong volume `caddy_data`, nên bật lại là dùng tiếp, không xin lại.
-
-Máy chuyển từ nginx host + certbot thì có đường lùi tốt hơn — xem
-[`nginx-to-caddy-cutover.md`](./nginx-to-caddy-cutover.md) → Rollback.
 
 ### 7.4. Không có cron nào phải tạo
 

@@ -203,8 +203,10 @@ hình trên một cách thực chất.
 
 > **Đã lỗi thời (2026-08-08).** Mục này mô tả Caddy chạy như systemd unit trên host. Sau đó Caddy được
 > đưa vào chính compose stack (service `caddy`, profile `tls`) để config của nó được workflow Deploy
-> đồng bộ tự động thay vì scp tay. Trình tự cắt thật:
-> [`nginx-to-caddy-cutover.md`](../../nginx-to-caddy-cutover.md). Giữ lại đây làm hồ sơ quyết định.
+> đồng bộ tự động thay vì scp tay, và việc cắt trên máy staging đã hoàn tất — thủ tục cắt một lần đó
+> đã xoá khỏi repo, tìm lại bằng `git log -- docs/nginx-to-caddy-cutover.md`. Vận hành lâu dài:
+> [`deployment.md`](../../deployment.md) → *TLS — Caddy on-demand* và Phase 6–7 của
+> [`deployment-runbook.md`](../../deployment-runbook.md). Giữ lại mục này làm hồ sơ quyết định.
 > Rủi ro #1 bên dưới cũng đổi theo: thư mục certificate giờ là volume `caddy_data`.
 
 0. Tạo bản ghi A `connect.stg.bookingos.vn` → Elastic IP trên Cloudflare, để **DNS only**. Đây là
