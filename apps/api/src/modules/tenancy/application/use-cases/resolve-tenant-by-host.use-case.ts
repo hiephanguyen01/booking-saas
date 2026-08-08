@@ -38,6 +38,10 @@ export class ResolveTenantByHostUseCase {
 
   async execute(rawHost: string): Promise<PublicTenantResponse> {
     const hostname = normalizeHostname(rawHost);
+    // An unparseable Host is never a tenant — fail closed without a lookup, the
+    // same way CheckDomainTlsAllowedUseCase does. Falling through would spend a
+    // Redis read and a query on the empty key to reach this identical 404.
+    if (!hostname) throw new UnknownTenantHost(rawHost);
 
     let tenantId = await this.cache.getHost(hostname);
     if (tenantId === undefined) {
