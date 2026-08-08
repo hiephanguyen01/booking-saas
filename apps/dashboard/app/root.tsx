@@ -26,6 +26,17 @@ export function meta() {
 }
 
 /**
+ * The BookingOS platform mark — the same asset the storefront ships as its PWA
+ * icon, so one brand covers both apps. Deliberately NOT the tenant's configured
+ * favicon: the shell serves `/admin` and `/affiliate` too, where no tenant is in
+ * scope, and a tab icon that changed with the area would read as a different app.
+ */
+export const links: Route.LinksFunction = () => [
+  { rel: 'icon', type: 'image/png', href: '/icon-192.png' },
+  { rel: 'apple-touch-icon', href: '/icon-192.png' },
+];
+
+/**
  * Root loader resolves the logged-in identity + scopes for the shell. It returns
  * `null` for anonymous visitors (login page) instead of redirecting, so auth
  * routes render outside the shell.
