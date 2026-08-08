@@ -159,8 +159,8 @@ services:
     logging: *logging
     security_opt: ['no-new-privileges:true']
 
-  # Terminates HTTP and routes by Host. TLS is expected to be terminated in front
-  # of this (host Caddy on staging — see docker/caddy/Caddyfile — or a cloud LB);
+  # Terminates HTTP and routes by Host. TLS is terminated in front of this — by
+  # the `caddy` service below, or by a cloud LB where the `tls` profile is off;
   # it forwards X-Forwarded-Proto so the apps still emit secure cookies and
   # absolute https URLs.
   nginx:
@@ -177,10 +177,55 @@ services:
     volumes:
       - ./docker/nginx/deploy.conf.template:/etc/nginx/templates/default.conf.template:ro
     ports:
+      # With the `tls` profile on, Caddy reaches nginx over the compose network,
+      # so this publish is only a loopback debugging door (127.0.0.1:8080). It is
+      # the real ingress only where a cloud LB terminates TLS instead.
       - '${HTTP_PORT:-80}:80'
-      # Caddy's on-demand-TLS `ask` endpoint. Loopback by default — this listener
-      # must never be reachable from outside the box.
+      # Caddy's on-demand-TLS `ask` endpoint. Caddy calls it as `nginx:8081` on
+      # the compose network; publishing it on loopback is what lets ops curl the
+      # acceptance check. It must never be reachable from outside the box.
       - '${TLS_ASK_PORT:-127.0.0.1:8081}:8081'
     restart: unless-stopped
     logging: *logging
     security_opt: ['no-new-privileges:true']
+
+  # PUBLIC 80/443. On-demand TLS: one Let's Encrypt certificate per hostname,
+  # obtained at the first handshake and gated by nginx:8081 — which is what makes
+  # a tenant custom domain work with no ops step. See docker/caddy/Caddyfile.
+  #
+  # PROFILE `tls`: set COMPOSE_PROFILES=tls in the env file to run it. Left off,
+  # the stack ends at nginx and something else (a cloud LB) must terminate TLS —
+  # in which case it has to solve tenant custom domains some other way.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ['tls']
+    depends_on:
+      # Not service_healthy: nginx has no healthcheck, and Caddy must be up to
+      # answer ACME challenges regardless. It retries the `ask` call per
+      # handshake, so a few seconds of nginx not yet listening is self-healing.
+      nginx: { condition: service_started }
+    environment:
+      # Read by {$VAR} placeholders in the Caddyfile, so one file serves staging
+      # and production. A wrong ACME_EMAIL means expiry warnings go nowhere.
+      # Interpolation happens for the WHOLE file, profile or not, so this is
+      # required on the box even before `tls` is switched on. A missing value
+      # fails every compose command loudly and leaves the running stack alone.
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required — add it to .env.<env>, see docs/deployment.md}
+      DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}
+      API_HOST: ${API_HOST:?API_HOST is required}
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # THE CERTIFICATE STORE. Deleting this volume re-requests every certificate
+      # and can hit the Let's Encrypt rate limit (50/week per registered domain).
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - '80:80'
+      - '443:443'
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ['no-new-privileges:true']
+
+volumes:
+  caddy_data:
+  caddy_config:

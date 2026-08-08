@@ -1,6 +1,6 @@
 # Cắt TLS từ nginx host sang Caddy — máy staging đang chạy
 
-> **File dùng một lần.** Xoá nó sau khi đã tắt cron certbot (Bước 8) — không phải ngay hôm cắt: trong
+> **File dùng một lần.** Xoá nó sau khi đã tắt cron certbot (Bước 7) — không phải ngay hôm cắt: trong
 > 1–2 tuần còn giữ đường lùi, nếu phải lùi rồi cắt lại thì cần đúng tài liệu này. Lúc xoá, gỡ luôn
 > khối trích dẫn ở đầu Phase 6 của [`deployment-runbook.md`](./deployment-runbook.md) — đó là chỗ duy
 > nhất trong repo trỏ tới đây.
@@ -9,22 +9,26 @@ Tài liệu này dành cho **máy EC2 staging đang phục vụ traffic** bằng
 sang Caddy on-demand TLS để tenant custom domain có HTTPS.
 
 Deploy mới hoàn toàn thì **không** dùng file này — dùng
-[`deployment-runbook.md`](./deployment-runbook.md) Phase 6–7, ở đó Caddy là bước cài đặt duy nhất và
-không có gì phải cắt. Lý do kiến trúc nằm ở [`deployment.md`](./deployment.md) → *TLS — Caddy
-on-demand*.
+[`deployment-runbook.md`](./deployment-runbook.md) Phase 6–7, ở đó Caddy chỉ là một service trong
+compose và không có gì phải cắt. Lý do kiến trúc nằm ở [`deployment.md`](./deployment.md) → *TLS —
+Caddy on-demand*.
 
-Tổng thời gian: khoảng 30–45 phút, trong đó **gián đoạn thật chỉ vài giây** ở Bước 6. Mọi bước trước
+Tổng thời gian: khoảng 20–30 phút, trong đó **gián đoạn thật chỉ vài giây** ở Bước 5. Mọi bước trước
 đó chạy song song với nginx đang phục vụ, và mỗi bước đều lùi được.
 
 ## ⚠️ Trên máy này có HAI nginx — đừng nhầm
 
 | | Nó là gì | Số phận |
 | --- | --- | --- |
-| **nginx host** (`systemctl nginx`, `/etc/nginx/conf.d/bookingos-stg.conf`) | Giữ public 80/443, terminate certificate certbot, proxy vào `127.0.0.1:8080` | **Đây là thứ bị thay.** Caddy tiếp quản. |
+| **nginx host** (`systemctl nginx`, `/etc/nginx/conf.d/bookingos-stg.conf`) | Giữ public 80/443, terminate certificate certbot, proxy vào `127.0.0.1:8080` | **Đây là thứ bị thay.** Container `caddy` tiếp quản. |
 | **nginx compose** (service `nginx` trong `docker-compose.deploy.yml`) | Route theo Host: `admin.*` → dashboard, `api.*` → api, còn lại → storefront (default_server) | **Giữ nguyên và vẫn bắt buộc.** Nó còn được thêm listener `:8081`. |
 
 Tắt nhầm cái thứ hai là sập toàn bộ ứng dụng. Mọi lệnh `systemctl` bên dưới đều nói về nginx host;
-mọi lệnh `docker compose` đều nói về nginx compose.
+mọi lệnh `docker compose` đều nói về stack.
+
+Caddy **chạy trong chính compose stack** (service `caddy`, profile `tls`), không phải systemd unit.
+Nghĩa là không có `dnf install`, không có `/etc/caddy`, và từ nay Caddyfile được workflow Deploy đồng
+bộ như mọi file khác — [`deployment.md`](./deployment.md) → *What the deploy syncs*.
 
 ## Trước khi bắt đầu
 
@@ -33,7 +37,7 @@ mọi lệnh `docker compose` đều nói về nginx compose.
 - [ ] Security Group đang mở 80 và 443 ra `0.0.0.0/0`. Caddy xin certificate bằng **HTTP-01**, nên
       cổng 80 phải tới được từ Internet — đóng nó là không cấp được certificate nào.
 - [ ] Biết Elastic IP (`STAGING_EIP`) và có quyền sửa DNS zone `bookingos.vn` trên Cloudflare.
-- [ ] Có hộp thư vận hành thật để đặt vào `email` của Caddyfile.
+- [ ] Có hộp thư vận hành thật để đặt vào `ACME_EMAIL`.
 
 Ghi lại trạng thái hiện tại để so sánh sau khi cắt:
 
@@ -72,35 +76,12 @@ Việc này **sửa một lỗi đang tồn tại**, không phải hệ quả c�
 là mỗi tenant mới đều hỏng upload cho tới khi ops sửa tay. Lý do đầy đủ vì sao `*` ở đây không phải
 nới lỏng bảo mật: [`deployment-runbook.md`](./deployment-runbook.md) §8.3.
 
-## Bước 1 — Đưa file cấu hình mới lên máy
+## Bước 1 — Thêm biến vào `.env.stg` — LÀM TRƯỚC KHI DEPLOY
 
-**Workflow Deploy không đồng bộ mấy file này.** Nó chỉ pin image tag rồi `docker compose up -d`;
-`docker-compose.deploy.yml`, template nginx và Caddyfile nằm sẵn trên máy và phải copy tay. Bỏ qua
-bước này thì deploy có chạy cũng không có listener `:8081`, và Bước 4 sẽ fail.
-
-Trên máy local, tại đúng commit đã merge:
-
-```bash
-cd /Users/duyvo/Desktop/booking-saas
-git checkout main && git pull
-
-scp -i /path/to/bookingos-staging.pem \
-  docker-compose.deploy.yml \
-  ec2-user@STAGING_EIP:/home/ec2-user/bookingos/
-
-scp -i /path/to/bookingos-staging.pem \
-  docker/nginx/deploy.conf.template \
-  ec2-user@STAGING_EIP:/home/ec2-user/bookingos/docker/nginx/
-
-ssh -i /path/to/bookingos-staging.pem ec2-user@STAGING_EIP \
-  'mkdir -p /home/ec2-user/bookingos/docker/caddy'
-
-scp -i /path/to/bookingos-staging.pem \
-  docker/caddy/Caddyfile \
-  ec2-user@STAGING_EIP:/home/ec2-user/bookingos/docker/caddy/
-```
-
-## Bước 2 — Thêm ba biến vào `.env.stg`
+**Thứ tự ở đây là bắt buộc.** Compose nội suy biến cho **toàn bộ** file, không phân biệt profile, nên
+`ACME_EMAIL` phải có mặt ngay khi `docker-compose.deploy.yml` mới lên máy — kể cả khi profile `tls`
+còn tắt. Thiếu nó thì mọi lệnh compose sau đó fail (`ACME_EMAIL is required`). Stack đang chạy không
+việc gì, nhưng deploy sẽ đỏ và bạn không `up -d` được cho tới khi thêm.
 
 Trên EC2:
 
@@ -113,6 +94,13 @@ nano .env.stg
 Thêm:
 
 ```dotenv
+# Hộp thư vận hành thật — Let's Encrypt gửi cảnh báo hết hạn về đây.
+ACME_EMAIL=ops@bookingos.vn
+
+# CHƯA bật ở bước này. nginx host vẫn giữ 80/443, bật lên là container caddy
+# không bind được cổng và crashloop. Bước 5 mới đổi thành `tls`.
+COMPOSE_PROFILES=
+
 # Cổng nginx compose mở cho Caddy hỏi trước khi cấp certificate. Giữ loopback.
 TLS_ASK_PORT=127.0.0.1:8081
 
@@ -124,40 +112,36 @@ PLATFORM_STOREFRONT_IPV4=STAGING_EIP
 Thay `STAGING_EIP` bằng Elastic IP thật. Sai giá trị này là đưa hướng dẫn sai cho **mọi** tenant, và
 nút "Kiểm tra kết nối" sẽ báo "chưa trỏ" cho cả tenant đã trỏ đúng.
 
-Xác nhận `HTTP_PORT` vẫn là `127.0.0.1:8080` — Caddy proxy vào đó, y như nginx host trước đây:
+Xác nhận `HTTP_PORT` vẫn là `127.0.0.1:8080` — Caddy proxy vào nginx qua compose network, còn publish
+này chỉ là cửa loopback để debug:
 
 ```bash
-grep -E '^(HTTP_PORT|TLS_ASK_PORT|PLATFORM_STOREFRONT_)' .env.stg
+grep -E '^(HTTP_PORT|TLS_ASK_PORT|COMPOSE_PROFILES|ACME_EMAIL|PLATFORM_STOREFRONT_)' .env.stg
 ```
 
-## Bước 3 — Deploy code mới và dựng lại compose
+## Bước 2 — Deploy
 
 nginx host vẫn đang giữ 80/443 suốt bước này, nên **chưa có gì thay đổi với người dùng**.
 
-Chạy workflow **Deploy** trên GitHub Actions với `environment=stg`, `app=all`, `migrate=true`. Sau
-khi nó xong, trên EC2 dựng lại stack để compose nhận file mới:
+Chạy workflow **Deploy** trên GitHub Actions với `environment=stg`, `app=all`, `migrate=true`.
 
-```bash
-cd /home/ec2-user/bookingos
-docker compose --env-file .env.stg \
-  -f docker-compose.deploy.yml -f docker-compose.stg-data.yml up -d
-```
-
-Bước `up -d` này là bắt buộc kể cả khi workflow vừa chạy: workflow dùng chính `docker-compose.deploy.yml`
-**cũ** trên máy nếu bạn chưa copy ở Bước 1, và một deploy `app=api` chỉ `up -d api` chứ không đụng
-tới nginx. Cổng `:8081` là thay đổi ở cấp compose file nên container nginx phải được **tạo lại**, không
-phải `restart`.
+Workflow tự đồng bộ `docker-compose.deploy.yml`, `docker-compose.stg-data.yml`, template nginx và
+Caddyfile lên máy, rồi recreate nginx vì nội dung đổi — **không còn phải scp tay** như phiên bản
+trước của tài liệu này. Nó cũng validate Caddyfile bằng đúng image `caddy:2-alpine` trước khi đụng
+tới máy.
 
 Kiểm tra nginx compose đã mở cổng mới:
 
 ```bash
+cd /home/ec2-user/bookingos
 docker compose --env-file .env.stg \
   -f docker-compose.deploy.yml -f docker-compose.stg-data.yml ps
 ```
 
 Cột PORTS của service `nginx` phải có cả `127.0.0.1:8080->80/tcp` lẫn `127.0.0.1:8081->8081/tcp`.
+Chưa thấy `caddy` là đúng — profile còn tắt.
 
-## Bước 4 — Cổng nghiệm thu: endpoint `ask`
+## Bước 3 — Cổng nghiệm thu: endpoint `ask`
 
 **Đây là bước quyết định. Không cắt nếu bước này chưa đúng.**
 
@@ -190,74 +174,53 @@ Và phải không tới được từ ngoài:
 curl -m 5 "http://STAGING_EIP:8081/public/domains/tls-allowed?domain=bookingstudio.stg.bookingos.vn"
 ```
 
-## Bước 5 — Cài Caddy (chưa start)
+## Bước 4 — Kéo sẵn image Caddy
+
+Kéo trước để lúc cắt không phải chờ mạng trong lúc site đang tắt:
 
 ```bash
-sudo dnf install -y 'dnf-command(copr)'
-sudo dnf copr enable -y @caddy/caddy
-sudo dnf install -y caddy
-caddy version
+docker pull caddy:2-alpine
 ```
-
-Dùng đúng package chính thức: systemd unit và thư mục certificate
-`/var/lib/caddy/.local/share/caddy` do nó quản lý. Xoá thư mục đó là phải xin lại toàn bộ certificate.
-
-Nếu package tự start, dừng ngay — nginx host đang giữ 80/443 nên Caddy sẽ crashloop và chỉ làm nhiễu
-log:
-
-```bash
-sudo systemctl stop caddy 2>/dev/null || true
-```
-
-Đặt config:
-
-```bash
-sudo cp /home/ec2-user/bookingos/docker/caddy/Caddyfile /etc/caddy/Caddyfile
-sudoedit /etc/caddy/Caddyfile
-```
-
-Sửa `email` thành hộp thư vận hành thật — Let's Encrypt gửi cảnh báo hết hạn về đó.
-
-Validate bằng **đúng bản Caddy vừa cài**. Cú pháp on-demand đã đổi giữa các bản 2.x và các tuỳ chọn
-rate-limit cũ đã bị gỡ, nên đừng tin config chỉ vì nó đúng ở nơi khác:
-
-```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
-```
-
-`validate` không bind cổng nào, chạy an toàn khi nginx đang phục vụ.
 
 > **Muốn diễn tập trước?** Thêm `acme_ca https://acme-staging-v02.api.letsencrypt.org/directory` vào
-> block global của Caddyfile, cắt thử, xem log xin certificate chạy đúng, rồi bỏ dòng đó ra và
-> `systemctl restart caddy` để lấy certificate thật. Certificate của CA staging trình duyệt không tin,
-> nên đừng để lại quá vài phút.
+> block global của `docker/caddy/Caddyfile`, cắt thử, xem log xin certificate chạy đúng, rồi bỏ dòng
+> đó ra và deploy lại. Certificate của CA staging trình duyệt không tin, nên đừng để lại quá vài phút.
+> Nhớ là file đó giờ do workflow đồng bộ — sửa trong repo rồi deploy, đừng sửa tay trên máy vì lần
+> deploy sau sẽ ghi đè.
 
-## Bước 6 — Cắt
+## Bước 5 — Cắt
 
 Hai bên cùng muốn 80/443 nên đây là một lần cắt dứt khoát, gián đoạn vài giây.
 
-Mở sẵn một cửa sổ SSH thứ hai theo dõi log:
-
 ```bash
-sudo journalctl -u caddy -f
-```
+cd /home/ec2-user/bookingos
 
-Ở cửa sổ chính:
-
-```bash
+# 1. Nhả cổng
 sudo systemctl disable --now nginx
-sudo systemctl enable --now caddy
-sudo systemctl status caddy --no-pager
+
+# 2. Bật profile tls
+sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=tls/' .env.stg
+
+# 3. Dựng caddy
+docker compose --env-file .env.stg \
+  -f docker-compose.deploy.yml -f docker-compose.stg-data.yml up -d
 ```
 
-`disable` chứ không chỉ `stop`: còn enable thì lần reboot sau nginx sống lại và giành cổng với Caddy,
-kết quả là một trong hai chết ngẫu nhiên tuỳ thứ tự khởi động.
+`disable` chứ không chỉ `stop`: còn enable thì lần reboot sau nginx host sống lại và giành cổng với
+container caddy, kết quả là một trong hai chết ngẫu nhiên tuỳ thứ tự khởi động.
+
+Theo dõi lượt xin certificate đầu tiên:
+
+```bash
+docker compose --env-file .env.stg \
+  -f docker-compose.deploy.yml -f docker-compose.stg-data.yml logs -f caddy
+```
 
 Trong log sẽ thấy Caddy xin certificate cho `admin.stg.bookingos.vn` và `api.stg.bookingos.vn` ngay
 lúc start. Subdomain tenant và custom domain xin ở **request đầu tiên** tới hostname đó — request ấy
 chậm khoảng 1–3 giây, các request sau bình thường.
 
-## Bước 7 — Nghiệm thu
+## Bước 6 — Nghiệm thu
 
 ```bash
 # Certificate riêng của từng hostname, không phải wildcard
@@ -286,16 +249,29 @@ Bước 4 mới là thứ toàn bộ việc cắt này sinh ra để làm đư�
 
 ## Rollback
 
-Certificate certbot vẫn còn nguyên trên đĩa và config cũ vẫn còn trong repo, nên đường lùi là hai lệnh:
+Certificate certbot vẫn còn nguyên trên đĩa và config cũ vẫn còn trong repo, nên đường lùi ngắn:
 
 ```bash
-sudo systemctl disable --now caddy
+cd /home/ec2-user/bookingos
+COMPOSE="docker compose --env-file .env.stg -f docker-compose.deploy.yml -f docker-compose.stg-data.yml"
+
+# Tắt profile cho lần up -d sau, rồi gỡ container caddy đang chạy
+sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=/' .env.stg
+$COMPOSE --profile tls stop caddy
+$COMPOSE --profile tls rm -f caddy
+
 sudo systemctl enable --now nginx
 ```
 
+Hai lệnh `stop`/`rm` là bắt buộc và phải có cờ `--profile tls`: tắt `COMPOSE_PROFILES` chỉ khiến các
+lần `up -d` sau bỏ qua service đó, **container đang chạy vẫn chạy** — kể cả với `--remove-orphans` —
+và nó vẫn giữ 80/443 nên nginx host sẽ không start được. Không có cờ `--profile tls` thì compose báo
+không có service tên `caddy`.
+
 Trạng thái lùi này **không** mất dữ liệu và không cần deploy lại: listener `:8081`, các biến env mới
-và code mới đều vô hại khi Caddy không chạy. Cái mất lại là custom domain hỏng TLS — đúng vấn đề ban
-đầu.
+và code mới đều vô hại khi Caddy không chạy. Certificate đã xin vẫn nằm trong volume `caddy_data`,
+nên cắt lại lần sau là dùng tiếp chứ không xin lại. Cái mất lại là custom domain hỏng TLS — đúng vấn
+đề ban đầu.
 
 Muốn lùi cả `.env.stg`: `cp .env.stg.bak.<ngày> .env.stg` rồi `docker compose … up -d`.
 
@@ -330,17 +306,21 @@ certificate có thể chạm ngưỡng gia hạn lúc máy tắt; Caddy gia hạ
 
 | Triệu chứng | Nguyên nhân thường gặp | Xử lý |
 | --- | --- | --- |
-| Bước 4 trả 404 cho domain đã verified | Chưa `up -d` sau khi copy compose file mới, nên container nginx còn là bản cũ không có `:8081` | Làm lại Bước 3 |
-| `curl` Bước 4 báo connection refused | Cổng chưa publish — thiếu `TLS_ASK_PORT` trong `.env.stg` | Bước 2, rồi `up -d` |
+| Deploy fail `ACME_EMAIL is required` | Chưa làm Bước 1 trước khi deploy | Thêm `ACME_EMAIL` vào `.env.stg`, chạy lại Deploy |
+| Bước 3 trả 404 cho domain đã verified | Deploy chưa chạy nên container nginx còn là bản cũ không có `:8081` | Làm lại Bước 2 |
+| `curl` Bước 3 báo connection refused | Cổng chưa publish — thiếu `TLS_ASK_PORT` trong `.env.stg` | Bước 1, rồi `up -d` |
+| Container `caddy` crashloop `address already in use` | nginx host chưa `disable --now` | `sudo systemctl disable --now nginx` rồi `up -d` |
+| `docker compose ps` không thấy `caddy` | `COMPOSE_PROFILES` chưa là `tls` | Bước 5.2 |
 | Caddy start nhưng không xin được certificate | Cổng 80 bị chặn ở Security Group, hoặc record Cloudflare đang Proxied | Mở 80; đổi record về DNS only |
 | Certificate vẫn là wildcard | nginx host chưa tắt, vẫn đang giữ 443 | `sudo systemctl disable --now nginx` |
 | Một tenant mới báo lỗi certificate | Tên miền chưa verified (`ask` trả 404), hoặc vừa verify xong và còn negative cache 60 giây | Verify xong đợi ~1 phút rồi thử lại |
 | `too many certificates already issued` | 50 certificate/tuần cho `bookingos.vn`, mọi `*.stg` tính chung | Đợi hết cửa sổ; khi test lặp thì dùng `acme_ca` staging |
-| Sau reboot site chết | nginx host còn `enable`, giành cổng với Caddy | `sudo systemctl disable nginx` |
+| Sau reboot site chết | nginx host còn `enable`, giành cổng với container caddy | `sudo systemctl disable nginx` |
 
 Chẩn đoán bắt đầu từ đây — Caddy ghi cả câu trả lời của endpoint `ask` lẫn kết quả xin certificate cho
 từng hostname:
 
 ```bash
-sudo journalctl -u caddy --since '30 minutes ago' --no-pager
+docker compose --env-file .env.stg \
+  -f docker-compose.deploy.yml -f docker-compose.stg-data.yml logs --since 30m caddy
 ```

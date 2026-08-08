@@ -91,6 +91,39 @@ jobs:
     # what turns this into an approval gate. `stg` runs straight through.
     environment: ${{ inputs.environment }}
     steps:
+      - uses: actions/checkout@v4
+
+      # Catch a broken Caddyfile HERE, not on the box mid-deploy: a config Caddy
+      # refuses to load means the container crashloops and takes public 80/443
+      # down with it. Values are dummies — this only checks syntax, and empty
+      # placeholders would fail as an empty site address.
+      - name: Validate the Caddyfile
+        run: |
+          docker run --rm \
+            -e ACME_EMAIL=ops@example.com \
+            -e DASHBOARD_HOST=admin.example.com \
+            -e API_HOST=api.example.com \
+            -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+
+      # The box holds no checkout, so without this every compose/nginx/Caddy
+      # change would be a manual scp somebody eventually forgets — and a deploy
+      # that "succeeded" would silently keep running the previous topology.
+      # `.env.<env>` is deliberately NOT synced: it holds the secrets and the
+      # image pins this workflow rewrites in place.
+      - name: Sync deploy config to the box
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          target: ${{ secrets.DEPLOY_PATH }}
+          source: |
+            docker-compose.deploy.yml
+            docker-compose.stg-data.yml
+            docker/nginx/deploy.conf.template
+            docker/caddy/Caddyfile
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1
         env:
@@ -127,6 +160,24 @@ jobs:
                 exit 1
               }
             fi
+
+            # Did the config the previous step just synced actually change? A
+            # bind-mounted file changing content is invisible to compose — the
+            # mount path is identical — so `up -d` alone would leave nginx
+            # serving a template it rendered at its last start. Recreating on
+            # every deploy instead would mean needless seconds of 502 behind
+            # Caddy, so compare and only act when something moved.
+            CONFIG_SUM=$(
+              for f in docker-compose.deploy.yml docker-compose.stg-data.yml \
+                       docker/nginx/deploy.conf.template docker/caddy/Caddyfile; do
+                if [ -f "$f" ]; then sha256sum "$f"; fi
+              done | sha256sum | cut -d' ' -f1
+            )
+            CONFIG_CHANGED=true
+            if [ -f .deploy-config.sha ] && [ "$(cat .deploy-config.sha)" = "$CONFIG_SUM" ]; then
+              CONFIG_CHANGED=false
+            fi
+            echo "config changed: ${CONFIG_CHANGED}"
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin
 
@@ -171,6 +222,21 @@ jobs:
               frontends)  $COMPOSE up -d storefront dashboard ;;
               *)          $COMPOSE up -d "$APP" ;;
             esac
+
+            # An `app=api` deploy never touches nginx or caddy, so the edge is
+            # recreated here on its own terms. Force, because the changed file is
+            # a bind mount: nginx re-runs envsubst only at container start, and
+            # Caddy reads its Caddyfile only at load.
+            if [ "$CONFIG_CHANGED" = "true" ]; then
+              EDGE=nginx
+              # `set -e` would kill the script on a plain `grep && …` miss.
+              if grep -q '^COMPOSE_PROFILES=.*tls' "$ENV_FILE"; then
+                EDGE="$EDGE caddy"
+              fi
+              echo "recreating edge: ${EDGE}"
+              $COMPOSE up -d --force-recreate $EDGE
+              echo "$CONFIG_SUM" > .deploy-config.sha
+            fi
 
             $COMPOSE ps
 

@@ -55,11 +55,11 @@ schedule if staging data matters to you.
           │
           ▼
    ┌─────────────────────────────────┐
-   │ Caddy (systemd, host)           │   staging — production may use an LB instead
+   │ Caddy (compose, profile `tls`)  │   off where a cloud LB terminates instead
    │  admin.*, api.*  → explicit     │
-   │  everything else → on_demand TLS│──ask──▶ 127.0.0.1:8081 (nginx, one path)
+   │  everything else → on_demand TLS│──ask──▶ nginx:8081 (one path)
    └──────────────┬──────────────────┘              └──▶ api /public/domains/tls-allowed
-                  ▼ 127.0.0.1:8080
+                  ▼ nginx:80
                       ┌──────────────────────────────┐
                       │ nginx :80  (compose)         │
                       │ routes by Host               │
@@ -83,10 +83,19 @@ holding at the infrastructure level too.
 
 ### TLS — Caddy on-demand, one certificate per hostname
 
-Staging publishes the compose nginx only on `127.0.0.1:8080`. **Caddy**, installed on the host from
-the official repo and run by its own systemd unit, owns public 80/443 and proxies there. Cloudflare
-is authoritative DNS, and every record involved must stay **DNS only** — turning on Proxied breaks
-both certificate issuance and the "point an A record at the Elastic IP" instruction we give tenants.
+**Caddy owns public 80/443** and proxies to the compose nginx. It is the `caddy` service in
+`docker-compose.deploy.yml` under the **`tls` profile** — enabled by `COMPOSE_PROFILES=tls` in the env
+file. nginx then publishes on `127.0.0.1:8080` as a loopback debugging door only; Caddy reaches it as
+`nginx:80` over the compose network. Cloudflare is authoritative DNS, and every record involved must
+stay **DNS only** — turning on Proxied breaks both certificate issuance and the "point an A record at
+the Elastic IP" instruction we give tenants.
+
+Caddy is in compose rather than a host systemd unit so that its config ships like every other change:
+the Deploy workflow syncs `docker/caddy/Caddyfile` to the box and recreates the container. A host unit
+would put the config at `/etc/caddy/Caddyfile` — outside `DEPLOY_PATH`, needing sudo — and every edit
+would be a manual `scp` somebody eventually forgets. Both hostnames and the ACME contact are `{$VAR}`
+placeholders read from the same `.env.<env>` as the rest of the stack, so one Caddyfile serves staging
+and production unchanged.
 
 A tenant can add a custom domain from the dashboard at any moment, so a fixed certificate is not
 enough: `booking.giangstudio.vn` pointed at the Elastic IP would fail at the TLS handshake and never
@@ -97,7 +106,7 @@ What decides whether a hostname gets one is a single gate:
 
 ```
 Caddy handshake for <host>
-   └── GET http://127.0.0.1:8081/public/domains/tls-allowed?domain=<host>
+   └── GET http://nginx:8081/public/domains/tls-allowed?domain=<host>
           2xx → obtain certificate      404 → refuse
 ```
 
@@ -105,22 +114,24 @@ That endpoint answers exactly the rule the storefront already lives by — only 
 `tenant_domains` resolves — reusing the 60s Redis host cache. Without it, anyone pointing any domain
 at the Elastic IP could make us request certificates on their behalf and burn the Let's Encrypt rate
 limit (50 certificates/week per registered domain, so every `*.stg.bookingos.vn` counts against
-`bookingos.vn`). The `:8081` listener is loopback-bound and serves that one path; everything else on
-it is 404. It is deliberately not `https://api.stg.bookingos.vn`: that request would loop back through
-the Caddy instance that is mid-handshake.
+`bookingos.vn`). The `:8081` listener serves that one path; everything else on it is 404, and it is
+published on the host only as `127.0.0.1:8081` so ops can curl the acceptance check. It is
+deliberately not `https://api.stg.bookingos.vn`: that request would loop back through the Caddy
+instance that is mid-handshake.
 
 **No wildcard certificate is needed any more.** A tenant subdomain (`bookingstudio.stg.bookingos.vn`)
 is also a verified `tenant_domains` row, so it takes the same on-demand HTTP-01 path as a custom
 domain — no DNS-01, no `xcaddy` build with the Cloudflare plugin, no Cloudflare API token on the box.
 
-Config: [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile).
-[`docker/nginx/staging-host.conf`](../docker/nginx/staging-host.conf) is kept as the rollback path —
-the certbot certificates are still on disk, so `systemctl stop caddy && systemctl start nginx`
-restores the previous setup. Retire certbot only after Caddy has been stable for 1–2 weeks. Install
-steps: [`deployment-runbook.md`](./deployment-runbook.md) Phase 6–7.
+Config: [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile). Install steps:
+[`deployment-runbook.md`](./deployment-runbook.md) Phase 6–7.
+[`docker/nginx/staging-host.conf`](../docker/nginx/staging-host.conf) is kept as the rollback path for
+a box that came from host nginx + certbot — those certificates are still on disk, so stopping Caddy
+and starting the host nginx restores the previous setup. Retire certbot only after Caddy has been
+stable for 1–2 weeks.
 
-Caddy's certificate store (`/var/lib/caddy/.local/share/caddy`) belongs to the official systemd unit.
-Deleting it means re-requesting every certificate.
+**Certificates live in the `caddy_data` volume.** Deleting it means re-requesting every certificate,
+which can hit the rate limit above. `docker compose down` keeps it; `down -v` does not.
 
 ## First deploy
 
@@ -207,12 +218,37 @@ What it does:
 
 1. Builds the selected app(s) for **linux/amd64** and pushes to GHCR, tagged `sha-<short>` plus a
    moving `stg`/`prod` tag.
-2. SSHes to the box, rewrites the selected `API_IMAGE` / `STOREFRONT_IMAGE` /
+2. Validates `docker/caddy/Caddyfile` with the real Caddy image, then **syncs the deploy config** to
+   `DEPLOY_PATH` (§ below).
+3. SSHes to the box, rewrites the selected `API_IMAGE` / `STOREFRONT_IMAGE` /
    `DASHBOARD_IMAGE` variables in that environment's env file to the immutable `sha-` tag, then
    pulls and restarts only the selected service(s).
 
 The env file is **pinned in place** on purpose: a later manual `docker compose up -d` on the server
 then runs the same image this deploy shipped, instead of silently drifting.
+
+### What the deploy syncs, and what it never touches
+
+The box holds no checkout, so every deploy copies these four files over — otherwise a compose or edge
+change would only take effect once somebody remembered to `scp` it, and a deploy that reported success
+would keep running the previous topology:
+
+```
+docker-compose.deploy.yml
+docker-compose.stg-data.yml
+docker/nginx/deploy.conf.template
+docker/caddy/Caddyfile
+```
+
+`.env.stg` / `.env.prod` are **never** synced: they hold the runtime secrets and the image pins the
+workflow rewrites in place. A new variable in `.env.deploy.example` still has to be added on the box
+by hand — and compose fails fast (`${VAR:?}`) rather than starting without it.
+
+The workflow hashes those four files and recreates `nginx` (and `caddy`, when the `tls` profile is on)
+**only when the hash moved**, recording it in `.deploy-config.sha`. Forcing matters because they are
+bind mounts: compose sees an identical mount path and would not restart anything, while nginx renders
+its template only at container start and Caddy reads its Caddyfile only at load. Recreating on every
+deploy instead would mean needless seconds of 502 on each release.
 
 ### Why migrations run explicitly
 
@@ -312,10 +348,11 @@ shares one Redis.
 
 - **Postgres / Redis** — managed instances. Running stateful services from this compose file would
   put production data in a container with no backup story.
-- **TLS** — terminated in front of the compose nginx, by host Caddy (staging) or a load balancer.
-  Either way `X-Forwarded-Proto` is forwarded so the apps still set `Secure` cookies and build https
-  URLs. A terminator that is not Caddy has to solve tenant custom domains some other way — see
-  *TLS — Caddy on-demand* above for what the requirement actually is.
+- **TLS on any path other than Caddy.** Caddy itself IS in the compose file, under the `tls` profile;
+  what is not modelled is a load balancer terminating instead. Either way `X-Forwarded-Proto` reaches
+  the apps so they still set `Secure` cookies and build https URLs — but a terminator that is not
+  Caddy has to solve tenant custom domains some other way. See *TLS — Caddy on-demand* above for what
+  the requirement actually is.
 - **Gateway credentials** — SePay / MoMo / ZaloPay keys are **tenant-owned** and entered in
   Dashboard → Settings, encrypted at rest with `PAYMENTS_ENC_KEY`. They are never process env vars,
   because one process serves many tenants each with a different merchant account.

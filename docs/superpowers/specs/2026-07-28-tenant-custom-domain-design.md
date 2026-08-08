@@ -201,6 +201,12 @@ hình trên một cách thực chất.
 
 ## Cutover trên EC2
 
+> **Đã lỗi thời (2026-08-08).** Mục này mô tả Caddy chạy như systemd unit trên host. Sau đó Caddy được
+> đưa vào chính compose stack (service `caddy`, profile `tls`) để config của nó được workflow Deploy
+> đồng bộ tự động thay vì scp tay. Trình tự cắt thật:
+> [`nginx-to-caddy-cutover.md`](../../nginx-to-caddy-cutover.md). Giữ lại đây làm hồ sơ quyết định.
+> Rủi ro #1 bên dưới cũng đổi theo: thư mục certificate giờ là volume `caddy_data`.
+
 0. Tạo bản ghi A `connect.stg.bookingos.vn` → Elastic IP trên Cloudflare, để **DNS only**. Đây là
    đích CNAME cho tên miền con của tenant. Đồng thời thay CORS của bucket R2 bằng cấu hình wildcard ở
    § "CORS của R2" (làm được ngay, độc lập với mọi bước sau).
