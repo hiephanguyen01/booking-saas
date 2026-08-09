@@ -1,12 +1,12 @@
-import { A11y, EffectCoverflow, Keyboard } from 'swiper/modules';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import 'swiper/css';
-import 'swiper/css/a11y';
-import 'swiper/css/effect-coverflow';
-import { useSyncExternalStore } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { Image } from '@booking/ui/components/media/image';
 import { cn } from '@booking/ui/lib/utils';
+import { useSyncExternalStore } from 'react';
+import 'swiper/css';
+import 'swiper/css/a11y';
+import 'swiper/css/effect-coverflow';
+import { A11y, EffectCoverflow, Keyboard } from 'swiper/modules';
+import { Swiper, SwiperSlide } from 'swiper/react';
 
 const LOOP_MIN_IMAGES = 5;
 const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)';
@@ -76,11 +76,15 @@ export function BrandCarousel({ images, tenantName }: { images: string[]; tenant
             grabCursor
             centeredSlides
             centerInsufficientSlides={uniqueImages.length < LOOP_MIN_IMAGES}
-            slidesPerView={3}
+            slidesPerView={1.25}
+            breakpoints={{
+              640: { slidesPerView: 2, coverflowEffect: { rotate: 50, stretch: 0 } },
+              1024: { slidesPerView: 3, coverflowEffect: { rotate: 37, stretch: -31 } },
+            }}
             speed={prefersReducedMotion ? 0 : 600}
             coverflowEffect={{
-              rotate: 37,
-              stretch: -31,
+              rotate: 50,
+              stretch: 0,
               depth: 100,
               modifier: 1,
               slideShadows: true,
