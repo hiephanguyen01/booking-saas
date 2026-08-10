@@ -14,9 +14,14 @@ import { SuspendedNotice } from './suspended-notice';
 import { TenantThemeStyle } from './tenant-theme-style';
 
 export function StorefrontAppShell({ loaderData }: { loaderData: RootLoaderPayload }) {
+  const pwaTenant =
+    loaderData.kind === 'tenant'
+      ? { name: loaderData.tenant.name, themeConfig: loaderData.tenant.themeConfig }
+      : null;
+
   return (
     <BookingI18nProvider locale={loaderData.locale}>
-      <PwaProvider advertiseInstall={loaderData.kind === 'tenant'}>
+      <PwaProvider tenant={pwaTenant}>
         {loaderData.kind === 'platform' ? (
           <PlatformLanding loaderData={loaderData} />
         ) : (
@@ -34,7 +39,6 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
     currentUser,
     documentNonce,
     hideBottomNav,
-    hideMobileMenuTrigger,
     isStandalone,
     listingTypes,
     locale,
@@ -57,12 +61,10 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
         <>
           <SiteHeader
             tenant={tenant}
-            listingTypes={listingTypes}
             locale={locale}
             currentUser={currentUser}
             accountMenuSummary={accountMenuSummary}
             hideBelowMd={Boolean(mobileChrome)}
-            hideMobileMenuTrigger={hideMobileMenuTrigger}
           />
           <main className="flex-1">
             <Outlet context={outletContext} />

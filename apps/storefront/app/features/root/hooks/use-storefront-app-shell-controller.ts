@@ -16,9 +16,6 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
     (active, match) => (match.handle as SiteHeaderRouteHandle | undefined)?.mobileChrome ?? active,
     undefined,
   );
-  const hideMobileMenuTrigger = matches.some(
-    (match) => (match.handle as SiteHeaderRouteHandle | undefined)?.hideMobileMenuTrigger === true,
-  );
   const isStandalone = matches.some(
     (match) => (match.handle as { standalone?: boolean } | undefined)?.standalone,
   );
@@ -50,7 +47,6 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
     currentUser,
     documentNonce,
     hideBottomNav,
-    hideMobileMenuTrigger,
     isStandalone,
     listingTypes,
     locale,

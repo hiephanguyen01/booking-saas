@@ -1,4 +1,5 @@
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Dialog,
@@ -10,38 +11,35 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Download, RefreshCw, Share, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router';
 import { useServiceWorker } from '~/features/pwa/hooks/use-service-worker';
+import { useShowPwaInstall } from '~/features/pwa/hooks/use-show-pwa-install';
+import { pwaBrand, type PwaTenantBrandInput } from '~/features/pwa/lib/manifest';
 import { PwaContext } from '~/features/pwa/lib/pwa-context';
-
-const INSTALL_STATE_KEY = 'bookingos:pwa-install:v1';
-const VISIT_SESSION_KEY = 'bookingos:pwa-visit-counted:v1';
-const DISMISS_MS = 30 * 24 * 60 * 60 * 1000;
-let countedWithoutSessionStorage = false;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
-interface InstallState {
-  visits: number;
-  dismissedUntil: number;
-}
-
 export function PwaProvider({
   children,
-  advertiseInstall,
+  tenant,
 }: {
   children: ReactNode;
-  advertiseInstall: boolean;
+  tenant: PwaTenantBrandInput | null;
 }) {
   const { t } = useTranslation(NsI18n.Pwa);
   const { applyUpdate, updateAvailable } = useServiceWorker();
+  const location = useLocation();
+  const showPwaInstall = useShowPwaInstall();
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIos, setIsIos] = useState(false);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [installBannerDismissed, setInstallBannerDismissed] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
+  const brand = pwaBrand(tenant);
+  const appName = tenant?.name.trim() || brand.shortName;
 
   useEffect(() => {
     const standaloneQuery = window.matchMedia('(display-mode: standalone)');
@@ -62,7 +60,7 @@ export function PwaProvider({
     };
     const onInstalled = () => {
       setInstallPrompt(null);
-      setShowInstallBanner(false);
+      setInstallBannerDismissed(true);
       setIsStandalone(true);
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
@@ -74,13 +72,9 @@ export function PwaProvider({
   }, []);
 
   useEffect(() => {
-    if (!advertiseInstall || isStandalone || (!installPrompt && !isIos)) {
-      setShowInstallBanner(false);
-      return;
-    }
-    const state = recordVisit();
-    setShowInstallBanner(Boolean(state && state.visits >= 2 && state.dismissedUntil <= Date.now()));
-  }, [advertiseInstall, installPrompt, isIos, isStandalone]);
+    if (showPwaInstall) setInstallBannerDismissed(false);
+    setShowIosGuide(false);
+  }, [location.key, showPwaInstall]);
 
   const install = useCallback(async () => {
     if (isStandalone) return;
@@ -88,7 +82,7 @@ export function PwaProvider({
       try {
         await installPrompt.prompt();
         const choice = await installPrompt.userChoice;
-        if (choice.outcome === 'accepted') setShowInstallBanner(false);
+        if (choice.outcome === 'accepted') setInstallBannerDismissed(true);
       } catch {
         // A prompt can expire between the click and browser UI. Keep browsing.
       } finally {
@@ -100,36 +94,45 @@ export function PwaProvider({
   }, [installPrompt, isIos, isStandalone]);
 
   const dismissInstall = useCallback(() => {
-    setShowInstallBanner(false);
-    writeInstallState({ ...readInstallState(), dismissedUntil: Date.now() + DISMISS_MS });
+    setInstallBannerDismissed(true);
   }, []);
 
-  const canInstall = advertiseInstall && !isStandalone && Boolean(installPrompt || isIos);
+  const canInstall = Boolean(tenant && showPwaInstall && !isStandalone && (installPrompt || isIos));
   const value = useMemo(() => ({ canInstall, install }), [canInstall, install]);
 
   return (
     <PwaContext.Provider value={value}>
       {children}
 
-      {showInstallBanner && canInstall ? (
+      {!installBannerDismissed && canInstall ? (
         <aside
-          className="fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-xl items-center gap-3 rounded-xl border bg-background p-3 shadow-xl md:bottom-4"
+          className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto grid max-w-xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-white/15 bg-neutral-950/80 p-3 pr-9 text-white shadow-2xl backdrop-blur-md lg:hidden"
           aria-label={t('install.title')}
         >
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Download aria-hidden="true" />
+          <Image
+            src={brand.appleTouchIconUrl}
+            alt=""
+            className="size-12 shrink-0 rounded-xl object-cover shadow-sm"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{appName}</p>
+            <p className="line-clamp-2 text-xs leading-4 text-white/75">
+              {t('install.description')}
+            </p>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">{t('install.title')}</p>
-            <p className="text-xs text-muted-foreground">{t('install.description')}</p>
-          </div>
-          <Button type="button" size="sm" onClick={() => void install()}>
+          <Button
+            type="button"
+            size="sm"
+            className="h-10 shrink-0 px-3 text-xs"
+            onClick={() => void install()}
+          >
             {t('install.action')}
           </Button>
           <Button
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size="icon"
+            className="absolute right-0 top-0 size-9 text-white/80 hover:bg-white/10 hover:text-white"
             onClick={dismissInstall}
             aria-label={t('install.dismiss')}
           >
@@ -187,45 +190,4 @@ function isIosDevice(): boolean {
     /iPad|iPhone|iPod/.test(ua) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   );
-}
-
-function recordVisit(): InstallState | null {
-  try {
-    let counted = countedWithoutSessionStorage;
-    try {
-      counted = sessionStorage.getItem(VISIT_SESSION_KEY) === '1';
-      if (!counted) sessionStorage.setItem(VISIT_SESSION_KEY, '1');
-    } catch {
-      countedWithoutSessionStorage = true;
-    }
-    const current = readInstallState();
-    if (counted) return current;
-    const next = { ...current, visits: current.visits + 1 };
-    localStorage.setItem(INSTALL_STATE_KEY, JSON.stringify(next));
-    return next;
-  } catch {
-    return null;
-  }
-}
-
-function readInstallState(): InstallState {
-  try {
-    const value = JSON.parse(
-      localStorage.getItem(INSTALL_STATE_KEY) ?? '{}',
-    ) as Partial<InstallState>;
-    return {
-      visits: Number.isFinite(value.visits) ? Math.max(0, Number(value.visits)) : 0,
-      dismissedUntil: Number.isFinite(value.dismissedUntil) ? Number(value.dismissedUntil) : 0,
-    };
-  } catch {
-    return { visits: 0, dismissedUntil: 0 };
-  }
-}
-
-function writeInstallState(state: InstallState) {
-  try {
-    localStorage.setItem(INSTALL_STATE_KEY, JSON.stringify(state));
-  } catch {
-    // Storage can be disabled; dismissal remains effective for this page state.
-  }
 }

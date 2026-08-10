@@ -72,14 +72,19 @@ claims clients and removes older BookingOS storefront cache versions.
 
 ## Install experience
 
-- The tenant mobile menu shows **Install app** when installation is supported.
-- A lightweight tenant install banner starts on the second browser session. Dismissal is stored for
-  30 days.
-- Chromium uses the captured `beforeinstallprompt` event.
-- iOS shows Share → Add to Home Screen instructions.
+- Only the tenant Home route advertises installation, using a separate filled 40px **Install app**
+  button with a Download icon in the mobile header and a tenant-branded floating banner above the
+  bottom navigation. The mobile header does not render a hamburger control.
+- The banner appears on every Home navigation entry or reload. Closing it affects only that Home
+  entry; no visit counter or persistent dismissal is stored.
+- Chromium and other capable browsers use the captured `beforeinstallprompt` event directly from
+  both install actions, without an intermediate custom dialog.
+- iOS uses the same **Install now** action but opens the required browser Share → Add to Home Screen
+  instructions because iOS does not expose a direct install prompt.
 - All install UI is hidden in standalone mode; platform pages never promote installation.
-- Service Worker, Canvas, localStorage/sessionStorage and install APIs are capability-checked or
-  guarded. Their absence cannot prevent normal storefront rendering or booking.
+- Browsers without a direct install prompt that are not iOS do not show install UI. Service Worker,
+  Canvas and install APIs are capability-checked or guarded; their absence cannot prevent normal
+  storefront rendering or booking.
 
 There is deliberately no push notification, background sync, offline booking/data store, Workbox,
 image-processing backend, database migration or PWA test suite.
@@ -96,4 +101,6 @@ pnpm --filter=@booking/storefront start
 ```
 
 Confirm manifest MIME/colors/icon ownership, worker URL/cache identity, offline navigation fallback,
-the Chromium/iOS install flows, 30-day dismissal, and the user-confirmed A → B update lifecycle.
+the Home-only Chromium/iOS install flows, per-entry banner dismissal, and the user-confirmed A → B
+update lifecycle. Verify both `/vi` and `/en`, a non-Home tenant route, the desktop header and the
+installed standalone experience.
