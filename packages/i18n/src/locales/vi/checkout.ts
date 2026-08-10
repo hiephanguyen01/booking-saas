@@ -1,5 +1,9 @@
 export const viCheckout = {
   title: 'Xác nhận & thanh toán',
+  mobile: {
+    back: 'Quay lại dịch vụ',
+    depositNow: 'Thanh toán tiền cọc',
+  },
   summary: 'Thông tin đặt chỗ',
   guestSection: 'Thông tin của bạn',
   fullName: 'Họ và tên',

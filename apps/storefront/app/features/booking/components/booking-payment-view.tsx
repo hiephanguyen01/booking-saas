@@ -1,4 +1,8 @@
-import type { BookingStatus, PaymentStatusResponse } from '@booking/contracts';
+import type {
+  BookingStatus,
+  PaymentStatusResponse,
+  PublicListingResponse,
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { CircleX, Clock3, Home, RefreshCw } from 'lucide-react';
@@ -25,6 +29,8 @@ interface BookingPaymentViewProps {
   signedIn: boolean;
   actionError: string | null;
   booking: BookingDetailViewModel | null;
+  recommendations: PublicListingResponse[];
+  showDetail: boolean;
 }
 
 export function BookingPaymentView({
@@ -43,6 +49,8 @@ export function BookingPaymentView({
   signedIn,
   actionError,
   booking,
+  recommendations,
+  showDetail,
 }: BookingPaymentViewProps) {
   const { t } = useTranslation([NsI18n.Booking, NsI18n.Error]);
 
@@ -56,6 +64,9 @@ export function BookingPaymentView({
         bookingStatus={bookingStatus}
         paidAmount={status.paidAmount}
         booking={booking}
+        recommendations={recommendations}
+        showDetail={showDetail}
+        submitting={submitting}
       />
     );
   }
@@ -158,7 +169,9 @@ function StatusIcon({ pending }: { pending: boolean }) {
     : 'bg-destructive/10 text-destructive ring-destructive/20';
   const Icon = pending ? Clock3 : CircleX;
   return (
-    <span className={`grid size-11 shrink-0 place-items-center rounded-lg ring-1 ring-inset ${tone}`}>
+    <span
+      className={`grid size-11 shrink-0 place-items-center rounded-lg ring-1 ring-inset ${tone}`}
+    >
       <Icon className="size-6" aria-hidden="true" />
     </span>
   );

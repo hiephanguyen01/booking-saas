@@ -1,4 +1,4 @@
-import { customerPaymentMethodSchema } from '@booking/contracts';
+import { customerPaymentMethodSchema, type PublicListingResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import { getOptionalAuth } from '~/lib/server/auth.server';
@@ -26,6 +26,7 @@ import {
   allowedPaymentRedirect,
   isMockPaymentRedirect,
 } from '~/features/checkout/server/payment-redirect.server';
+import { fetchListing, fetchListings } from '~/features/catalog/server/catalog.server';
 
 const BOOKING_DETAIL_MAX_FORM_BYTES = 16 * 1024;
 
@@ -73,6 +74,32 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
     rethrowCriticalDataError(error);
   }
 
+  let recommendations: PublicListingResponse[] = [];
+  const bookingSucceeded =
+    status.paymentStatus === 'succeeded' ||
+    booking?.status === 'confirmed' ||
+    booking?.status === 'completed';
+  if (booking && bookingSucceeded) {
+    try {
+      const bookedListing = await fetchListing(request, booking.listingSlug);
+      if (!bookedListing) throw new Error('Booked listing unavailable');
+      const candidates = await fetchListings(
+        request,
+        new URLSearchParams({
+          type: bookedListing.listingTypeSlug,
+          pageSize: '12',
+          sort: 'bookings-desc',
+        }),
+      );
+      recommendations = candidates
+        .filter((candidate) => candidate.slug !== booking?.listingSlug)
+        .slice(0, 6);
+    } catch {
+      // Recommendations are supplementary; payment outcome must remain available.
+      recommendations = [];
+    }
+  }
+
   const payload = {
     code,
     loadedAt: Date.now(),
@@ -82,8 +109,12 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
     canRetry: Boolean(flow && status.bookingStatus === 'pending_payment'),
     listingSlug: flow?.record?.listingSlug ?? null,
     maskedEmail: flow?.record?.maskedEmail ?? null,
+    recommendations,
   };
-  if (status.paymentStatus === 'succeeded' && flow) {
+  // A signed-in customer no longer needs the checkout access grant. Guests do:
+  // the success CTA opens the same protected booking at `?view=detail`, so its
+  // booking-scoped grant stays alive until the checkout-flow cookie expires.
+  if (status.paymentStatus === 'succeeded' && flow && auth) {
     return data(payload, {
       headers: { 'Set-Cookie': await flowService.destroy(request, code) },
     });

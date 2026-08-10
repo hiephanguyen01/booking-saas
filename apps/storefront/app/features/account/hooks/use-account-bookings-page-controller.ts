@@ -6,6 +6,7 @@ import { storefrontPaths } from '~/constants/paths';
 import { isReadNavigationMethod, useMinimumPending } from '~/hooks/use-minimum-pending';
 import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import {
+  bookingMatchesSearch,
   parseBookingHistoryFilter,
   type BookingHistoryFilter,
 } from '~/features/account/lib/booking-history';
@@ -15,15 +16,16 @@ type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 export function useAccountBookingsPageController({
   locale,
   filter,
+  bookings,
 }: {
   locale: Locale;
   filter: BookingHistoryFilter;
+  bookings: BookingDetailViewModel[];
 }) {
   const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
-  const [activeCancellation, setActiveCancellation] = useState<BookingDetailViewModel | null>(
-    null,
-  );
+  const [activeCancellation, setActiveCancellation] = useState<BookingDetailViewModel | null>(null);
   const [activeDispute, setActiveDispute] = useState<BookingDetailViewModel | null>(null);
+  const [query, setQuery] = useState('');
   const location = useLocation();
   const navigation = useNavigation();
   const readNavigationActive =
@@ -70,8 +72,11 @@ export function useAccountBookingsPageController({
     handleReviewOpenChange,
     locale,
     pending,
+    query,
+    setQuery,
     setActiveCancellation,
     setActiveDispute,
     setActiveReview,
+    visibleBookings: bookings.filter((booking) => bookingMatchesSearch(booking, query)),
   };
 }

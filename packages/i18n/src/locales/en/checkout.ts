@@ -3,6 +3,10 @@ import type { viCheckout } from '../vi/checkout';
 
 export const enCheckout = {
   title: 'Confirm & pay',
+  mobile: {
+    back: 'Back to service',
+    depositNow: 'Deposit due now',
+  },
   summary: 'Booking summary',
   guestSection: 'Your details',
   fullName: 'Full name',

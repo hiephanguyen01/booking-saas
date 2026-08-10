@@ -1,5 +1,10 @@
 export const viBooking = {
   code: 'Mã đặt chỗ',
+  mobile: {
+    back: 'Quay lại',
+    backHome: 'Về trang chủ',
+    cancellationPolicy: 'Chính sách hủy',
+  },
   status: 'Trạng thái',
   viewDetails: 'Xem chi tiết',
   bookingHistory: 'Lịch sử đặt đơn',
@@ -8,6 +13,7 @@ export const viBooking = {
   cancelled: 'Đặt chỗ đã được hủy.',
   success: {
     title: 'Đặt thành công',
+    mobileTitle: 'Xác nhận đặt chỗ',
     thanks: 'Cảm ơn bạn đã đặt đơn',
     bookingCodePrefix: 'Mã Booking của bạn',
     bookingCodeFallbackPrefix: 'Mã Booking của bạn là',
@@ -15,6 +21,12 @@ export const viBooking = {
     emailSentFallback: 'Xác nhận đã được gửi qua email.',
     lookup: 'Tra cứu đặt chỗ',
     home: 'Trang chủ',
+    mobileEmail: 'Thông tin xác nhận đã được gửi tới {email}',
+    mobileSchedule: 'Thời gian sử dụng',
+    mobileDeposit: 'Đã thanh toán',
+    mobileBalance: 'Còn lại',
+    mobileExplore: 'Có thể bạn sẽ thích',
+    recommendations: 'Khám phá thêm dịch vụ',
   },
   statusLabels: {
     draft: 'Nháp',

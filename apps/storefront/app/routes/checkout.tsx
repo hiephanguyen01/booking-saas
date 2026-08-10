@@ -7,6 +7,9 @@ import {
   handleCheckoutAction,
   loadCheckout,
 } from '~/features/checkout/server/checkout-route.server';
+import { CHECKOUT_MOBILE_CHROME_HANDLE } from '~/features/site-shell/lib/site-header-handle';
+
+export const handle = CHECKOUT_MOBILE_CHROME_HANDLE;
 
 export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
   const locale = localeParam(params.locale);

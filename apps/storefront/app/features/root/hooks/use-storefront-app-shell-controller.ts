@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMatches } from 'react-router';
+import { useLocation, useMatches } from 'react-router';
 import type { StorefrontContext } from '~/features/root/lib/storefront-context';
 import type { TenantRootLoaderPayload } from '~/features/root/server/root-loader.server';
 import type { SiteHeaderRouteHandle } from '~/features/site-shell/lib/site-header-handle';
@@ -11,13 +11,13 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
   // later revalidates and receives a nonce generated for a data request.
   const [documentNonce] = useState(cspNonce);
   const matches = useMatches();
+  const location = useLocation();
   const mobileChrome = matches.reduce<SiteHeaderRouteHandle['mobileChrome']>(
     (active, match) => (match.handle as SiteHeaderRouteHandle | undefined)?.mobileChrome ?? active,
     undefined,
   );
   const hideMobileMenuTrigger = matches.some(
-    (match) =>
-      (match.handle as SiteHeaderRouteHandle | undefined)?.hideMobileMenuTrigger === true,
+    (match) => (match.handle as SiteHeaderRouteHandle | undefined)?.hideMobileMenuTrigger === true,
   );
   const isStandalone = matches.some(
     (match) => (match.handle as { standalone?: boolean } | undefined)?.standalone,
@@ -31,9 +31,9 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
   const bypassTenantGate = matches.some(
     (match) => (match.handle as { bypassTenantGate?: boolean } | undefined)?.bypassTenantGate,
   );
-  const hideBottomNav = matches.some(
-    (match) => (match.handle as { hideBottomNav?: boolean } | undefined)?.hideBottomNav,
-  );
+  const hideBottomNav =
+    matches.some((match) => (match.handle as SiteHeaderRouteHandle | undefined)?.hideBottomNav) ||
+    (mobileChrome === 'flow' && new URLSearchParams(location.search).get('view') === 'detail');
   const outletContext: StorefrontContext = {
     tenant,
     listingTypes,

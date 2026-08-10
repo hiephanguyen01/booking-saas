@@ -86,6 +86,7 @@ export const storefrontPaths = {
   community: (locale: Locale) => `/${locale}/community`,
   account: {
     root: (locale: Locale) => `/${locale}/account`,
+    overview: (locale: Locale) => `/${locale}/account/overview`,
     profile: (locale: Locale) => `/${locale}/account/profile`,
     bookings: (locale: Locale) => `/${locale}/account/bookings`,
     booking: (locale: Locale, code: string) => `/${locale}/account/bookings/${segment(code)}`,

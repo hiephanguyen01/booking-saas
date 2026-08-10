@@ -5,6 +5,9 @@ import {
   loadAccountBookingsRoute,
 } from '~/features/account/server/account-bookings-route.server';
 import type { Route } from './+types/bookings';
+import { ACCOUNT_MOBILE_CHROME_HANDLE } from '~/features/site-shell/lib/site-header-handle';
+
+export const handle = ACCOUNT_MOBILE_CHROME_HANDLE;
 
 export function loader({ request, params }: Route.LoaderArgs) {
   const locale = localeParam(params.locale);

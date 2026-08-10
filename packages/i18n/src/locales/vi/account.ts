@@ -1,5 +1,14 @@
 export const viAccount = {
   title: 'Tài khoản của tôi',
+  overview: {
+    title: 'Tài khoản của tôi',
+    editProfile: 'Chỉnh sửa hồ sơ',
+    upcoming: 'Sắp tới',
+    completed: 'Hoàn tất',
+    favorites: 'Đã lưu',
+    statsUnavailable: 'Tạm thời chưa tải được thống kê tài khoản.',
+    loggingOut: 'Đang đăng xuất…',
+  },
   nav: {
     profile: 'Thông tin tài khoản',
     bookings: 'Lịch sử đặt đơn',
@@ -72,6 +81,12 @@ export const viAccount = {
     unavailable: 'Không thể tải lịch sử đặt đơn lúc này.',
     actionFailed: 'Không thể hoàn tất thao tác. Vui lòng thử lại.',
     retry: 'Thử lại',
+    mobile: {
+      back: 'Quay lại tài khoản',
+      searchLabel: 'Tìm kiếm lịch sử đặt chỗ',
+      searchPlaceholder: 'Tìm mã booking, dịch vụ, đối tác',
+      searchEmpty: 'Không tìm thấy đặt chỗ phù hợp.',
+    },
     detail: 'Xem chi tiết',
     detailTitle: 'Chi tiết đơn đặt',
     order: 'Đơn đặt chỗ',

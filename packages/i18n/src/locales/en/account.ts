@@ -3,6 +3,15 @@ import type { viAccount } from '../vi/account';
 
 export const enAccount = {
   title: 'My account',
+  overview: {
+    title: 'My account',
+    editProfile: 'Edit profile',
+    upcoming: 'Upcoming',
+    completed: 'Completed',
+    favorites: 'Saved',
+    statsUnavailable: 'Account stats are temporarily unavailable.',
+    loggingOut: 'Logging out…',
+  },
   nav: {
     profile: 'Account information',
     bookings: 'Booking history',
@@ -75,6 +84,12 @@ export const enAccount = {
     unavailable: 'Booking history is unavailable right now.',
     actionFailed: 'The action could not be completed. Please try again.',
     retry: 'Try again',
+    mobile: {
+      back: 'Back to account',
+      searchLabel: 'Search booking history',
+      searchPlaceholder: 'Search code, service, or partner',
+      searchEmpty: 'No matching bookings found.',
+    },
     detail: 'View details',
     detailTitle: 'Booking details',
     order: 'Booking order',

@@ -5,6 +5,9 @@ import { CheckoutForm } from './checkout-form';
 import { MemberBanner } from './member-banner';
 import { PaymentHandoff } from './payment-handoff';
 import { useCheckoutPageController } from '~/features/checkout/hooks/use-checkout-page-controller';
+import { storefrontPaths } from '~/constants/paths';
+import { useLocale } from '~/hooks/use-locale';
+import { MobileFlowHeader } from '~/features/site-shell/components/mobile-flow-header';
 
 export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerProps) {
   const {
@@ -24,6 +27,7 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
     legalConsent,
   } = loaderData;
   const { t } = useTranslation(NsI18n.Checkout);
+  const locale = useLocale();
   const {
     amounts,
     searchParams,
@@ -40,51 +44,68 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
     return <PaymentHandoff destination={handoffDestination} />;
   }
 
+  const sharedBookingProps = {
+    listing,
+    mode,
+    start,
+    end,
+    qty,
+    policyLines,
+    searchParams,
+    promoCode,
+    promo,
+    availablePromotions,
+    promotionsUnavailable,
+    quote,
+    amounts,
+  };
+  const sharedFormProps = {
+    listingId: listing.id,
+    listingSlug: listing.slug,
+    mode,
+    start,
+    end,
+    qty,
+    packageId,
+    promoCode: validPromoCode,
+    currentUser,
+    fieldErrors,
+    serverError,
+    dueNow: amounts.dueNow,
+    expectedSubtotal: quote.subtotal,
+    paymentMethods,
+    checkoutAttemptId,
+    legalConsent,
+  };
+
   return (
-    <div className="bg-muted py-4 sm:py-6 lg:py-8">
-      <main className="mx-auto w-full max-w-304.5 px-4 sm:px-6">
+    <div className="bg-muted md:py-6 lg:py-8">
+      <div className="md:hidden">
+        <MobileFlowHeader
+          title={t('title')}
+          backHref={storefrontPaths.listing(locale, listing.slug)}
+          backLabel={t('mobile.back')}
+        />
+        <main className="mx-auto w-full max-w-lg space-y-3 px-3 py-3 pb-32">
+          <h1 className="sr-only">{t('title')}</h1>
+          <BookingColumn {...sharedBookingProps} />
+          {memberBanner ? <MemberBanner {...memberBanner} /> : null}
+          <CheckoutForm {...sharedFormProps} mobile />
+        </main>
+      </div>
+
+      <main className="mx-auto hidden w-full max-w-304.5 px-4 sm:px-6 md:block">
         <h1 className="sr-only">{t('title')}</h1>
         {/* `[&>*]:min-w-0`: a grid item defaults to `min-width:auto`, so the
             booking summary's min-content width (thumbnail + text) widened the
             single-column track and scrolled the page sideways below ~360px. */}
         <div className="grid items-start gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-          <BookingColumn
-            listing={listing}
-            mode={mode}
-            start={start}
-            end={end}
-            qty={qty}
-            policyLines={policyLines}
-            searchParams={searchParams}
-            promoCode={promoCode}
-            promo={promo}
-            availablePromotions={availablePromotions}
-            promotionsUnavailable={promotionsUnavailable}
-            quote={quote}
-            amounts={amounts}
-          />
+          <BookingColumn {...sharedBookingProps} />
 
           <div className="flex min-w-0 flex-col gap-4">
             {memberBanner ? <MemberBanner {...memberBanner} /> : null}
 
-            <CheckoutForm
-              listingId={listing.id}
-              listingSlug={listing.slug}
-              mode={mode}
-              start={start}
-              end={end}
-              qty={qty}
-              packageId={packageId}
-              promoCode={validPromoCode}
-              currentUser={currentUser}
-              fieldErrors={fieldErrors}
-              serverError={serverError}
-              dueNow={amounts.dueNow}
-              expectedSubtotal={quote.subtotal}
-              paymentMethods={paymentMethods}
-              checkoutAttemptId={checkoutAttemptId}
-              legalConsent={legalConsent}
-            />
+            <CheckoutForm {...sharedFormProps} />
           </div>
         </div>
       </main>
