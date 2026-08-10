@@ -79,6 +79,18 @@ async function main(): Promise<void> {
       contentType: 'image/png',
     },
     {
+      label: 'app icon 180',
+      key: 'defaults/booking-studio/app-icon-180.png',
+      path: resolve(storefrontAssets, 'app-icon-180.png'),
+      contentType: 'image/png',
+    },
+    {
+      label: 'app icon 192',
+      key: 'defaults/booking-studio/app-icon-192.png',
+      path: resolve(storefrontAssets, 'app-icon-192.png'),
+      contentType: 'image/png',
+    },
+    {
       label: 'background',
       key: 'defaults/booking-studio/background.png',
       path: resolve(storefrontAssets, 'hero.png'),

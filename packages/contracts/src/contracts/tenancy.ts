@@ -153,6 +153,19 @@ const themeEmail = z.string().email({ message: 'Email không hợp lệ' }).or(z
 export const themeConfigSchema = z.object({
   logoUrl: themeUrl.optional(),
   faviconUrl: themeUrl.optional(),
+  /**
+   * Launcher icons are intentionally separate from the browser favicon. The
+   * required trio is atomic: legacy/partially-configured theme JSON falls back
+   * to the complete BookingOS set instead of mixing two brands in one manifest.
+   */
+  pwaIcons: z
+    .object({
+      icon180Url: z.string().url({ message: 'Phải là một URL hợp lệ' }),
+      icon192Url: z.string().url({ message: 'Phải là một URL hợp lệ' }),
+      icon512Url: z.string().url({ message: 'Phải là một URL hợp lệ' }),
+      maskable512Url: z.string().url({ message: 'Phải là một URL hợp lệ' }).optional(),
+    })
+    .optional(),
   colors: z
     .object({
       primary: z.string().max(64).optional(),

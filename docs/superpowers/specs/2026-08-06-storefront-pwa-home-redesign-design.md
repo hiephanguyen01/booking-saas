@@ -1,5 +1,9 @@
 # Storefront PWA + mobile home redesign
 
+> The mobile-home sections remain historical design context. The PWA implementation has since been
+> hardened with tenant icon variants, build-versioned caches and user-confirmed updates; the current
+> source of truth is [`docs/features/storefront-pwa.md`](../../features/storefront-pwa.md).
+
 Date: 2026-08-06
 
 Two changes to `apps/storefront`, shipped together because they serve one goal — the customer

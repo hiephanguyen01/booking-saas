@@ -9,6 +9,7 @@ import { enAuth } from './locales/en/auth';
 import { enAccount } from './locales/en/account';
 import { enPlatform } from './locales/en/platform';
 import { enLegal } from './locales/en/legal';
+import { enPwa } from './locales/en/pwa';
 import type { TranslationShape } from './locales/translation-shape';
 import { viBooking } from './locales/vi/booking';
 import { viCatalog } from './locales/vi/catalog';
@@ -21,6 +22,7 @@ import { viAuth } from './locales/vi/auth';
 import { viAccount } from './locales/vi/account';
 import { viPlatform } from './locales/vi/platform';
 import { viLegal } from './locales/vi/legal';
+import { viPwa } from './locales/vi/pwa';
 import { NsI18n } from './ns-i18n';
 
 export const supportedLocales = ['vi', 'en'] as const;
@@ -40,6 +42,7 @@ export const namespaces = [
   NsI18n.Account,
   NsI18n.Platform,
   NsI18n.Legal,
+  NsI18n.Pwa,
 ] as const;
 export type Namespace = (typeof namespaces)[number];
 
@@ -55,6 +58,7 @@ export const vi = {
   [NsI18n.Account]: viAccount,
   [NsI18n.Platform]: viPlatform,
   [NsI18n.Legal]: viLegal,
+  [NsI18n.Pwa]: viPwa,
 } as const;
 
 export type Messages = typeof vi;
@@ -71,6 +75,7 @@ export const en = {
   [NsI18n.Account]: enAccount,
   [NsI18n.Platform]: enPlatform,
   [NsI18n.Legal]: enLegal,
+  [NsI18n.Pwa]: enPwa,
 } satisfies TranslationShape<Messages>;
 
 export const resources = { vi, en } as const;

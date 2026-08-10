@@ -3,7 +3,11 @@ import type { Locale, ThemeConfigInput } from '@booking/contracts';
 import { prisma } from '../client';
 import { ensure, ensureRoleAssignment } from '../shared';
 import { seedStudioCatalogTypes, type CatalogTypes } from '../catalog/studio-catalog';
-import { publishTenantLegalDocuments, seedTenantLegalDrafts, type PublishedLegalVersions } from '../legal';
+import {
+  publishTenantLegalDocuments,
+  seedTenantLegalDrafts,
+  type PublishedLegalVersions,
+} from '../legal';
 import { ownerPassword, storagePublicUrl, type SeedScope } from '../scope';
 
 export type TenantSetup = {
@@ -42,6 +46,11 @@ export async function seedBookingStudio(input: {
     colors: { primary: '#E21114', accent: '#F97316', background: '#FFFFFF' },
     logoUrl: `${publicUrl}/defaults/booking-studio/logo.png`,
     faviconUrl: `${publicUrl}/defaults/booking-studio/app-icon.png`,
+    pwaIcons: {
+      icon180Url: `${publicUrl}/defaults/booking-studio/app-icon-180.png`,
+      icon192Url: `${publicUrl}/defaults/booking-studio/app-icon-192.png`,
+      icon512Url: `${publicUrl}/defaults/booking-studio/app-icon.png`,
+    },
     font: 'Montserrat',
     hero: {
       title: 'Đặt studio trong 30 giây',

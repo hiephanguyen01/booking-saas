@@ -12,6 +12,12 @@ export default defineConfig(({ mode }) => {
     process.env[key] ??= value;
   }
   const port = Number(process.env.STOREFRONT_PORT ?? env.STOREFRONT_PORT ?? 5173);
+  const buildId =
+    process.env.STOREFRONT_BUILD_ID?.trim() ||
+    `local-${new Date()
+      .toISOString()
+      .replace(/[^0-9]/g, '')
+      .slice(0, 14)}`;
   // `HOST=0.0.0.0`/`true` → boolean `true` so Vite's HMR client uses the page host
   // (LAN IP) instead of an unreachable ws://0.0.0.0. See dashboard vite.config.ts.
   const host =
@@ -19,6 +25,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [tailwindcss(), reactRouter()],
+    define: { __STOREFRONT_BUILD_ID__: JSON.stringify(buildId) },
     resolve: {
       alias: { '~': fileURLToPath(new URL('./app', import.meta.url)) },
     },

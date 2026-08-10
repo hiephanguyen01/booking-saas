@@ -1,58 +1,91 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-const SERVICE_WORKER_URL = '/sw.js';
+const SERVICE_WORKER_URL = `/sw.js?v=${encodeURIComponent(__STOREFRONT_BUILD_ID__)}`;
 const CACHE_PREFIX = 'bookingos-storefront-';
 
-/**
- * Registers `public/sw.js` — a normal module in an effect, so no inline script and
- * no CSP nonce is involved.
- *
- * Registration happens in built output only, and the dev server actively
- * *unregisters*: a worker that survives a `pnpm build` test on `localhost` would
- * otherwise keep serving that build to every later `pnpm dev` session on the same
- * origin, and finding that by hand is miserable.
- *
- * ## Why `import.meta.hot` and not `import.meta.env.PROD`
- *
- * `PROD` is derived from `NODE_ENV`, and the root `.env` that every app and CLI in
- * this repo reads pins `NODE_ENV=development`. The build script loads that file
- * (`--env-file-if-exists=../../.env`), so `import.meta.env.PROD` is **false even
- * during `pnpm build`** — gating on it silently dead-code-eliminated the
- * registration out of the production bundle, leaving a storefront that could never
- * install. `import.meta.hot` is injected by the dev *command* rather than by
- * `NODE_ENV`, and Vite statically replaces it with `undefined` when building, so it
- * distinguishes the two cases the way this needs.
- *
- * To exercise the real thing locally:
- *   pnpm --filter=@booking/storefront build && pnpm --filter=@booking/storefront start
- * `localhost` and its subdomains are secure contexts, so no TLS setup is needed.
- */
-export function useServiceWorker(): void {
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+/** Register the release worker and expose its waiting lifecycle to the PWA UI. */
+export function useServiceWorker() {
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const reloadRequested = useRef(false);
 
+  useEffect(() => {
     if (import.meta.hot) {
       void unregisterAll();
       return;
     }
+    if (!('serviceWorker' in navigator)) return;
 
-    // Registration rejects in private-mode Firefox and some embedded webviews. A
-    // storefront that cannot install offline support still has to render.
-    void navigator.serviceWorker.register(SERVICE_WORKER_URL).catch(() => {});
+    let disposed = false;
+    const cleanups: Array<() => void> = [];
+
+    const onControllerChange = () => {
+      if (!reloadRequested.current) return;
+      reloadRequested.current = false;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    cleanups.push(() =>
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange),
+    );
+
+    void navigator.serviceWorker
+      .register(SERVICE_WORKER_URL)
+      .then((registration) => {
+        if (disposed) return;
+        if (registration.waiting) setWaitingWorker(registration.waiting);
+
+        const onUpdateFound = () => {
+          const installing = registration.installing;
+          if (!installing) return;
+          const onStateChange = () => {
+            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+              setWaitingWorker(registration.waiting ?? installing);
+            }
+          };
+          installing.addEventListener('statechange', onStateChange);
+          cleanups.push(() => installing.removeEventListener('statechange', onStateChange));
+        };
+        registration.addEventListener('updatefound', onUpdateFound);
+        cleanups.push(() => registration.removeEventListener('updatefound', onUpdateFound));
+      })
+      .catch(() => {
+        // Private-mode Firefox and embedded webviews can reject registration.
+        // The storefront remains fully usable online without a worker.
+      });
+
+    return () => {
+      disposed = true;
+      cleanups.forEach((cleanup) => cleanup());
+    };
   }, []);
+
+  const applyUpdate = useCallback(() => {
+    if (!waitingWorker) return;
+    reloadRequested.current = true;
+    waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+  }, [waitingWorker]);
+
+  return { applyUpdate, updateAvailable: waitingWorker !== null };
 }
 
 async function unregisterAll(): Promise<void> {
   try {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.map((registration) => registration.unregister()));
-    if (registrations.length > 0 && 'caches' in window) {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+  } catch {
+    // Continue with cache cleanup even when worker access is unavailable.
+  }
+
+  try {
+    if ('caches' in window) {
       const names = await caches.keys();
       await Promise.all(
         names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)),
       );
     }
   } catch {
-    // Nothing actionable — the page renders either way.
+    // Development cleanup is best-effort and must never block rendering.
   }
 }

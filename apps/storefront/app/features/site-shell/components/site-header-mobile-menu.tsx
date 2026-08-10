@@ -8,13 +8,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@booking/ui/components/ui/sheet';
-import { Globe2, LayoutGrid, Menu, Search } from 'lucide-react';
+import { Download, Globe2, LayoutGrid, Menu, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import type { AccountNavKey } from '~/features/account/lib/account-nav';
 import { type Locale, NsI18n, useTranslation } from '@booking/i18n';
 import { SiteHeaderAccountAvatar, SiteHeaderLogoutForm } from './site-header-account-menu';
 import { useSiteHeaderMobileMenuController } from '~/features/site-shell/hooks/use-site-header-mobile-menu-controller';
+import { usePwa } from '~/features/pwa/lib/pwa-context';
 
 export function SiteHeaderMobileMenu({
   brand,
@@ -37,6 +38,8 @@ export function SiteHeaderMobileMenu({
   hideMenuTrigger?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Navigation);
+  const { t: tPwa } = useTranslation(NsI18n.Pwa);
+  const { canInstall, install } = usePwa();
   const { accountItems, catalogPath, localeFetcher, localeRedirectTo, nextLocale, paths } =
     useSiteHeaderMobileMenuController({ locale, redirectTo });
 
@@ -84,6 +87,19 @@ export function SiteHeaderMobileMenu({
             <Search aria-hidden="true" className="size-4" />
             {t('lookup')}
           </MobileNavLink>
+          {canInstall ? (
+            <SheetClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-auto justify-start rounded-sm px-3 py-2.5 text-sm font-medium"
+                onClick={() => void install()}
+              >
+                <Download aria-hidden="true" className="size-4" />
+                {tPwa('install.menu')}
+              </Button>
+            </SheetClose>
+          ) : null}
           <div className="my-2 h-px bg-border" />
           <MobileNavLink to={paths.becomePartner} emphasized>
             {t('becomePartner')}

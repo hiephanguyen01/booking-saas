@@ -1,7 +1,7 @@
 import { BookingI18nProvider } from '@booking/i18n';
 import { Outlet } from 'react-router';
 import { PlatformLanding } from '~/features/platform-landing/components/platform-landing';
-import { useServiceWorker } from '~/features/pwa/hooks/use-service-worker';
+import { PwaProvider } from '~/features/pwa/components/pwa-provider';
 import { useStorefrontAppShellController } from '~/features/root/hooks/use-storefront-app-shell-controller';
 import type {
   RootLoaderPayload,
@@ -14,15 +14,15 @@ import { SuspendedNotice } from './suspended-notice';
 import { TenantThemeStyle } from './tenant-theme-style';
 
 export function StorefrontAppShell({ loaderData }: { loaderData: RootLoaderPayload }) {
-  useServiceWorker();
-
   return (
     <BookingI18nProvider locale={loaderData.locale}>
-      {loaderData.kind === 'platform' ? (
-        <PlatformLanding loaderData={loaderData} />
-      ) : (
-        <TenantStorefrontAppShell loaderData={loaderData} />
-      )}
+      <PwaProvider advertiseInstall={loaderData.kind === 'tenant'}>
+        {loaderData.kind === 'platform' ? (
+          <PlatformLanding loaderData={loaderData} />
+        ) : (
+          <TenantStorefrontAppShell loaderData={loaderData} />
+        )}
+      </PwaProvider>
     </BookingI18nProvider>
   );
 }
