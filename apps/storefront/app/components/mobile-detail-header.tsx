@@ -4,6 +4,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router';
 import { HeaderActions } from '~/components/header-actions';
+import { TenantInstallTrigger } from '~/features/pwa/components/tenant-install-trigger';
 
 export function MobileDetailHeader({
   backHref,
@@ -29,6 +30,10 @@ export function MobileDetailHeader({
         </Link>
       </Button>
       <p className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</p>
+      <TenantInstallTrigger
+        variant="compact"
+        className="bg-background text-foreground hover:bg-background/90"
+      />
       <HeaderActions title={title} favorite={favorite} inverted />
     </header>
   );

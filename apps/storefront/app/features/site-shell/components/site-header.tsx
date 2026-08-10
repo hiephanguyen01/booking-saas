@@ -1,4 +1,4 @@
-import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
+import type { CurrentUser } from '@booking/contracts';
 import { type Locale, NsI18n, useTranslation } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
@@ -9,7 +9,7 @@ import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import { useOverlayHeader } from '~/features/site-shell/hooks/use-overlay-header';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { SiteHeaderAccountMenu } from './site-header-account-menu';
-import { SiteHeaderMobileMenu } from './site-header-mobile-menu';
+import { SiteHeaderMobile } from './site-header-mobile';
 import { TenantBrand } from './tenant-brand';
 
 /** Shared sizing for the desktop nav controls, which are shorter than the Button default. */
@@ -28,20 +28,16 @@ const OVERLAY_CONTROL =
 /** Tenant-aware header shared by the storefront, customer auth, and partner flows. */
 export function SiteHeader({
   tenant,
-  listingTypes,
   locale,
   currentUser = null,
   accountMenuSummary = null,
   hideBelowMd = false,
-  hideMobileMenuTrigger = false,
 }: {
   tenant: StorefrontTenant;
-  listingTypes: PublicListingTypeResponse[];
   locale: Locale;
   currentUser?: CurrentUser | null;
   accountMenuSummary?: AccountMenuSummary | null;
   hideBelowMd?: boolean;
-  hideMobileMenuTrigger?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Navigation);
   const location = useLocation();
@@ -123,32 +119,12 @@ export function SiteHeader({
           </nav>
         </div>
 
-        <SiteHeaderMobileMenu
+        <SiteHeaderMobile
           brand={<BrandHomeLink locale={locale} tenant={tenant} />}
-          actions={
-            currentUser ? (
-              <SiteHeaderAccountMenu
-                currentUser={currentUser}
-                locale={locale}
-                accountMenuSummary={accountMenuSummary}
-              />
-            ) : (
-              // The phone header has room for exactly one worded control, and it
-              // is the one that grows the tenant's account list — signing in
-              // stays a step inside the sheet.
-              <Button asChild className="h-9.5 rounded-md px-4 text-xs font-bold">
-                <Link to={storefrontPaths.register(locale)} prefetch="intent">
-                  {t('register')}
-                </Link>
-              </Button>
-            )
-          }
-          listingTypes={listingTypes}
           locale={locale}
           currentUser={currentUser}
           overlay={overlay}
           redirectTo={redirectTo}
-          hideMenuTrigger={hideMobileMenuTrigger}
         />
       </div>
     </header>

@@ -31,7 +31,6 @@ export function AccountFlowLayout({
     <div className="flex min-h-dvh flex-col bg-muted/30">
       <SiteHeader
         tenant={context.tenant}
-        listingTypes={context.listingTypes}
         locale={context.locale}
         currentUser={context.currentUser}
       />

@@ -1,12 +1,14 @@
 # Storefront PWA
 
 The storefront is installable on both the BookingOS platform host and every tenant host. Installation
-promotion is tenant-only: the platform manifest remains valid, but BookingOS does not show an install
-CTA on its landing page.
+promotion is white-label and tenant-only: eligible live tenants advertise their own app on public
+Android/iOS storefront pages. Platform, desktop and transactional tenant routes do not show install
+CTAs or banners.
 
 ## Tenant icon contract
 
-`ThemeConfigInput` stores PWA launcher artwork separately from `faviconUrl`:
+`ThemeConfigInput` persists the favicon and PWA launcher variants separately, while Theme Settings
+creates them from one qualifying source upload:
 
 ```ts
 pwaIcons?: {
@@ -18,17 +20,18 @@ pwaIcons?: {
 ```
 
 The object is optional for compatibility with existing `theme_config` JSON. Once present, all three
-regular icon URLs are required. `faviconUrl` remains the browser-tab/dashboard icon and is never used
-as a launcher or Apple touch icon.
+regular icon URLs are required.
 
 Theme Settings accepts a square PNG/WebP of at least 512px. The browser Canvas creates PNG variants
 at 180, 192 and 512px, then uploads all three concurrently through the existing same-origin presign
-route and direct S3/MinIO PUT flow. The form receives the new object only after every upload succeeds.
-The optional 512px maskable icon is uploaded separately; its preview overlays the Android safe zone
-and it is never synthesized from the main artwork.
+route and direct S3/MinIO PUT flow. The 512 URL is also stored as `faviconUrl`; the form changes only
+after every upload succeeds. The optional 512px maskable icon is uploaded separately; its preview
+overlays the Android safe zone and it is never synthesized from the main artwork. Legacy small or ICO
+favicons remain tab-only until replaced with qualifying artwork.
 
 BookingStudio's seed points to 180/192/512 variants produced from its existing app icon. Tenants with
-no complete `pwaIcons` object use the complete BookingOS fallback set.
+no complete `pwaIcons` object use the complete BookingOS fallback set and remain manually installable,
+but the storefront does not advertise installation until its own icon trio exists.
 
 ## Manifest brand selection
 
@@ -72,14 +75,30 @@ claims clients and removes older BookingOS storefront cache versions.
 
 ## Install experience
 
-- The tenant mobile menu shows **Install app** when installation is supported.
-- A lightweight tenant install banner starts on the second browser session. Dismissal is stored for
-  30 days.
-- Chromium uses the captured `beforeinstallprompt` event.
-- iOS shows Share → Add to Home Screen instructions.
-- All install UI is hidden in standalone mode; platform pages never promote installation.
-- Service Worker, Canvas, localStorage/sessionStorage and install APIs are capability-checked or
-  guarded. Their absence cannot prevent normal storefront rendering or booking.
+- A live tenant's standard mobile header renders the tenant brand and a direct **Install app** action;
+  it has no hamburger or account avatar. If promotion is unavailable, the action becomes a text link
+  to **Log in** for guests or **Account** for signed-in customers. Desktop header behaviour is
+  unchanged.
+- Catalog and listing/group/package detail app bars keep their existing back, search, share and
+  favourite actions and add a compact **Install** chip. Responsive width alone never qualifies a
+  desktop browser.
+- Mobile detection prefers `navigator.userAgentData.mobile`, then falls back to Android/iOS
+  user-agent signatures and the iPadOS `MacIntel`/touch-points signal.
+- A bottom sheet opens as soon as install capability settles, once per `sessionStorage` lifetime.
+  Closing it suppresses it for the rest of that tab session; closing and reopening the tab creates a
+  new session. Disabled session storage falls back to an in-memory once-per-runtime guard.
+- Chromium uses the captured `beforeinstallprompt` event. Rejecting or consuming that one-shot event
+  suppresses promotion for the rest of the session so the header cannot expose a dead action.
+- iOS Safari shows Share → Add to Home Screen instructions. Android Chrome without a native event
+  shows its manual menu steps. Other mobile/in-app browsers explain how to continue in Safari or
+  Chrome instead of silently hiding the action.
+- Promotion is limited to localized home, nearby, community, catalog, listing, listing-group and
+  provider pages. Platform, suspended tenants, auth, checkout, bookings and account routes stay
+  hidden.
+- All install UI is hidden in standalone mode. The standalone-only update banner remains available
+  on both Platform and tenant installations.
+- Service Worker, Canvas, sessionStorage and install APIs are capability-checked or guarded. Their
+  absence cannot prevent normal storefront rendering or booking.
 
 There is deliberately no push notification, background sync, offline booking/data store, Workbox,
 image-processing backend, database migration or PWA test suite.
@@ -96,4 +115,5 @@ pnpm --filter=@booking/storefront start
 ```
 
 Confirm manifest MIME/colors/icon ownership, worker URL/cache identity, offline navigation fallback,
-the Chromium/iOS install flows, 30-day dismissal, and the user-confirmed A → B update lifecycle.
+tenant-branded mobile Chromium/iOS install promotion, manual/unsupported-browser guides, route and
+desktop exclusions, once-per-session dismissal, and the user-confirmed A → B update lifecycle.

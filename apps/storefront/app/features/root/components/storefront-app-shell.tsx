@@ -1,5 +1,5 @@
 import { BookingI18nProvider } from '@booking/i18n';
-import { Outlet } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
 import { PlatformLanding } from '~/features/platform-landing/components/platform-landing';
 import { PwaProvider } from '~/features/pwa/components/pwa-provider';
 import { useStorefrontAppShellController } from '~/features/root/hooks/use-storefront-app-shell-controller';
@@ -14,9 +14,21 @@ import { SuspendedNotice } from './suspended-notice';
 import { TenantThemeStyle } from './tenant-theme-style';
 
 export function StorefrontAppShell({ loaderData }: { loaderData: RootLoaderPayload }) {
+  const { pathname } = useLocation();
+  const tenantIcons =
+    loaderData.kind === 'tenant' ? loaderData.tenant.themeConfig.pwaIcons : undefined;
+  const advertiseInstall =
+    loaderData.kind === 'tenant' &&
+    loaderData.tenant.live &&
+    Boolean(tenantIcons?.icon180Url && tenantIcons.icon192Url && tenantIcons.icon512Url) &&
+    isPublicInstallPromotionPath(pathname, loaderData.locale);
+
   return (
     <BookingI18nProvider locale={loaderData.locale}>
-      <PwaProvider advertiseInstall={loaderData.kind === 'tenant'}>
+      <PwaProvider
+        advertiseInstall={advertiseInstall}
+        installAppName={loaderData.kind === 'tenant' ? loaderData.tenant.name : undefined}
+      >
         {loaderData.kind === 'platform' ? (
           <PlatformLanding loaderData={loaderData} />
         ) : (
@@ -27,6 +39,23 @@ export function StorefrontAppShell({ loaderData }: { loaderData: RootLoaderPaylo
   );
 }
 
+function isPublicInstallPromotionPath(
+  pathname: string,
+  locale: RootLoaderPayload['locale'],
+): boolean {
+  const localeRoot = `/${locale}`;
+  if (pathname === localeRoot || pathname === `${localeRoot}/`) return true;
+  if (!pathname.startsWith(`${localeRoot}/`)) return false;
+
+  const segments = pathname
+    .slice(localeRoot.length + 1)
+    .split('/')
+    .filter(Boolean);
+  if (segments.length === 1) return segments[0] === 'nearby' || segments[0] === 'community';
+  if (segments.length !== 2) return false;
+  return segments[0] === 't' || segments[0] === 'l' || segments[0] === 'g' || segments[0] === 'p';
+}
+
 function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoaderPayload }) {
   const {
     accountMenuSummary,
@@ -34,7 +63,6 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
     currentUser,
     documentNonce,
     hideBottomNav,
-    hideMobileMenuTrigger,
     isStandalone,
     listingTypes,
     locale,
@@ -57,12 +85,10 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
         <>
           <SiteHeader
             tenant={tenant}
-            listingTypes={listingTypes}
             locale={locale}
             currentUser={currentUser}
             accountMenuSummary={accountMenuSummary}
             hideBelowMd={Boolean(mobileChrome)}
-            hideMobileMenuTrigger={hideMobileMenuTrigger}
           />
           <main className="flex-1">
             <Outlet context={outletContext} />

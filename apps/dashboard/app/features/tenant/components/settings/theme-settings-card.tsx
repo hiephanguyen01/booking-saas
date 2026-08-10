@@ -89,15 +89,15 @@ export function ThemeSettingsCard({
                     <Section
                       icon={<Image />}
                       title="Nhận diện"
-                      description="Logo nhận diện storefront; favicon chỉ dùng trên tab trình duyệt và dashboard."
+                      description="Logo nhận diện storefront và các bề mặt thương hiệu chính."
                     >
-                      <Grid>{take('logoUrl', 'faviconUrl')}</Grid>
+                      <Grid>{take('logoUrl')}</Grid>
                     </Section>
 
                     <Section
                       icon={<LayoutTemplate />}
-                      title="Biểu tượng ứng dụng PWA"
-                      description="Bộ icon riêng khi khách cài storefront lên điện thoại. Không dùng favicon làm icon ứng dụng."
+                      title="Favicon và biểu tượng ứng dụng"
+                      description="Một ảnh nguồn tạo favicon cho tab và bộ icon khi khách cài storefront lên điện thoại."
                     >
                       <PwaIconUploader form={form} />
                     </Section>

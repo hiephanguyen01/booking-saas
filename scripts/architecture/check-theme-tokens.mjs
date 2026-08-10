@@ -32,8 +32,8 @@ const IMAGE_OVERLAY_ALLOWLIST = new Map([
     'desktop header controls over the tenant hero photo',
   ],
   [
-    'apps/storefront/app/features/site-shell/components/site-header-mobile-menu.tsx',
-    'mobile header trigger over the tenant hero photo',
+    'apps/storefront/app/features/site-shell/components/site-header-mobile.tsx',
+    'mobile header account fallback over the tenant hero photo',
   ],
   [
     'apps/storefront/app/features/account/components/reviews/review-dialog-view.tsx',
