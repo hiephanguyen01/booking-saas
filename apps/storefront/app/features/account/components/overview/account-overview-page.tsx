@@ -36,17 +36,10 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-lg font-bold">{user.fullName}</h2>
               <p className="truncate text-sm text-muted-foreground">{user.phone ?? user.email}</p>
-              <Link
-                to={storefrontPaths.account.profile(locale)}
-                className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Pencil className="size-3.5" aria-hidden="true" />
-                {t('overview.editProfile')}
-              </Link>
             </div>
           </div>
 
-          <dl className="mt-4 grid grid-cols-3 divide-x divide-border border-t border-border pt-4 text-center">
+          {/* <dl className="mt-4 grid grid-cols-3 divide-x divide-border border-t border-border pt-4 text-center">
             <OverviewStat
               icon={ReceiptText}
               label={t('overview.upcoming')}
@@ -58,7 +51,7 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
               value={stats?.completed}
             />
             <OverviewStat icon={Heart} label={t('overview.favorites')} value={stats?.favorites} />
-          </dl>
+          </dl> */}
           {!stats ? (
             <p className="mt-3 text-center text-xs text-muted-foreground">
               {t('overview.statsUnavailable')}
