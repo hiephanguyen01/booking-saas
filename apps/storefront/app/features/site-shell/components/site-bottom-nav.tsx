@@ -18,15 +18,12 @@ const ICONS: Record<BottomNavKey, LucideIcon> = {
 };
 
 /**
- * App-style tab bar, mobile only. It is what makes the installed PWA navigable:
- * in `display: standalone` there is no browser chrome and no back button, so the
- * hamburger sheet alone would leave a visitor with one way in and no way across.
+ * Primary mobile navigation for the storefront and installed PWA. In
+ * `display: standalone` there is no browser chrome or browser back button, so
+ * these persistent destinations keep the main customer journeys reachable.
  *
- * The sheet stays for everything four tabs cannot hold — listing types, becoming a
- * partner, community, logout, the language switch.
- *
- * `z-30` on purpose: shadcn's dialog and sheet overlays sit at `z-50`, so a
- * booking sheet still covers this bar instead of having tabs float over it.
+ * `z-30` on purpose: shadcn's dialog overlays sit at `z-50`, so a booking
+ * dialog still covers this bar instead of having tabs float over it.
  */
 export function SiteBottomNav({
   listingTypes,

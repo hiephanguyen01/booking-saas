@@ -1,52 +1,35 @@
-import type { CurrentUser } from '@booking/contracts';
-import { type Locale, NsI18n, useTranslation } from '@booking/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
-import { cn } from '@booking/ui/lib/utils';
+import { Download } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
-import { storefrontPaths } from '~/constants/paths';
-import { TenantInstallTrigger } from '~/features/pwa/components/tenant-install-trigger';
+import { usePwa } from '~/features/pwa/lib/pwa-context';
 
-export function SiteHeaderMobile({
-  brand,
-  locale,
-  currentUser,
-  overlay,
-  redirectTo,
-}: {
-  brand: ReactNode;
-  locale: Locale;
-  currentUser: CurrentUser | null;
-  overlay: boolean;
-  redirectTo: string;
-}) {
-  const { t } = useTranslation(NsI18n.Navigation);
-  const accountHref = currentUser
-    ? storefrontPaths.account.root(locale)
-    : storefrontPaths.login(locale, redirectTo);
-  const accountLabel = currentUser ? t('bottomNav.account') : t('login');
+export function SiteHeaderMobile({ brand, actions }: { brand: ReactNode; actions?: ReactNode }) {
+  const { t: tPwa } = useTranslation(NsI18n.Pwa);
+  const { canInstall, install } = usePwa();
 
   return (
-    <div className="flex h-18 items-center justify-between gap-3 lg:hidden">
-      <div className="min-w-0 flex-1">{brand}</div>
-      <TenantInstallTrigger
-        fallback={
+    <div className="flex h-18 items-center justify-between gap-1 min-[400px]:gap-2 lg:hidden">
+      <div className="min-w-0 flex-1 overflow-hidden [&_img]:max-w-full [&_span]:block [&_span]:max-w-full">
+        {brand}
+      </div>
+      <div className="flex shrink-0 items-center gap-1 min-[400px]:gap-2">
+        {actions ? (
+          <div className="shrink-0 max-[359px]:[&>a]:px-2 max-[359px]:[&>button]:px-2">
+            {actions}
+          </div>
+        ) : null}
+        {canInstall ? (
           <Button
-            asChild
-            variant="ghost"
-            className={cn(
-              'h-9.5 shrink-0 rounded-md px-3 text-xs font-bold',
-              overlay
-                ? 'border border-white/40 bg-white/12 text-white backdrop-blur-sm hover:bg-white/25 hover:text-white'
-                : 'text-primary hover:bg-primary/10 hover:text-primary',
-            )}
+            type="button"
+            className="h-10 shrink-0 rounded-lg px-2.5 text-xs font-semibold min-[400px]:px-3.5 min-[400px]:text-sm"
+            onClick={() => void install()}
           >
-            <Link to={accountHref} prefetch="intent">
-              {accountLabel}
-            </Link>
+            <Download className="size-5" aria-hidden="true" />
+            {tPwa('install.headerAction')}
           </Button>
-        }
-      />
+        ) : null}
+      </div>
     </div>
   );
 }

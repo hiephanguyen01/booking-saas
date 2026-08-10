@@ -121,10 +121,15 @@ export function SiteHeader({
 
         <SiteHeaderMobile
           brand={<BrandHomeLink locale={locale} tenant={tenant} />}
-          locale={locale}
-          currentUser={currentUser}
-          overlay={overlay}
-          redirectTo={redirectTo}
+          actions={
+            currentUser ? undefined : (
+              <Button asChild className="h-9.5 rounded-md px-4 text-xs font-bold">
+                <Link to={storefrontPaths.register(locale)} prefetch="intent">
+                  {t('register')}
+                </Link>
+              </Button>
+            )
+          }
         />
       </div>
     </header>

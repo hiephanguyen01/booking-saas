@@ -75,10 +75,10 @@ claims clients and removes older BookingOS storefront cache versions.
 
 ## Install experience
 
-- A live tenant's standard mobile header renders the tenant brand and a direct **Install app** action;
-  it has no hamburger or account avatar. If promotion is unavailable, the action becomes a text link
-  to **Log in** for guests or **Account** for signed-in customers. Desktop header behaviour is
-  unchanged.
+- A live tenant's standard mobile header has no hamburger or account avatar. It keeps the tenant
+  brand, shows **Register** for guests, and adds a separate direct **Install app** action whenever
+  promotion is available. Signed-in customers use the persistent bottom navigation to reach their
+  account. Desktop header behaviour is unchanged.
 - Catalog and listing/group/package detail app bars keep their existing back, search, share and
   favourite actions and add a compact **Install** chip. Responsive width alone never qualifies a
   desktop browser.
