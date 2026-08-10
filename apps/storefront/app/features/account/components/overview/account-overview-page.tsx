@@ -1,4 +1,5 @@
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { Image } from '@booking/ui/components/media/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
 import { cn } from '@booking/ui/lib/utils';
 import { ChevronRight, LogOut } from 'lucide-react';
@@ -9,6 +10,7 @@ import type { AccountOutletContext } from '~/features/account/hooks/use-account-
 import { useAccountShellController } from '~/features/account/hooks/use-account-shell-controller';
 import { userInitials } from '~/features/account/lib/account-nav';
 import type { AccountOverviewStats } from '~/features/account/server/account-overview-route.server';
+import { pwaBrand } from '~/features/pwa/lib/manifest';
 
 export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | null }) {
   const { user, locale, tenant, accountMenuSummary } = useOutletContext<AccountOutletContext>();
@@ -17,12 +19,20 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
     locale,
     accountMenuSummary,
   });
+  const appIconUrl = pwaBrand(tenant).appleTouchIconUrl;
 
   return (
     <div className="-mx-4 -mt-4 sm:-mx-6 lg:mx-0 lg:mt-0">
       <div className="bg-foreground px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-20 text-background md:hidden">
-        <p className="text-sm font-medium text-background/60">{tenant.name}</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('overview.title')}</h1>
+        <Image
+          src={appIconUrl}
+          alt={tenant.name}
+          width={48}
+          height={48}
+          loading="eager"
+          className="size-12 rounded-(--sf-image-radius) object-cover shadow-sm"
+        />
+        <h1 className="mt-3 text-2xl font-bold tracking-tight">{t('overview.title')}</h1>
       </div>
 
       <div className="relative mx-auto -mt-14 w-full max-w-3xl px-3 md:mt-0 md:px-0">
