@@ -28,6 +28,14 @@ const sourceExtensions = new Set(['.ts', '.tsx']);
 const IMAGE_OVERLAY_ALLOWLIST = new Map([
   ['apps/storefront/app/features/home/components/hero.tsx', 'hero copy over the tenant hero photo'],
   [
+    'apps/storefront/app/features/site-shell/components/site-header.tsx',
+    'desktop header controls over the tenant hero photo',
+  ],
+  [
+    'apps/storefront/app/features/site-shell/components/site-header-mobile-menu.tsx',
+    'mobile header trigger over the tenant hero photo',
+  ],
+  [
     'apps/storefront/app/features/account/components/reviews/review-dialog-view.tsx',
     'controls over customer-uploaded review photos',
   ],

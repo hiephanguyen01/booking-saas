@@ -74,6 +74,8 @@ jobs:
           file: apps/${{ matrix.app }}/Dockerfile
           platforms: linux/amd64
           push: true
+          build-args: |
+            STOREFRONT_BUILD_ID=${{ github.sha }}
           # Immutable sha tag is what the server pins to; the moving env tag is
           # only for humans reading `docker images`.
           tags: |

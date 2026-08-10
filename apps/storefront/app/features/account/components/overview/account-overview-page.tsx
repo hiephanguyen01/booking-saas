@@ -19,8 +19,8 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
 
   return (
     <div className="-mx-4 -mt-4 sm:-mx-6 lg:mx-0 lg:mt-0">
-      <div className="bg-[#131a2a] px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-20 text-white md:hidden">
-        <p className="text-sm font-medium text-white/60">{tenant.name}</p>
+      <div className="bg-foreground px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-20 text-background md:hidden">
+        <p className="text-sm font-medium text-background/60">{tenant.name}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('overview.title')}</h1>
       </div>
 

@@ -13,6 +13,7 @@ import {
   Search,
 } from 'lucide-react';
 import { themeFields, toThemeDefaults } from './settings-fields';
+import { PwaIconUploader } from './pwa-icon-uploader';
 import { StorefrontThemePreview } from './storefront-theme-preview';
 
 /** Storefront theme editor: brand config persisted into the tenant's `theme_config`. */
@@ -70,7 +71,7 @@ export function ThemeSettingsCard({
             warnOnUnsavedChanges
             resetDirtyOnSuccess={saved}
             actionsClassName={FORM_ACTIONS_STICKY}
-            renderFields={(fields, values) => {
+            renderFields={(fields, values, form) => {
               const take = (...names: string[]) =>
                 fields.filter((field) => names.includes(field.name)).map((field) => field.node);
               return (
@@ -88,9 +89,17 @@ export function ThemeSettingsCard({
                     <Section
                       icon={<Image />}
                       title="Nhận diện"
-                      description="Logo và favicon xuất hiện trên storefront, tab trình duyệt và dashboard."
+                      description="Logo nhận diện storefront; favicon chỉ dùng trên tab trình duyệt và dashboard."
                     >
                       <Grid>{take('logoUrl', 'faviconUrl')}</Grid>
+                    </Section>
+
+                    <Section
+                      icon={<LayoutTemplate />}
+                      title="Biểu tượng ứng dụng PWA"
+                      description="Bộ icon riêng khi khách cài storefront lên điện thoại. Không dùng favicon làm icon ứng dụng."
+                    >
+                      <PwaIconUploader form={form} />
                     </Section>
 
                     <Section

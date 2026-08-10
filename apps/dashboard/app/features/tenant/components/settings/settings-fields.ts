@@ -318,6 +318,7 @@ export function toThemeDefaults(tc: ThemeConfigInput): ThemeConfigInput {
   return {
     logoUrl: tc.logoUrl ?? '',
     faviconUrl: tc.faviconUrl ?? '',
+    pwaIcons: tc.pwaIcons,
     baseSize: tc.baseSize ?? '',
     colors: {
       primary: tc.colors?.primary ?? '',

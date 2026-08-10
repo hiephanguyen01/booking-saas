@@ -17,6 +17,8 @@ COPY . .
 RUN turbo prune @booking/storefront --docker
 
 FROM base AS builder
+ARG STOREFRONT_BUILD_ID
+ENV STOREFRONT_BUILD_ID=${STOREFRONT_BUILD_ID}
 COPY --from=pruner /app/tsconfig.base.json ./tsconfig.base.json
 COPY --from=pruner /app/out/json/ ./
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml

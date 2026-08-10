@@ -9,6 +9,7 @@ const PLATFORM_ICONS: ManifestIcon[] = [
   { src: '/pwa/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
   { src: '/pwa/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
 ];
+const PLATFORM_APPLE_TOUCH_ICON = '/pwa/icon-180.png';
 
 const SHORT_NAME_MAX = 12;
 
@@ -64,11 +65,12 @@ function shortLabel(name: string): string {
 
 export function pwaBrand(tenant: PwaTenantBrandInput | null): PwaBrand {
   const theme = tenant?.themeConfig ?? null;
+  const tenantIcons = completeTenantIcons(theme);
   return {
     shortName: shortLabel(tenant?.name ?? PLATFORM_APP_NAME),
     themeColor: brandSwatch(theme?.colors?.primary, BRAND_DEFAULTS.primary).color,
     backgroundColor: brandSwatch(theme?.colors?.background, BRAND_DEFAULTS.background).color,
-    appleTouchIconUrl: theme?.faviconUrl || '/pwa/icon-192.png',
+    appleTouchIconUrl: tenantIcons?.icon180Url ?? PLATFORM_APPLE_TOUCH_ICON,
   };
 }
 
@@ -82,7 +84,7 @@ export function buildWebAppManifest({
   const brand = pwaBrand(tenant);
   const name = tenant?.name.trim() || PLATFORM_APP_NAME;
   const description = tenant?.themeConfig?.hero?.subtitle?.trim();
-  const tenantIcon = tenant?.themeConfig?.faviconUrl;
+  const tenantIcons = completeTenantIcons(tenant?.themeConfig ?? null);
 
   return {
     id: '/',
@@ -99,9 +101,27 @@ export function buildWebAppManifest({
     theme_color: brand.themeColor,
     background_color: brand.backgroundColor,
     categories: ['travel', 'lifestyle', 'business'],
-    icons: [
-      ...(tenantIcon ? [{ src: tenantIcon, sizes: 'any', purpose: 'any' as const }] : []),
-      ...PLATFORM_ICONS,
-    ],
+    icons: tenantIcons
+      ? [
+          { src: tenantIcons.icon192Url, sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: tenantIcons.icon512Url, sizes: '512x512', type: 'image/png', purpose: 'any' },
+          ...(tenantIcons.maskable512Url
+            ? [
+                {
+                  src: tenantIcons.maskable512Url,
+                  sizes: '512x512',
+                  type: 'image/png',
+                  purpose: 'maskable' as const,
+                },
+              ]
+            : []),
+        ]
+      : PLATFORM_ICONS,
   };
+}
+
+function completeTenantIcons(theme: ThemeConfigInput | null) {
+  const icons = theme?.pwaIcons;
+  if (!icons?.icon180Url || !icons.icon192Url || !icons.icon512Url) return null;
+  return icons;
 }

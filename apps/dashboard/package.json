@@ -21,6 +21,7 @@
     "lucide-react": "^0.400.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
+    "react-hook-form": "^7.60.0",
     "react-router": "8.0.1",
     "redis": "6.1.0"
   },
