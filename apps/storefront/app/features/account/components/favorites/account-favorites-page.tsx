@@ -9,7 +9,10 @@ import {
   AccountTypeTabs,
 } from '~/features/account/components/shared/account-primitives';
 import { MobileAccountListingCollection } from '~/features/account/components/shared/mobile-account-listing-collection';
-import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
+import {
+  FavoriteListingCard,
+  FavoriteMobileSearchResultCard,
+} from '~/features/favorites/components/favorite-cards';
 import { useAccountTypeFilter } from '~/features/account/hooks/use-account-type-filter';
 import type { loadAccountFavoritesRoute } from '~/features/account/server/account-favorites-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';
@@ -56,13 +59,27 @@ export function AccountFavoritesPage({
   return (
     <>
       <MobileAccountListingCollection
-        title={t('favorites.title')}
-        locale={loaderData.locale}
         filterLabel={t('favorites.filterLabel')}
         tabs={tabs}
         resultCount={loaderData.loadFailed ? undefined : visibleItems.length}
       >
-        {content}
+        {loaderData.loadFailed ? (
+          <AccountListState icon={Heart} tone="destructive" message={t('favorites.loadError')} />
+        ) : visibleItems.length > 0 ? (
+          visibleItems.map((item) => (
+            <FavoriteMobileSearchResultCard key={item.id} listing={item} />
+          ))
+        ) : (
+          <AccountListState
+            icon={Heart}
+            message={t('favorites.empty')}
+            action={
+              <Button asChild>
+                <Link to={storefrontPaths.home(loaderData.locale)}>{t('favorites.explore')}</Link>
+              </Button>
+            }
+          />
+        )}
       </MobileAccountListingCollection>
 
       <div className="hidden flex-col gap-(--sf-section-gap) py-2 font-studio md:flex md:gap-4">

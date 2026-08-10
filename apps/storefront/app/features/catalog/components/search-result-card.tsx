@@ -1,4 +1,5 @@
-import { Heart, Images, MapPin } from 'lucide-react';
+import type { PublicListingResponse } from '@booking/contracts';
+import { Heart, Images, MapPin, X } from 'lucide-react';
 import { Link } from 'react-router';
 import { Image } from '@booking/ui/components/media/image';
 import { RatingStars, RatingSummary } from '~/components/rating-stars';
@@ -11,16 +12,23 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
-import type { ListingFavoriteControl } from '~/features/catalog/lib/listing-card.types';
+import type {
+  ListingCardDismissControl,
+  ListingFavoriteControl,
+} from '~/features/catalog/lib/listing-card.types';
+
+type SearchResultCardListing = EnrichedSearchListing | PublicListingResponse;
 
 export function SearchResultCard({
   listing,
   context,
   favoriteControl,
+  dismissControl,
 }: {
-  listing: EnrichedSearchListing;
-  context: SearchResultContext;
+  listing: SearchResultCardListing;
+  context?: SearchResultContext;
   favoriteControl?: ListingFavoriteControl;
+  dismissControl?: ListingCardDismissControl;
 }) {
   const locale = useLocale();
   const { t } = useTranslation([NsI18n.Catalog, NsI18n.Listing]);
@@ -28,13 +36,18 @@ export function SearchResultCard({
     listing.kind === 'group'
       ? storefrontPaths.listingGroup(locale, listing.slug)
       : storefrontPaths.listing(locale, listing.slug);
-  const href = `${detailPath}?${context.query}`;
-  const photos = listing.photos.slice(0, 3);
+  const href = context?.query ? `${detailPath}?${context.query}` : detailPath;
+  const photos = listing.photos.slice(0, 3) as string[];
   const location = formatListingLocation(listing);
   const price = formatVnd(listing.priceFrom);
-  const regularPrice = formatVnd(listing.regularPriceFrom);
-  const discountPercent = calculateDiscountPercent(listing.regularPriceFrom, listing.priceFrom);
-  const priceUnit = priceUnitLabel(context, listing.priceUnit);
+  const regularPriceFrom = 'regularPriceFrom' in listing ? listing.regularPriceFrom : null;
+  const regularPrice = formatVnd(regularPriceFrom);
+  const discountPercent = calculateDiscountPercent(regularPriceFrom, listing.priceFrom);
+  const completedBookings = 'completedBookings' in listing ? listing.completedBookings : undefined;
+  const priceUnit =
+    context && 'priceUnit' in listing
+      ? priceUnitLabel(context, listing.priceUnit)
+      : { key: 'listing:fromPrice' as const, count: undefined };
 
   return (
     // Below `md` this is the same compact row as `ListingCard`: a phone showed
@@ -60,6 +73,16 @@ export function SearchResultCard({
             className="size-4 md:size-5"
             fill={favoriteControl.selected ? 'currentColor' : 'none'}
           />
+        </button>
+      ) : null}
+      {dismissControl ? (
+        <button
+          type="button"
+          aria-label={dismissControl.label}
+          onClick={dismissControl.onDismiss}
+          className="absolute top-2.5 left-2.5 z-10 flex size-8 items-center justify-center rounded-full bg-background/95 text-muted-foreground shadow-md transition-transform after:absolute after:-inset-1.5 after:content-[''] hover:scale-105 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:top-6 md:left-6 md:size-10"
+        >
+          <X className="size-4 md:size-5" aria-hidden="true" />
         </button>
       ) : null}
       <Link
@@ -143,38 +166,47 @@ export function SearchResultCard({
                 <RatingStars rating={listing.ratingAvg} className="max-md:hidden" />
               </>
             )}
-            <span className="shrink-0 text-[10px] md:hidden">
-              {t('catalog:completedBookings', { count: listing.completedBookings })}
-            </span>
-            <span className="shrink-0 text-right max-md:hidden">
-              {t('catalog:completedBookings', { count: listing.completedBookings })}
-            </span>
+            {completedBookings !== undefined ? (
+              <>
+                <span className="shrink-0 text-[10px] md:hidden">
+                  {t('catalog:completedBookings', { count: completedBookings })}
+                </span>
+                <span className="shrink-0 text-right max-md:hidden">
+                  {t('catalog:completedBookings', { count: completedBookings })}
+                </span>
+              </>
+            ) : null}
           </div>
 
-          <div className="flex shrink-0 items-end justify-end text-right">
-            <p className="text-xs leading-4 text-muted-foreground md:text-sm md:leading-5">
-              <span className="flex flex-wrap items-baseline justify-end gap-x-2">
-                {discountPercent !== null && regularPrice ? (
-                  <span className="text-xs text-muted-foreground/65 line-through md:text-base md:leading-6">
-                    {regularPrice}
+          {price ? (
+            <div className="flex shrink-0 items-end justify-end text-right">
+              <p className="text-xs leading-4 text-muted-foreground md:text-sm md:leading-5">
+                <span className="flex flex-wrap items-baseline justify-end gap-x-2">
+                  {discountPercent !== null && regularPrice ? (
+                    <span className="text-xs text-muted-foreground/65 line-through md:text-base md:leading-6">
+                      {regularPrice}
+                    </span>
+                  ) : null}
+                  <span
+                    className={discountPercent !== null ? 'text-brand-accent' : 'text-foreground'}
+                  >
+                    {t('listing:fromPriceShort')}{' '}
+                    <strong className="text-base leading-5 font-semibold md:text-lg md:leading-7">
+                      {price}
+                    </strong>
                   </span>
-                ) : null}
-                <span
-                  className={discountPercent !== null ? 'text-brand-accent' : 'text-foreground'}
-                >
-                  {t('listing:fromPriceShort')}{' '}
-                  <strong className="text-base leading-5 font-semibold md:text-lg md:leading-7">
-                    {price}
-                  </strong>
                 </span>
-              </span>
-              <span
-                className={`block ${discountPercent !== null ? 'text-brand-accent' : 'text-muted-foreground'}`}
-              >
-                {t(priceUnit.key, priceUnit.count === undefined ? {} : { count: priceUnit.count })}
-              </span>
-            </p>
-          </div>
+                <span
+                  className={`block ${discountPercent !== null ? 'text-brand-accent' : 'text-muted-foreground'}`}
+                >
+                  {t(
+                    priceUnit.key,
+                    priceUnit.count === undefined ? {} : { count: priceUnit.count },
+                  )}
+                </span>
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
     </article>
@@ -213,7 +245,11 @@ function priceUnitLabel(
   return { key: PRICE_UNIT_KEYS[priceUnit] };
 }
 
-function calculateDiscountPercent(regularPrice: string, salePrice: string): number | null {
+function calculateDiscountPercent(
+  regularPrice: string | null,
+  salePrice: string | null,
+): number | null {
+  if (!regularPrice || !salePrice) return null;
   const regular = BigInt(regularPrice);
   const sale = BigInt(salePrice);
   if (regular <= 0n || sale >= regular) return null;

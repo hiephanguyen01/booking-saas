@@ -4,7 +4,10 @@ import { Link, useOutletContext } from 'react-router';
 import type { AccountOutletContext } from '~/features/account/hooks/use-account-layout-controller';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
+import {
+  FavoriteListingCard,
+  FavoriteMobileSearchResultCard,
+} from '~/features/favorites/components/favorite-cards';
 import {
   AccountListState,
   AccountTypeTabs,
@@ -72,8 +75,6 @@ export function AccountRecentPage({
   return (
     <>
       <MobileAccountListingCollection
-        title={t('recent.title')}
-        locale={loaderData.locale}
         filterLabel={t('recent.filterLabel')}
         tabs={tabs}
         resultCount={visibleItems.length}
@@ -90,7 +91,28 @@ export function AccountRecentPage({
           ) : undefined
         }
       >
-        {content}
+        {visibleItems.length > 0 ? (
+          visibleItems.map((item) => (
+            <FavoriteMobileSearchResultCard
+              key={keyOf(item)}
+              listing={item}
+              dismissControl={{
+                label: t('recent.remove', { title: item.title }),
+                onDismiss: () => removeItem(item),
+              }}
+            />
+          ))
+        ) : (
+          <AccountListState
+            icon={Clock3}
+            message={t('recent.empty')}
+            action={
+              <Button asChild>
+                <Link to={storefrontPaths.home(loaderData.locale)}>{t('recent.explore')}</Link>
+              </Button>
+            }
+          />
+        )}
       </MobileAccountListingCollection>
 
       <div className="hidden flex-col gap-(--sf-section-gap) py-2 font-studio md:flex md:gap-4">
