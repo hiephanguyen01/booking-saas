@@ -32,8 +32,17 @@ Every actor is a single `User` row; what they can do is decided by **role assign
   no-double-booking GiST constraint because they oversell up to capacity by design.
 - **Booking selection** — Listing Type policy: `flexible_duration` lets customers choose a valid
   duration; `fixed_packages` requires a named package whose duration and absolute price are fixed.
+  For a daily fixed package, the Customer selects its **start date**; the package supplies the end
+  date through its fixed duration.
 - **modeConfig** — per-mode JSON on a listing (unit pricing or fixed packages, ordered package photos,
   min/max where relevant, granularity and mode settings). Validated by `@booking/contracts`, not the DB.
+
+## Storefront discovery
+
+- **Search Intent** — the Customer's meaningful constraints for finding a Listing: keyword, location,
+  Listing Type, schedule, guest count and quantity. It describes what the Customer wants to book.
+- **Catalog View State** — how the Customer is currently viewing one set of search results: facets,
+  price/rating filters, sort order and page. It does not change the underlying Search Intent.
 
 ## Booking lifecycle
 
