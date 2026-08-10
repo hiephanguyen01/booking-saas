@@ -7,7 +7,7 @@ env file and the hostnames in it: if staging runs a different topology it stops 
 | --- | --- | --- |
 | Compose | `docker-compose.deploy.yml` | same |
 | Env file | `.env.stg` | `.env.prod` |
-| Storefront | `*.stg.bookingos.vn` (+ tenant custom domains) | `*.bookingos.vn` (+ tenant custom domains) |
+| Storefront | `stg.bookingos.vn`, `*.stg.bookingos.vn` (+ tenant custom domains) | `bookingos.vn`, `*.bookingos.vn` (+ tenant custom domains) |
 | Dashboard | `admin.stg.bookingos.vn` | `admin.bookingos.vn` |
 | API | `api.stg.bookingos.vn` | `api.bookingos.vn` |
 | Postgres / Redis | managed, outside compose | managed, outside compose |
@@ -57,12 +57,12 @@ schedule if staging data matters to you.
    ┌───────────────────────────────────────────┐
    │ Caddy (compose) — THE ingress             │
    │                                           │
-   │ TLS:    admin.*, api.*  → at startup      │
+   │ TLS:    base, admin.*, api.* → at startup │
    │         everything else → on_demand ──ask──▶ api:3000 /public/domains/tls-allowed
    │                                           │
    │ Routes: admin.*  → dashboard              │
    │         api.*    → api                    │
-   │         _        → storefront (catch-all) │
+   │         base, _  → storefront             │
    └──────────────┬───────────┬───────────┬────┘
                   ▼           ▼           ▼
              storefront   dashboard      api :3000

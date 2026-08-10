@@ -15,6 +15,7 @@
 #   ACME_EMAIL      real operated mailbox — Let's Encrypt expiry warnings go here
 #   DASHBOARD_HOST  admin.stg.bookingos.vn
 #   API_HOST        api.stg.bookingos.vn
+#   PLATFORM_BASE_DOMAIN  stg.bookingos.vn
 #
 # Validate against the version compose actually runs before shipping — on-demand
 # syntax has moved between Caddy 2.x releases:
@@ -64,6 +65,15 @@
 {$API_HOST} {
 	import common
 	reverse_proxy api:3000
+}
+
+# First-party platform landing. This must be explicit so Caddy obtains its
+# certificate at startup instead of sending the hostname through the tenant-only
+# on-demand `ask` gate. The storefront itself recognizes this Host as the
+# BookingOS landing and deliberately does not resolve a tenant.
+{$PLATFORM_BASE_DOMAIN} {
+	import common
+	reverse_proxy storefront:3000
 }
 
 # THE DEFAULT ROUTE — deliberately last and catch-all, for EVERY other hostname:
