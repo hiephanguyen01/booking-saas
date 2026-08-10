@@ -13,14 +13,19 @@ import {
   toBookingDetailViewModel,
 } from '~/features/booking/lib/booking-detail-model';
 import {
+  bookingHistoryCounts,
   bookingMatchesFilter,
+  type BookingHistoryCounts,
   type BookingHistoryFilter,
 } from '~/features/account/lib/booking-history';
 import { loadCustomerReviewsByBooking } from './customer-reviews.server';
 import { apiPaths } from '~/constants/api-paths';
 
 /** Dispute eligibility keyed by booking id, for the list's action buttons. */
-export type DisputeStateMap = Record<string, { canOpenDispute: boolean; disputeUntil: string | null }>;
+export type DisputeStateMap = Record<
+  string,
+  { canOpenDispute: boolean; disputeUntil: string | null }
+>;
 
 export async function loadAccountBookings(
   request: Request,
@@ -31,6 +36,7 @@ export async function loadAccountBookings(
   bookings: BookingDetailViewModel[];
   disputeStates: DisputeStateMap;
   error: string | null;
+  counts: BookingHistoryCounts;
 }> {
   const [result, reviews, disputes] = await Promise.all([
     apiGet<BookingResponse[]>(request, apiPaths.public.myBookings, accessToken, {
@@ -62,6 +68,7 @@ export async function loadAccountBookings(
       bookings: bookings.filter((item) => bookingMatchesFilter(item, filter)),
       disputeStates,
       error: null,
+      counts: bookingHistoryCounts(bookings),
     };
   }
 
@@ -69,6 +76,7 @@ export async function loadAccountBookings(
     bookings: [],
     disputeStates,
     error: result.error ?? 'BOOKINGS_UNAVAILABLE',
+    counts: bookingHistoryCounts([]),
   };
 }
 

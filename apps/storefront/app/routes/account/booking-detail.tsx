@@ -5,6 +5,9 @@ import {
   loadAccountBookingDetailRoute,
 } from '~/features/account/server/account-booking-detail-route.server';
 import type { Route } from './+types/booking-detail';
+import { BOOKING_DETAIL_MOBILE_CHROME_HANDLE } from '~/features/site-shell/lib/site-header-handle';
+
+export const handle = BOOKING_DETAIL_MOBILE_CHROME_HANDLE;
 
 export function meta() {
   return [{ title: 'Booking history | BookingOS' }, { name: 'robots', content: 'noindex' }];

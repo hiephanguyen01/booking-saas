@@ -17,6 +17,7 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
 import type { LegalConsentBundle } from '~/features/legal/server/legal.server';
 import { formatVnd } from '~/lib/ui';
+import { MobileStickyActionBar } from '~/features/site-shell/components/mobile-sticky-action-bar';
 import {
   useCheckoutFormController,
   type CheckoutContactFieldModel,
@@ -40,6 +41,7 @@ export function CheckoutForm({
   paymentMethods,
   checkoutAttemptId,
   legalConsent,
+  mobile = false,
 }: {
   listingId: string;
   listingSlug: string;
@@ -57,6 +59,7 @@ export function CheckoutForm({
   paymentMethods: CustomerPaymentMethod[];
   checkoutAttemptId: string;
   legalConsent: LegalConsentBundle;
+  mobile?: boolean;
 }) {
   const { t } = useTranslation([NsI18n.Checkout, NsI18n.Legal]);
   const {
@@ -74,6 +77,18 @@ export function CheckoutForm({
     serverError,
     paymentMethods,
   });
+  const idPrefix = mobile ? 'mobile-checkout' : 'desktop-checkout';
+  const submitButton = (
+    <Button
+      type="submit"
+      size="control"
+      className="w-full text-base font-semibold md:ml-auto md:w-70"
+      disabled={submitting}
+    >
+      {submitting ? <Spinner data-icon="inline-start" /> : null}
+      {submitting ? t('creating') : t('payNow')}
+    </Button>
+  );
 
   return (
     <Form
@@ -98,9 +113,9 @@ export function CheckoutForm({
       ) : null}
       <input type="hidden" name="acceptedLocale" value={legalConsent.acceptedLocale} />
 
-      <SectionCard aria-labelledby="checkout-contact-heading">
+      <SectionCard aria-labelledby={`${idPrefix}-contact-heading`}>
         <h2
-          id="checkout-contact-heading"
+          id={`${idPrefix}-contact-heading`}
           className="text-base leading-6 font-semibold text-foreground"
         >
           {t('guestSection')}
@@ -119,14 +134,14 @@ export function CheckoutForm({
         ) : null}
         <FieldGroup className="mt-4 gap-4">
           {contactFields.map((field) => (
-            <ContactField key={field.name} {...field} disabled={submitting} />
+            <ContactField key={field.name} {...field} disabled={submitting} idPrefix={idPrefix} />
           ))}
         </FieldGroup>
       </SectionCard>
 
-      <SectionCard aria-labelledby="checkout-payment-heading">
+      <SectionCard aria-labelledby={`${idPrefix}-payment-heading`}>
         <h2
-          id="checkout-payment-heading"
+          id={`${idPrefix}-payment-heading`}
           className="text-base leading-6 font-semibold text-foreground"
         >
           {t('payment.title')}
@@ -141,6 +156,7 @@ export function CheckoutForm({
           options={paymentMethodOptions}
           defaultValue={defaultPaymentMethod}
           disabled={submitting}
+          idPrefix={idPrefix}
         />
       </SectionCard>
 
@@ -155,15 +171,19 @@ export function CheckoutForm({
         </p>
       ) : null}
 
-      <Button
-        type="submit"
-        size="control"
-        className="w-full text-base font-semibold lg:ml-auto lg:w-70"
-        disabled={submitting}
-      >
-        {submitting ? <Spinner data-icon="inline-start" /> : null}
-        {submitting ? t('creating') : t('payNow')}
-      </Button>
+      {mobile ? (
+        <MobileStickyActionBar
+          summary={
+            <p className="text-xs leading-4 text-muted-foreground">
+              {t('mobile.depositNow')}
+              <strong className="mt-0.5 block text-base text-primary">{formatVnd(dueNow)}</strong>
+            </p>
+          }
+          action={<div className="min-w-44">{submitButton}</div>}
+        />
+      ) : (
+        submitButton
+      )}
     </Form>
   );
 }
@@ -172,10 +192,12 @@ function PaymentMethods({
   options,
   defaultValue,
   disabled,
+  idPrefix,
 }: {
   options: CheckoutPaymentMethodModel[];
   defaultValue?: CustomerPaymentMethod;
   disabled: boolean;
+  idPrefix: string;
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
   return (
@@ -191,7 +213,7 @@ function PaymentMethods({
         disabled={disabled}
       >
         {options.map((option) => (
-          <PaymentMethod key={option.value} {...option} />
+          <PaymentMethod key={option.value} {...option} idPrefix={idPrefix} />
         ))}
       </RadioGroup>
     </fieldset>
@@ -202,12 +224,14 @@ function PaymentMethod({
   value,
   icon: Icon,
   label,
+  idPrefix,
 }: {
   value: string;
   icon: LucideIcon;
   label: string;
+  idPrefix: string;
 }) {
-  const id = `payment-${value}`;
+  const id = `${idPrefix}-payment-${value}`;
   return (
     <FieldLabel
       htmlFor={id}
@@ -234,11 +258,13 @@ function ContactField({
   defaultValue,
   errorMessage,
   disabled,
-}: CheckoutContactFieldModel & { disabled: boolean }) {
+  idPrefix,
+}: CheckoutContactFieldModel & { disabled: boolean; idPrefix: string }) {
   const invalid = Boolean(errorMessage);
+  const id = `${idPrefix}-${name}`;
   return (
     <Field data-invalid={invalid}>
-      <FieldLabel htmlFor={name} className="sr-only">
+      <FieldLabel htmlFor={id} className="sr-only">
         {label}
       </FieldLabel>
       <InputGroup>
@@ -246,14 +272,14 @@ function ContactField({
           <Icon strokeWidth={1.6} aria-hidden="true" />
         </InputGroupAddon>
         <InputGroupInput
-          id={name}
+          id={id}
           name={name}
           type={type}
           autoComplete={autoComplete}
           defaultValue={defaultValue}
           placeholder={label}
           aria-invalid={invalid || undefined}
-          aria-describedby={invalid ? `${name}-error` : undefined}
+          aria-describedby={invalid ? `${id}-error` : undefined}
           disabled={disabled}
         />
         {invalid ? (
@@ -262,7 +288,11 @@ function ContactField({
           </InputGroupAddon>
         ) : null}
       </InputGroup>
-      <FieldError id={`${name}-error`} className="mt-1 text-xs leading-4">
+      <FieldError
+        id={`${id}-error`}
+        className="mt-1 text-xs leading-4"
+        role={invalid ? 'alert' : undefined}
+      >
         {errorMessage}
       </FieldError>
     </Field>

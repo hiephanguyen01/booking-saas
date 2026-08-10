@@ -64,7 +64,7 @@ export function useSiteBottomNavController({
     {
       key: 'account',
       to: signedIn
-        ? storefrontPaths.account.root(locale)
+        ? storefrontPaths.account.overview(locale)
         : storefrontPaths.login(locale, redirectTo),
       // `/account/bookings` and `/account/favorites` each have their own tab.
       active:

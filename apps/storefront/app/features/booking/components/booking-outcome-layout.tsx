@@ -14,6 +14,7 @@ import {
   BookingFinancialSection,
   PaymentTaxNote,
 } from './booking-detail-sections';
+import { MobileFlowHeader } from '~/features/site-shell/components/mobile-flow-header';
 
 /**
  * The shell every outcome of the payment flow renders inside — awaiting, failed
@@ -62,11 +63,16 @@ export function BookingOutcomeLayout({
   const { t } = useTranslation(NsI18n.Booking);
 
   return (
-    <div className="min-h-full bg-muted/50 py-4 font-studio sm:py-6 lg:py-8">
+    <div className="min-h-full bg-muted/50 py-0 font-studio md:py-4 lg:py-8">
+      <MobileFlowHeader
+        title={title}
+        backHref={storefrontPaths.home(locale)}
+        backLabel={t('mobile.backHome')}
+      />
       <main className="mx-auto w-full max-w-304.5 px-4 sm:px-6">
         <Link
           to={storefrontPaths.bookings(locale)}
-          className="inline-flex min-h-10 items-center gap-2 rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="hidden min-h-10 items-center gap-2 rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:inline-flex"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
           {t('lookup.title')}

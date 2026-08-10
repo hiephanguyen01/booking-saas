@@ -3,6 +3,11 @@ import type { viBooking } from '../vi/booking';
 
 export const enBooking = {
   code: 'Booking code',
+  mobile: {
+    back: 'Go back',
+    backHome: 'Back to home',
+    cancellationPolicy: 'Cancellation policy',
+  },
   status: 'Status',
   viewDetails: 'View details',
   bookingHistory: 'Booking history',
@@ -11,6 +16,7 @@ export const enBooking = {
   cancelled: 'Your booking has been cancelled.',
   success: {
     title: 'Booking successful',
+    mobileTitle: 'Booking confirmation',
     thanks: 'Thank you for your booking',
     bookingCodePrefix: 'Your booking code',
     bookingCodeFallbackPrefix: 'Your booking code is',
@@ -18,6 +24,12 @@ export const enBooking = {
     emailSentFallback: 'A confirmation was sent by email.',
     lookup: 'Find booking',
     home: 'Home',
+    mobileEmail: 'Confirmation details were sent to {email}',
+    mobileSchedule: 'Schedule',
+    mobileDeposit: 'Paid',
+    mobileBalance: 'Balance',
+    mobileExplore: 'You may also like',
+    recommendations: 'Explore more services',
   },
   statusLabels: {
     draft: 'Draft',

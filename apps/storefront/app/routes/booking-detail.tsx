@@ -8,6 +8,9 @@ import {
 import { useBookingDetailController } from '~/features/booking/hooks/use-booking-detail-controller';
 import { PaymentHandoff } from '~/features/checkout/components/payment-handoff';
 import type { Route } from './+types/booking-detail';
+import { FLOW_MOBILE_CHROME_HANDLE } from '~/features/site-shell/lib/site-header-handle';
+
+export const handle = FLOW_MOBILE_CHROME_HANDLE;
 
 export function meta() {
   return [{ title: 'Booking' }, { name: 'robots', content: 'noindex' }];

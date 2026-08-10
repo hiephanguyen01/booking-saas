@@ -25,6 +25,7 @@ export default [
     route('legal/:docSlug/*', 'routes/legal.tsx'),
     route('account', 'routes/account/layout.tsx', [
       index('routes/account/_index.tsx'),
+      route('overview', 'routes/account/overview.tsx'),
       route('profile', 'routes/account/profile.tsx'),
       route('bookings', 'routes/account/bookings.tsx'),
       route('bookings/:code', 'routes/account/booking-detail.tsx'),

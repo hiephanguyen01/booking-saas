@@ -77,6 +77,8 @@ export function useBookingDetailController({
       submitting: navigation.state === 'submitting',
       signedIn: Boolean(currentUser),
       actionError,
+      recommendations: loaderData.recommendations,
+      showDetail: searchParams.get('view') === 'detail',
     },
   };
 }

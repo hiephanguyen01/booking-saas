@@ -72,7 +72,7 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
             <>
               <div
                 aria-hidden="true"
-                className="h-[calc(3.5rem+env(safe-area-inset-bottom))] shrink-0 lg:hidden"
+                className="h-[calc(3.5rem+env(safe-area-inset-bottom))] shrink-0 md:hidden"
               />
               <SiteBottomNav
                 listingTypes={listingTypes}
