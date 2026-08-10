@@ -8,6 +8,7 @@ import {
   AccountListState,
   AccountTypeTabs,
 } from '~/features/account/components/shared/account-primitives';
+import { MobileAccountListingCollection } from '~/features/account/components/shared/mobile-account-listing-collection';
 import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
 import { useAccountTypeFilter } from '~/features/account/hooks/use-account-type-filter';
 import type { loadAccountFavoritesRoute } from '~/features/account/server/account-favorites-route.server';
@@ -22,47 +23,58 @@ export function AccountFavoritesPage({
   const { listingTypes } = useOutletContext<AccountOutletContext>();
   const { isAllSelected, isTypeSelected, selectAll, selectType, visibleItems } =
     useAccountTypeFilter(loaderData.items, (item) => item.listingTypeSlug);
+  const tabs = [
+    { key: 'all', label: t('favorites.all'), active: isAllSelected, onSelect: selectAll },
+    ...listingTypes.map((type) => ({
+      key: type.id,
+      label: type.name,
+      active: isTypeSelected(type.slug),
+      onSelect: () => selectType(type.slug),
+    })),
+  ];
+
+  const content = loaderData.loadFailed ? (
+    <AccountListState icon={Heart} tone="destructive" message={t('favorites.loadError')} />
+  ) : visibleItems.length > 0 ? (
+    <div className="grid grid-cols-1 gap-(--sf-section-gap) sm:grid-cols-2 md:gap-5 xl:grid-cols-3">
+      {visibleItems.map((item) => (
+        <FavoriteListingCard key={item.id} listing={item} className="sm:min-h-98.5" />
+      ))}
+    </div>
+  ) : (
+    <AccountListState
+      icon={Heart}
+      message={t('favorites.empty')}
+      action={
+        <Button asChild>
+          <Link to={storefrontPaths.home(loaderData.locale)}>{t('favorites.explore')}</Link>
+        </Button>
+      }
+    />
+  );
 
   return (
-    <div className="flex flex-col gap-(--sf-section-gap) py-2 font-studio md:gap-4">
-      <h1 className="text-base font-semibold leading-6 text-foreground">{t('favorites.title')}</h1>
+    <>
+      <MobileAccountListingCollection
+        title={t('favorites.title')}
+        locale={loaderData.locale}
+        filterLabel={t('favorites.filterLabel')}
+        tabs={tabs}
+        resultCount={loaderData.loadFailed ? undefined : visibleItems.length}
+      >
+        {content}
+      </MobileAccountListingCollection>
 
-      <div className="flex flex-col gap-(--sf-section-gap) md:gap-3">
-        <AccountTypeTabs
-          label={t('favorites.filterLabel')}
-          tabs={[
-            { key: 'all', label: t('favorites.all'), active: isAllSelected, onSelect: selectAll },
-            ...listingTypes.map((type) => ({
-              key: type.id,
-              label: type.name,
-              active: isTypeSelected(type.slug),
-              onSelect: () => selectType(type.slug),
-            })),
-          ]}
-        />
+      <div className="hidden flex-col gap-(--sf-section-gap) py-2 font-studio md:flex md:gap-4">
+        <h1 className="text-base font-semibold leading-6 text-foreground">
+          {t('favorites.title')}
+        </h1>
 
-        {loaderData.loadFailed ? (
-          <AccountListState icon={Heart} tone="destructive" message={t('favorites.loadError')} />
-        ) : visibleItems.length > 0 ? (
-          <div className="grid grid-cols-1 gap-(--sf-section-gap) sm:grid-cols-2 md:gap-5 xl:grid-cols-3">
-            {/* The evening-out height belongs to the stacked card only; below
-                `sm` these are compact rows and must not be padded to 394px. */}
-            {visibleItems.map((item) => (
-              <FavoriteListingCard key={item.id} listing={item} className="sm:min-h-98.5" />
-            ))}
-          </div>
-        ) : (
-          <AccountListState
-            icon={Heart}
-            message={t('favorites.empty')}
-            action={
-              <Button asChild>
-                <Link to={storefrontPaths.home(loaderData.locale)}>{t('favorites.explore')}</Link>
-              </Button>
-            }
-          />
-        )}
+        <div className="flex flex-col gap-(--sf-section-gap) md:gap-3">
+          <AccountTypeTabs label={t('favorites.filterLabel')} tabs={tabs} />
+          {content}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
