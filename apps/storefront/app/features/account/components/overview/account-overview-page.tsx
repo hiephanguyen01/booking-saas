@@ -1,9 +1,8 @@
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
-import { ChevronRight, Heart, LogOut, MessageCircle, Pencil, ReceiptText } from 'lucide-react';
+import { ChevronRight, LogOut } from 'lucide-react';
 import { Link, useOutletContext } from 'react-router';
 import { ACCOUNT_NAV_ICONS } from '~/components/account-nav-icons';
-import { storefrontPaths } from '~/constants/paths';
 import type { AccountOutletContext } from '~/features/account/hooks/use-account-layout-controller';
 import { useAccountShellController } from '~/features/account/hooks/use-account-shell-controller';
 import { userInitials } from '~/features/account/lib/account-nav';
@@ -39,19 +38,6 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
             </div>
           </div>
 
-          {/* <dl className="mt-4 grid grid-cols-3 divide-x divide-border border-t border-border pt-4 text-center">
-            <OverviewStat
-              icon={ReceiptText}
-              label={t('overview.upcoming')}
-              value={stats?.upcoming}
-            />
-            <OverviewStat
-              icon={MessageCircle}
-              label={t('overview.completed')}
-              value={stats?.completed}
-            />
-            <OverviewStat icon={Heart} label={t('overview.favorites')} value={stats?.favorites} />
-          </dl> */}
           {!stats ? (
             <p className="mt-3 text-center text-xs text-muted-foreground">
               {t('overview.statsUnavailable')}
@@ -102,24 +88,6 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
           </fetcher.Form>
         </div>
       </div>
-    </div>
-  );
-}
-
-function OverviewStat({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Heart;
-  label: string;
-  value: number | undefined;
-}) {
-  return (
-    <div className="px-2">
-      <Icon className="mx-auto size-4 text-primary" aria-hidden="true" />
-      <dd className="mt-1 text-xl font-bold text-foreground">{value ?? '—'}</dd>
-      <dt className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{label}</dt>
     </div>
   );
 }
