@@ -34,7 +34,7 @@ export function ProfilePasswordCard({ result }: { result: ProfileActionData | nu
   const schema = useMemo(() => customerPasswordChangeSchema(passwordFormMessages(t)), [t]);
 
   return (
-    <AccountPanel className="mt-6 px-6 py-8 sm:px-8 lg:px-10">
+    <AccountPanel className="mt-(--sf-section-gap) p-(--sf-surface-pad) md:mt-6 md:px-8 md:py-8 lg:px-10">
       <h2 className="text-lg font-semibold leading-7 text-foreground">
         {t('profile.passwordTitle')}
       </h2>

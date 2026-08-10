@@ -43,7 +43,7 @@ export function MyAcceptancesPage({
   const { t } = useTranslation(NsI18n.Legal);
 
   return (
-    <div className="flex flex-col gap-4 py-2 font-studio">
+    <div className="flex flex-col gap-(--sf-section-gap) py-2 font-studio md:gap-4">
       <div>
         <h1 className="text-base font-semibold leading-6 text-foreground">
           {t('myAcceptancesTitle')}
@@ -52,14 +52,18 @@ export function MyAcceptancesPage({
       </div>
 
       {loadFailed ? (
-        <AccountListState icon={ShieldAlert} tone="destructive" message={t('myAcceptancesLoadError')} />
+        <AccountListState
+          icon={ShieldAlert}
+          tone="destructive"
+          message={t('myAcceptancesLoadError')}
+        />
       ) : acceptances.length === 0 ? (
         <AccountListState icon={FileText} message={t('myAcceptancesEmpty')} />
       ) : (
         <AccountPanel className="divide-y divide-border">
-          {acceptances.map((acceptance, index) => (
+          {acceptances.map((acceptance) => (
             <AcceptanceRow
-              key={`${acceptance.agreementType}-${acceptance.documentVersionId ?? acceptance.version}-${index}`}
+              key={`${acceptance.agreementType}-${acceptance.documentVersionId ?? acceptance.version}-${acceptance.acceptedAt}`}
               acceptance={acceptance}
               locale={locale}
             />
@@ -70,17 +74,12 @@ export function MyAcceptancesPage({
   );
 }
 
-function AcceptanceRow({
-  acceptance,
-  locale,
-}: {
-  acceptance: AcceptanceRecord;
-  locale: Locale;
-}) {
+function AcceptanceRow({ acceptance, locale }: { acceptance: AcceptanceRecord; locale: Locale }) {
   const { t } = useTranslation(NsI18n.Legal);
   const documentBacked = isDocumentBacked(acceptance.agreementType);
   const versionNo = Number(acceptance.version);
-  const canRead = documentBacked && acceptance.documentVersionId !== null && Number.isInteger(versionNo);
+  const canRead =
+    documentBacked && acceptance.documentVersionId !== null && Number.isInteger(versionNo);
   const languageLabel =
     acceptance.acceptedLocale === 'vi'
       ? t('languageVi')
@@ -89,7 +88,7 @@ function AcceptanceRow({
         : t('languageUnknown');
 
   return (
-    <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 p-(--sf-surface-pad) sm:flex-row sm:items-center sm:justify-between md:px-5 md:py-4">
       <div>
         <p className="text-sm font-semibold text-foreground">
           {agreementTypeLabel(acceptance.agreementType, t)}

@@ -45,15 +45,15 @@ export function ReviewBookingCard({
         locale={locale}
       />
 
-      <div className="grid gap-4 border-b border-border px-5 py-5 sm:grid-cols-[158px_1fr] sm:px-6">
+      <div className="grid gap-4 border-b border-border p-(--sf-surface-pad) sm:grid-cols-[158px_1fr] md:px-6 md:py-5">
         {review.listingImageUrl ? (
           <Image
             src={review.listingImageUrl}
             alt=""
-            className="h-36 w-full rounded-sm object-cover sm:h-[114px]"
+            className="h-36 w-full rounded-(--sf-image-radius) object-cover sm:h-[114px] md:rounded-sm"
           />
         ) : (
-          <div className="h-36 rounded-sm bg-muted sm:h-[114px]" />
+          <div className="h-36 rounded-(--sf-image-radius) bg-muted sm:h-[114px] md:rounded-sm" />
         )}
         <div className="min-w-0 space-y-2">
           <Link
@@ -76,7 +76,7 @@ export function ReviewBookingCard({
       </div>
 
       {review.status === 'pending' ? (
-        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+        <div className="flex flex-col gap-3 p-(--sf-surface-pad) sm:flex-row sm:items-center sm:justify-end md:px-6 md:py-4">
           <p className="text-sm font-medium text-success">{t('reviews.invitation')}</p>
           <Button
             type="button"
@@ -88,7 +88,7 @@ export function ReviewBookingCard({
           </Button>
         </div>
       ) : (
-        <div className="space-y-4 px-5 py-5 sm:px-6">
+        <div className="space-y-4 p-(--sf-surface-pad) md:px-6 md:py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
               <Avatar className="size-10 shrink-0">

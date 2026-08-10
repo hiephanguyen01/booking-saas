@@ -28,7 +28,7 @@ export function AccountReviewsPage({
     useAccountReviewsPageController({ status: loaderData.status });
 
   return (
-    <div className="space-y-4 py-2 font-studio">
+    <div className="space-y-(--sf-section-gap) py-2 font-studio md:space-y-4">
       <PageHeading title={t('reviews.title')} action={<ReviewFilter active={activeStatus} />} />
 
       {pending ? (
@@ -38,7 +38,7 @@ export function AccountReviewsPage({
       ) : loaderData.result.items.length === 0 ? (
         <ReviewEmptyState text={t('reviews.empty')} />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-(--sf-section-gap) md:space-y-4">
           {loaderData.result.items.map((review) => (
             <ReviewBookingCard
               key={review.status === 'pending' ? review.bookingId : review.id}
@@ -94,7 +94,7 @@ function ReviewFilter({ active }: { active: AccountReviewFilter }) {
 
 function ReviewEmptyState({ text }: { text: string }) {
   return (
-    <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-3 p-8 text-center">
+    <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-3 p-(--sf-surface-pad) text-center md:p-8">
       <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
         <MessageSquareText className="size-6" aria-hidden="true" />
       </span>

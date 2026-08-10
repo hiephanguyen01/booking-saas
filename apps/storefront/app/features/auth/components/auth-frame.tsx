@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Image } from '@booking/ui/components/media/image';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { cn } from '@booking/ui/lib/utils';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 export function AuthFrame({
   tenant,
@@ -19,7 +21,12 @@ export function AuthFrame({
   const { t } = useTranslation(NsI18n.Auth);
 
   return (
-    <section className="mx-auto flex w-full max-w-292.5 items-stretch overflow-hidden rounded-sm border bg-card shadow-lg">
+    <section
+      className={cn(
+        PANEL_SURFACE,
+        'mx-auto flex w-full max-w-292.5 items-stretch overflow-hidden bg-card md:rounded-sm md:border md:border-border md:shadow-lg',
+      )}
+    >
       {split ? (
         <aside className="relative hidden min-h-157.5 w-1/2 max-w-[585px] overflow-hidden bg-primary/10 p-10 lg:flex lg:flex-col lg:justify-end">
           {tenant.themeConfig.hero?.imageUrl ? (

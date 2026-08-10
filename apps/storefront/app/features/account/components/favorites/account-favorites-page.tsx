@@ -24,10 +24,10 @@ export function AccountFavoritesPage({
     useAccountTypeFilter(loaderData.items, (item) => item.listingTypeSlug);
 
   return (
-    <div className="flex flex-col gap-4 py-2 font-studio">
+    <div className="flex flex-col gap-(--sf-section-gap) py-2 font-studio md:gap-4">
       <h1 className="text-base font-semibold leading-6 text-foreground">{t('favorites.title')}</h1>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-(--sf-section-gap) md:gap-3">
         <AccountTypeTabs
           label={t('favorites.filterLabel')}
           tabs={[
@@ -44,7 +44,7 @@ export function AccountFavoritesPage({
         {loaderData.loadFailed ? (
           <AccountListState icon={Heart} tone="destructive" message={t('favorites.loadError')} />
         ) : visibleItems.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-(--sf-section-gap) sm:grid-cols-2 md:gap-5 xl:grid-cols-3">
             {/* The evening-out height belongs to the stacked card only; below
                 `sm` these are compact rows and must not be padded to 394px. */}
             {visibleItems.map((item) => (

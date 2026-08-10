@@ -21,6 +21,7 @@ import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { GuestCapacityRules } from '~/components/guest-capacity-rules';
 import { OfferingDetailsDisclosure } from '~/components/offering-details-disclosure';
 import { specCards } from '~/lib/listing-attributes';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 /** Stable identity so the media-items memo does not rebuild while nothing is open. */
 const EMPTY_PHOTOS: string[] = [];
@@ -155,7 +156,8 @@ function PackageCard(props: PackageProps) {
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-(--sf-surface-radius) border bg-card shadow-(--sf-surface-shadow)',
+        PANEL_SURFACE,
+        'overflow-hidden bg-card md:border md:border-border',
         props.selected && 'border-primary bg-primary/5',
       )}
     >
@@ -164,7 +166,7 @@ function PackageCard(props: PackageProps) {
         title={props.item.name}
         onOpenPhoto={(index, trigger) => props.onOpenMedia(props.item.id, index, trigger)}
       />
-      <div className="grid grid-cols-2 gap-4 p-4 md:gap-5 md:p-5">
+      <div className="grid grid-cols-2 gap-4 p-(--sf-surface-pad) md:gap-5 md:p-5">
         <div className="col-span-2">
           <PackageSummary {...props} hidePhotos />
         </div>

@@ -26,7 +26,7 @@ export function RecommendedSection({
   if (!pending && listings.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-(--sf-section-gap) md:gap-4">
       <SectionHeading title={t('home.recommended')} />
       <LocationTabs value={location} onValueChange={changeLocation} />
       {pending ? (
@@ -41,7 +41,7 @@ export function RecommendedSection({
           ))}
         </div>
       ) : (
-        <p className="rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_dashed_var(--sf-surface-border-color)] bg-card px-6 py-12 text-center text-sm text-muted-foreground shadow-(--sf-surface-shadow)">
+        <p className="rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_dashed_var(--sf-surface-border-color)] bg-card p-(--sf-surface-pad) text-center text-sm text-muted-foreground shadow-(--sf-surface-shadow) md:px-6 md:py-12">
           {t('home.emptyInLocation')}
         </p>
       )}

@@ -33,7 +33,7 @@ export function AccountRecentPage({
   } = useAccountRecentPageController(loaderData.items);
 
   return (
-    <div className="flex flex-col gap-4 py-2 font-studio">
+    <div className="flex flex-col gap-(--sf-section-gap) py-2 font-studio md:gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-base font-semibold leading-6 text-foreground">{t('recent.title')}</h1>
         {hasItems ? (
@@ -43,7 +43,7 @@ export function AccountRecentPage({
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-(--sf-section-gap) md:gap-3">
         <AccountTypeTabs
           label={t('recent.filterLabel')}
           tabs={[
@@ -58,7 +58,7 @@ export function AccountRecentPage({
         />
 
         {visibleItems.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-(--sf-section-gap) sm:grid-cols-2 md:gap-5 xl:grid-cols-3">
             {visibleItems.map((item) => (
               <FavoriteListingCard
                 key={keyOf(item)}

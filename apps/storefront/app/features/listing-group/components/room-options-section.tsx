@@ -20,6 +20,8 @@ import { RoomMediaDetails } from './room-media-details';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useRoomOptionsController } from '~/features/listing-group/hooks/use-room-options-controller';
 import { GuestCapacityRules } from '~/components/guest-capacity-rules';
+import { cn } from '@booking/ui/lib/utils';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 /** Stable identity so the media-items memo does not rebuild while nothing is open. */
 const EMPTY_PHOTOS: string[] = [];
@@ -217,13 +219,13 @@ function RoomCard({
 }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
-    <article className="overflow-hidden rounded-(--sf-surface-radius) border border-border bg-card shadow-(--sf-surface-shadow)">
+    <article className={cn(PANEL_SURFACE, 'overflow-hidden bg-card md:border md:border-border')}>
       <RoomPhotoStrip
         photos={option.child.photos}
         title={option.child.title}
         onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
       />
-      <div className="flex flex-col gap-4 p-4 md:gap-5 md:p-5">
+      <div className="flex flex-col gap-4 p-(--sf-surface-pad) md:gap-5 md:p-5">
         <RoomDetails option={option} attributeSchema={attributeSchema} hidePhotos />
         <div className="grid grid-cols-2 gap-4">
           <GuestCapacityRules capacity={option.child.capacity} />

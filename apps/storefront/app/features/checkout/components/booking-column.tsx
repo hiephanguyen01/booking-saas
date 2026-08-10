@@ -90,7 +90,7 @@ export function BookingColumn({
           Below 400px the photo becomes a full-width cover and the summary gets
           the whole column. */}
       <div className="mt-3 flex flex-col gap-3 min-[400px]:flex-row min-[400px]:gap-4">
-        <div className="h-32 w-full shrink-0 overflow-hidden rounded-sm bg-muted min-[400px]:h-27.5 min-[400px]:w-39">
+        <div className="h-32 w-full shrink-0 overflow-hidden rounded-(--sf-image-radius) bg-muted min-[400px]:h-27.5 min-[400px]:w-39 md:rounded-sm">
           {coverPhoto ? (
             <Image
               src={coverPhoto}
@@ -135,12 +135,12 @@ export function BookingColumn({
           </p>
           {packagePhotos.length > 1 ? (
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {packagePhotos.map((photo, index) => (
+              {packagePhotos.map((photo) => (
                 <Image
-                  key={`${photo}-${index}`}
+                  key={photo}
                   src={photo}
                   alt=""
-                  className="h-14 w-20 shrink-0 rounded-md object-cover"
+                  className="h-14 w-20 shrink-0 rounded-(--sf-image-radius) object-cover md:rounded-md"
                 />
               ))}
             </div>
@@ -167,9 +167,9 @@ export function BookingColumn({
                 late: (vars) => t('policy.lateCancellationFrom', vars),
               },
               (feeAmount) => formatCurrency(BigInt(feeAmount), 'VND', locale),
-            ).map((line, index) => (
+            ).map((line) => (
               <p
-                key={index}
+                key={line.text}
                 className={`flex items-start gap-2 text-sm leading-5 ${line.isFree ? 'text-success' : 'text-foreground'}`}
               >
                 <Check className="mt-0.5 size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />

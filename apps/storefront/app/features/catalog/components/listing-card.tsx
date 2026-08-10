@@ -97,9 +97,7 @@ export function ListingCard({
       // that is the full width of the card.
       <div
         className={cn(
-          isRow
-            ? 'shrink-0 text-right text-xs sm:text-sm'
-            : 'mt-auto text-sm @max-[220px]:text-xs',
+          isRow ? 'shrink-0 text-right text-xs sm:text-sm' : 'mt-auto text-sm @max-[220px]:text-xs',
         )}
       >
         <p
@@ -135,9 +133,7 @@ export function ListingCard({
     ) : price ? (
       <p
         className={cn(
-          isRow
-            ? 'shrink-0 text-right text-xs sm:text-sm'
-            : 'mt-auto text-sm @max-[220px]:text-xs',
+          isRow ? 'shrink-0 text-right text-xs sm:text-sm' : 'mt-auto text-sm @max-[220px]:text-xs',
         )}
       >
         <span className="font-bold text-primary">
@@ -174,7 +170,7 @@ export function ListingCard({
       >
         <div
           className={cn(
-            'relative shrink-0 overflow-hidden bg-muted',
+            'relative shrink-0 overflow-hidden rounded-(--sf-image-radius) bg-muted sm:rounded-none',
             // No height on the row photo on purpose: as a flex child it stretches
             // to the row, so the photo is always exactly as tall as the card
             // instead of leaving a strip of empty card under it.
@@ -205,7 +201,9 @@ export function ListingCard({
         <div
           className={cn(
             'flex min-w-0 flex-1 flex-col',
-            isRow ? 'gap-1 p-3 sm:gap-2.5 sm:p-3.5' : 'gap-2.5 p-3.5 @max-[220px]:gap-2 @max-[220px]:p-3',
+            isRow
+              ? 'gap-1 p-(--sf-surface-pad) sm:gap-2.5 sm:p-3.5'
+              : 'gap-2.5 p-(--sf-surface-pad) sm:p-3.5 @max-[220px]:gap-2',
           )}
         >
           <div

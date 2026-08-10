@@ -53,7 +53,8 @@ const IMAGE_OVERLAY_ALLOWLIST = new Map([
 
 const PALETTE =
   'slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
-const UTILITY = 'bg|text|border|ring|from|to|via|fill|stroke|shadow|outline|decoration|divide|caret';
+const UTILITY =
+  'bg|text|border|ring|from|to|via|fill|stroke|shadow|outline|decoration|divide|caret';
 
 const RULES = [
   {
@@ -71,10 +72,82 @@ const RULES = [
     // JS array of hex strings — the colour picker's presets are the palette we
     // *offer* a tenant, which is data rather than styling.
     name: 'literal colour in an arbitrary value',
-    re: new RegExp(`\\b(?:${UTILITY})-\\[[^\\]]*(?:#[0-9a-fA-F]{3,8}|rgba?\\(|hsla?\\()[^\\]]*\\]`, 'g'),
+    re: new RegExp(
+      `\\b(?:${UTILITY})-\\[[^\\]]*(?:#[0-9a-fA-F]{3,8}|rgba?\\(|hsla?\\()[^\\]]*\\]`,
+      'g',
+    ),
     allowImageOverlay: true,
   },
 ];
+
+/**
+ * Colour checks cannot see geometry regressions. Keep the tenant-facing surface
+ * primitives and the high-traffic mobile cards wired to the geometry contract
+ * as well: a fixed `p-4`, `shadow-sm` or image radius otherwise survives every
+ * colour-only CI run while the dashboard still claims the setting is editable.
+ *
+ * Feature components may consume `PANEL_SURFACE` instead of spelling out its
+ * four low-level tokens. The shared constant itself is checked separately, so
+ * this remains one contract rather than duplicated class strings.
+ */
+const REQUIRED_SURFACE_CONTRACTS = new Map([
+  [
+    'apps/storefront/app/constants/surfaces.ts',
+    [
+      '--sf-surface-radius',
+      '--sf-surface-border-width',
+      '--sf-surface-border-color',
+      '--sf-surface-shadow',
+    ],
+  ],
+  [
+    'apps/storefront/app/components/section-card.tsx',
+    [
+      '--sf-surface-radius',
+      '--sf-surface-border-width',
+      '--sf-surface-border-color',
+      '--sf-surface-shadow',
+      '--sf-surface-pad',
+    ],
+  ],
+  [
+    'apps/storefront/app/features/catalog/components/listing-card.tsx',
+    ['--sf-image-radius', '--sf-surface-pad'],
+  ],
+  [
+    'apps/storefront/app/features/catalog/components/search-result-card.tsx',
+    ['--sf-image-radius', '--sf-surface-pad'],
+  ],
+  ['apps/storefront/app/components/room-photo-strip.tsx', ['--sf-image-radius']],
+  [
+    'apps/storefront/app/features/packages/components/package-table.tsx',
+    ['PANEL_SURFACE', '--sf-surface-pad'],
+  ],
+  [
+    'apps/storefront/app/features/listing-group/components/room-options-section.tsx',
+    ['PANEL_SURFACE', '--sf-surface-pad'],
+  ],
+  [
+    'apps/storefront/app/features/booking-widget/components/booking-panel.tsx',
+    ['PANEL_SURFACE', '--sf-surface-pad'],
+  ],
+  [
+    'apps/storefront/app/features/booking/components/booking-success-view.tsx',
+    ['PANEL_SURFACE', '--sf-surface-pad'],
+  ],
+  [
+    'apps/storefront/app/features/account/components/shared/account-primitives.tsx',
+    ['PANEL_SURFACE', '--sf-surface-pad'],
+  ],
+  [
+    'apps/storefront/app/features/catalog/components/mobile-catalog-page.tsx',
+    ['PANEL_SURFACE', '--sf-surface-pad', '--sf-section-gap'],
+  ],
+  [
+    'apps/storefront/app/components/loading-skeletons.tsx',
+    ['PANEL_SURFACE', '--sf-image-radius', '--sf-surface-pad', '--sf-section-gap'],
+  ],
+]);
 
 function walk(directory) {
   const files = [];
@@ -102,12 +175,14 @@ const targets = [
   join(root, 'packages/ui/src/components'),
 ];
 let scanned = 0;
+const sourcesByPath = new Map();
 
 for (const target of targets) {
   for (const file of walk(target)) {
     if (!sourceExtensions.has(extname(file))) continue;
     const path = relative(root, file);
     const source = stripComments(readFileSync(file, 'utf8'));
+    sourcesByPath.set(path, source);
     scanned += 1;
 
     for (const rule of RULES) {
@@ -115,6 +190,19 @@ for (const target of targets) {
       for (const match of source.matchAll(rule.re)) {
         failures.push(`${path}: ${rule.name} \`${match[0]}\` — use a theme token instead`);
       }
+    }
+  }
+}
+
+for (const [path, requiredTokens] of REQUIRED_SURFACE_CONTRACTS) {
+  const source = sourcesByPath.get(path);
+  if (source === undefined) {
+    failures.push(`${path}: required tenant-surface contract file was not scanned`);
+    continue;
+  }
+  for (const token of requiredTokens) {
+    if (!source.includes(token)) {
+      failures.push(`${path}: tenant-surface contract is missing \`${token}\``);
     }
   }
 }

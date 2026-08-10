@@ -12,6 +12,8 @@ import { ListingCard } from '~/features/catalog/components/listing-card';
 import { formatVnd } from '~/lib/ui';
 import { MobileBookingDetail } from './mobile-booking-detail';
 import { MobileStickyActionBar } from '~/features/site-shell/components/mobile-sticky-action-bar';
+import { cn } from '@booking/ui/lib/utils';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 interface BookingSuccessViewProps {
   code: string;
@@ -226,7 +228,7 @@ function MobileSuccess({
           <p className="mt-2 text-sm text-background/70">{t('success.thanks')}</p>
         </section>
 
-        <section className="relative -mt-5 mx-3 rounded-2xl border border-border bg-card p-5 shadow-(--sf-surface-shadow)">
+        <section className={cn(PANEL_SURFACE, 'relative -mt-5 mx-3 bg-card p-(--sf-surface-pad)')}>
           <p className="text-center text-xs font-medium tracking-wide text-muted-foreground uppercase">
             {t('code')}
           </p>

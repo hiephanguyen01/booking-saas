@@ -34,7 +34,7 @@ export function PartnerProfilePage({ loaderData, actionData }: PartnerProfilePag
   return (
     <main className="mx-auto w-full max-w-[1170px] px-4 pb-16 sm:px-6 lg:px-0">
       {/* Tenant surface shape; padding stays bespoke — see partner-auth-layout. */}
-      <SectionCard className="p-6 sm:p-10">
+      <SectionCard className="p-(--sf-surface-pad) md:p-10">
         <h1 className="mb-6 text-2xl font-semibold uppercase leading-9">
           {t('common:becomePartner.title')}
         </h1>

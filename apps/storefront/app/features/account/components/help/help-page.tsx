@@ -20,10 +20,10 @@ export function HelpPage() {
     [t('help.q3'), t('help.a3')],
   ];
   return (
-    <div className="space-y-4">
+    <div className="space-y-(--sf-section-gap) md:space-y-4">
       <PageHeading title={t('help.title')} />
-      <div className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
-        <AccountPanel className="p-6 sm:p-8">
+      <div className="grid gap-(--sf-section-gap) md:gap-4 lg:grid-cols-[1.35fr_.65fr]">
+        <AccountPanel className="p-(--sf-surface-pad) md:p-8">
           <h2 className="mb-4 font-semibold">{t('help.faq')}</h2>
           <Accordion type="single" collapsible>
             {faqs.map(([question, answer], index) => (
@@ -36,7 +36,7 @@ export function HelpPage() {
             ))}
           </Accordion>
         </AccountPanel>
-        <AccountPanel className="self-start p-6">
+        <AccountPanel className="self-start p-(--sf-surface-pad) md:p-6">
           <h2 className="font-semibold">{t('help.contact')}</h2>
           <div className="mt-5 space-y-4 text-sm">
             {contact?.phone ? (

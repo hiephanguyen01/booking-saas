@@ -34,7 +34,7 @@ export function TopListingsSection({
 
   if (pending) {
     return (
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-(--sf-section-gap) md:gap-4">
         <SectionHeading title={title} />
         <HomeListingCardsSkeleton label={t('loading')} count={4} layout="carousel" />
       </section>
@@ -53,7 +53,7 @@ export function TopListingsSection({
       */}
       <Carousel
         aria-label={title}
-        className="flex flex-col gap-4 [&_[data-slot=carousel-content]]:-mx-4 [&_[data-slot=carousel-content]]:px-4"
+        className="flex flex-col gap-(--sf-section-gap) md:gap-4 [&_[data-slot=carousel-content]]:-mx-4 [&_[data-slot=carousel-content]]:px-4"
         opts={{ align: 'start', slidesToScroll: 1 }}
       >
         <SectionHeading

@@ -1,6 +1,7 @@
 import { Skeleton } from '@booking/ui/components/ui/skeleton';
 import { cn } from '@booking/ui/lib/utils';
 import type { ComponentProps, ReactNode } from 'react';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 function StorefrontSkeleton({ className, ...props }: ComponentProps<typeof Skeleton>) {
   return <Skeleton className={cn('motion-reduce:animate-none', className)} {...props} />;
@@ -26,10 +27,13 @@ function LoadingRegion({
 export function CatalogResultSkeleton() {
   return (
     <div
-      className="flex min-h-32 gap-3 overflow-hidden rounded-lg border-[1.4px] border-border bg-card p-2.5 md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5 md:p-0"
+      className={cn(
+        PANEL_SURFACE,
+        'flex min-h-32 gap-3 overflow-hidden bg-card p-(--sf-surface-pad) md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5 md:rounded-lg md:border-[1.4px] md:border-border md:p-0 md:shadow-none',
+      )}
       aria-hidden="true"
     >
-      <StorefrontSkeleton className="w-28 shrink-0 rounded-md md:w-auto md:min-h-0 md:rounded-none" />
+      <StorefrontSkeleton className="w-28 shrink-0 rounded-(--sf-image-radius) md:w-auto md:min-h-0 md:rounded-none" />
       <div className="hidden min-h-0 grid-rows-2 gap-1.5 bg-muted md:grid">
         <StorefrontSkeleton className="min-h-0 rounded-none" />
         <StorefrontSkeleton className="min-h-0 rounded-none" />
@@ -84,7 +88,13 @@ export function SearchBarSkeleton({ label }: { label: string }) {
 
 export function ReviewsSectionSkeleton({ label }: { label: string }) {
   return (
-    <LoadingRegion label={label} className="rounded-lg bg-card p-5 shadow-sm sm:p-6">
+    <LoadingRegion
+      label={label}
+      className={cn(
+        PANEL_SURFACE,
+        'bg-card p-(--sf-surface-pad) md:rounded-lg md:border-0 md:p-6 md:shadow-sm',
+      )}
+    >
       <div className="space-y-5">
         <div className="flex items-center justify-between gap-4">
           <StorefrontSkeleton className="h-6 w-40" />
@@ -110,13 +120,25 @@ export function ReviewsSectionSkeleton({ label }: { label: string }) {
 
 export function RelatedListingsSkeleton({ label, count = 3 }: { label: string; count?: number }) {
   return (
-    <LoadingRegion label={label} className="rounded-lg bg-card p-5 shadow-sm sm:p-6">
+    <LoadingRegion
+      label={label}
+      className={cn(
+        PANEL_SURFACE,
+        'bg-card p-(--sf-surface-pad) md:rounded-lg md:border-0 md:p-6 md:shadow-sm',
+      )}
+    >
       <StorefrontSkeleton className="mb-5 h-6 w-44" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: count }, (_, index) => (
-          <div key={index} className="overflow-hidden rounded-lg border bg-background">
+          <div
+            key={index}
+            className={cn(
+              PANEL_SURFACE,
+              'overflow-hidden bg-background md:rounded-lg md:border md:border-border md:shadow-none',
+            )}
+          >
             <StorefrontSkeleton className="aspect-4/3 rounded-none" />
-            <div className="space-y-2 p-4">
+            <div className="space-y-2 p-(--sf-surface-pad) md:p-4">
               <StorefrontSkeleton className="h-5 w-4/5" />
               <StorefrontSkeleton className="h-3.5 w-3/5" />
               <StorefrontSkeleton className="ml-auto h-5 w-28" />
@@ -154,14 +176,15 @@ export function HomeListingCardsSkeleton({
           <div
             key={index}
             className={cn(
-              'min-w-0 overflow-hidden rounded-lg border bg-background',
+              PANEL_SURFACE,
+              'min-w-0 overflow-hidden bg-background md:rounded-lg md:border md:border-border md:shadow-none',
               layout === 'carousel'
                 ? 'basis-[13rem] shrink-0 sm:basis-[calc(33.333%-0.667rem)] lg:basis-[calc(25%-0.75rem)]'
                 : '',
             )}
           >
-            <StorefrontSkeleton className="aspect-4/3 rounded-none" />
-            <div className="space-y-2 p-3 sm:p-3.5">
+            <StorefrontSkeleton className="aspect-4/3 rounded-(--sf-image-radius) md:rounded-none" />
+            <div className="space-y-2 p-(--sf-surface-pad) md:p-3.5">
               <StorefrontSkeleton className="h-5 w-4/5" />
               <StorefrontSkeleton className="h-3.5 w-3/5" />
               <StorefrontSkeleton className="h-5 w-24" />
@@ -185,7 +208,13 @@ export function AccountResultsSkeleton({ label, count = 4 }: { label: string; co
 
 function AccountResultRows({ count }: { count: number }) {
   return Array.from({ length: count }, (_, index) => (
-    <div key={index} className="rounded-lg border bg-background p-5">
+    <div
+      key={index}
+      className={cn(
+        PANEL_SURFACE,
+        'bg-background p-(--sf-surface-pad) md:rounded-lg md:border md:border-border md:p-5 md:shadow-none',
+      )}
+    >
       <div className="flex items-center gap-4">
         <StorefrontSkeleton className="size-16 shrink-0" />
         <div className="min-w-0 flex-1 space-y-2">
@@ -200,7 +229,12 @@ function AccountResultRows({ count }: { count: number }) {
 
 function AccountFormSkeletonBody() {
   return (
-    <div className="rounded-none border bg-background px-6 py-8 sm:px-8">
+    <div
+      className={cn(
+        PANEL_SURFACE,
+        'bg-background p-(--sf-surface-pad) md:rounded-none md:border md:border-border md:px-8 md:py-8 md:shadow-none',
+      )}
+    >
       <div className="mb-8 flex items-center gap-4">
         <StorefrontSkeleton className="size-18 rounded-full" />
         <div className="space-y-2">
@@ -222,9 +256,15 @@ function AccountFormSkeletonBody() {
 
 function AccountDetailSkeletonBody() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-(--sf-section-gap) md:space-y-4">
       {Array.from({ length: 2 }, (_, index) => (
-        <div key={index} className="rounded-lg border bg-background p-5 sm:p-6">
+        <div
+          key={index}
+          className={cn(
+            PANEL_SURFACE,
+            'bg-background p-(--sf-surface-pad) md:rounded-lg md:border md:border-border md:p-6 md:shadow-none',
+          )}
+        >
           <StorefrontSkeleton className="h-5 w-40" />
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {Array.from({ length: 4 }, (_, row) => (
@@ -264,7 +304,10 @@ export function AccountContentSkeleton({
 }) {
   const Body = ACCOUNT_SKELETON_BODIES[variant];
   return (
-    <LoadingRegion label={label} className="space-y-4 py-2 font-studio">
+    <LoadingRegion
+      label={label}
+      className="space-y-(--sf-section-gap) py-2 font-studio md:space-y-4"
+    >
       <StorefrontSkeleton className="h-6 w-44" />
       <Body />
     </LoadingRegion>

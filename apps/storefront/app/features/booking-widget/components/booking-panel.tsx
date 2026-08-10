@@ -13,6 +13,8 @@ import { HourlyPicker } from './booking-panel-hourly-picker';
 import { InventoryPicker } from './booking-panel-inventory-picker';
 import { Breakdown, ModeToggle, PackagePicker, QuoteHeader } from './booking-panel-presentation';
 import { useBookingPanelController } from '~/features/booking-widget/hooks/use-booking-panel-controller';
+import { cn } from '@booking/ui/lib/utils';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 interface PanelProps {
   listing: PublicListingDetailWithTimezoneResponse;
@@ -69,7 +71,12 @@ export function BookingPanel({
   });
 
   return (
-    <div className="rounded-lg bg-card p-5 text-card-foreground shadow-sm">
+    <div
+      className={cn(
+        PANEL_SURFACE,
+        'bg-card p-(--sf-surface-pad) text-card-foreground md:rounded-lg md:border-0 md:p-5 md:shadow-sm',
+      )}
+    >
       <div className="space-y-5">
         <QuoteHeader
           quote={quote}

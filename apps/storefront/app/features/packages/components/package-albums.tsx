@@ -44,7 +44,7 @@ export function PackageAlbums({
               key={album.id}
               type="button"
               onClick={(event) => openAlbum(album.id, event.currentTarget)}
-              className="group relative h-20 w-28 shrink-0 overflow-hidden rounded-md bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group relative h-20 w-28 shrink-0 overflow-hidden rounded-(--sf-image-radius) bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:rounded-md"
               aria-label={t('packages.viewAlbum', { name: album.name })}
             >
               <Image

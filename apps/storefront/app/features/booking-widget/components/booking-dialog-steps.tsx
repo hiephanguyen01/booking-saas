@@ -183,7 +183,7 @@ function BookingPackageSelector({
                   <Image
                     src={photo}
                     alt=""
-                    className="size-12 rounded-md object-cover"
+                    className="size-12 rounded-(--sf-image-radius) object-cover md:rounded-md"
                   />
                 ) : null}
                 <span className="min-w-0 flex-1">
