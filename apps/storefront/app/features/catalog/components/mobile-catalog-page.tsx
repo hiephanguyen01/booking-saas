@@ -17,22 +17,23 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { cn } from '@booking/ui/lib/utils';
-import { ArrowLeft, ListFilter, Search, SlidersHorizontal } from 'lucide-react';
+import { ListFilter, Search, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
-import { CatalogResultSkeleton } from '~/components/loading-skeletons';
 import { ListingTypeGlyph } from '~/components/listing-type-glyph';
-import { storefrontPaths } from '~/constants/paths';
+import { CatalogResultSkeleton } from '~/components/loading-skeletons';
+import type { CatalogSortItem } from '~/features/catalog/hooks/use-catalog-page-controller';
 import { FavoriteSearchResultCard } from '~/features/favorites/components/favorite-cards';
 import { SearchForm } from '~/features/search/components/search-form';
-import type { StorefrontSearchState } from '~/features/search/lib/search-state';
+import type {
+  SearchResultContext,
+  StorefrontSearchState,
+} from '~/features/search/lib/search-state';
 import { buildTypeChangeCatalogHrefFromState } from '~/features/search/lib/type-change-navigation';
 import { useLocale } from '~/hooks/use-locale';
 import type { CatalogPageProps } from './catalog-page';
 import { CatalogPagination } from './catalog-pagination';
 import { FilterPanel } from './filter-panel';
-import type { CatalogSortItem } from '~/features/catalog/hooks/use-catalog-page-controller';
-import type { SearchResultContext } from '~/features/search/lib/search-state';
 
 export function MobileCatalogPage({
   loaderData,
@@ -72,17 +73,6 @@ export function MobileCatalogPage({
     <div className="min-h-dvh bg-muted/30 pb-5 font-studio md:hidden">
       <header className="sticky top-0 z-40 bg-foreground text-background shadow-lg">
         <div className="flex items-center gap-1 px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
-          <Button
-            asChild
-            size="icon"
-            variant="ghost"
-            className="size-9 shrink-0 rounded-full text-background hover:bg-background/10 hover:text-background"
-          >
-            <Link to={storefrontPaths.home(locale)} aria-label={t('mobile.backHome')}>
-              <ArrowLeft />
-            </Link>
-          </Button>
-
           <nav
             aria-label={t('common:home.listingTypes')}
             className="sf-scroll-x flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
@@ -185,7 +175,7 @@ export function MobileCatalogPage({
         <h1 id="mobile-search-results-title" className="sr-only">
           {t('resultsCount', { count: search.total })}
         </h1>
-        <div className="sticky top-[calc(7.75rem+env(safe-area-inset-top))] z-30 border-b border-border bg-background/95 py-2.5 backdrop-blur-sm">
+        <div className="bg-background/95 py-2.5 backdrop-blur-sm">
           <div className="sf-scroll-x flex items-center gap-2 overflow-x-auto px-3">
             <span className="shrink-0 text-[11.5px] text-muted-foreground">{t('sort.label')}</span>
             {sortItems.map((item) => (
