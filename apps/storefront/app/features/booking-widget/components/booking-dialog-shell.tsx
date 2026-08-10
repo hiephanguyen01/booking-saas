@@ -195,7 +195,7 @@ function MobileBookingDrawer({
   focusTitle?: boolean;
 }) {
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    <Drawer open={open} onOpenChange={onOpenChange} handleOnly>
       {trigger ? <DrawerTrigger asChild>{trigger}</DrawerTrigger> : null}
       <DrawerContent className="h-[92dvh] max-h-[92dvh]! overflow-hidden">
         <DrawerHeader className="shrink-0 border-b px-5 pt-5 pb-4 pr-16 text-left">
