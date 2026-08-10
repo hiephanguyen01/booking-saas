@@ -13,7 +13,7 @@ export function MobileStickyActionBar({
   return (
     <div
       className={cn(
-        'fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgb(15_23_42/0.12)] backdrop-blur md:hidden',
+        'fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-(--sf-lip-shadow) backdrop-blur md:hidden',
         className,
       )}
     >

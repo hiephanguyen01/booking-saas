@@ -60,7 +60,7 @@ export function AccountBookingsPage({
     <>
       <div className="-mx-4 -mt-4 bg-muted/35 pb-5 sm:-mx-6 md:hidden">
         <MobileFlowHeader title={t('bookings.title')} backLabel={t('bookings.mobile.back')} />
-        <div className="border-b border-white/10 bg-[#131a2a] px-4 pb-4">
+        <div className="border-b border-background/10 bg-foreground px-4 pb-4">
           <label className="relative block">
             <span className="sr-only">{t('bookings.mobile.searchLabel')}</span>
             <Search
@@ -72,7 +72,7 @@ export function AccountBookingsPage({
               value={query}
               onChange={(event) => setQuery(event.currentTarget.value)}
               placeholder={t('bookings.mobile.searchPlaceholder')}
-              className="h-11 border-white/15 bg-white text-foreground pl-10"
+              className="h-11 border-background/15 bg-background pl-10 text-foreground"
             />
           </label>
         </div>

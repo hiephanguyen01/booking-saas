@@ -213,7 +213,7 @@ function SafeZonePreview({ src }: { src?: string }) {
         />
       )}
       <div
-        className="pointer-events-none absolute inset-[10%] rounded-full border-2 border-dashed border-white/90 shadow-[0_0_0_999px_rgb(15_23_42/0.15)]"
+        className="pointer-events-none absolute inset-[10%] rounded-full border-2 border-dashed border-primary/90 shadow-[0_0_0_999px_var(--scrim-soft)]"
         aria-hidden="true"
       />
     </div>

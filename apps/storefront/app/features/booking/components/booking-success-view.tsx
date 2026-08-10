@@ -218,12 +218,12 @@ function MobileSuccess({
         backLabel={t('mobile.backHome')}
       />
       <main className="mx-auto w-full max-w-lg pb-8">
-        <section className="bg-[#131a2a] px-5 pt-5 pb-10 text-center text-white">
+        <section className="bg-foreground px-5 pt-5 pb-10 text-center text-background">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-success text-success-foreground shadow-lg">
             <BadgeCheck className="size-9" strokeWidth={1.8} aria-hidden="true" />
           </span>
           <h1 className="mt-4 text-2xl font-bold tracking-tight">{t('success.title')}</h1>
-          <p className="mt-2 text-sm text-white/70">{t('success.thanks')}</p>
+          <p className="mt-2 text-sm text-background/70">{t('success.thanks')}</p>
         </section>
 
         <section className="relative -mt-5 mx-3 rounded-2xl border border-border bg-card p-5 shadow-(--sf-surface-shadow)">

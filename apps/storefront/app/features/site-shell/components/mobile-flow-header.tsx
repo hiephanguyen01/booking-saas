@@ -16,14 +16,14 @@ export function MobileFlowHeader({
   chatLabel?: string;
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#131a2a] pt-[env(safe-area-inset-top)] text-white md:hidden">
+    <header className="sticky top-0 z-30 border-b border-background/10 bg-foreground pt-[env(safe-area-inset-top)] text-background md:hidden">
       <div className="grid min-h-14 grid-cols-[3rem_minmax(0,1fr)_3rem] items-center px-2">
         {backHref ? (
           <Button
             asChild
             variant="ghost"
             size="icon"
-            className="size-11 text-white hover:bg-white/10 hover:text-white focus-visible:ring-white"
+            className="size-11 text-background hover:bg-background/10 hover:text-background focus-visible:ring-background"
           >
             <Link to={backHref} aria-label={backLabel}>
               <ArrowLeft className="size-5" aria-hidden="true" />
@@ -38,7 +38,7 @@ export function MobileFlowHeader({
             asChild
             variant="ghost"
             size="icon"
-            className="size-11 text-white hover:bg-white/10 hover:text-white focus-visible:ring-white"
+            className="size-11 text-background hover:bg-background/10 hover:text-background focus-visible:ring-background"
           >
             <Link to={chatHref} aria-label={chatLabel}>
               <MessageCircle className="size-5" aria-hidden="true" />
