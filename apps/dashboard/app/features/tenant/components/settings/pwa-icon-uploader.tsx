@@ -12,6 +12,7 @@ const ACCEPTED_TYPES = new Set(['image/png', 'image/webp']);
 
 export function PwaIconUploader({ form }: { form: UseFormReturn<ThemeConfigInput> }) {
   const icons = useWatch({ control: form.control, name: 'pwaIcons' });
+  const faviconUrl = useWatch({ control: form.control, name: 'faviconUrl' });
   const { register } = form;
   const mainInput = useRef<HTMLInputElement>(null);
   const maskableInput = useRef<HTMLInputElement>(null);
@@ -19,6 +20,7 @@ export function PwaIconUploader({ form }: { form: UseFormReturn<ThemeConfigInput
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    register('faviconUrl');
     register('pwaIcons');
   }, [register]);
 
@@ -47,6 +49,10 @@ export function PwaIconUploader({ form }: { form: UseFormReturn<ThemeConfigInput
         },
         { shouldDirty: true, shouldValidate: true },
       );
+      form.setValue('faviconUrl', uploaded[2].publicUrl, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
     } catch (cause) {
       setError(messageFrom(cause));
     } finally {
@@ -82,6 +88,7 @@ export function PwaIconUploader({ form }: { form: UseFormReturn<ThemeConfigInput
   }
 
   function clearAll() {
+    form.setValue('faviconUrl', '', { shouldDirty: true, shouldValidate: true });
     form.setValue('pwaIcons', undefined, { shouldDirty: true, shouldValidate: true });
     setError(null);
   }
@@ -120,15 +127,23 @@ export function PwaIconUploader({ form }: { form: UseFormReturn<ThemeConfigInput
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
-        <IconPreview src={icons?.icon512Url} alt="Icon ứng dụng chính" />
+        <IconPreview src={icons?.icon512Url || faviconUrl} alt="Favicon và icon ứng dụng chính" />
         <div className="space-y-3">
           <div>
-            <p className="text-sm font-medium">Icon chính</p>
+            <p className="text-sm font-medium">Favicon và icon ứng dụng chính</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              PNG/WebP vuông, tối thiểu 512×512px. Trình duyệt sẽ tạo và tải song song các bản PNG
-              180, 192 và 512px; biểu mẫu chỉ đổi khi cả ba hoàn tất.
+              PNG/WebP vuông, tối thiểu 512×512px. Trình duyệt tạo và tải song song các bản PNG 180,
+              192 và 512px; bản 512 đồng thời làm favicon. Biểu mẫu chỉ đổi khi cả ba hoàn tất.
             </p>
           </div>
+          {faviconUrl && !icons ? (
+            <Alert>
+              <AlertDescription>
+                Favicon hiện tại vẫn dùng cho tab nhưng chưa đủ bộ icon để quảng bá cài ứng dụng.
+                Hãy tải lại ảnh vuông tối thiểu 512×512px.
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -137,11 +152,11 @@ export function PwaIconUploader({ form }: { form: UseFormReturn<ThemeConfigInput
               disabled={busy !== null}
             >
               {busy === 'main' ? <LoaderCircle className="animate-spin" /> : <ImagePlus />}
-              {icons ? 'Thay icon chính' : 'Tải icon chính'}
+              {icons ? 'Thay favicon và icon' : 'Tải favicon và icon'}
             </Button>
-            {icons ? (
+            {icons || faviconUrl ? (
               <Button type="button" variant="ghost" onClick={clearAll} disabled={busy !== null}>
-                <Trash2 /> Xóa bộ icon
+                <Trash2 /> Xóa favicon và bộ icon
               </Button>
             ) : null}
           </div>
@@ -205,7 +220,11 @@ function SafeZonePreview({ src }: { src?: string }) {
   return (
     <div className="relative aspect-square overflow-hidden rounded-2xl border bg-muted/40">
       {src ? (
-        <UiImage src={src} alt="Icon maskable với vùng an toàn" className="size-full object-cover" />
+        <UiImage
+          src={src}
+          alt="Icon maskable với vùng an toàn"
+          className="size-full object-cover"
+        />
       ) : (
         <ShieldCheck
           className="absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 text-muted-foreground"

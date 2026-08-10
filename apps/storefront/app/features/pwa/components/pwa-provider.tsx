@@ -8,40 +8,53 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@booking/ui/components/ui/dialog';
-import { Download, RefreshCw, Share, X } from 'lucide-react';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@booking/ui/components/ui/drawer';
+import { Download, EllipsisVertical, ExternalLink, RefreshCw, Share } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useServiceWorker } from '~/features/pwa/hooks/use-service-worker';
+import {
+  detectInstallDevice,
+  type InstallDeviceProfile,
+  type ManualInstallMode,
+} from '~/features/pwa/lib/install-device';
 import { PwaContext } from '~/features/pwa/lib/pwa-context';
 
-const INSTALL_STATE_KEY = 'bookingos:pwa-install:v1';
-const VISIT_SESSION_KEY = 'bookingos:pwa-visit-counted:v1';
-const DISMISS_MS = 30 * 24 * 60 * 60 * 1000;
-let countedWithoutSessionStorage = false;
+const PROMOTION_SESSION_KEY = 'bookingos:pwa-promotion-shown:v2';
+const MANUAL_GUIDE_DELAY_MS = 750;
+let promotionShownWithoutSessionStorage = false;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
-interface InstallState {
-  visits: number;
-  dismissedUntil: number;
-}
+type InstallMode = 'native' | ManualInstallMode;
 
 export function PwaProvider({
   children,
   advertiseInstall,
+  installAppName,
 }: {
   children: ReactNode;
   advertiseInstall: boolean;
+  installAppName?: string;
 }) {
   const { t } = useTranslation(NsI18n.Pwa);
   const { applyUpdate, updateAvailable } = useServiceWorker();
+  const [device, setDevice] = useState<InstallDeviceProfile | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [isIos, setIsIos] = useState(false);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
-  const [showIosGuide, setShowIosGuide] = useState(false);
+  const [manualGuideReady, setManualGuideReady] = useState(false);
+  const [promotionSuppressed, setPromotionSuppressed] = useState(false);
+  const [showInstallSheet, setShowInstallSheet] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState<ManualInstallMode | null>(null);
 
   useEffect(() => {
     const standaloneQuery = window.matchMedia('(display-mode: standalone)');
@@ -51,92 +64,112 @@ export function PwaProvider({
     const syncStandalone = () => setIsStandalone(standalone());
     syncStandalone();
     standaloneQuery.addEventListener?.('change', syncStandalone);
-    setIsIos(isIosDevice());
     return () => standaloneQuery.removeEventListener?.('change', syncStandalone);
   }, []);
 
   useEffect(() => {
+    setDevice(detectInstallDevice(window.navigator));
+    const manualGuideTimer = window.setTimeout(
+      () => setManualGuideReady(true),
+      MANUAL_GUIDE_DELAY_MS,
+    );
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
     const onInstalled = () => {
       setInstallPrompt(null);
-      setShowInstallBanner(false);
+      setShowInstallSheet(false);
+      setShowInstallGuide(null);
+      setPromotionSuppressed(true);
       setIsStandalone(true);
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
+      window.clearTimeout(manualGuideTimer);
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
 
+  const installMode: InstallMode | null =
+    !advertiseInstall || !device?.isMobile || isStandalone || promotionSuppressed
+      ? null
+      : installPrompt
+        ? 'native'
+        : manualGuideReady
+          ? device.manualMode
+          : null;
+  const canInstall = installMode !== null;
+
   useEffect(() => {
-    if (!advertiseInstall || isStandalone || (!installPrompt && !isIos)) {
-      setShowInstallBanner(false);
+    if (!canInstall) {
+      setShowInstallSheet(false);
+      setShowInstallGuide(null);
       return;
     }
-    const state = recordVisit();
-    setShowInstallBanner(Boolean(state && state.visits >= 2 && state.dismissedUntil <= Date.now()));
-  }, [advertiseInstall, installPrompt, isIos, isStandalone]);
+    if (markPromotionShownForSession()) setShowInstallSheet(true);
+  }, [canInstall]);
 
   const install = useCallback(async () => {
-    if (isStandalone) return;
-    if (installPrompt) {
+    if (!installMode) return;
+    setShowInstallSheet(false);
+
+    if (installMode === 'native') {
+      const prompt = installPrompt;
+      if (!prompt) return;
       try {
-        await installPrompt.prompt();
-        const choice = await installPrompt.userChoice;
-        if (choice.outcome === 'accepted') setShowInstallBanner(false);
+        await prompt.prompt();
+        await prompt.userChoice;
       } catch {
-        // A prompt can expire between the click and browser UI. Keep browsing.
+        // A browser can expire the event between rendering and the user's click.
       } finally {
         setInstallPrompt(null);
+        setPromotionSuppressed(true);
       }
       return;
     }
-    if (isIos) setShowIosGuide(true);
-  }, [installPrompt, isIos, isStandalone]);
 
-  const dismissInstall = useCallback(() => {
-    setShowInstallBanner(false);
-    writeInstallState({ ...readInstallState(), dismissedUntil: Date.now() + DISMISS_MS });
-  }, []);
+    setShowInstallGuide(installMode);
+  }, [installMode, installPrompt]);
 
-  const canInstall = advertiseInstall && !isStandalone && Boolean(installPrompt || isIos);
   const value = useMemo(() => ({ canInstall, install }), [canInstall, install]);
+  const normalizedInstallAppName = installAppName?.trim() || null;
+  const installTitle = normalizedInstallAppName
+    ? t('install.title', { tenant: normalizedInstallAppName })
+    : t('install.titleFallback');
+  const installDescription = normalizedInstallAppName
+    ? t('install.description', { tenant: normalizedInstallAppName })
+    : t('install.descriptionFallback');
 
   return (
     <PwaContext.Provider value={value}>
       {children}
 
-      {showInstallBanner && canInstall ? (
-        <aside
-          className="fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-xl items-center gap-3 rounded-xl border bg-background p-3 shadow-xl md:bottom-4"
-          aria-label={t('install.title')}
-        >
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Download aria-hidden="true" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">{t('install.title')}</p>
-            <p className="text-xs text-muted-foreground">{t('install.description')}</p>
-          </div>
-          <Button type="button" size="sm" onClick={() => void install()}>
-            {t('install.action')}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={dismissInstall}
-            aria-label={t('install.dismiss')}
-          >
-            <X aria-hidden="true" />
-          </Button>
-        </aside>
-      ) : null}
+      <Drawer
+        open={showInstallSheet && canInstall}
+        onOpenChange={(open) => setShowInstallSheet(open && canInstall)}
+      >
+        <DrawerContent className="font-studio">
+          <DrawerHeader className="mx-auto w-full max-w-lg text-left">
+            <div className="mb-2 flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Download aria-hidden="true" />
+            </div>
+            <DrawerTitle>{installTitle}</DrawerTitle>
+            <DrawerDescription>{installDescription}</DrawerDescription>
+          </DrawerHeader>
+          <DrawerFooter className="mx-auto grid w-full max-w-lg grid-cols-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <Button type="button" variant="outline" onClick={() => setShowInstallSheet(false)}>
+              {t('install.later')}
+            </Button>
+            <Button type="button" onClick={() => void install()}>
+              <Download aria-hidden="true" />
+              {t('install.action')}
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
       {updateAvailable && isStandalone ? (
         <aside
@@ -154,78 +187,105 @@ export function PwaProvider({
         </aside>
       ) : null}
 
-      <Dialog open={showIosGuide} onOpenChange={setShowIosGuide}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('ios.title')}</DialogTitle>
-            <DialogDescription>{t('ios.description')}</DialogDescription>
-          </DialogHeader>
-          <ol className="space-y-3 text-sm">
-            <li className="flex gap-3">
-              <Share className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-              <span>{t('ios.shareStep')}</span>
-            </li>
-            <li className="flex gap-3">
-              <Download className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-              <span>{t('ios.addStep')}</span>
-            </li>
-          </ol>
-          <DialogFooter>
-            <Button type="button" onClick={() => setShowIosGuide(false)}>
-              {t('ios.close')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InstallGuideDialog
+        mode={showInstallGuide}
+        open={showInstallGuide !== null}
+        onOpenChange={(open) => {
+          if (!open) setShowInstallGuide(null);
+        }}
+      />
     </PwaContext.Provider>
   );
 }
 
-function isIosDevice(): boolean {
-  const ua = navigator.userAgent;
+function InstallGuideDialog({
+  mode,
+  open,
+  onOpenChange,
+}: {
+  mode: ManualInstallMode | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useTranslation(NsI18n.Pwa);
+  if (!mode) return null;
+
+  const guide =
+    mode === 'ios-safari'
+      ? {
+          title: t('ios.title'),
+          description: t('ios.description'),
+          firstStep: t('ios.shareStep'),
+          secondStep: t('ios.addStep'),
+          firstIcon: <Share className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />,
+        }
+      : mode === 'android-chrome'
+        ? {
+            title: t('android.title'),
+            description: t('android.description'),
+            firstStep: t('android.menuStep'),
+            secondStep: t('android.addStep'),
+            firstIcon: (
+              <EllipsisVertical
+                className="mt-0.5 size-5 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+            ),
+          }
+        : mode === 'ios-browser'
+          ? {
+              title: t('browser.iosTitle'),
+              description: t('browser.iosDescription'),
+              firstStep: t('browser.iosOpenStep'),
+              secondStep: t('browser.iosAddStep'),
+              firstIcon: (
+                <ExternalLink className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+              ),
+            }
+          : {
+              title: t('browser.androidTitle'),
+              description: t('browser.androidDescription'),
+              firstStep: t('browser.androidOpenStep'),
+              secondStep: t('browser.androidAddStep'),
+              firstIcon: (
+                <ExternalLink className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+              ),
+            };
   return (
-    /iPad|iPhone|iPod/.test(ua) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{guide.title}</DialogTitle>
+          <DialogDescription>{guide.description}</DialogDescription>
+        </DialogHeader>
+        <ol className="space-y-3 text-sm">
+          <li className="flex gap-3">
+            {guide.firstIcon}
+            <span>{guide.firstStep}</span>
+          </li>
+          <li className="flex gap-3">
+            <Download className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+            <span>{guide.secondStep}</span>
+          </li>
+        </ol>
+        <DialogFooter>
+          <Button type="button" onClick={() => onOpenChange(false)}>
+            {t('guide.close')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function recordVisit(): InstallState | null {
+function markPromotionShownForSession(): boolean {
   try {
-    let counted = countedWithoutSessionStorage;
-    try {
-      counted = sessionStorage.getItem(VISIT_SESSION_KEY) === '1';
-      if (!counted) sessionStorage.setItem(VISIT_SESSION_KEY, '1');
-    } catch {
-      countedWithoutSessionStorage = true;
-    }
-    const current = readInstallState();
-    if (counted) return current;
-    const next = { ...current, visits: current.visits + 1 };
-    localStorage.setItem(INSTALL_STATE_KEY, JSON.stringify(next));
-    return next;
+    if (sessionStorage.getItem(PROMOTION_SESSION_KEY) === '1') return false;
+    sessionStorage.setItem(PROMOTION_SESSION_KEY, '1');
+    return true;
   } catch {
-    return null;
-  }
-}
-
-function readInstallState(): InstallState {
-  try {
-    const value = JSON.parse(
-      localStorage.getItem(INSTALL_STATE_KEY) ?? '{}',
-    ) as Partial<InstallState>;
-    return {
-      visits: Number.isFinite(value.visits) ? Math.max(0, Number(value.visits)) : 0,
-      dismissedUntil: Number.isFinite(value.dismissedUntil) ? Number(value.dismissedUntil) : 0,
-    };
-  } catch {
-    return { visits: 0, dismissedUntil: 0 };
-  }
-}
-
-function writeInstallState(state: InstallState) {
-  try {
-    localStorage.setItem(INSTALL_STATE_KEY, JSON.stringify(state));
-  } catch {
-    // Storage can be disabled; dismissal remains effective for this page state.
+    if (promotionShownWithoutSessionStorage) return false;
+    promotionShownWithoutSessionStorage = true;
+    return true;
   }
 }

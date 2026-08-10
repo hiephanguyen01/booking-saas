@@ -5,7 +5,6 @@ import type {
   ThemeConfigInput,
   ZalopayGatewaySettingsForm,
 } from '@booking/contracts';
-import { FAVICON_ACCEPT } from '@booking/ui/components/form/image-upload';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 
 export const domainFields: FieldConfig<AddDomainInput>[] = [
@@ -131,15 +130,6 @@ const themeIdentityFields: FieldConfig<ThemeConfigInput>[] = [
     target: 'tenants',
     label: 'Logo',
     description: 'PNG/WebP nền trong suốt hoạt động tốt nhất.',
-    colSpan: 2,
-  },
-  {
-    name: 'faviconUrl',
-    type: 'file',
-    target: 'tenants',
-    accept: FAVICON_ACCEPT,
-    label: 'Favicon',
-    description: 'Chấp nhận .ico, .png hoặc .webp.',
     colSpan: 2,
   },
   {
