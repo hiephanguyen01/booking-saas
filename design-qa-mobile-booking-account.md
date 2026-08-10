@@ -12,7 +12,7 @@ Viewport: 393 × 852 (mobile), 1440 × 900 (desktop regression)
 | 05 — Booking outcome | Pass | Pending polling presentation, failed retry presentation, mock payment success, masked email, booking code, paid/balance values, real recommendation rail and empty-fallback behavior |
 | 06 — Booking history | Pass | Real counts for all six filters, horizontal tabs, client search by booking code, search-empty state, pay/cancel/review/detail/chat actions |
 | 07 — Account overview | Pass | Authenticated profile, real upcoming/completed/favorite stats, real review badge, account/support navigation and logout form |
-| 08 — Booking detail | Pass | Shared guest/account composition, policy/contact/financial sections, hidden bottom nav with sticky action, pending/confirmed/completed/cancelled/no-show eligibility |
+| 08 — Booking detail | Pass | Shared guest/account composition, policy/contact/financial sections, account bottom nav with inline actions, pending/confirmed/completed/cancelled/no-show eligibility |
 
 ## Visual comparison
 
@@ -26,7 +26,7 @@ Viewport: 393 × 852 (mobile), 1440 × 900 (desktop regression)
 - Checkout: invalid phone, promotion open/close, active payment method, real submit/redirect.
 - Outcome: pending state, `payment=error` retry state, mock-pay success, recommendation load and guest `?view=detail` access.
 - History: counts `6 / 1 / 1 / 2 / 1 / 1`, completed filter, matching and non-matching search.
-- Detail actions: pending → pay; confirmed → cancel; completed → review when eligible; cancelled/no-show → no ineligible destructive CTA. Refund/dispute information remains conditional on real settlement/eligibility data.
+- Detail actions: pending → inline pay; confirmed → low-emphasis cancel at the end of the content; completed → review when eligible; cancelled/no-show → no ineligible destructive CTA. Refund/dispute information remains conditional on real settlement/eligibility data.
 
 ## Issues found and resolved
 

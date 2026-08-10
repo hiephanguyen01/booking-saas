@@ -37,5 +37,4 @@ export const CHECKOUT_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = {
 
 export const BOOKING_DETAIL_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = {
   mobileChrome: 'account',
-  hideBottomNav: true,
 };

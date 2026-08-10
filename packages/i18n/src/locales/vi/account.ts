@@ -254,6 +254,13 @@ export const viAccount = {
   },
   messages: {
     title: 'Tin nhắn',
+    mobile: {
+      back: 'Quay lại tài khoản',
+      unavailableTitle: 'Chat đang được hoàn thiện',
+      unavailableDescription:
+        'Các cuộc trò chuyện với đối tác sẽ xuất hiện tại đây. Hiện tại, bạn vẫn có thể xem và quản lý các đơn đã đặt.',
+      viewBookings: 'Xem lịch sử đơn',
+    },
   },
   reviews: {
     title: 'Đánh giá của tôi',

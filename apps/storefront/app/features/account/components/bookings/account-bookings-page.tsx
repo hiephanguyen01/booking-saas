@@ -78,7 +78,7 @@ export function AccountBookingsPage({
         </div>
         <BookingTabs active={activeFilter} locale={locale} counts={loaderData.counts} mobile />
 
-        <div className="space-y-3 px-3 pt-3">
+        <div className="flex flex-col gap-(--sf-section-gap) px-3 pt-(--sf-section-gap)">
           {pending ? (
             <AccountResultsSkeleton label={t('common:loading')} />
           ) : loaderData.error ? (

@@ -257,6 +257,13 @@ export const enAccount = {
   },
   messages: {
     title: 'Messages',
+    mobile: {
+      back: 'Back to account',
+      unavailableTitle: 'Chat is being built',
+      unavailableDescription:
+        'Your conversations with partners will appear here. For now, you can still view and manage your bookings.',
+      viewBookings: 'View booking history',
+    },
   },
   reviews: {
     title: 'My reviews',
