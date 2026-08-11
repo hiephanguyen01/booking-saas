@@ -49,7 +49,7 @@ export function NearbySection({
           // explanation into a four-word column.
           className={cn(
             PANEL_SURFACE,
-            'flex-col items-start gap-4 bg-card px-4 py-4 sm:flex-row sm:items-center sm:px-5',
+            'flex-col items-start gap-4 bg-card p-(--sf-surface-pad) sm:flex-row sm:items-center md:px-5 md:py-4',
           )}
           title={title}
           description={description}
@@ -73,7 +73,7 @@ export function NearbySection({
 
   if (pending || loading) {
     return (
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-(--sf-section-gap) md:gap-4">
         <SectionHeading title={title} />
         <HomeListingCardsSkeleton label={t('loading')} count={4} layout="carousel" />
       </section>
@@ -82,12 +82,12 @@ export function NearbySection({
 
   if (requestFailed || items.length === 0) {
     return (
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-(--sf-section-gap) md:gap-4">
         <SectionHeading title={title} />
         <p
           className={cn(
             PANEL_SURFACE,
-            'bg-card px-6 py-12 text-center text-sm text-muted-foreground',
+            'bg-card p-(--sf-surface-pad) text-center text-sm text-muted-foreground md:px-6 md:py-12',
           )}
         >
           {t(requestFailed ? 'home.nearbyUnavailable' : 'home.nearbyEmpty')}
@@ -100,7 +100,7 @@ export function NearbySection({
     <section>
       <Carousel
         aria-label={title}
-        className="flex flex-col gap-4 [&_[data-slot=carousel-content]]:-mx-4 [&_[data-slot=carousel-content]]:px-4"
+        className="flex flex-col gap-(--sf-section-gap) md:gap-4 [&_[data-slot=carousel-content]]:-mx-4 [&_[data-slot=carousel-content]]:px-4"
         opts={{ align: 'start', slidesToScroll: 1 }}
       >
         <SectionHeading

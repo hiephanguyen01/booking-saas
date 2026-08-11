@@ -2,8 +2,10 @@ import type { CustomerBookingSettlementResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { cn } from '@booking/ui/lib/utils';
 import { Building2, Hash } from 'lucide-react';
 import { Link } from 'react-router';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 import { MobileFlowHeader } from '~/features/site-shell/components/mobile-flow-header';
 import { BookingStatusBadge } from '~/features/account/components/shared/booking-status-badge';
 import { CancellationPolicyList } from '~/features/account/components/shared/account-primitives';
@@ -38,7 +40,12 @@ export function MobileBookingDetail({
   const { t } = useTranslation([NsI18n.Booking, NsI18n.Account]);
 
   return (
-    <div className="min-h-dvh bg-muted/45 pb-28 font-studio md:hidden">
+    <div
+      className={cn(
+        'min-h-dvh bg-muted/45 font-studio md:hidden',
+        actionBar ? 'pb-28' : 'pb-(--sf-section-gap)',
+      )}
+    >
       <MobileFlowHeader
         title={t('booking:viewDetails')}
         backHref={backHref}
@@ -47,9 +54,9 @@ export function MobileBookingDetail({
         chatLabel={t('account:bookings.chat')}
       />
 
-      <main className="mx-auto w-full max-w-lg space-y-3 px-3 py-3">
-        <section className="overflow-hidden rounded-(--sf-surface-radius) border border-border bg-card shadow-(--sf-surface-shadow)">
-          <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4">
+      <main className="mx-auto flex w-full max-w-lg flex-col gap-(--sf-section-gap) px-3 py-(--sf-section-gap)">
+        <section className={cn(PANEL_SURFACE, 'overflow-hidden bg-card')}>
+          <div className="flex items-start justify-between gap-3 border-b border-border p-(--sf-surface-pad)">
             <div className="min-w-0">
               <Link
                 to={storefrontPaths.listing(locale, booking.listingSlug)}
@@ -65,7 +72,7 @@ export function MobileBookingDetail({
             </div>
             <BookingStatusBadge status={booking.status} className="mt-2 shrink-0" />
           </div>
-          <BookingListingSummary booking={booking} className="px-4 py-4" />
+          <BookingListingSummary booking={booking} className="p-(--sf-surface-pad)" />
         </section>
 
         {actionError ? (
@@ -78,7 +85,7 @@ export function MobileBookingDetail({
         ) : null}
 
         {booking.cancellationTiers.length ? (
-          <section className="rounded-(--sf-surface-radius) border border-border bg-card px-4 py-4 shadow-(--sf-surface-shadow)">
+          <section className={cn(PANEL_SURFACE, 'bg-card p-(--sf-surface-pad)')}>
             <h2 className="mb-3 text-sm font-semibold text-foreground">
               {t('booking:mobile.cancellationPolicy')}
             </h2>

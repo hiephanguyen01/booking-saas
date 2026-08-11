@@ -95,10 +95,7 @@ export function ReviewDialogView({
                     className="rounded-md p-1 outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Star
-                      className={cn(
-                        'size-8',
-                        active ? 'text-warning' : 'text-muted-foreground/35',
-                      )}
+                      className={cn('size-8', active ? 'text-warning' : 'text-muted-foreground/35')}
                       fill={active ? 'currentColor' : 'none'}
                       aria-hidden="true"
                     />
@@ -154,6 +151,7 @@ export function ReviewDialogView({
               <input
                 ref={inputRef}
                 type="file"
+                aria-label={t('reviews.dialog.chooseFiles')}
                 multiple
                 accept="image/jpeg,image/png,image/webp,image/avif,image/gif,video/mp4,video/webm,video/quicktime"
                 className="sr-only"
@@ -170,7 +168,7 @@ export function ReviewDialogView({
                 {media.map((item) => (
                   <div
                     key={item.id}
-                    className="relative aspect-square overflow-hidden rounded-md border border-border bg-muted"
+                    className="relative aspect-square overflow-hidden rounded-(--sf-image-radius) border border-border bg-muted md:rounded-md"
                   >
                     {item.kind === 'image' ? (
                       <Image

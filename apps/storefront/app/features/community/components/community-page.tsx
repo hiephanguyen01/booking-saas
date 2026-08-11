@@ -4,6 +4,14 @@ import { Link, useOutletContext } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
+import { cn } from '@booking/ui/lib/utils';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+
+const COMMUNITY_PLACEHOLDERS = [
+  { key: 'photos', Icon: Camera },
+  { key: 'members', Icon: UsersRound },
+  { key: 'highlights', Icon: Sparkles },
+] as const;
 
 export function CommunityPage() {
   const { locale, currentUser } = useOutletContext<StorefrontContext>();
@@ -40,10 +48,13 @@ export function CommunityPage() {
           </Button>
         </div>
         <div className="mt-16 grid gap-4 sm:grid-cols-3">
-          {[Camera, UsersRound, Sparkles].map((Icon, index) => (
+          {COMMUNITY_PLACEHOLDERS.map(({ key, Icon }) => (
             <div
-              key={index}
-              className="flex min-h-36 items-center justify-center rounded-2xl border border-border bg-background/80 shadow-sm backdrop-blur"
+              key={key}
+              className={cn(
+                PANEL_SURFACE,
+                'flex min-h-36 items-center justify-center bg-background/80 p-(--sf-surface-pad) backdrop-blur md:rounded-2xl md:border md:border-border md:p-0 md:shadow-sm',
+              )}
             >
               <Icon className="size-8 text-primary" />
             </div>

@@ -34,6 +34,7 @@ import { useLocale } from '~/hooks/use-locale';
 import type { CatalogPageProps } from './catalog-page';
 import { CatalogPagination } from './catalog-pagination';
 import { FilterPanel } from './filter-panel';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 export function MobileCatalogPage({
   loaderData,
@@ -202,17 +203,17 @@ export function MobileCatalogPage({
           {t('resultsCount', { count: search.total })}
         </p>
 
-        <div className="flex flex-col gap-3 px-3 pt-2.5 pb-4">
+        <div className="flex flex-col gap-(--sf-section-gap) px-3 pt-(--sf-section-gap) pb-4">
           {pending ? (
             <div role="status" aria-live="polite" aria-label={t('common:loading')}>
-              <div className="flex flex-col gap-3" aria-hidden="true">
+              <div className="flex flex-col gap-(--sf-section-gap)" aria-hidden="true">
                 {Array.from({ length: 4 }, (_, index) => (
                   <CatalogResultSkeleton key={index} />
                 ))}
               </div>
             </div>
           ) : search.items.length === 0 ? (
-            <Empty className="border bg-background py-16">
+            <Empty className={cn(PANEL_SURFACE, 'bg-background p-(--sf-surface-pad)')}>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <SlidersHorizontal />

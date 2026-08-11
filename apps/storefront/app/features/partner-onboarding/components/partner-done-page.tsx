@@ -13,7 +13,7 @@ export function PartnerDonePage({
   return (
     <main className="flex flex-1 items-start justify-center px-5 pb-16 pt-10 sm:px-6 sm:pt-16">
       {/* Tenant surface shape; padding stays bespoke — see partner-auth-layout. */}
-      <SectionCard className="w-full max-w-[570px] p-8 text-center sm:p-10">
+      <SectionCard className="w-full max-w-[570px] p-(--sf-surface-pad) text-center md:p-10">
         <span
           className="mx-auto grid size-26 place-items-center rounded-full bg-primary/10 text-primary"
           aria-hidden="true"

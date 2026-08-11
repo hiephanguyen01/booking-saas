@@ -1,8 +1,10 @@
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
+import { cn } from '@booking/ui/lib/utils';
 import { ChevronRight, LogOut } from 'lucide-react';
 import { Link, useOutletContext } from 'react-router';
 import { ACCOUNT_NAV_ICONS } from '~/components/account-nav-icons';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 import type { AccountOutletContext } from '~/features/account/hooks/use-account-layout-controller';
 import { useAccountShellController } from '~/features/account/hooks/use-account-shell-controller';
 import { userInitials } from '~/features/account/lib/account-nav';
@@ -24,7 +26,7 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
       </div>
 
       <div className="relative mx-auto -mt-14 w-full max-w-3xl px-3 md:mt-0 md:px-0">
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-(--sf-surface-shadow)">
+        <section className={cn(PANEL_SURFACE, 'bg-card p-(--sf-surface-pad)')}>
           <div className="flex items-center gap-4">
             <Avatar className="size-18 ring-4 ring-background">
               {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
@@ -45,11 +47,11 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
           ) : null}
         </section>
 
-        <div className="mt-3 space-y-3 pb-5">
+        <div className="mt-(--sf-section-gap) flex flex-col gap-(--sf-section-gap) pb-5">
           {groups.map((group) => (
             <nav
               key={group.map((item) => item.key).join('-')}
-              className="overflow-hidden rounded-2xl border border-border bg-card shadow-(--sf-surface-shadow)"
+              className={cn(PANEL_SURFACE, 'overflow-hidden bg-card')}
               aria-label={t('title')}
             >
               {group.map((item, index) => {
@@ -59,7 +61,7 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
                     key={item.key}
                     to={item.to}
                     prefetch="intent"
-                    className={`flex min-h-14 items-center gap-3 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${index ? 'border-t border-border' : ''}`}
+                    className={`flex min-h-14 items-center gap-3 px-(--sf-surface-pad) text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${index ? 'border-t border-border' : ''}`}
                   >
                     <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
                       <Icon className="size-4.5" aria-hidden="true" />
@@ -80,7 +82,10 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
           <fetcher.Form method="post" action={logoutAction}>
             <button
               type="submit"
-              className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 text-left text-sm font-semibold text-destructive shadow-(--sf-surface-shadow) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={cn(
+                PANEL_SURFACE,
+                'flex min-h-14 w-full items-center gap-3 bg-card px-(--sf-surface-pad) text-left text-sm font-semibold text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              )}
             >
               <LogOut className="size-5" aria-hidden="true" />
               {fetcher.state === 'submitting' ? t('overview.loggingOut') : t('nav.logout')}

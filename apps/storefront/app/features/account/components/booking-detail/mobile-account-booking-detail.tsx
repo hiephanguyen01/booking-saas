@@ -3,6 +3,7 @@ import type { Locale } from '@booking/i18n';
 import { formatDateTime, NsI18n, useTranslation } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { storefrontPaths } from '~/constants/paths';
+import { AccountPanel } from '~/features/account/components/shared/account-primitives';
 import { BookingPaymentForm } from '~/features/account/components/bookings/booking-payment-form';
 import { CancelBookingDialog } from '~/features/account/components/bookings/cancel-booking-dialog';
 import { DisputeBookingDialog } from '~/features/account/components/bookings/dispute-booking-dialog';
@@ -14,7 +15,6 @@ import {
   type BookingDetailViewModel,
 } from '~/features/booking/lib/booking-detail-model';
 import { useBookingDetailOverviewController } from '~/features/account/hooks/use-booking-detail-overview-controller';
-import { MobileStickyActionBar } from '~/features/site-shell/components/mobile-sticky-action-bar';
 import { DEFAULT_TZ } from '~/lib/time';
 
 export function MobileAccountBookingDetail({
@@ -34,7 +34,6 @@ export function MobileAccountBookingDetail({
   showReviewSection: boolean;
   onReview: () => void;
 }) {
-  const { t } = useTranslation(NsI18n.Account);
   const state = bookingDetailState(booking.status);
   const controller = useBookingDetailOverviewController({
     booking,
@@ -46,44 +45,6 @@ export function MobileAccountBookingDetail({
     ? formatDateTime(controller.disputeUntil, locale, DEFAULT_TZ)
     : null;
   const detailPath = storefrontPaths.account.booking(locale, booking.code);
-
-  const actions = (
-    <div className="flex w-full gap-2">
-      {controller.canPay ? (
-        <BookingPaymentForm
-          action={detailPath}
-          buttonProps={{ className: 'min-h-11 flex-1 text-sm font-semibold' }}
-        >
-          {t('bookings.payNow')}
-        </BookingPaymentForm>
-      ) : null}
-      {controller.canCancel ? (
-        <Button
-          type="button"
-          variant="destructive"
-          className="min-h-11 flex-1"
-          onClick={() => controller.setCancelOpen(true)}
-        >
-          {t('bookings.cancel')}
-        </Button>
-      ) : null}
-      {booking.variant === 'completed' && booking.review?.status === 'pending' ? (
-        <Button type="button" className="min-h-11 flex-1" onClick={onReview}>
-          {t('bookings.review')}
-        </Button>
-      ) : null}
-      {controller.canDispute ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 flex-1"
-          onClick={() => controller.setDisputeOpen(true)}
-        >
-          {t('bookings.dispute')}
-        </Button>
-      ) : null}
-    </div>
-  );
 
   return (
     <>
@@ -102,15 +63,15 @@ export function MobileAccountBookingDetail({
             {settlement?.dispute ? (
               <BookingDisputeSection dispute={settlement.dispute} locale={locale} />
             ) : null}
+            <MobileBookingActions
+              canPay={controller.canPay}
+              canCancel={controller.canCancel}
+              canDispute={controller.canDispute}
+              detailPath={detailPath}
+              onCancel={() => controller.setCancelOpen(true)}
+              onDispute={() => controller.setDisputeOpen(true)}
+            />
           </>
-        }
-        actionBar={
-          controller.canPay ||
-          controller.canCancel ||
-          controller.canDispute ||
-          (booking.variant === 'completed' && booking.review?.status === 'pending') ? (
-            <MobileStickyActionBar action={actions} />
-          ) : undefined
         }
       />
       <CancelBookingDialog
@@ -127,5 +88,58 @@ export function MobileAccountBookingDetail({
         onOpenChange={controller.setDisputeOpen}
       />
     </>
+  );
+}
+
+function MobileBookingActions({
+  canPay,
+  canCancel,
+  canDispute,
+  detailPath,
+  onCancel,
+  onDispute,
+}: {
+  canPay: boolean;
+  canCancel: boolean;
+  canDispute: boolean;
+  detailPath: string;
+  onCancel: () => void;
+  onDispute: () => void;
+}) {
+  const { t } = useTranslation(NsI18n.Account);
+  if (!canPay && !canCancel && !canDispute) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {canPay || canDispute ? (
+        <AccountPanel className="flex flex-col gap-2 p-(--sf-surface-pad)">
+          {canPay ? (
+            <BookingPaymentForm
+              action={detailPath}
+              buttonProps={{ className: 'min-h-11 w-full text-sm font-semibold' }}
+            >
+              {t('bookings.payNow')}
+            </BookingPaymentForm>
+          ) : null}
+          {canDispute ? (
+            <Button type="button" variant="outline" className="min-h-11 w-full" onClick={onDispute}>
+              {t('bookings.dispute')}
+            </Button>
+          ) : null}
+        </AccountPanel>
+      ) : null}
+
+      {canCancel ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mx-auto min-h-11 px-5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={onCancel}
+        >
+          {t('bookings.cancel')}
+        </Button>
+      ) : null}
+    </div>
   );
 }

@@ -15,7 +15,7 @@ import { TenantThemeStyle } from './tenant-theme-style';
 
 export function StorefrontAppShell({ loaderData }: { loaderData: RootLoaderPayload }) {
   const pwaTenant =
-    loaderData.kind === 'tenant'
+    loaderData.kind === 'tenant' && loaderData.tenant.live
       ? { name: loaderData.tenant.name, themeConfig: loaderData.tenant.themeConfig }
       : null;
 

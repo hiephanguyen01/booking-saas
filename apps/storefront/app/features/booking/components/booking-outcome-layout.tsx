@@ -110,12 +110,12 @@ export function BookingOutcomeLayout({
         </SectionCard>
 
         <div
-          className={`mt-4 grid items-start gap-4 *:min-w-0 ${
+          className={`mt-(--sf-section-gap) grid items-start gap-(--sf-section-gap) *:min-w-0 md:mt-4 md:gap-4 ${
             booking ? 'lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]' : 'mx-auto max-w-2xl'
           }`}
         >
           {booking ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-(--sf-section-gap) md:gap-4">
               <SectionCard aria-labelledby="booking-what-heading">
                 <h2
                   id="booking-what-heading"
@@ -130,7 +130,7 @@ export function BookingOutcomeLayout({
             </div>
           ) : null}
 
-          <aside className="flex flex-col gap-4 max-lg:order-first lg:sticky lg:top-24">
+          <aside className="flex flex-col gap-(--sf-section-gap) max-lg:order-first md:gap-4 lg:sticky lg:top-24">
             <SectionCard aria-labelledby="booking-summary-heading">
               <div className="flex items-start justify-between gap-4">
                 <div>

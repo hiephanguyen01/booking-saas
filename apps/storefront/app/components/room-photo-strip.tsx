@@ -30,14 +30,14 @@ export function RoomPhotoStrip({
 
   if (!cover)
     return (
-      <div className="grid h-36 place-items-center rounded-md bg-muted text-muted-foreground">
+      <div className="grid h-36 place-items-center rounded-(--sf-image-radius) bg-muted text-muted-foreground md:rounded-md">
         <ImageIcon className="size-7" aria-hidden="true" />
         <span className="sr-only">{title}</span>
       </div>
     );
 
   return (
-    <div className="grid h-36 grid-cols-[2fr_1fr] grid-rows-2 gap-1.5 overflow-hidden rounded-md">
+    <div className="grid h-36 grid-cols-[2fr_1fr] grid-rows-2 gap-1.5 overflow-hidden rounded-(--sf-image-radius) md:rounded-md">
       <RoomPhoto
         photo={cover}
         title={title}

@@ -78,11 +78,11 @@ export function AccountBookingsPage({
         </div>
         <BookingTabs active={activeFilter} locale={locale} counts={loaderData.counts} mobile />
 
-        <div className="space-y-3 px-3 pt-3">
+        <div className="flex flex-col gap-(--sf-section-gap) px-3 pt-(--sf-section-gap)">
           {pending ? (
             <AccountResultsSkeleton label={t('common:loading')} />
           ) : loaderData.error ? (
-            <AccountPanel className="flex min-h-64 flex-col items-center justify-center gap-4 p-8 text-center">
+            <AccountPanel className="flex min-h-64 flex-col items-center justify-center gap-4 p-(--sf-surface-pad) text-center">
               <RefreshCw className="size-9 text-destructive" />
               <p className="text-sm text-destructive">{t('bookings.unavailable')}</p>
               <Button asChild variant="outline">
@@ -90,12 +90,12 @@ export function AccountBookingsPage({
               </Button>
             </AccountPanel>
           ) : loaderData.bookings.length === 0 ? (
-            <AccountPanel className="flex min-h-64 flex-col items-center justify-center gap-3 p-8 text-center">
+            <AccountPanel className="flex min-h-64 flex-col items-center justify-center gap-3 p-(--sf-surface-pad) text-center">
               <ReceiptText className="size-9 text-primary" />
               <p className="text-sm text-muted-foreground">{t('bookings.emptyFilter')}</p>
             </AccountPanel>
           ) : visibleBookings.length === 0 ? (
-            <AccountPanel className="flex min-h-52 flex-col items-center justify-center gap-3 p-8 text-center">
+            <AccountPanel className="flex min-h-52 flex-col items-center justify-center gap-3 p-(--sf-surface-pad) text-center">
               <Search className="size-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">{t('bookings.mobile.searchEmpty')}</p>
             </AccountPanel>

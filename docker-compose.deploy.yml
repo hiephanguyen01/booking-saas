@@ -187,6 +187,7 @@ services:
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required — add it to .env.<env>, see docs/deployment.md}
       DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}
       API_HOST: ${API_HOST:?API_HOST is required}
+      PLATFORM_BASE_DOMAIN: ${PLATFORM_BASE_DOMAIN:?PLATFORM_BASE_DOMAIN is required}
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       # THE CERTIFICATE STORE. Deleting this volume re-requests every certificate

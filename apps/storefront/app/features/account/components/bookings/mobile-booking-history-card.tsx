@@ -3,9 +3,11 @@ import type { Locale } from '@booking/i18n';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { Image } from '@booking/ui/components/media/image';
 import { Button } from '@booking/ui/components/ui/button';
+import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronRight, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router';
 import { ListingThumbnail } from '~/components/listing-thumbnail';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 import { storefrontPaths } from '~/constants/paths';
 import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import { BookingStatusBadge } from '~/features/account/components/shared/booking-status-badge';
@@ -33,8 +35,8 @@ export function MobileBookingHistoryCard({
   const detailPath = storefrontPaths.account.booking(locale, booking.code);
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-(--sf-surface-shadow)">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+    <article className={cn(PANEL_SURFACE, 'overflow-hidden bg-card')}>
+      <div className="flex items-center justify-between gap-3 border-b border-border p-(--sf-surface-pad)">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold text-foreground">{booking.partnerName}</p>
           <p className="mt-0.5 font-mono text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
@@ -46,18 +48,18 @@ export function MobileBookingHistoryCard({
 
       <Link
         to={detailPath}
-        className="grid grid-cols-[6.25rem_minmax(0,1fr)] gap-3 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className="grid grid-cols-[6.25rem_minmax(0,1fr)] gap-3 p-(--sf-surface-pad) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         {booking.imageUrl ? (
           <Image
             src={booking.imageUrl}
             alt={booking.listingTitle}
-            className="aspect-square size-full rounded-xl object-cover object-top"
+            className="aspect-square size-full rounded-(--sf-image-radius) object-cover object-top"
           />
         ) : (
           <ListingThumbnail
             label={booking.listingTitle}
-            className="aspect-square size-full rounded-xl border border-border"
+            className="aspect-square size-full rounded-(--sf-image-radius) border border-border"
           />
         )}
         <div className="min-w-0">
@@ -78,10 +80,10 @@ export function MobileBookingHistoryCard({
         finalAmount={booking.finalAmount}
         balanceAmount={booking.balanceAmount}
         locale={locale}
-        className="mx-4 mb-3"
+        className="mx-(--sf-surface-pad) mb-(--sf-surface-pad)"
       />
 
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/20 px-3 py-3">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/20 p-(--sf-surface-pad)">
         <Button asChild variant="ghost" size="sm" className="mr-auto min-h-11 px-3">
           <Link to={storefrontPaths.account.messages(locale)}>
             <MessageCircle className="size-4" aria-hidden="true" />

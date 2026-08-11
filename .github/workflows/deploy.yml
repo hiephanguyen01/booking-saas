@@ -105,6 +105,7 @@ jobs:
             -e ACME_EMAIL=ops@example.com \
             -e DASHBOARD_HOST=admin.example.com \
             -e API_HOST=api.example.com \
+            -e PLATFORM_BASE_DOMAIN=example.com \
             -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 

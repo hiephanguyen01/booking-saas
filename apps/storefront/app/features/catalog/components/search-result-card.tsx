@@ -45,7 +45,7 @@ export function SearchResultCard({
     // resolve its `h-full` against and sized itself from its own aspect ratio
     // instead. A 4:3 source happened to land on this card's 184px, which is why
     // only portrait uploads broke out of the card.
-    <article className="group relative flex min-h-32 gap-3 overflow-hidden bg-card p-2.5 transition-[border-color,box-shadow] rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) hover:border-primary/50 md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:grid-rows-1 md:gap-x-1.5 md:p-0">
+    <article className="group relative flex min-h-32 gap-3 overflow-hidden bg-card p-(--sf-surface-pad) transition-[border-color,box-shadow] rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) hover:border-primary/50 md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:grid-rows-1 md:gap-x-1.5 md:p-0">
       {favoriteControl ? (
         <button
           type="button"
@@ -67,7 +67,7 @@ export function SearchResultCard({
         // No height below `md`: as a flex child the photo stretches to the row,
         // which is both a definite height for the `h-full` image inside and a
         // photo that is always exactly as tall as the card beside it.
-        className="relative w-28 shrink-0 overflow-hidden rounded-[calc(var(--sf-surface-radius)-0.2rem)] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:h-full md:w-auto md:rounded-none"
+        className="relative w-28 shrink-0 overflow-hidden rounded-(--sf-image-radius) bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:h-full md:w-auto md:rounded-none"
       >
         {photos[0] ? (
           <Image
@@ -88,8 +88,11 @@ export function SearchResultCard({
       </Link>
 
       <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
-        {[photos[1], photos[2]].map((photo, index) => (
-          <div key={photo ?? index} className="min-h-0 overflow-hidden bg-muted">
+        {[
+          { slot: 'secondary', photo: photos[1] },
+          { slot: 'tertiary', photo: photos[2] },
+        ].map(({ slot, photo }) => (
+          <div key={slot} className="min-h-0 overflow-hidden bg-muted">
             {photo ? (
               <Image
                 src={photo}

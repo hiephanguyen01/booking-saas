@@ -86,15 +86,15 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
           backHref={storefrontPaths.listing(locale, listing.slug)}
           backLabel={t('mobile.back')}
         />
-        <main className="mx-auto w-full max-w-lg space-y-3 px-3 py-3 pb-32">
+        <div className="mx-auto w-full max-w-lg space-y-(--sf-section-gap) px-3 py-(--sf-section-gap) pb-32">
           <h1 className="sr-only">{t('title')}</h1>
           <BookingColumn {...sharedBookingProps} />
           {memberBanner ? <MemberBanner {...memberBanner} /> : null}
           <CheckoutForm {...sharedFormProps} mobile />
-        </main>
+        </div>
       </div>
 
-      <main className="mx-auto hidden w-full max-w-304.5 px-4 sm:px-6 md:block">
+      <div className="mx-auto hidden w-full max-w-304.5 px-4 sm:px-6 md:block">
         <h1 className="sr-only">{t('title')}</h1>
         {/* `[&>*]:min-w-0`: a grid item defaults to `min-width:auto`, so the
             booking summary's min-content width (thumbnail + text) widened the
@@ -108,7 +108,7 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
             <CheckoutForm {...sharedFormProps} />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

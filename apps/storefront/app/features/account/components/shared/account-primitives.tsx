@@ -56,9 +56,9 @@ export function CancellationPolicyList({
 
   return (
     <div className="space-y-1 text-xs text-muted-foreground">
-      {lines.map((line, index) => (
+      {lines.map((line) => (
         <p
-          key={index}
+          key={line.text}
           className={`flex items-center gap-1.5 ${line.isFree ? 'text-success' : ''}`}
         >
           <Check className="size-3.5 shrink-0" aria-hidden="true" />
@@ -118,7 +118,7 @@ export function AccountListState({
   action?: React.ReactNode;
 }) {
   return (
-    <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-4 p-8 text-center">
+    <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-4 p-(--sf-surface-pad) text-center md:p-8">
       <span
         className={`flex size-12 items-center justify-center rounded-full ${
           tone === 'destructive'
@@ -137,7 +137,7 @@ export function AccountListState({
 export function FeatureUnavailableState() {
   const { t } = useTranslation(NsI18n.Account);
   return (
-    <AccountPanel className="flex min-h-80 flex-col items-center justify-center gap-3 p-8 text-center">
+    <AccountPanel className="flex min-h-80 flex-col items-center justify-center gap-3 p-(--sf-surface-pad) text-center md:p-8">
       <Construction className="size-10 text-primary" />
       <p className="text-sm text-muted-foreground">{t('featureUnavailable')}</p>
     </AccountPanel>

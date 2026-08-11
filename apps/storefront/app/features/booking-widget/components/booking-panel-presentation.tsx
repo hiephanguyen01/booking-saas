@@ -50,7 +50,7 @@ export function PackagePicker({
                   <Image
                     src={item.photos[0] ?? fallbackPhoto}
                     alt=""
-                    className="size-14 shrink-0 rounded-md object-cover"
+                    className="size-14 shrink-0 rounded-(--sf-image-radius) object-cover md:rounded-md"
                   />
                 ) : null}
                 <span className="min-w-0 flex-1">
@@ -156,8 +156,11 @@ export function Breakdown({ quote }: { quote: QuoteResponse }) {
   const { t } = useTranslation(NsI18n.Listing);
   return (
     <dl className="rounded-lg bg-muted/40 p-3 text-sm">
-      {quote.lineItems.map((line, index) => (
-        <div key={index} className="flex justify-between gap-3 py-0.5 text-muted-foreground">
+      {quote.lineItems.map((line) => (
+        <div
+          key={`${line.label}-${line.amount}-${line.block ?? ''}`}
+          className="flex justify-between gap-3 py-0.5 text-muted-foreground"
+        >
           <dt>
             {line.label}
             {line.block ? ` (${t('package')})` : ''}

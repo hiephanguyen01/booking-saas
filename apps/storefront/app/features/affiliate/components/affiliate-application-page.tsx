@@ -10,6 +10,8 @@ import type {
 } from '~/features/affiliate/server/affiliate-application-route.server';
 import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
 import type { ServerDataFrom } from '~/lib/react-router-data';
+import { cn } from '@booking/ui/lib/utils';
+import { PANEL_SURFACE } from '~/constants/surfaces';
 
 function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantName: string }) {
   return (
@@ -62,7 +64,12 @@ export function AffiliateApplicationPage({
       <div className="min-h-dvh bg-background">
         <BrandHeader logoUrl={logoUrl} tenantName={tenantName} />
         <main className="flex min-h-[calc(100dvh-4.5rem)] items-center justify-center px-6 py-20">
-          <div className="w-full max-w-[570px] rounded-2xl border border-border bg-card p-10 text-center text-card-foreground shadow-sm">
+          <div
+            className={cn(
+              PANEL_SURFACE,
+              'w-full max-w-[570px] bg-card p-(--sf-surface-pad) text-center text-card-foreground md:rounded-2xl md:border md:border-border md:p-10 md:shadow-sm',
+            )}
+          >
             <div
               className="mx-auto mb-6 flex size-26 items-center justify-center rounded-full bg-primary/10 text-primary"
               aria-hidden="true"
@@ -77,7 +84,7 @@ export function AffiliateApplicationPage({
             </p>
             <a
               href={dashboardLoginHref}
-              className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground transition-[opacity,transform] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
             >
               {t('common:becomePartner.goToDashboard')}
             </a>
@@ -91,7 +98,12 @@ export function AffiliateApplicationPage({
     <div className="min-h-dvh bg-background">
       <BrandHeader logoUrl={logoUrl} tenantName={tenantName} />
       <main className="mx-auto max-w-[640px] px-6 py-10 lg:px-10">
-        <div className="rounded-2xl border border-border bg-card p-8 text-card-foreground shadow-sm lg:p-10">
+        <div
+          className={cn(
+            PANEL_SURFACE,
+            'bg-card p-(--sf-surface-pad) text-card-foreground md:rounded-2xl md:border md:border-border md:p-8 md:shadow-sm lg:p-10',
+          )}
+        >
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             {t('auth:affiliate.title')}
           </h1>
