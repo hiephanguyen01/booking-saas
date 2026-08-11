@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { administrativeAddressSnapshotSchema } from './administrative-division';
 import { slugSchema } from './tenancy';
+import { tenantTaxCategorySchema } from './tax';
 
 /** How a listing may be booked (mirrors the Prisma BookingMode enum, §7.3). */
 export const bookingModeSchema = z.enum(['hourly', 'daily', 'appointment', 'class', 'inventory']);
@@ -440,6 +441,7 @@ const listingTypeBaseSchema = z.object({
   requiresIdentityVerification: z.boolean().default(false),
   structure: listingStructureSchema.default('standalone'),
   itemLabel: z.string().trim().min(1).max(60).optional(),
+  taxCategory: tenantTaxCategorySchema.default('standard'),
 });
 
 /** `defaultModes` must be a subset of `allowedModes` (only checked when both present). */
@@ -522,6 +524,8 @@ export const listingTypeResponseSchema = z.object({
   requiresIdentityVerification: z.boolean(),
   structure: listingStructureSchema,
   itemLabel: z.string().nullable(),
+  /** VAT treatment of everything sold under this type (§VAT). */
+  taxCategory: tenantTaxCategorySchema,
   /**
    * Listings currently using this type. Drives the "N listings" column and lets
    * the UI explain up-front why a delete will be refused (a type in use cannot be

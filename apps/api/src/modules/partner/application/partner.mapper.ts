@@ -83,6 +83,7 @@ export function toPartnerResponse(p: PartnerRecord): PartnerResponse {
     isHouse: p.isHouse,
     status: p.status,
     verificationStatus: p.verificationStatus,
+    taxStatus: p.taxStatus,
     verifiedAt: p.verifiedAt ? p.verifiedAt.toISOString() : null,
     dateOfBirth: p.dateOfBirth ? p.dateOfBirth.toISOString().slice(0, 10) : null,
     payoutInfo: p.payoutInfo,

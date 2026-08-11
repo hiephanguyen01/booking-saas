@@ -39,12 +39,14 @@ import { CreateHousePartnerUseCase } from '../../application/use-cases/create-ho
 import { ApprovePartnerUseCase } from '../../application/use-cases/approve-partner.use-case';
 import { VerifyIdentityUseCase } from '../../application/use-cases/verify-identity.use-case';
 import { SuspendPartnerUseCase } from '../../application/use-cases/suspend-partner.use-case';
+import { UpdatePartnerTaxStatusUseCase } from '../../application/use-cases/update-partner-tax-status.use-case';
 import { toPartnerResponse } from '../../application/partner.mapper';
 import {
   ApprovePartnerDto,
   CreateHousePartnerDto,
   ListPartnersQueryDto,
   PartnerResponseDto,
+  UpdatePartnerTaxStatusDto,
   VerifyIdentityDto,
 } from './dto/partner.dto';
 
@@ -59,6 +61,7 @@ export class TenantPartnerController {
     private readonly approvePartner: ApprovePartnerUseCase,
     private readonly verifyIdentity: VerifyIdentityUseCase,
     private readonly suspendPartner: SuspendPartnerUseCase,
+    private readonly updateTaxStatus: UpdatePartnerTaxStatusUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -147,6 +150,27 @@ export class TenantPartnerController {
   ): Promise<PartnerResponse> {
     return toPartnerResponse(
       await this.suspendPartner.execute(this.tenantContext.tenantIdOrThrow(), id),
+    );
+  }
+
+  /**
+   * Its own action rather than a general PATCH: this field decides the partner's
+   * VAT regime and, later, whether their payout is withheld from (§VAT).
+   * Bookings already made keep the rate frozen on their snapshot.
+   */
+  @RequirePermissions('tenant.partners.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Post(':id/tax-status')
+  @HttpCode(200)
+  @ApiOperation({ summary: "Set a partner's tax status" })
+  @UuidParam()
+  @ApiOkResponse({ type: PartnerResponseDto })
+  async setTaxStatus(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() input: UpdatePartnerTaxStatusDto,
+  ): Promise<PartnerResponse> {
+    return toPartnerResponse(
+      await this.updateTaxStatus.execute(this.tenantContext.tenantIdOrThrow(), id, input),
     );
   }
 }

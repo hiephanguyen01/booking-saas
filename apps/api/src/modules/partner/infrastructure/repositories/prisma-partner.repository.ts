@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Partner as PrismaPartnerRow, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import { toStatusCounts, type RepoPageWithCounts, pageOffset } from '../../../../shared/pagination/pagination';
+import type { PartnerTaxStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   PartnerBusinessInfoIntent,
@@ -50,6 +51,7 @@ function toRecord(p: PrismaPartner): PartnerRecord {
     isHouse: p.isHouse,
     status: p.status,
     verificationStatus: p.verificationStatus,
+    taxStatus: p.taxStatus,
     verifiedAt: p.verifiedAt,
     dateOfBirth: p.dateOfBirth,
     payoutInfo: (p.payoutInfo ?? {}) as Record<string, unknown>,
@@ -249,6 +251,16 @@ export class PrismaPartnerRepository implements IPartnerRepository, IPartnerRead
         data: { businessInfo: intent.businessInfo as Prisma.InputJsonValue },
         include: partnerInclude,
       }),
+    );
+  }
+
+  async updateTaxStatus(
+    tx: PrismaTx,
+    id: string,
+    taxStatus: PartnerTaxStatus,
+  ): Promise<PartnerRecord> {
+    return toRecord(
+      await tx.partner.update({ where: { id }, data: { taxStatus }, include: partnerInclude }),
     );
   }
 

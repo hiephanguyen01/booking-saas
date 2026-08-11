@@ -2,6 +2,7 @@ import { data as routeData } from 'react-router';
 import {
   createCommissionRuleInputSchema,
   updateCommissionRuleInputSchema,
+  updatePartnerTaxStatusInputSchema,
   type CommissionRuleResponse,
   type PartnerResponse,
 } from '@booking/contracts';
@@ -31,6 +32,7 @@ import { PartnerIdentityCard } from '~/features/tenant/components/partners/partn
 import { PartnerLegalCard } from '~/features/tenant/components/partners/partner-legal-card';
 import { PartnerModerationActions } from '~/features/tenant/components/partners/partner-moderation-actions';
 import { PartnerPayoutCard } from '~/features/tenant/components/partners/partner-payout-card';
+import { PartnerTaxStatusCard } from '~/features/tenant/components/partners/partner-tax-status-card';
 import { PartnerCommissionCard } from '~/features/tenant/components/partners/partner-commission-card';
 import {
   readCommissionRatePatch,
@@ -155,6 +157,32 @@ export async function action({ request, params }: Route.ActionArgs) {
     return { ok: true, intent, verificationStatus: null };
   }
 
+  // Its own branch rather than the generic `/partners/:id/:intent` path below:
+  // this one carries a body and its endpoint name differs from the intent.
+  if (intent === 'set-tax-status') {
+    if (!can('tenant.partners.manage')) {
+      return routeData({ error: 'Bạn không có quyền quản lý đối tác.' }, { status: 403 });
+    }
+    const parsed = updatePartnerTaxStatusInputSchema.safeParse({
+      taxStatus: String(form.get('taxStatus') ?? ''),
+    });
+    if (!parsed.success) {
+      return routeData({ error: 'Diện thuế không hợp lệ.' }, { status: 400 });
+    }
+    const res = await apiPost<PartnerResponse>(
+      apiPaths.tenant.partnerTaxStatus(params.partnerId),
+      parsed.data,
+      auth,
+    );
+    if (!res.ok) {
+      return routeData(
+        { error: res.error ?? 'Không cập nhật được hồ sơ thuế.' },
+        { status: 400 },
+      );
+    }
+    return { ok: true, intent, verificationStatus: null };
+  }
+
   const perm = PERM[intent];
   if (!perm) return routeData({ error: actionMessages.invalidIntent }, { status: 400 });
   if (!can(perm))
@@ -235,6 +263,12 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
       </Card>
 
       <PartnerIdentityCard partner={partner} business={business} />
+      <PartnerTaxStatusCard
+        taxStatus={partner.taxStatus}
+        busy={readOnly}
+        error={error}
+      />
+
       <PartnerPayoutCard payoutInfo={partner.payoutInfo} />
       {canCommissions && !partner.isHouse ? (
         <PartnerCommissionCard

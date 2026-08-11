@@ -14,7 +14,7 @@ import { priceQuote } from '../pricing';
 import { ListingNotFound } from '../../domain/errors/listing-errors';
 import { ModeNotEnabled } from '../../domain/errors/pricing-rule-errors';
 import { ResolveTaxUseCase } from '../../../finance/application/use-cases/resolve-tax.use-case';
-import { vatFromGross } from '../../../../shared/money/money';
+import { vatOf } from '../../../../shared/domain/tax/tax';
 
 /** Storefront quote for a listing + mode + time range (read-only, host-resolved). */
 @Injectable()
@@ -71,7 +71,14 @@ export class GetPublicQuoteUseCase {
       return {
         ...quote,
         vatBps: tax.vatBps,
-        vatAmount: vatFromGross(BigInt(quote.subtotal), tax.vatBps).toString(),
+        // Must go through the seller's own regime: `vatFromGross` is the
+        // deduction formula, and using it for a percentage-method seller quotes
+        // 280,000 × 4/104 = 10,769 where the right answer is 280,000 × 4% = 11,200.
+        vatAmount: vatOf(
+          BigInt(quote.subtotal),
+          tax.vatBps,
+          tax.method ?? 'deduction',
+        ).toString(),
       };
     });
   }

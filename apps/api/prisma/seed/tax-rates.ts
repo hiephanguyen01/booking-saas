@@ -29,16 +29,22 @@ const VAT_SCHEDULE = [
   },
   {
     // Tỷ lệ % trên doanh thu — the regime a DECLARING HOUSEHOLD is on, not the
-    // deduction method. 5% for services, applied straight to revenue. Selected by
-    // the seller's status, never by a listing type's classification.
+    // deduction method. Applied straight to revenue, and selected by the seller's
+    // status rather than a listing type's classification.
     //
-    // Open question for the accountant: past VAT-reduction resolutions also cut
-    // the percentage rate by 20%, which would make this 4% until 2026-12-31. If
-    // confirmed, add a closed 400 row and open this one from 2027-01-01 — the
-    // schedule is time-versioned precisely so that is data, not code.
+    // The reduction cuts this the same way it cuts the deduction rate, so it
+    // moves on the SAME date: 4% until the NQ 204/2025 window closes, 5% after.
+    // Exactly the pattern the `standard` pair above uses.
+    category: 'percentage_service',
+    rateBps: 400,
+    effectiveFrom: '2025-07-01T00:00:00+07:00',
+    effectiveTo: '2027-01-01T00:00:00+07:00',
+    legalRef: 'NQ 204/2025/QH15',
+  },
+  {
     category: 'percentage_service',
     rateBps: 500,
-    effectiveFrom: '2025-07-01T00:00:00+07:00',
+    effectiveFrom: '2027-01-01T00:00:00+07:00',
     effectiveTo: null,
     legalRef: 'Luật 48/2024/QH15 Đ.11',
   },

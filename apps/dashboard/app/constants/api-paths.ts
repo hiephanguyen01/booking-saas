@@ -140,6 +140,9 @@ export const apiPaths = {
     partners: tenantPath('/partners'),
     partner: (partnerId: string) => tenantPath(`/partners/${segment(partnerId)}`),
     partnerApprove: (partnerId: string) => tenantPath(`/partners/${segment(partnerId)}/approve`),
+    /** POST a partner's tax status — decides their VAT regime (§VAT). */
+    partnerTaxStatus: (partnerId: string) =>
+      tenantPath(`/partners/${segment(partnerId)}/tax-status`),
     housePartners: tenantPath('/partners/house'),
 
     payments: tenantPath('/payments'),
