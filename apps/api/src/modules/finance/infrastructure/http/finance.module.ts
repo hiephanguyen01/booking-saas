@@ -5,6 +5,7 @@ import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.
 import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { COMMISSION_RULE_REPOSITORY } from '../../domain/ports/commission-rule-repository.port';
+import { TAX_RATE_REPOSITORY } from '../../domain/ports/tax-rate-repository.port';
 import { LEDGER_REPOSITORY } from '../../domain/ports/ledger-repository.port';
 import { PAYOUT_REPOSITORY } from '../../domain/ports/payout-repository.port';
 import { SETTLEMENT_REPOSITORY } from '../../domain/ports/settlement-repository.port';
@@ -13,6 +14,7 @@ import { FINANCE_TENANT_HOST_READER } from '../../domain/ports/finance-tenant-ho
 import { PAYOUT_POLICY_STORE } from '../../domain/ports/payout-policy-store.port';
 import { PLATFORM_FINANCE_READER } from '../../domain/ports/platform-finance-reader.port';
 import { PrismaCommissionRuleRepository } from '../repositories/prisma-commission-rule.repository';
+import { PrismaTaxRateRepository } from '../repositories/prisma-tax-rate.repository';
 import { PrismaLedgerRepository } from '../repositories/prisma-ledger.repository';
 import { PrismaPayoutRepository } from '../repositories/prisma-payout.repository';
 import { PrismaSettlementRepository } from '../repositories/prisma-settlement.repository';
@@ -77,6 +79,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
   ],
   providers: [
     { provide: COMMISSION_RULE_REPOSITORY, useClass: PrismaCommissionRuleRepository },
+    { provide: TAX_RATE_REPOSITORY, useClass: PrismaTaxRateRepository },
     { provide: LEDGER_REPOSITORY, useClass: PrismaLedgerRepository },
     { provide: PAYOUT_REPOSITORY, useClass: PrismaPayoutRepository },
     { provide: SETTLEMENT_REPOSITORY, useClass: PrismaSettlementRepository },

@@ -307,10 +307,13 @@ export class CreateBookingUseCase {
     // replays this snapshot, never the live rule.
     const isHouse = await this.partners.isHouse(tx, args.listing.partnerId);
     let commissionSnapshot = await this.commissions.execute(tx, {
+      tenantId,
       partnerId: args.listing.partnerId,
       listingTypeId: args.listing.listingTypeId,
       categoryId: args.listing.categoryId,
       isHouse,
+      // The VAT rate is fixed by the SERVICE date, not the booking date (§VAT).
+      serviceDate: args.timeslot.start,
     });
 
     // ── Task 2.1 (Affiliate attribution) ──────────────────────────────────────
