@@ -1,0 +1,12 @@
+-- A household that declares VAT does NOT use the deduction method. It is on
+-- "tỷ lệ % trên doanh thu" (Luật 48/2024/QH15), which differs from the deduction
+-- method in BOTH the rate (5% for services, not 8/10%) and the arithmetic
+-- (`revenue × rate`, not `gross × rate / (100 + rate)`).
+--
+-- Modelling it as another category keeps the existing time-versioned `tax_rates`
+-- schedule doing the work: if the 2% reduction turns out to lower the percentage
+-- rate too, that is one extra row, not a code change.
+--
+-- Adding an enum value cannot be used in the same transaction that adds it, and
+-- nothing below inserts rows using it — the rate row is seeded, not migrated.
+ALTER TYPE "tax_category" ADD VALUE IF NOT EXISTS 'percentage_service';

@@ -1,4 +1,5 @@
-import { netOfVat, percentOfBps, type Vnd } from '../../money/money';
+import { percentOfBps, type Vnd } from '../../money/money';
+import { vatOf, type TaxMethod } from '../tax/tax';
 
 /**
  * Pure commission maths (TONG-QUAN.md §3.3 / §12.4 / §13.1). No framework or
@@ -40,6 +41,13 @@ export interface CommissionRates {
    * revenue + state VAT.
    */
   vatBps: number;
+  /**
+   * Which VAT regime produced `vatBps`. The two use different arithmetic — a
+   * deduction-method rate is contained in the gross, a percentage-method rate is
+   * applied straight to revenue — so the base every commission bites on depends
+   * on it, not just on the rate.
+   */
+  vatMethod: TaxMethod;
 }
 
 export interface SplitInput {
@@ -97,8 +105,8 @@ export function computeCommissionSplit(input: SplitInput): CommissionSplit {
   // GROSS residual because, under the agent model, the VAT inside its share is
   // its own to remit. Cash therefore still reconciles and the ledger journal in
   // `ledger-journal.entity.ts` is untouched.
-  const netFinal = netOfVat(finalAmount, rates.vatBps);
-  const netTotal = netOfVat(totalAmount, rates.vatBps);
+  const netFinal = finalAmount - vatOf(finalAmount, rates.vatBps, rates.vatMethod);
+  const netTotal = totalAmount - vatOf(totalAmount, rates.vatBps, rates.vatMethod);
 
   // Platform + affiliate ALWAYS bite on final_amount — net of VAT (§VAT).
   const platformFee = pct(netFinal, rates.platformRate);

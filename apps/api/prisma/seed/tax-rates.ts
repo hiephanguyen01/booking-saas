@@ -28,6 +28,21 @@ const VAT_SCHEDULE = [
     legalRef: 'Luật 48/2024/QH15',
   },
   {
+    // Tỷ lệ % trên doanh thu — the regime a DECLARING HOUSEHOLD is on, not the
+    // deduction method. 5% for services, applied straight to revenue. Selected by
+    // the seller's status, never by a listing type's classification.
+    //
+    // Open question for the accountant: past VAT-reduction resolutions also cut
+    // the percentage rate by 20%, which would make this 4% until 2026-12-31. If
+    // confirmed, add a closed 400 row and open this one from 2027-01-01 — the
+    // schedule is time-versioned precisely so that is data, not code.
+    category: 'percentage_service',
+    rateBps: 500,
+    effectiveFrom: '2025-07-01T00:00:00+07:00',
+    effectiveTo: null,
+    legalRef: 'Luật 48/2024/QH15 Đ.11',
+  },
+  {
     category: 'reduced_5',
     rateBps: 500,
     effectiveFrom: '2025-07-01T00:00:00+07:00',
