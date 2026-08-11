@@ -18,6 +18,7 @@ import {
   tenantPayableQuerySchema,
   tenantPayableResponseSchema,
   updateCommissionRuleInputSchema,
+  updatePlatformRateInputSchema,
   openSettlementDisputeInputSchema,
   adminSettlementDisputeResponseSchema,
   adminSettlementDisputesQuerySchema,
@@ -37,6 +38,7 @@ import {
 // Request bodies
 export class CreateCommissionRuleDto extends createZodDto(createCommissionRuleInputSchema) {}
 export class UpdateCommissionRuleDto extends createZodDto(updateCommissionRuleInputSchema) {}
+export class UpdatePlatformRateDto extends createZodDto(updatePlatformRateInputSchema) {}
 export class CreatePayoutDto extends createZodDto(createPayoutInputSchema) {}
 export class MarkPayoutPaidDto extends createZodDto(markPayoutPaidInputSchema) {}
 export class FailPayoutDto extends createZodDto(failPayoutInputSchema) {}

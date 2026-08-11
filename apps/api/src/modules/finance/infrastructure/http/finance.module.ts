@@ -53,6 +53,7 @@ import { OpenSettlementDisputeUseCase } from '../../application/use-cases/open-s
 import { ResolveSettlementDisputeUseCase } from '../../application/use-cases/resolve-settlement-dispute.use-case';
 import { ListSettlementDisputesUseCase } from '../../application/use-cases/list-settlement-disputes.use-case';
 import { ListPlatformDisputesUseCase } from '../../application/use-cases/list-platform-disputes.use-case';
+import { UpdateTenantPlatformRateUseCase } from '../../application/use-cases/update-tenant-platform-rate.use-case';
 import { GetSettlementSummaryUseCase } from '../../application/use-cases/get-settlement-summary.use-case';
 import { ListPlatformSettlementsUseCase } from '../../application/use-cases/list-platform-settlements.use-case';
 import { GetTenantPayoutPolicyUseCase } from '../../application/use-cases/get-tenant-payout-policy.use-case';
@@ -121,6 +122,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     ResolveSettlementDisputeUseCase,
     ListSettlementDisputesUseCase,
     ListPlatformDisputesUseCase,
+    UpdateTenantPlatformRateUseCase,
     GetSettlementSummaryUseCase,
     ListPlatformSettlementsUseCase,
     GetTenantPayoutPolicyUseCase,

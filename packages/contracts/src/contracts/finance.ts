@@ -123,6 +123,16 @@ export const updateCommissionRuleInputSchema = commissionRuleBaseSchema
   });
 export type UpdateCommissionRuleInput = z.infer<typeof updateCommissionRuleInputSchema>;
 
+/**
+ * Platform-admin-only: set a tenant's platform fee. Applies to EVERY rule the
+ * tenant has, because an override copies the platform rate when it is created —
+ * updating only the default would keep billing overridden partners the old fee.
+ */
+export const updatePlatformRateInputSchema = z.object({
+  platformRate: z.number().int().min(0).max(100),
+});
+export type UpdatePlatformRateInput = z.infer<typeof updatePlatformRateInputSchema>;
+
 export const commissionRuleResponseSchema = z.object({
   id: z.string(),
   appliesTo: commissionAppliesToSchema,

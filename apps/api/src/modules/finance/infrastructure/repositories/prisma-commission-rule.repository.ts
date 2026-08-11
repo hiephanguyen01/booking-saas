@@ -179,6 +179,12 @@ export class PrismaCommissionRuleRepository implements ICommissionRuleRepository
     );
   }
 
+  async updatePlatformRateForTenant(tx: PrismaTx, platformRate: number): Promise<number> {
+    // No `where` clause: RLS confines updateMany to the tx's tenant.
+    const { count } = await tx.commissionRule.updateMany({ data: { platformRate } });
+    return count;
+  }
+
   async delete(tx: PrismaTx, id: string): Promise<void> {
     await tx.commissionRule.delete({ where: { id } });
   }
