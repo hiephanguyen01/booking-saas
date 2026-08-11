@@ -21,6 +21,7 @@ import {
 import { GetPlatformFinanceUseCase } from '../../application/use-cases/get-platform-finance.use-case';
 import { ListPlatformSettlementsUseCase } from '../../application/use-cases/list-platform-settlements.use-case';
 import { ListPlatformDisputesUseCase } from '../../application/use-cases/list-platform-disputes.use-case';
+import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
 import { UpdateTenantPlatformRateUseCase } from '../../application/use-cases/update-tenant-platform-rate.use-case';
 import {
   BookingSettlementResponseDto,
@@ -40,6 +41,7 @@ export class PlatformFinanceController {
     private readonly platformFinanceUseCase: GetPlatformFinanceUseCase,
     private readonly listSettlements: ListPlatformSettlementsUseCase,
     private readonly listDisputes: ListPlatformDisputesUseCase,
+    private readonly listRules: ListCommissionRulesUseCase,
     private readonly updatePlatformRate: UpdateTenantPlatformRateUseCase,
   ) {}
 
@@ -63,6 +65,22 @@ export class PlatformFinanceController {
       await this.listSettlements.execute(query),
       toBookingSettlementResponse,
     );
+  }
+
+  /**
+   * Lives here rather than on the tenant-detail response because `finance`
+   * already imports `TenancyModule` — having tenancy read commission rules back
+   * would close a module cycle that `check:module-cycles` rejects.
+   */
+  @RequirePermissions('platform.finance.read')
+  @Get('tenants/:tenantId/commission-rules')
+  @ApiOperation({ summary: "A tenant's commission rules, for the platform admin" })
+  @UuidParam('tenantId')
+  @ApiOkResponse({ type: [CommissionRuleResponseDto] })
+  async tenantRules(
+    @Param('tenantId', new ZodValidationPipe(uuidSchema)) tenantId: string,
+  ): Promise<CommissionRuleResponse[]> {
+    return (await this.listRules.execute(tenantId)).map(toCommissionRuleResponse);
   }
 
   /**
