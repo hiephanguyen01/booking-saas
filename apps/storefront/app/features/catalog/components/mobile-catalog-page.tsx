@@ -24,7 +24,6 @@ import { ListingTypeGlyph } from '~/components/listing-type-glyph';
 import { CatalogResultSkeleton } from '~/components/loading-skeletons';
 import type { CatalogSortItem } from '~/features/catalog/hooks/use-catalog-page-controller';
 import { FavoriteSearchResultCard } from '~/features/favorites/components/favorite-cards';
-import { TenantInstallTrigger } from '~/features/pwa/components/tenant-install-trigger';
 import { SearchForm } from '~/features/search/components/search-form';
 import type {
   SearchResultContext,
@@ -99,10 +98,6 @@ export function MobileCatalogPage({
               );
             })}
           </nav>
-          <TenantInstallTrigger
-            variant="compact"
-            className="bg-background text-foreground hover:bg-background/90"
-          />
         </div>
 
         <div className="flex items-center gap-2.5 px-3 pt-3 pb-3">
