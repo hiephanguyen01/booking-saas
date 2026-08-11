@@ -110,7 +110,12 @@ export const apiPaths = {
       tenantPath(`/finance/tax/filings/${segment(filingId)}/submit`),
     taxFilingRemittances: (filingId: string) =>
       tenantPath(`/finance/tax/filings/${segment(filingId)}/remittances`),
+    taxDocumentUpload: tenantPath('/finance/tax/documents/presign'),
     taxCertificates: tenantPath('/finance/tax/certificates'),
+    taxCertificateDownload: (certificateId: string) =>
+      tenantPath(`/finance/tax/certificates/${segment(certificateId)}/download`),
+    taxCertificateVoid: (certificateId: string) =>
+      tenantPath(`/finance/tax/certificates/${segment(certificateId)}/void`),
 
     /**
      * Tenant feature flags. `TenantSettingsController` is `@Controller('tenant')`
@@ -188,6 +193,9 @@ export const apiPaths = {
     favoritesSummary: partnerPath('/favorites/summary'),
 
     finance: partnerPath('/finance'),
+    taxCertificates: partnerPath('/finance/tax/certificates'),
+    taxCertificateDownload: (certificateId: string) =>
+      partnerPath(`/finance/tax/certificates/${segment(certificateId)}/download`),
     financeDisputes: partnerPath('/finance/disputes'),
     ledger: partnerPath('/finance/ledger'),
     payouts: partnerPath('/finance/payouts'),

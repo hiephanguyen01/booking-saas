@@ -46,6 +46,9 @@ export const dashboardPaths = {
     booking: (bookingId: string) => tenantPath(`/bookings/${segment(bookingId)}`),
     finance: tenantPath('/finance'),
     taxOperations: tenantPath('/finance/tax'),
+    taxDocumentUpload: tenantPath('/finance/tax-documents/presign'),
+    taxCertificateDownload: (certificateId: string) =>
+      tenantPath(`/finance/tax-certificates/${segment(certificateId)}/download`),
     ledger: tenantPath('/finance/ledger'),
     settlements: tenantPath('/finance/settlements'),
     disputes: tenantPath('/finance/disputes'),
@@ -97,6 +100,8 @@ export const dashboardPaths = {
     promotionNew: partnerPath('/promotions/new'),
     promotion: (promotionId: string) => partnerPath(`/promotions/${segment(promotionId)}`),
     revenue: partnerPath('/revenue'),
+    taxCertificateDownload: (certificateId: string) =>
+      partnerPath(`/tax-certificates/${segment(certificateId)}/download`),
     reviews: partnerPath('/reviews'),
     favorites: partnerPath('/favorites'),
     disputes: partnerPath('/disputes'),

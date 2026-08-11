@@ -11,7 +11,6 @@ import {
   FinanceBookingNotFound,
   HeldSettlementMissing,
 } from '../../domain/errors/finance-domain-errors';
-import { RecordSettlementWithholdingUseCase } from './record-settlement-withholding.use-case';
 
 /** `booking.no_show` opens a dispute window; it never recognizes revenue immediately. */
 @Injectable()
@@ -19,7 +18,6 @@ export class StartNoShowSettlementWindowUseCase {
   constructor(
     @Inject(SETTLEMENT_REPOSITORY) private readonly settlements: ISettlementRepository,
     private readonly policy: GetPayoutPolicyUseCase,
-    private readonly recordWithholding: RecordSettlementWithholdingUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -36,7 +34,7 @@ export class StartNoShowSettlementWindowUseCase {
       const plan = Settlement.rehydrate(settlement).startNoShowWindow(booking);
       if (!plan) return;
       const payoutPolicy = await this.policy.execute(tx, tenantId);
-      const completed = await this.settlements.startDisputeWindow(
+      await this.settlements.startDisputeWindow(
         tx,
         bookingId,
         plan.onsiteCollectedAmount,
@@ -44,9 +42,6 @@ export class StartNoShowSettlementWindowUseCase {
         plan.amounts,
         plan.kind,
       );
-      if (completed) {
-        await this.recordWithholding.execute(tx, tenantId, completed, plan.taxRevenueAmount);
-      }
     });
   }
 }

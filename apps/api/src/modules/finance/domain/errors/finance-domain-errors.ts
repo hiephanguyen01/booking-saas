@@ -231,3 +231,111 @@ export class TaxFilingHasNoPayableAmount extends DomainError {
     );
   }
 }
+
+export class InvalidTaxDocumentKey extends DomainError {
+  constructor() {
+    super(
+      'INVALID_TAX_DOCUMENT_KEY',
+      400,
+      'Tax document must be a private PDF uploaded for this tenant',
+    );
+  }
+}
+
+export class TaxCertificateNotFound extends DomainError {
+  constructor() {
+    super('TAX_CERTIFICATE_NOT_FOUND', 404, 'Tax withholding certificate not found');
+  }
+}
+
+export class TaxCertificateDocumentUnavailable extends DomainError {
+  constructor() {
+    super(
+      'TAX_CERTIFICATE_DOCUMENT_UNAVAILABLE',
+      409,
+      'The tax withholding certificate document is not available',
+    );
+  }
+}
+
+export class TaxDocumentUploadInvalid extends DomainError {
+  constructor(message = 'The private tax PDF could not be verified') {
+    super('TAX_DOCUMENT_UPLOAD_INVALID', 409, message);
+  }
+}
+
+export class TaxDocumentUploadExpired extends DomainError {
+  constructor() {
+    super(
+      'TAX_DOCUMENT_UPLOAD_EXPIRED',
+      409,
+      'The tax document upload has expired; upload it again',
+    );
+  }
+}
+
+export class TaxCertificateYearNotClosed extends DomainError {
+  constructor() {
+    super(
+      'TAX_CERTIFICATE_YEAR_NOT_CLOSED',
+      409,
+      'A certificate can only be issued after the Vietnam tax year has closed',
+    );
+  }
+}
+
+export class TaxCertificateNoWithholding extends DomainError {
+  constructor() {
+    super(
+      'TAX_CERTIFICATE_NO_WITHHOLDING',
+      409,
+      'There is no positive withholding to certify for this partner and year',
+    );
+  }
+}
+
+export class TaxCertificateYearUnsettled extends DomainError {
+  constructor(unsettledEventCount: number) {
+    super(
+      'TAX_CERTIFICATE_YEAR_UNSETTLED',
+      409,
+      `${unsettledEventCount} tax event(s) are not in a paid filing period`,
+    );
+  }
+}
+
+export class TaxCertificateAlreadyIssued extends DomainError {
+  constructor() {
+    super(
+      'TAX_CERTIFICATE_ALREADY_ISSUED',
+      409,
+      'Void the active certificate before issuing a replacement',
+    );
+  }
+}
+
+export class TaxCertificateConcurrentChange extends DomainError {
+  constructor() {
+    super(
+      'TAX_CERTIFICATE_CONCURRENT_CHANGE',
+      409,
+      'The tax certificate or its upload changed concurrently',
+    );
+  }
+}
+
+export class TaxCertificateConflict extends DomainError {
+  constructor() {
+    super(
+      'TAX_CERTIFICATE_CONFLICT',
+      409,
+      'The certificate number, file, upload, or annual version has already been used',
+    );
+  }
+}
+
+export class TaxCertificateNotVoidable extends DomainError {
+  constructor() {
+    super('TAX_CERTIFICATE_NOT_VOIDABLE', 409, 'Only an active issued certificate can be voided');
+  }
+}

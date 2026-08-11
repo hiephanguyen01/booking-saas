@@ -6,6 +6,8 @@ import type {
   PartnerSettlementDisputeResponse,
   PayoutResponse,
   SettlementSummaryResponse,
+  PartnerTaxWithholdingCertificateResponse,
+  TaxDocumentDownloadResponse,
 } from '@booking/contracts';
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -25,6 +27,7 @@ import {
   toPartnerPayoutResponse,
   toPartnerSettlementDisputeResponse,
   toSettlementSummaryResponse,
+  toPartnerTaxWithholdingCertificateResponse,
 } from '../../application/finance.mapper';
 import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
 import { GetBookingSettlementUseCase } from '../../application/use-cases/get-booking-settlement.use-case';
@@ -34,6 +37,8 @@ import { ListBookingSettlementsUseCase } from '../../application/use-cases/list-
 import { ListSettlementDisputesUseCase } from '../../application/use-cases/list-settlement-disputes.use-case';
 import { RespondSettlementDisputeUseCase } from '../../application/use-cases/respond-settlement-dispute.use-case';
 import { GetSettlementSummaryUseCase } from '../../application/use-cases/get-settlement-summary.use-case';
+import { ListTaxWithholdingCertificatesUseCase } from '../../application/use-cases/list-tax-withholding-certificates.use-case';
+import { GetTaxDocumentDownloadUseCase } from '../../application/use-cases/get-tax-document-download.use-case';
 import {
   PartnerBookingSettlementResponseDto,
   LedgerEntryResponseDto,
@@ -45,6 +50,8 @@ import {
   PartnerSettlementDisputesQueryDto,
   RespondSettlementDisputeDto,
   SettlementSummaryResponseDto,
+  PartnerTaxWithholdingCertificateResponseDto,
+  TaxDocumentDownloadResponseDto,
 } from './dto/finance.dto';
 
 /** Partner self-service finance (§13.3): current balance + ledger history. */
@@ -60,8 +67,44 @@ export class PartnerFinanceController {
     private readonly listDisputesUseCase: ListSettlementDisputesUseCase,
     private readonly respondDisputeUseCase: RespondSettlementDisputeUseCase,
     private readonly getSettlementSummaryUseCase: GetSettlementSummaryUseCase,
+    private readonly listTaxCertificatesUseCase: ListTaxWithholdingCertificatesUseCase,
+    private readonly getTaxDocumentDownloadUseCase: GetTaxDocumentDownloadUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  @RequirePermissions('partner.finance.read')
+  @Get('tax/certificates')
+  @ApiOperation({ summary: 'List the partner own annual withholding certificates' })
+  @ApiOkResponse({ type: [PartnerTaxWithholdingCertificateResponseDto] })
+  async taxCertificates(): Promise<PartnerTaxWithholdingCertificateResponse[]> {
+    const certificates = await this.listTaxCertificatesUseCase.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      this.tenantContext.partnerIdOrThrow(),
+    );
+    const visible: PartnerTaxWithholdingCertificateResponse[] = [];
+    for (const certificate of certificates) {
+      if (certificate.status !== 'draft') {
+        visible.push(toPartnerTaxWithholdingCertificateResponse(certificate));
+      }
+    }
+    return visible;
+  }
+
+  @RequirePermissions('partner.finance.read')
+  @Get('tax/certificates/:id/download')
+  @UuidParam()
+  @ApiOperation({ summary: 'Create a short-lived download for an owned tax certificate' })
+  @ApiOkResponse({ type: TaxDocumentDownloadResponseDto })
+  taxCertificateDownload(
+    @Param('id') id: string,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<TaxDocumentDownloadResponse> {
+    return this.getTaxDocumentDownloadUseCase.execute(this.tenantContext.tenantIdOrThrow(), id, {
+      actorId: principal.userId,
+      actorType: 'partner',
+      partnerId: this.tenantContext.partnerIdOrThrow(),
+    });
+  }
 
   @RequirePermissions('partner.disputes.read')
   @Get('settlement-summary')

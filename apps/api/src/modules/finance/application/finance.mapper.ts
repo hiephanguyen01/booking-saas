@@ -16,6 +16,7 @@ import type {
   SettlementSummaryResponse,
   TaxFilingPeriodResponse,
   TaxWithholdingCertificateResponse,
+  PartnerTaxWithholdingCertificateResponse,
 } from '@booking/contracts';
 import type { CommissionRuleRecord } from '../domain/ports/commission-rule-repository.port';
 import type { LedgerEntryView, OwnerBalance } from '../domain/ports/ledger-repository.port';
@@ -146,9 +147,7 @@ export function toBookingSettlementResponse(
   };
 }
 
-export function toTaxFilingPeriodResponse(
-  period: TaxFilingPeriodRecord,
-): TaxFilingPeriodResponse {
+export function toTaxFilingPeriodResponse(period: TaxFilingPeriodRecord): TaxFilingPeriodResponse {
   return {
     id: period.id,
     taxYear: period.taxYear,
@@ -175,14 +174,35 @@ export function toTaxWithholdingCertificateResponse(
     partnerName: certificate.partnerName,
     taxYear: certificate.taxYear,
     status: certificate.status,
+    version: certificate.version,
     certificateNumber: certificate.certificateNumber,
     vatAmount: certificate.vatAmount.toString(),
     pitAmount: certificate.pitAmount.toString(),
-    fileKey: certificate.fileKey,
-    checksum: certificate.checksum,
     issuedAt: certificate.issuedAt?.toISOString() ?? null,
+    voidedAt: certificate.voidedAt?.toISOString() ?? null,
+    voidReason: certificate.voidReason,
     createdAt: certificate.createdAt.toISOString(),
     updatedAt: certificate.updatedAt.toISOString(),
+  };
+}
+
+export function toPartnerTaxWithholdingCertificateResponse(
+  certificate: TaxCertificateRecord,
+): PartnerTaxWithholdingCertificateResponse {
+  const response = toTaxWithholdingCertificateResponse(certificate);
+  return {
+    id: response.id,
+    taxYear: response.taxYear,
+    status: response.status,
+    version: response.version,
+    certificateNumber: response.certificateNumber,
+    vatAmount: response.vatAmount,
+    pitAmount: response.pitAmount,
+    issuedAt: response.issuedAt,
+    voidedAt: response.voidedAt,
+    voidReason: response.voidReason,
+    createdAt: response.createdAt,
+    updatedAt: response.updatedAt,
   };
 }
 

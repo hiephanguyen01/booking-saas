@@ -1,31 +1,30 @@
 import { useMemo } from 'react';
 import { Form, useNavigation, useSearchParams } from 'react-router';
 import { Clock3, HandCoins, Scale, TrendingUp, Wallet } from 'lucide-react';
-import type {
-  LedgerEntryResponse,
-  PayoutResponse,
-} from '@booking/contracts';
-import { cn } from '@booking/ui/lib/utils';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import { DataTable } from '@booking/ui/components/data-table/data-table';
 import { InfoHint } from '@booking/ui/components/ui/info-hint';
 import type { Route } from './+types/revenue';
-import { LEDGER_ENTRY_LABEL } from '~/constants/finance';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
 import { StatCard } from '~/components/stat-card';
 import { readListParams } from '~/lib/pagination';
-import { Money, amountToneClass } from '~/components/money';
-import { CopyableCode } from '~/components/copyable-code';
-import { PayoutStatusBadge } from '~/components/status-badge';
-import { formatDate } from '~/lib/format';
+import { Money } from '~/components/money';
 import { formatDateTime } from '~/lib/format';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { loadPartnerRevenue, respondToSettlementDispute } from '~/features/partner/server/revenue.server';
+import {
+  loadPartnerRevenue,
+  respondToSettlementDispute,
+} from '~/features/partner/server/revenue.server';
+import { PartnerTaxCertificates } from '~/features/partner/components/partner-tax-certificates';
+import {
+  partnerJournalColumns,
+  partnerPayoutColumns,
+} from '~/features/partner/components/partner-revenue-columns';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Doanh thu · Đối tác · BookingOS' }];
@@ -53,12 +52,14 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
     settlementSummary,
     disputes,
     disputesTotal,
+    certificates,
     canRespondToDisputes,
     financeError,
     ledgerError,
     payoutsError,
     settlementsError,
     disputesError,
+    certificatesError,
   } = loaderData;
   const navigation = useNavigation();
   const [searchParams] = useSearchParams();
@@ -82,95 +83,6 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
     pending: settlementSummary?.payoutPendingAmount ?? '0',
     paid: settlementSummary?.paidAmount ?? '0',
   };
-
-  const journalColumns: DataTableColumn<LedgerEntryResponse>[] = [
-    {
-      header: 'Ngày',
-      cell: (e) => (
-        <span className="whitespace-nowrap text-sm text-muted-foreground">
-          {formatDate(e.createdAt)}
-        </span>
-      ),
-    },
-    {
-      header: 'Hạng mục',
-      cell: (e) => (
-        <div className="min-w-0">
-          <p className="font-medium">{LEDGER_ENTRY_LABEL[e.entryType] ?? e.entryType}</p>
-          {e.memo ? <p className="truncate text-xs text-muted-foreground">{e.memo}</p> : null}
-        </div>
-      ),
-    },
-    {
-      header: 'Số tiền',
-      headClassName: 'text-right',
-      className: 'text-right',
-      cell: (e) => {
-        const isCredit = BigInt(e.credit || '0') > 0n;
-        const amount = isCredit ? e.credit : e.debit;
-        return (
-          <span className="tabular-nums font-medium">
-            {isCredit ? '+' : '-'}
-            <Money
-              value={amount}
-              className={cn(
-                'font-medium',
-                isCredit ? amountToneClass('positive') : 'text-foreground',
-              )}
-            />
-          </span>
-        );
-      },
-    },
-  ];
-
-  const payoutColumns: DataTableColumn<PayoutResponse>[] = [
-    {
-      header: 'Ngày',
-      cell: (p) => (
-        <span className="whitespace-nowrap text-sm text-muted-foreground">
-          {formatDate(p.createdAt)}
-        </span>
-      ),
-    },
-    {
-      header: 'Kỳ chi trả',
-      cell: (p) =>
-        p.periodFrom || p.periodTo ? (
-          <span className="whitespace-nowrap text-sm text-muted-foreground tabular-nums">
-            {formatDate(p.periodFrom)} – {formatDate(p.periodTo)}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
-    },
-    {
-      header: 'Trạng thái',
-      cell: (p) => (
-        <div className="space-y-1">
-          <PayoutStatusBadge status={p.status} />
-          {p.status === 'failed' && p.failureReason ? (
-            <p className="max-w-xs text-xs text-destructive">{p.failureReason}</p>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      header: 'Tham chiếu',
-      cell: (p) =>
-        p.reference ? (
-          <CopyableCode value={p.reference} label="mã chuyển khoản" />
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
-    },
-    {
-      header: 'Số tiền',
-      headClassName: 'text-right',
-      className: 'text-right',
-      cell: (p) => <Money value={p.amount} className="font-medium" />,
-    },
-  ];
 
   const balanceNegative = finance.balance.startsWith('-');
 
@@ -209,9 +121,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           label={
             <span className="inline-flex items-center gap-1">
               Đang giữ/chờ tranh chấp
-              <InfoHint>
-                Tiền tạm giữ do đang trong thời gian giữ hoặc có tranh chấp.
-              </InfoHint>
+              <InfoHint>Tiền tạm giữ do đang trong thời gian giữ hoặc có tranh chấp.</InfoHint>
             </span>
           }
           value={<Money value={settlementTotals.held} />}
@@ -228,9 +138,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           label={
             <span className="inline-flex items-center gap-1">
               Đang chờ chuyển
-              <InfoHint>
-                Tiền đã đủ điều kiện, đang chờ chuyển về tài khoản của bạn.
-              </InfoHint>
+              <InfoHint>Tiền đã đủ điều kiện, đang chờ chuyển về tài khoản của bạn.</InfoHint>
             </span>
           }
           value={<Money value={settlementTotals.pending} />}
@@ -244,6 +152,8 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           icon={<Wallet className="size-4" />}
         />
       </div>
+
+      <PartnerTaxCertificates certificates={certificates} error={certificatesError} />
 
       {disputes.length ? (
         <section id="disputes" className="scroll-mt-24 space-y-3">
@@ -329,7 +239,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
         <h2 className="text-sm font-semibold">Sổ cái</h2>
         <ErrorBanner error={ledgerError} />
         <DataTable
-          columns={journalColumns}
+          columns={partnerJournalColumns}
           data={ledger}
           getRowKey={(e) => e.id}
           emptyMessage="Chưa có bút toán nào. Bút toán sẽ xuất hiện sau giao dịch đầu tiên."
@@ -348,7 +258,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
         </div>
         <ErrorBanner error={payoutsError} />
         <DataTable
-          columns={payoutColumns}
+          columns={partnerPayoutColumns}
           data={payouts}
           getRowKey={(p) => p.id}
           emptyMessage="Chưa có đợt chi trả nào. Đợt chi trả sẽ xuất hiện khi có tiền đủ điều kiện chuyển cho bạn."

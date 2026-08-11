@@ -186,10 +186,18 @@ docker compose --env-file .env.stg \
   api node dist/operations/scripts/bootstrap-storage.js
 ```
 
-For Cloudflare R2, create the bucket and connect its public custom domain in the Cloudflare
-Dashboard first. The bootstrap script detects the R2 endpoint and skips `PutBucketPolicy` (which R2
-does not implement), then uploads the default assets. Other S3-compatible development stores still
-receive the public-read bucket policy.
+For Cloudflare R2, create both `S3_BUCKET` and `S3_PRIVATE_BUCKET` first. Connect the public custom
+domain only to `S3_BUCKET`; the private bucket stores tax evidence/certificates and must remain
+private. The bootstrap script detects the R2 endpoint and skips `PutBucketPolicy` (which R2 does not
+implement), then uploads the default assets. Other S3-compatible development stores still receive
+the public-read policy on `S3_BUCKET` only.
+
+Tax PDFs use conditional, write-once presigned PUTs (`If-None-Match: *`). The private bucket CORS
+policy must allow `PUT`, the tenant dashboard origins, and the `Content-Type` plus `If-None-Match`
+request headers. Pending uploads expire after 24 hours and the API cleanup worker removes only those
+unattached staging objects. Issued and voided certificate objects are never deleted by application
+code; retain the private bucket and database backups for the legally agreed retention period, and
+enable provider-native versioning/object retention where the provider supports it.
 
 ## Migrations
 

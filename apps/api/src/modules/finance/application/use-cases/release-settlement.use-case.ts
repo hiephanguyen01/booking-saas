@@ -16,6 +16,7 @@ import {
   SettlementNotFound,
   SettlementNotReleasable,
 } from '../../domain/errors/finance-domain-errors';
+import { RecordSettlementWithholdingUseCase } from './record-settlement-withholding.use-case';
 
 /** Release one due settlement and atomically recognize earnings/payables. */
 @Injectable()
@@ -23,6 +24,7 @@ export class ReleaseSettlementUseCase {
   constructor(
     @Inject(SETTLEMENT_REPOSITORY) private readonly settlements: ISettlementRepository,
     @Inject(LEDGER_REPOSITORY) private readonly ledger: ILedgerRepository,
+    private readonly recordWithholding: RecordSettlementWithholdingUseCase,
     private readonly outbox: OutboxService,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -52,6 +54,7 @@ export class ReleaseSettlementUseCase {
         plan.amounts,
       );
       if (!released) throw new SettlementNotReleasable();
+      await this.recordWithholding.execute(tx, tenantId, released, plan.taxRevenueAmount);
       if (!booking.snapshot.isHouse && plan.taxRevenueAmount > 0n) {
         await this.outbox.emit(tx, {
           tenantId,

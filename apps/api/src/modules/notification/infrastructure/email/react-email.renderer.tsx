@@ -159,6 +159,14 @@ const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
     vi: { subject: 'Đã chi trả {amount}', title: 'Khoản chi trả đã được gửi', intro: '{tenantName} đã gửi khoản chi trả {amount}. Vui lòng kiểm tra tài khoản nhận tiền.' },
     en: { subject: 'Payout of {amount} sent', title: 'Payout sent', intro: '{tenantName} sent a payout of {amount}. Please check your payout account.' },
   },
+  tax_certificate_issued_partner: {
+    vi: { subject: 'Đã phát hành chứng từ khấu trừ thuế {certificateNumber}', title: 'Bạn có chứng từ khấu trừ thuế mới', intro: '{tenantName} đã phát hành chứng từ {certificateNumber} cho năm {taxYear}. Bạn có thể xem PDF an toàn trong trang Doanh thu.', cta: 'Xem chứng từ' },
+    en: { subject: 'Tax withholding certificate {certificateNumber} issued', title: 'Your tax withholding certificate is ready', intro: '{tenantName} issued certificate {certificateNumber} for tax year {taxYear}. You can securely view the PDF from Revenue.', cta: 'View certificate' },
+  },
+  tax_certificate_voided_partner: {
+    vi: { subject: 'Đã huỷ chứng từ khấu trừ thuế {certificateNumber}', title: 'Chứng từ khấu trừ thuế đã bị huỷ', intro: '{tenantName} đã huỷ chứng từ {certificateNumber} của năm {taxYear}. Lý do: {reason}', cta: 'Xem lịch sử chứng từ' },
+    en: { subject: 'Tax withholding certificate {certificateNumber} voided', title: 'A tax withholding certificate was voided', intro: '{tenantName} voided certificate {certificateNumber} for tax year {taxYear}. Reason: {reason}', cta: 'View certificate history' },
+  },
   auth_registration_otp: {
     vi: { subject: 'Mã xác thực để xác minh đăng ký', title: 'Xác thực email', intro: 'Dùng mã bên dưới để xác minh địa chỉ email {recipientEmail}.', cta: 'Xác thực email' },
     en: { subject: 'Your registration verification code', title: 'Verify your email', intro: 'Use the code below to verify {recipientEmail}.', cta: 'Verify email' },

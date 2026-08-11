@@ -4,6 +4,7 @@ import {
   prepareTaxFilingInputSchema,
   recordTaxRemittanceInputSchema,
   submitTaxFilingInputSchema,
+  voidTaxCertificateInputSchema,
   type Paginated,
   type PartnerResponse,
   type TaxFilingPeriodResponse,
@@ -88,10 +89,23 @@ export async function handleTaxOperationsAction(request: Request, auth: ApiAuth)
       taxYear: Number(form.get('taxYear')),
       certificateNumber: form.get('certificateNumber'),
       fileKey: form.get('fileKey'),
-      checksum: form.get('checksum'),
     });
     if (!parsed.success) return invalid('Kiểm tra đối tác, năm và thông tin tệp chứng từ.');
     return post(apiPaths.tenant.taxCertificates, parsed.data, auth, 'Đã phát hành chứng từ khấu trừ.');
+  }
+
+  if (intent === 'void-certificate') {
+    const certificateId = String(form.get('certificateId') ?? '');
+    const parsed = voidTaxCertificateInputSchema.safeParse({ reason: form.get('reason') });
+    if (!certificateId || !parsed.success) {
+      return invalid('Lý do huỷ phải có từ 10 đến 500 ký tự.');
+    }
+    return post(
+      apiPaths.tenant.taxCertificateVoid(certificateId),
+      parsed.data,
+      auth,
+      'Đã huỷ chứng từ. Có thể tải PDF mới để phát hành phiên bản thay thế.',
+    );
   }
 
   return invalid('Thao tác thuế không hợp lệ.');

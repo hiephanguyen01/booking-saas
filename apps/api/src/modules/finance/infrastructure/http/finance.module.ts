@@ -15,6 +15,7 @@ import { FINANCE_TENANT_HOST_READER } from '../../domain/ports/finance-tenant-ho
 import { PAYOUT_POLICY_STORE } from '../../domain/ports/payout-policy-store.port';
 import { PLATFORM_FINANCE_READER } from '../../domain/ports/platform-finance-reader.port';
 import { TAX_COMPLIANCE_REPOSITORY } from '../../domain/ports/tax-compliance-repository.port';
+import { TAX_DOCUMENT_CLEANUP_REPOSITORY } from '../../domain/ports/tax-document-cleanup-repository.port';
 import { PrismaCommissionRuleRepository } from '../repositories/prisma-commission-rule.repository';
 import { PrismaTaxRateRepository } from '../repositories/prisma-tax-rate.repository';
 import { PrismaWithholdingRateRepository } from '../repositories/prisma-withholding-rate.repository';
@@ -26,6 +27,7 @@ import { PrismaFinanceTenantHostReader } from '../repositories/prisma-finance-te
 import { PrismaPayoutPolicyStore } from '../repositories/prisma-payout-policy.store';
 import { PrismaPlatformFinanceReader } from '../repositories/prisma-platform-finance.reader';
 import { PrismaTaxComplianceRepository } from '../repositories/prisma-tax-compliance.repository';
+import { PrismaTaxDocumentCleanupRepository } from '../repositories/prisma-tax-document-cleanup.repository';
 import { ResolveCommissionUseCase } from '../../application/use-cases/resolve-commission.use-case';
 import { ResolveTaxUseCase } from '../../application/use-cases/resolve-tax.use-case';
 import { ResolveWithholdingUseCase } from '../../application/use-cases/resolve-withholding.use-case';
@@ -33,6 +35,7 @@ import { RecordClawbackJournalUseCase } from '../../application/use-cases/record
 import { ComputePayoutPayableUseCase } from '../../application/use-cases/compute-payout-payable.use-case';
 import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
+import { CreateTaxDocumentUploadUseCase } from '../../application/use-cases/create-tax-document-upload.use-case';
 import { UpdateCommissionRuleUseCase } from '../../application/use-cases/update-commission-rule.use-case';
 import { DeleteCommissionRuleUseCase } from '../../application/use-cases/delete-commission-rule.use-case';
 import { ListPayoutsUseCase } from '../../application/use-cases/list-payouts.use-case';
@@ -76,6 +79,9 @@ import { SubmitTaxFilingPeriodUseCase } from '../../application/use-cases/submit
 import { RecordTaxRemittanceUseCase } from '../../application/use-cases/record-tax-remittance.use-case';
 import { IssueTaxWithholdingCertificateUseCase } from '../../application/use-cases/issue-tax-withholding-certificate.use-case';
 import { ListTaxWithholdingCertificatesUseCase } from '../../application/use-cases/list-tax-withholding-certificates.use-case';
+import { GetTaxDocumentDownloadUseCase } from '../../application/use-cases/get-tax-document-download.use-case';
+import { VoidTaxWithholdingCertificateUseCase } from '../../application/use-cases/void-tax-withholding-certificate.use-case';
+import { TaxDocumentCleanupWorker } from '../tax-document-cleanup.worker';
 import { SettlementReleaseWorker } from '../settlement-release.worker';
 import { TenantFinanceController } from './tenant-finance.controller';
 import { PartnerFinanceController } from './partner-finance.controller';
@@ -110,6 +116,10 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     { provide: PAYOUT_POLICY_STORE, useClass: PrismaPayoutPolicyStore },
     { provide: PLATFORM_FINANCE_READER, useClass: PrismaPlatformFinanceReader },
     { provide: TAX_COMPLIANCE_REPOSITORY, useClass: PrismaTaxComplianceRepository },
+    {
+      provide: TAX_DOCUMENT_CLEANUP_REPOSITORY,
+      useClass: PrismaTaxDocumentCleanupRepository,
+    },
     ResolveCommissionUseCase,
     ResolveTaxUseCase,
     ResolveWithholdingUseCase,
@@ -117,6 +127,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     ComputePayoutPayableUseCase,
     ListCommissionRulesUseCase,
     CreateCommissionRuleUseCase,
+    CreateTaxDocumentUploadUseCase,
     UpdateCommissionRuleUseCase,
     DeleteCommissionRuleUseCase,
     ListPayoutsUseCase,
@@ -160,6 +171,9 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     RecordTaxRemittanceUseCase,
     IssueTaxWithholdingCertificateUseCase,
     ListTaxWithholdingCertificatesUseCase,
+    GetTaxDocumentDownloadUseCase,
+    VoidTaxWithholdingCertificateUseCase,
+    TaxDocumentCleanupWorker,
     SettlementReleaseWorker,
   ],
   // Exported so the booking module can snapshot the commission at booking time.

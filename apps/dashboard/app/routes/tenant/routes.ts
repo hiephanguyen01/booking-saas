@@ -23,6 +23,11 @@ export const tenantChildren: RouteConfigEntry[] = [
   route('content-reports/:reportId', 'routes/tenant/content-reports/detail.tsx'),
   route('finance', 'routes/tenant/finance/_index.tsx'),
   route('finance/tax', 'routes/tenant/finance/tax.tsx'),
+  route('finance/tax-documents/presign', 'routes/tenant/finance/tax-documents.presign.tsx'),
+  route(
+    'finance/tax-certificates/:certificateId/download',
+    'routes/tenant/finance/tax-certificate.download.tsx',
+  ),
   route('finance/ledger', 'routes/tenant/finance/ledger.tsx'),
   route('finance/settlements', 'routes/tenant/finance/settlements.tsx'),
   route('finance/disputes', 'routes/tenant/finance/disputes.tsx'),

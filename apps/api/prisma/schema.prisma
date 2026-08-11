@@ -491,6 +491,14 @@ enum TaxCertificateStatus {
   @@map("tax_certificate_status")
 }
 
+enum TaxDocumentUploadStatus {
+  pending
+  attached
+  expired
+
+  @@map("tax_document_upload_status")
+}
+
 enum PayoutAllocationStatus {
   reserved
   paid
@@ -821,6 +829,7 @@ model Tenant {
   taxFilingPeriods          TaxFilingPeriod[]
   taxRemittances            TaxRemittance[]
   taxCertificates           TaxWithholdingCertificate[]
+  taxDocumentUploads        TaxDocumentUpload[]
 
   @@map("tenants")
 }
@@ -2014,8 +2023,8 @@ model BookingSettlement {
   @@map("booking_settlements")
 }
 
-/// Append-only assessment/reversal facts. A service completion creates the
-/// withholding event; a confirmed refund creates a linked reversal.
+/// Append-only assessment/reversal facts. A post-dispute settlement release
+/// creates the withholding event; a confirmed refund creates a linked reversal.
 model TaxWithholdingEvent {
   id                 String                  @id @default(uuid(7)) @db.Uuid
   tenantId           String                  @map("tenant_id") @db.Uuid
@@ -2105,6 +2114,7 @@ model TaxWithholdingCertificate {
   partnerId         String               @map("partner_id") @db.Uuid
   taxYear           Int                  @map("tax_year")
   status            TaxCertificateStatus @default(draft)
+  version           Int                  @default(1)
   certificateNumber String?              @map("certificate_number")
   vatAmount         BigInt               @default(0) @map("vat_amount")
   pitAmount         BigInt               @default(0) @map("pit_amount")
@@ -2112,15 +2122,46 @@ model TaxWithholdingCertificate {
   checksum          String?
   issuedAt          DateTime?            @map("issued_at") @db.Timestamptz(6)
   issuedBy          String?              @map("issued_by") @db.Uuid
+  supersedesId      String?              @map("supersedes_id") @db.Uuid
+  documentUploadId  String?              @unique @map("document_upload_id") @db.Uuid
+  voidedAt          DateTime?            @map("voided_at") @db.Timestamptz(6)
+  voidedBy          String?              @map("voided_by") @db.Uuid
+  voidReason        String?              @map("void_reason")
   createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  tenant         Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner        Partner                     @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  supersedes     TaxWithholdingCertificate?  @relation("TaxCertificateVersions", fields: [supersedesId], references: [id], onDelete: Restrict)
+  reissues       TaxWithholdingCertificate[] @relation("TaxCertificateVersions")
+  documentUpload TaxDocumentUpload?          @relation(fields: [documentUploadId], references: [id], onDelete: Restrict)
 
-  @@unique([tenantId, partnerId, taxYear])
+  @@unique([tenantId, partnerId, taxYear, version])
   @@index([tenantId, taxYear, status])
   @@map("tax_withholding_certificates")
+}
+
+/// A private PDF upload grant. The pending row is the server-side trust anchor for
+/// the browser upload; issuance recomputes the bytes' SHA-256 before attaching it.
+model TaxDocumentUpload {
+  id           String                  @id @default(uuid(7)) @db.Uuid
+  tenantId     String                  @map("tenant_id") @db.Uuid
+  objectKey    String                  @map("object_key")
+  checksum     String                  @db.Char(64)
+  sizeBytes    Int                     @map("size_bytes")
+  contentType  String                  @map("content_type")
+  status       TaxDocumentUploadStatus @default(pending)
+  expiresAt    DateTime                @map("expires_at") @db.Timestamptz(6)
+  attachedAt   DateTime?               @map("attached_at") @db.Timestamptz(6)
+  deletedAt    DateTime?               @map("deleted_at") @db.Timestamptz(6)
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant      Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  certificate TaxWithholdingCertificate?
+
+  @@unique([tenantId, objectKey])
+  @@index([tenantId, status, expiresAt])
+  @@map("tax_document_uploads")
 }
 
 model SettlementDispute {

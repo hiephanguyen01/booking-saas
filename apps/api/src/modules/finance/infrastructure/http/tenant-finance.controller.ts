@@ -1,5 +1,6 @@
 import {
   type BookingSettlementResponse,
+  type CreateTaxDocumentUploadInput,
   uuidSchema,
   type CommissionRuleResponse,
   type LedgerEntryResponse,
@@ -16,6 +17,9 @@ import {
   type IssueTaxCertificateInput,
   type TaxFilingPeriodResponse,
   type TaxWithholdingCertificateResponse,
+  type TaxDocumentUploadResponse,
+  type TaxDocumentDownloadResponse,
+  type VoidTaxCertificateInput,
 } from '@booking/contracts';
 import {
   Body,
@@ -60,6 +64,7 @@ import {
   toTaxWithholdingCertificateResponse,
 } from '../../application/finance.mapper';
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
+import { CreateTaxDocumentUploadUseCase } from '../../application/use-cases/create-tax-document-upload.use-case';
 import { CreatePayoutUseCase } from '../../application/use-cases/create-payout.use-case';
 import { DeleteCommissionRuleUseCase } from '../../application/use-cases/delete-commission-rule.use-case';
 import { FailPayoutUseCase } from '../../application/use-cases/fail-payout.use-case';
@@ -82,12 +87,15 @@ import { SubmitTaxFilingPeriodUseCase } from '../../application/use-cases/submit
 import { RecordTaxRemittanceUseCase } from '../../application/use-cases/record-tax-remittance.use-case';
 import { IssueTaxWithholdingCertificateUseCase } from '../../application/use-cases/issue-tax-withholding-certificate.use-case';
 import { ListTaxWithholdingCertificatesUseCase } from '../../application/use-cases/list-tax-withholding-certificates.use-case';
+import { GetTaxDocumentDownloadUseCase } from '../../application/use-cases/get-tax-document-download.use-case';
+import { VoidTaxWithholdingCertificateUseCase } from '../../application/use-cases/void-tax-withholding-certificate.use-case';
 import {
   BookingSettlementResponseDto,
   BookingSettlementsQueryDto,
   CommissionRuleResponseDto,
   CreateCommissionRuleDto,
   CreatePayoutDto,
+  CreateTaxDocumentUploadDto,
   FailPayoutDto,
   LedgerEntryResponseDto,
   LedgerQueryDto,
@@ -105,7 +113,10 @@ import {
   RecordTaxRemittanceDto,
   IssueTaxCertificateDto,
   TaxFilingPeriodResponseDto,
+  TaxDocumentUploadResponseDto,
   TaxWithholdingCertificateResponseDto,
+  TaxDocumentDownloadResponseDto,
+  VoidTaxCertificateDto,
 } from './dto/finance.dto';
 
 /** Tenant finance: commission rules, ledger overview + manual payouts (§13.3). */
@@ -130,12 +141,15 @@ export class TenantFinanceController {
     private readonly getSettlementSummaryUseCase: GetSettlementSummaryUseCase,
     private readonly getPayoutPolicyUseCase: GetTenantPayoutPolicyUseCase,
     private readonly updatePayoutPolicyUseCase: UpdatePayoutPolicyUseCase,
+    private readonly createTaxDocumentUploadUseCase: CreateTaxDocumentUploadUseCase,
     private readonly prepareTaxFilingUseCase: PrepareTaxFilingPeriodUseCase,
     private readonly listTaxFilingsUseCase: ListTaxFilingPeriodsUseCase,
     private readonly submitTaxFilingUseCase: SubmitTaxFilingPeriodUseCase,
     private readonly recordTaxRemittanceUseCase: RecordTaxRemittanceUseCase,
     private readonly issueTaxCertificateUseCase: IssueTaxWithholdingCertificateUseCase,
     private readonly listTaxCertificatesUseCase: ListTaxWithholdingCertificatesUseCase,
+    private readonly getTaxDocumentDownloadUseCase: GetTaxDocumentDownloadUseCase,
+    private readonly voidTaxCertificateUseCase: VoidTaxWithholdingCertificateUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -285,14 +299,24 @@ export class TenantFinanceController {
 
   // ── Tax operations ───────────────────────────────────────────────────────
 
+  @RequirePermissions('tenant.payouts.manage')
+  @Post('tax/documents/presign')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mint a private PDF upload grant for tenant tax documents' })
+  @ApiOkResponse({ type: TaxDocumentUploadResponseDto })
+  async createTaxDocumentUpload(
+    @Body() input: CreateTaxDocumentUploadDto,
+  ): Promise<TaxDocumentUploadResponse> {
+    const value: CreateTaxDocumentUploadInput = input;
+    return this.createTaxDocumentUploadUseCase.execute(this.tenantId, value);
+  }
+
   @RequirePermissions('tenant.finance.read')
   @Get('tax/filings')
   @ApiOperation({ summary: 'List monthly partner-tax filing periods' })
   @ApiOkResponse({ type: [TaxFilingPeriodResponseDto] })
   async taxFilings(): Promise<TaxFilingPeriodResponse[]> {
-    return (await this.listTaxFilingsUseCase.execute(this.tenantId)).map(
-      toTaxFilingPeriodResponse,
-    );
+    return (await this.listTaxFilingsUseCase.execute(this.tenantId)).map(toTaxFilingPeriodResponse);
   }
 
   @RequirePermissions('tenant.payouts.manage')
@@ -374,6 +398,21 @@ export class TenantFinanceController {
     );
   }
 
+  @RequirePermissions('tenant.finance.read')
+  @Get('tax/certificates/:id/download')
+  @UuidParam()
+  @ApiOperation({ summary: 'Create a short-lived private download for a tax certificate' })
+  @ApiOkResponse({ type: TaxDocumentDownloadResponseDto })
+  taxCertificateDownload(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<TaxDocumentDownloadResponse> {
+    return this.getTaxDocumentDownloadUseCase.execute(this.tenantId, id, {
+      actorId: principal.userId,
+      actorType: 'tenant',
+    });
+  }
+
   @RequirePermissions('tenant.payouts.manage')
   @Post('tax/certificates')
   @ApiOperation({ summary: 'Issue annual withholding certificate metadata' })
@@ -391,8 +430,28 @@ export class TenantFinanceController {
         {
           certificateNumber: value.certificateNumber,
           fileKey: value.fileKey,
-          checksum: value.checksum,
         },
+        principal.userId,
+      ),
+    );
+  }
+
+  @RequirePermissions('tenant.payouts.manage')
+  @Post('tax/certificates/:id/void')
+  @UuidParam()
+  @ApiOperation({ summary: 'Void an active withholding certificate before replacement' })
+  @ApiOkResponse({ type: TaxWithholdingCertificateResponseDto })
+  async voidTaxCertificate(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() input: VoidTaxCertificateDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<TaxWithholdingCertificateResponse> {
+    const value: VoidTaxCertificateInput = input;
+    return toTaxWithholdingCertificateResponse(
+      await this.voidTaxCertificateUseCase.execute(
+        this.tenantId,
+        id,
+        value.reason,
         principal.userId,
       ),
     );

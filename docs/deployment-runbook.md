@@ -616,13 +616,21 @@ cho API và thêm một điểm hỏng, mà không làm hệ thống an toàn h�
 `STORAGE_UPLOAD_ORIGINS` là chuyện khác và **không** đổi theo số tenant: đó là danh sách origin *của
 R2* để đưa vào CSP `connect-src` của storefront.
 
-`S3_ENDPOINT` là nơi browser PUT bằng presigned URL. `S3_PUBLIC_URL` là nơi browser đọc object:
+`S3_ENDPOINT` là nơi browser PUT bằng presigned URL. `S3_PUBLIC_URL` là nơi browser đọc object
+trong bucket media công khai. `S3_PRIVATE_BUCKET` chứa chứng từ thuế và không được nối custom
+domain/public access:
 
 ```text
 S3_ENDPOINT=https://ACCOUNT_ID.r2.cloudflarestorage.com
+S3_PRIVATE_BUCKET=bookingos-stg-private
 S3_PUBLIC_URL=https://cdn.stg.bookingos.vn
 STORAGE_UPLOAD_ORIGINS=https://ACCOUNT_ID.r2.cloudflarestorage.com
 ```
+
+Private tax-document CORS must allow dashboard origins to `PUT` with both `Content-Type` and
+`If-None-Match`. The latter makes every presigned tax upload write-once: replaying the URL cannot
+replace bytes after the first successful upload. Do not attach the private bucket to a public custom
+domain.
 
 Không đặt `STORAGE_UPLOAD_ORIGINS` thành `cdn.stg.bookingos.vn`.
 
@@ -723,6 +731,7 @@ S3_REGION=auto
 S3_ACCESS_KEY=REPLACE_WITH_R2_ACCESS_KEY
 S3_SECRET_KEY=REPLACE_WITH_R2_SECRET_KEY
 S3_BUCKET=bookingos-stg
+S3_PRIVATE_BUCKET=bookingos-stg-private
 S3_PUBLIC_URL=https://cdn.stg.bookingos.vn
 S3_FORCE_PATH_STYLE=true
 S3_PRESIGN_EXPIRES_SEC=300

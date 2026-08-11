@@ -11,7 +11,7 @@ import {
   type ITaxComplianceRepository,
 } from '../../domain/ports/tax-compliance-repository.port';
 
-/** Freeze provisional partner tax exactly once when service completion is confirmed. */
+/** Freeze partner tax exactly once when the post-dispute settlement is released. */
 @Injectable()
 export class RecordSettlementWithholdingUseCase {
   constructor(
@@ -29,6 +29,8 @@ export class RecordSettlementWithholdingUseCase {
     const vatAmount = settlement.partnerVatWithheld;
     const pitAmount = settlement.partnerPitWithheld;
     if (taxableRevenue <= 0n || (vatAmount <= 0n && pitAmount <= 0n)) return;
+    // Keep the historical prefix stable so an in-flight settlement created by an
+    // older deploy cannot produce a second event when the release worker resumes.
     const sourceKey = `completion:${settlement.id}`;
     if (await this.tax.findEventBySourceKey(tx, tenantId, sourceKey)) return;
     const legs = LedgerJournal.withholding({
@@ -40,7 +42,7 @@ export class RecordSettlementWithholdingUseCase {
     const journalId = await this.ledger.recordJournal(tx, tenantId, legs, {
       bookingId: settlement.bookingId,
       paymentId: settlement.paymentId,
-      memo: 'tax.withholding.service_completed',
+      memo: 'tax.withholding.settlement_released',
     });
     if (!(await this.tax.attachWithholdingJournal(tx, settlement.id, journalId))) {
       throw new Error('Settlement withholding journal was concurrently attached');
@@ -55,7 +57,7 @@ export class RecordSettlementWithholdingUseCase {
       vatAmount,
       pitAmount,
       journalId,
-      occurredAt: settlement.completedAt ?? settlement.updatedAt,
+      occurredAt: settlement.releasedAt ?? settlement.updatedAt,
     });
   }
 }

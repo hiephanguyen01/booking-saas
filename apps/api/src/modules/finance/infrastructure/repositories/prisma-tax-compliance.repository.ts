@@ -6,8 +6,11 @@ import type {
   ITaxComplianceRepository,
   TaxCertificateRecord,
   TaxFilingPeriodRecord,
+  TaxDocumentUploadRecord,
+  TaxCertificateReadiness,
   TaxWithholdingEventRecord,
 } from '../../domain/ports/tax-compliance-repository.port';
+import { TaxCertificateConflict } from '../../domain/errors/finance-domain-errors';
 
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
 
@@ -15,6 +18,13 @@ function monthBounds(taxYear: number, taxMonth: number): { from: Date; to: Date 
   return {
     from: new Date(Date.UTC(taxYear, taxMonth - 1, 1) - VN_OFFSET_MS),
     to: new Date(Date.UTC(taxYear, taxMonth, 1) - VN_OFFSET_MS),
+  };
+}
+
+function yearBounds(taxYear: number): { from: Date; to: Date } {
+  return {
+    from: new Date(Date.UTC(taxYear, 0, 1) - VN_OFFSET_MS),
+    to: new Date(Date.UTC(taxYear + 1, 0, 1) - VN_OFFSET_MS),
   };
 }
 
@@ -176,15 +186,88 @@ export class PrismaTaxComplianceRepository implements ITaxComplianceRepository {
         tenantId,
         filingPeriodId: periodId,
         ...input,
-        evidence: input.evidence
-          ? (input.evidence as Prisma.InputJsonObject)
-          : Prisma.JsonNull,
+        evidence: input.evidence ? (input.evidence as Prisma.InputJsonObject) : Prisma.JsonNull,
       },
     });
     return this.findPeriod(tx, periodId);
   }
 
-  async issueCertificate(
+  createDocumentUpload(
+    tx: PrismaTx,
+    tenantId: string,
+    input: {
+      objectKey: string;
+      checksum: string;
+      sizeBytes: number;
+      contentType: string;
+      expiresAt: Date;
+    },
+  ): Promise<TaxDocumentUploadRecord> {
+    return tx.taxDocumentUpload.create({ data: { tenantId, ...input } });
+  }
+
+  findDocumentUpload(
+    tx: PrismaTx,
+    tenantId: string,
+    objectKey: string,
+  ): Promise<TaxDocumentUploadRecord | null> {
+    return tx.taxDocumentUpload.findUnique({
+      where: { tenantId_objectKey: { tenantId, objectKey } },
+    });
+  }
+
+  async lockCertificateYear(
+    tx: PrismaTx,
+    tenantId: string,
+    partnerId: string,
+    taxYear: number,
+  ): Promise<void> {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${tenantId}:${partnerId}:${taxYear}:tax-certificate`}, 0))`;
+  }
+
+  async certificateReadiness(
+    tx: PrismaTx,
+    tenantId: string,
+    partnerId: string,
+    taxYear: number,
+  ): Promise<TaxCertificateReadiness> {
+    const { from, to } = yearBounds(taxYear);
+    const events = await tx.taxWithholdingEvent.findMany({
+      where: { tenantId, partnerId, occurredAt: { gte: from, lt: to } },
+      include: { filingPeriod: { select: { taxYear: true, status: true } } },
+    });
+    return events.reduce<TaxCertificateReadiness>(
+      (acc, event) => ({
+        eventCount: acc.eventCount + 1,
+        unsettledEventCount:
+          acc.unsettledEventCount +
+          (event.filingPeriod?.taxYear === taxYear && event.filingPeriod.status === 'paid' ? 0 : 1),
+        vatAmount: acc.vatAmount + signed(event, event.vatAmount),
+        pitAmount: acc.pitAmount + signed(event, event.pitAmount),
+      }),
+      { eventCount: 0, unsettledEventCount: 0, vatAmount: 0n, pitAmount: 0n },
+    );
+  }
+
+  findActiveCertificate(
+    tx: PrismaTx,
+    tenantId: string,
+    partnerId: string,
+    taxYear: number,
+  ): Promise<TaxCertificateRecord | null> {
+    return this.findCertificateWhere(tx, { tenantId, partnerId, taxYear, status: 'issued' });
+  }
+
+  findLatestCertificate(
+    tx: PrismaTx,
+    tenantId: string,
+    partnerId: string,
+    taxYear: number,
+  ): Promise<TaxCertificateRecord | null> {
+    return this.findCertificateWhere(tx, { tenantId, partnerId, taxYear }, { version: 'desc' });
+  }
+
+  async createCertificate(
     tx: PrismaTx,
     tenantId: string,
     partnerId: string,
@@ -194,42 +277,58 @@ export class PrismaTaxComplianceRepository implements ITaxComplianceRepository {
       fileKey: string;
       checksum: string;
       issuedBy: string;
+      version: number;
+      supersedesId: string | null;
+      documentUploadId: string;
+      vatAmount: bigint;
+      pitAmount: bigint;
     },
   ): Promise<TaxCertificateRecord> {
-    const events = await tx.taxWithholdingEvent.findMany({
-      where: {
-        tenantId,
-        partnerId,
-        filingPeriod: { taxYear, status: 'paid' },
-      },
+    try {
+      const row = await tx.taxWithholdingCertificate.create({
+        data: {
+          tenantId,
+          partnerId,
+          taxYear,
+          ...input,
+          status: 'issued',
+          issuedAt: new Date(),
+        },
+        include: { partner: { select: { name: true } } },
+      });
+      return { ...row, partnerName: row.partner.name };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new TaxCertificateConflict();
+      }
+      throw error;
+    }
+  }
+
+  async attachDocumentUpload(
+    tx: PrismaTx,
+    tenantId: string,
+    uploadId: string,
+    attachedAt: Date,
+  ): Promise<boolean> {
+    const changed = await tx.taxDocumentUpload.updateMany({
+      where: { id: uploadId, tenantId, status: 'pending', expiresAt: { gt: attachedAt } },
+      data: { status: 'attached', attachedAt },
     });
-    const totals = events.reduce(
-      (acc, event) => ({
-        vatAmount: acc.vatAmount + signed(event, event.vatAmount),
-        pitAmount: acc.pitAmount + signed(event, event.pitAmount),
-      }),
-      { vatAmount: 0n, pitAmount: 0n },
-    );
-    const row = await tx.taxWithholdingCertificate.upsert({
-      where: { tenantId_partnerId_taxYear: { tenantId, partnerId, taxYear } },
-      update: {
-        ...input,
-        ...totals,
-        status: 'issued',
-        issuedAt: new Date(),
-      },
-      create: {
-        tenantId,
-        partnerId,
-        taxYear,
-        ...input,
-        ...totals,
-        status: 'issued',
-        issuedAt: new Date(),
-      },
-      include: { partner: { select: { name: true } } },
+    return changed.count === 1;
+  }
+
+  async voidCertificate(
+    tx: PrismaTx,
+    tenantId: string,
+    certificateId: string,
+    input: { voidedAt: Date; voidedBy: string; voidReason: string },
+  ): Promise<TaxCertificateRecord | null> {
+    const changed = await tx.taxWithholdingCertificate.updateMany({
+      where: { id: certificateId, tenantId, status: 'issued' },
+      data: { status: 'voided', ...input },
     });
-    return { ...row, partnerName: row.partner.name };
+    return changed.count === 1 ? this.findCertificate(tx, tenantId, certificateId) : null;
   }
 
   async listCertificates(
@@ -243,5 +342,35 @@ export class PrismaTaxComplianceRepository implements ITaxComplianceRepository {
       orderBy: [{ taxYear: 'desc' }, { createdAt: 'desc' }],
     });
     return rows.map((row) => ({ ...row, partnerName: row.partner.name }));
+  }
+
+  async findCertificate(
+    tx: PrismaTx,
+    tenantId: string,
+    certificateId: string,
+  ): Promise<TaxCertificateRecord | null> {
+    const row = await tx.taxWithholdingCertificate.findFirst({
+      where: { id: certificateId, tenantId },
+      include: { partner: { select: { name: true } } },
+    });
+    return row ? { ...row, partnerName: row.partner.name } : null;
+  }
+
+  private async findCertificateWhere(
+    tx: PrismaTx,
+    where: {
+      tenantId: string;
+      partnerId: string;
+      taxYear: number;
+      status?: 'issued';
+    },
+    orderBy?: { version: 'desc' },
+  ): Promise<TaxCertificateRecord | null> {
+    const row = await tx.taxWithholdingCertificate.findFirst({
+      where,
+      orderBy,
+      include: { partner: { select: { name: true } } },
+    });
+    return row ? { ...row, partnerName: row.partner.name } : null;
   }
 }

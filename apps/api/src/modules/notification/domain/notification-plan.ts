@@ -30,7 +30,9 @@ export type NotificationTemplateId =
   | 'partner_application_received'
   | 'partner_approved'
   | 'partner_agreement_recorded'
-  | 'payout_paid_partner';
+  | 'payout_paid_partner'
+  | 'tax_certificate_issued_partner'
+  | 'tax_certificate_voided_partner';
 
 export interface NotificationPlanItem {
   audience: Audience;
@@ -68,6 +70,11 @@ export const PARTNER_NOTIFICATION_EVENTS: readonly string[] = [
  * amount), not `planForEvent`. OTP is not an event — it is sent synchronously.
  */
 export const PAYOUT_NOTIFICATION_EVENTS: readonly string[] = ['payout.paid'];
+
+export const TAX_CERTIFICATE_NOTIFICATION_EVENTS: readonly string[] = [
+  'tax.certificate_issued',
+  'tax.certificate_voided',
+];
 
 /**
  * The audiences + templates for an event. `booking.created` branches on the draft

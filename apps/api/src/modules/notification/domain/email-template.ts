@@ -109,6 +109,8 @@ export interface TemplateData {
   expiresInMin?: number;
   /** The version number just published — `legal.document_published` mails only (Task 20). */
   legalVersionNo?: number;
+  taxYear?: number;
+  certificateNumber?: string;
 }
 
 /** The recipient's locale, normalized to a supported one (`vi` is the fallback). */

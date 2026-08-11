@@ -337,6 +337,22 @@ export type BookingSettlementResponse = z.infer<typeof bookingSettlementResponse
 
 // ── Tax operations ──────────────────────────────────────────────────────────
 
+export const MAX_TAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+
+export const createTaxDocumentUploadInputSchema = z.object({
+  contentType: z.literal('application/pdf'),
+  sizeBytes: z.number().int().positive().max(MAX_TAX_DOCUMENT_SIZE_BYTES),
+  checksum: z.string().regex(/^[a-f0-9]{64}$/),
+});
+export type CreateTaxDocumentUploadInput = z.infer<typeof createTaxDocumentUploadInputSchema>;
+
+export const taxDocumentUploadResponseSchema = z.object({
+  uploadUrl: z.string().url(),
+  key: z.string().trim().min(1).max(500),
+  expiresInSec: z.number().int().positive(),
+});
+export type TaxDocumentUploadResponse = z.infer<typeof taxDocumentUploadResponseSchema>;
+
 export const taxFilingStatusSchema = z.enum(['draft', 'submitted', 'paid']);
 export type TaxFilingStatusDto = z.infer<typeof taxFilingStatusSchema>;
 
@@ -388,9 +404,13 @@ export const issueTaxCertificateInputSchema = z.object({
   taxYear: z.number().int().min(2026).max(2100),
   certificateNumber: z.string().trim().min(1).max(100),
   fileKey: z.string().trim().min(1).max(500),
-  checksum: z.string().trim().min(16).max(256),
 });
 export type IssueTaxCertificateInput = z.infer<typeof issueTaxCertificateInputSchema>;
+
+export const voidTaxCertificateInputSchema = z.object({
+  reason: z.string().trim().min(10).max(500),
+});
+export type VoidTaxCertificateInput = z.infer<typeof voidTaxCertificateInputSchema>;
 
 export const taxCertificateStatusSchema = z.enum(['draft', 'issued', 'voided']);
 export const taxWithholdingCertificateResponseSchema = z.object({
@@ -399,18 +419,32 @@ export const taxWithholdingCertificateResponseSchema = z.object({
   partnerName: z.string(),
   taxYear: z.number().int(),
   status: taxCertificateStatusSchema,
+  version: z.number().int().positive(),
   certificateNumber: z.string().nullable(),
   vatAmount: vndDigits,
   pitAmount: vndDigits,
-  fileKey: z.string().nullable(),
-  checksum: z.string().nullable(),
   issuedAt: z.string().nullable(),
+  voidedAt: z.string().nullable(),
+  voidReason: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 export type TaxWithholdingCertificateResponse = z.infer<
   typeof taxWithholdingCertificateResponseSchema
 >;
+
+/** Partner projection deliberately excludes tenant metadata and private storage keys. */
+export const partnerTaxWithholdingCertificateResponseSchema =
+  taxWithholdingCertificateResponseSchema.omit({ partnerId: true, partnerName: true });
+export type PartnerTaxWithholdingCertificateResponse = z.infer<
+  typeof partnerTaxWithholdingCertificateResponseSchema
+>;
+
+export const taxDocumentDownloadResponseSchema = z.object({
+  downloadUrl: z.string().url(),
+  expiresInSec: z.number().int().positive(),
+});
+export type TaxDocumentDownloadResponse = z.infer<typeof taxDocumentDownloadResponseSchema>;
 
 /** Partner-safe projection: no tenant net/platform/affiliate internals. */
 export const partnerBookingSettlementResponseSchema = bookingSettlementResponseSchema.pick({

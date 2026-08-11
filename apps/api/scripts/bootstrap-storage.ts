@@ -28,13 +28,8 @@ async function main(): Promise<void> {
     credentials: { accessKeyId: cfg.accessKey, secretAccessKey: cfg.secretKey },
   });
 
-  try {
-    await s3.send(new HeadBucketCommand({ Bucket: cfg.bucket }));
-    console.log(`bucket "${cfg.bucket}" already exists`);
-  } catch {
-    await s3.send(new CreateBucketCommand({ Bucket: cfg.bucket }));
-    console.log(`created bucket "${cfg.bucket}"`);
-  }
+  await ensureBucket(s3, cfg.bucket);
+  await ensureBucket(s3, cfg.privateBucket);
 
   const endpointHostname = new URL(cfg.endpoint).hostname;
   const isCloudflareR2 = endpointHostname.endsWith('.r2.cloudflarestorage.com');
@@ -117,6 +112,17 @@ async function main(): Promise<void> {
     console.log(`uploaded default storefront ${asset.label} to ${cfg.publicUrl}/${asset.key}`);
   }
   console.log(`objects served from ${cfg.publicUrl}/<key>`);
+  console.log(`private objects stored in "${cfg.privateBucket}" without a public-read policy`);
+}
+
+async function ensureBucket(s3: S3Client, bucket: string): Promise<void> {
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+    console.log(`bucket "${bucket}" already exists`);
+  } catch {
+    await s3.send(new CreateBucketCommand({ Bucket: bucket }));
+    console.log(`created bucket "${bucket}"`);
+  }
 }
 
 main().catch((err: unknown) => {

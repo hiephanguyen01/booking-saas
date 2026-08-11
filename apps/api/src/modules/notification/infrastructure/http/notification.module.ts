@@ -11,6 +11,7 @@ import {
   LISTING_NOTIFICATION_EVENTS,
   PARTNER_NOTIFICATION_EVENTS,
   PAYOUT_NOTIFICATION_EVENTS,
+  TAX_CERTIFICATE_NOTIFICATION_EVENTS,
 } from '../../domain/notification-plan';
 import { SmtpEmailSender } from '../smtp-email-sender';
 import { ReactEmailRenderer } from '../email/react-email.renderer';
@@ -27,6 +28,10 @@ import {
 } from '../../application/use-cases/dispatch-legal-document-event.use-case';
 import { DispatchReminderUseCase } from '../../application/use-cases/dispatch-reminder.use-case';
 import { SendBookingOtpUseCase } from '../../application/use-cases/send-booking-otp.use-case';
+import {
+  DispatchTaxCertificateEventUseCase,
+  type TaxCertificateNotificationPayload,
+} from '../../application/use-cases/dispatch-tax-certificate-event.use-case';
 
 /**
  * Notifications (TONG-QUAN.md §17). Every notification is produced from a domain
@@ -50,6 +55,7 @@ import { SendBookingOtpUseCase } from '../../application/use-cases/send-booking-
     DispatchLegalDocumentEventUseCase,
     DispatchReminderUseCase,
     SendBookingOtpUseCase,
+    DispatchTaxCertificateEventUseCase,
     ReminderWorker,
   ],
   // Exported so the booking module can send the guest-lookup OTP synchronously (§8.6).
@@ -65,6 +71,7 @@ export class NotificationModule implements OnModuleInit {
     private readonly dispatchPartnerEvent: DispatchPartnerEventUseCase,
     private readonly dispatchPayoutEvent: DispatchPayoutEventUseCase,
     private readonly dispatchLegalDocumentEvent: DispatchLegalDocumentEventUseCase,
+    private readonly dispatchTaxCertificateEvent: DispatchTaxCertificateEventUseCase,
   ) {}
 
   onModuleInit(): void {
@@ -104,6 +111,17 @@ export class NotificationModule implements OnModuleInit {
         return this.dispatchPayoutEvent.execute(tenantId, payoutPayloadOf(event.payload));
       });
     }
+    for (const eventType of TAX_CERTIFICATE_NOTIFICATION_EVENTS) {
+      this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
+        return this.dispatchTaxCertificateEvent.execute(
+          tenantId,
+          eventType as 'tax.certificate_issued' | 'tax.certificate_voided',
+          taxCertificatePayloadOf(event.payload),
+        );
+      });
+    }
   }
 
   /**
@@ -118,6 +136,10 @@ export class NotificationModule implements OnModuleInit {
     this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
     return null;
   }
+}
+
+function taxCertificatePayloadOf(payload: unknown): TaxCertificateNotificationPayload {
+  return (payload ?? {}) as TaxCertificateNotificationPayload;
 }
 
 function legalDocumentPayloadOf(payload: unknown): LegalDocumentPublishedPayload {

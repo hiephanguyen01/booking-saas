@@ -49,14 +49,41 @@ export interface TaxCertificateRecord {
   partnerName: string;
   taxYear: number;
   status: TaxCertificateState;
+  version: number;
   certificateNumber: string | null;
   vatAmount: bigint;
   pitAmount: bigint;
   fileKey: string | null;
   checksum: string | null;
   issuedAt: Date | null;
+  supersedesId: string | null;
+  documentUploadId: string | null;
+  voidedAt: Date | null;
+  voidedBy: string | null;
+  voidReason: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface TaxDocumentUploadRecord {
+  id: string;
+  tenantId: string;
+  objectKey: string;
+  checksum: string;
+  sizeBytes: number;
+  contentType: string;
+  status: 'pending' | 'attached' | 'expired';
+  expiresAt: Date;
+  attachedAt: Date | null;
+  deletedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface TaxCertificateReadiness {
+  eventCount: number;
+  unsettledEventCount: number;
+  vatAmount: bigint;
+  pitAmount: bigint;
 }
 
 export interface CreateTaxEventInput {
@@ -92,11 +119,7 @@ export interface ITaxComplianceRepository {
     tenantId: string,
     input: CreateTaxEventInput,
   ): Promise<TaxWithholdingEventRecord>;
-  attachWithholdingJournal(
-    tx: PrismaTx,
-    settlementId: string,
-    journalId: string,
-  ): Promise<boolean>;
+  attachWithholdingJournal(tx: PrismaTx, settlementId: string, journalId: string): Promise<boolean>;
   preparePeriod(
     tx: PrismaTx,
     tenantId: string,
@@ -128,7 +151,47 @@ export interface ITaxComplianceRepository {
       recordedBy: string;
     },
   ): Promise<TaxFilingPeriodRecord | null>;
-  issueCertificate(
+  createDocumentUpload(
+    tx: PrismaTx,
+    tenantId: string,
+    input: {
+      objectKey: string;
+      checksum: string;
+      sizeBytes: number;
+      contentType: string;
+      expiresAt: Date;
+    },
+  ): Promise<TaxDocumentUploadRecord>;
+  findDocumentUpload(
+    tx: PrismaTx,
+    tenantId: string,
+    objectKey: string,
+  ): Promise<TaxDocumentUploadRecord | null>;
+  lockCertificateYear(
+    tx: PrismaTx,
+    tenantId: string,
+    partnerId: string,
+    taxYear: number,
+  ): Promise<void>;
+  certificateReadiness(
+    tx: PrismaTx,
+    tenantId: string,
+    partnerId: string,
+    taxYear: number,
+  ): Promise<TaxCertificateReadiness>;
+  findActiveCertificate(
+    tx: PrismaTx,
+    tenantId: string,
+    partnerId: string,
+    taxYear: number,
+  ): Promise<TaxCertificateRecord | null>;
+  findLatestCertificate(
+    tx: PrismaTx,
+    tenantId: string,
+    partnerId: string,
+    taxYear: number,
+  ): Promise<TaxCertificateRecord | null>;
+  createCertificate(
     tx: PrismaTx,
     tenantId: string,
     partnerId: string,
@@ -138,11 +201,33 @@ export interface ITaxComplianceRepository {
       fileKey: string;
       checksum: string;
       issuedBy: string;
+      version: number;
+      supersedesId: string | null;
+      documentUploadId: string;
+      vatAmount: bigint;
+      pitAmount: bigint;
     },
   ): Promise<TaxCertificateRecord>;
+  attachDocumentUpload(
+    tx: PrismaTx,
+    tenantId: string,
+    uploadId: string,
+    attachedAt: Date,
+  ): Promise<boolean>;
+  voidCertificate(
+    tx: PrismaTx,
+    tenantId: string,
+    certificateId: string,
+    input: { voidedAt: Date; voidedBy: string; voidReason: string },
+  ): Promise<TaxCertificateRecord | null>;
   listCertificates(
     tx: PrismaTx,
     tenantId: string,
     partnerId?: string,
   ): Promise<TaxCertificateRecord[]>;
+  findCertificate(
+    tx: PrismaTx,
+    tenantId: string,
+    certificateId: string,
+  ): Promise<TaxCertificateRecord | null>;
 }

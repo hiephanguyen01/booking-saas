@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 import {
   bookingSettlementResponseSchema,
   bookingSettlementsQuerySchema,
+  createTaxDocumentUploadInputSchema,
   commissionRuleResponseSchema,
   createCommissionRuleInputSchema,
   createPayoutInputSchema,
@@ -37,8 +38,12 @@ import {
   submitTaxFilingInputSchema,
   recordTaxRemittanceInputSchema,
   issueTaxCertificateInputSchema,
+  voidTaxCertificateInputSchema,
   taxFilingPeriodResponseSchema,
+  taxDocumentUploadResponseSchema,
   taxWithholdingCertificateResponseSchema,
+  partnerTaxWithholdingCertificateResponseSchema,
+  taxDocumentDownloadResponseSchema,
 } from '@booking/contracts';
 
 // Request bodies
@@ -60,6 +65,8 @@ export class PrepareTaxFilingDto extends createZodDto(prepareTaxFilingInputSchem
 export class SubmitTaxFilingDto extends createZodDto(submitTaxFilingInputSchema) {}
 export class RecordTaxRemittanceDto extends createZodDto(recordTaxRemittanceInputSchema) {}
 export class IssueTaxCertificateDto extends createZodDto(issueTaxCertificateInputSchema) {}
+export class VoidTaxCertificateDto extends createZodDto(voidTaxCertificateInputSchema) {}
+export class CreateTaxDocumentUploadDto extends createZodDto(createTaxDocumentUploadInputSchema) {}
 
 // Query params
 export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
@@ -104,6 +111,13 @@ export class PartnerSettlementDisputeResponseDto extends createZodDto(
 ) {}
 export class SettlementSummaryResponseDto extends createZodDto(settlementSummaryResponseSchema) {}
 export class TaxFilingPeriodResponseDto extends createZodDto(taxFilingPeriodResponseSchema) {}
+export class TaxDocumentUploadResponseDto extends createZodDto(taxDocumentUploadResponseSchema) {}
 export class TaxWithholdingCertificateResponseDto extends createZodDto(
   taxWithholdingCertificateResponseSchema,
+) {}
+export class PartnerTaxWithholdingCertificateResponseDto extends createZodDto(
+  partnerTaxWithholdingCertificateResponseSchema,
+) {}
+export class TaxDocumentDownloadResponseDto extends createZodDto(
+  taxDocumentDownloadResponseSchema,
 ) {}

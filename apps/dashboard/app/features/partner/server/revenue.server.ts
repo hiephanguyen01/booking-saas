@@ -1,5 +1,8 @@
 import { data as routeData } from 'react-router';
-import { respondSettlementDisputeInputSchema } from '@booking/contracts';
+import {
+  partnerTaxWithholdingCertificateResponseSchema,
+  respondSettlementDisputeInputSchema,
+} from '@booking/contracts';
 import type {
   LedgerEntryResponse,
   Paginated,
@@ -7,6 +10,7 @@ import type {
   PartnerSettlementDisputeResponse,
   PayoutResponse,
   SettlementSummaryResponse,
+  PartnerTaxWithholdingCertificateResponse,
 } from '@booking/contracts';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { apiPaths } from '~/constants/api-paths';
@@ -33,19 +37,23 @@ export async function loadPartnerRevenue(request: Request, url: URL) {
     pageKey: 'disputePage',
     pageSizeKey: 'disputePageSize',
   });
-  const [financeRes, ledgerRes, payoutsRes, settlementSummaryRes, disputesRes] = await Promise.all([
-    apiGet<PartnerFinanceResponse>(apiPaths.partner.finance, auth),
-    apiGet<Paginated<LedgerEntryResponse>>(apiPaths.partner.ledger, auth, {
-      query: ledgerParams.toApiQuery(),
-    }),
-    apiGet<Paginated<PayoutResponse>>(apiPaths.partner.payouts, auth, {
-      query: payoutParams.toApiQuery(),
-    }),
-    apiGet<SettlementSummaryResponse>(apiPaths.partner.settlementSummary, auth),
-    apiGet<Paginated<PartnerSettlementDisputeResponse>>(apiPaths.partner.financeDisputes, auth, {
-      query: disputeParams.toApiQuery(),
-    }),
-  ]);
+  const [financeRes, ledgerRes, payoutsRes, settlementSummaryRes, disputesRes, certificatesRes] =
+    await Promise.all([
+      apiGet<PartnerFinanceResponse>(apiPaths.partner.finance, auth),
+      apiGet<Paginated<LedgerEntryResponse>>(apiPaths.partner.ledger, auth, {
+        query: ledgerParams.toApiQuery(),
+      }),
+      apiGet<Paginated<PayoutResponse>>(apiPaths.partner.payouts, auth, {
+        query: payoutParams.toApiQuery(),
+      }),
+      apiGet<SettlementSummaryResponse>(apiPaths.partner.settlementSummary, auth),
+      apiGet<Paginated<PartnerSettlementDisputeResponse>>(apiPaths.partner.financeDisputes, auth, {
+        query: disputeParams.toApiQuery(),
+      }),
+      apiGet<PartnerTaxWithholdingCertificateResponse[]>(apiPaths.partner.taxCertificates, auth, {
+        schema: partnerTaxWithholdingCertificateResponseSchema.array(),
+      }),
+    ]);
   const finance: PartnerFinanceResponse =
     financeRes.ok && financeRes.data ? financeRes.data : { balance: '0', entries: [] };
   return {
@@ -58,6 +66,7 @@ export async function loadPartnerRevenue(request: Request, url: URL) {
       settlementSummaryRes.ok && settlementSummaryRes.data ? settlementSummaryRes.data : null,
     disputes: disputesRes.ok && disputesRes.data ? disputesRes.data.items : [],
     disputesTotal: disputesRes.ok && disputesRes.data ? disputesRes.data.total : 0,
+    certificates: certificatesRes.ok && certificatesRes.data ? certificatesRes.data : [],
     canRespondToDisputes: can('partner.disputes.respond'),
     financeError: financeRes.ok ? null : (financeRes.error ?? 'Không tải được dữ liệu tài chính.'),
     ledgerError: ledgerRes.ok ? null : (ledgerRes.error ?? 'Không tải được sổ cái.'),
@@ -68,6 +77,9 @@ export async function loadPartnerRevenue(request: Request, url: URL) {
     disputesError: disputesRes.ok
       ? null
       : (disputesRes.error ?? 'Không tải được tranh chấp liên quan.'),
+    certificatesError: certificatesRes.ok
+      ? null
+      : (certificatesRes.error ?? 'Không tải được chứng từ khấu trừ.'),
   };
 }
 
