@@ -1,9 +1,8 @@
 # Storefront PWA
 
 The storefront is installable on both the BookingOS platform host and every tenant host. Installation
-promotion is white-label and tenant-only: eligible live tenants advertise their own app on public
-Android/iOS storefront pages. Platform, desktop and transactional tenant routes do not show install
-CTAs or banners.
+promotion is tenant-only: a live tenant advertises installation on its localized Home route, while
+the platform, desktop header and non-Home tenant routes do not show install CTAs or banners.
 
 ## Tenant icon contract
 
@@ -30,8 +29,8 @@ overlays the Android safe zone and it is never synthesized from the main artwork
 favicons remain tab-only until replaced with qualifying artwork.
 
 BookingStudio's seed points to 180/192/512 variants produced from its existing app icon. Tenants with
-no complete `pwaIcons` object use the complete BookingOS fallback set and remain manually installable,
-but the storefront does not advertise installation until its own icon trio exists.
+no complete `pwaIcons` object use the complete BookingOS fallback set for their manifest, touch icon
+and Home install banner.
 
 ## Manifest brand selection
 
@@ -75,30 +74,22 @@ claims clients and removes older BookingOS storefront cache versions.
 
 ## Install experience
 
-- A live tenant's standard mobile header has no hamburger or account avatar. It keeps the tenant
-  brand, shows **Register** for guests, and adds a separate direct **Install app** action whenever
-  promotion is available. Signed-in customers use the persistent bottom navigation to reach their
-  account. Desktop header behaviour is unchanged.
-- Catalog and listing/group/package detail app bars keep their existing back, search, share and
-  favourite actions and add a compact **Install** chip. Responsive width alone never qualifies a
-  desktop browser.
-- Mobile detection prefers `navigator.userAgentData.mobile`, then falls back to Android/iOS
-  user-agent signatures and the iPadOS `MacIntel`/touch-points signal.
-- A bottom sheet opens as soon as install capability settles, once per `sessionStorage` lifetime.
-  Closing it suppresses it for the rest of that tab session; closing and reopening the tab creates a
-  new session. Disabled session storage falls back to an in-memory once-per-runtime guard.
-- Chromium uses the captured `beforeinstallprompt` event. Rejecting or consuming that one-shot event
-  suppresses promotion for the rest of the session so the header cannot expose a dead action.
-- iOS Safari shows Share → Add to Home Screen instructions. Android Chrome without a native event
-  shows its manual menu steps. Other mobile/in-app browsers explain how to continue in Safari or
-  Chrome instead of silently hiding the action.
-- Promotion is limited to localized home, nearby, community, catalog, listing, listing-group and
-  provider pages. Platform, suspended tenants, auth, checkout, bookings and account routes stay
-  hidden.
-- All install UI is hidden in standalone mode. The standalone-only update banner remains available
-  on both Platform and tenant installations.
-- Service Worker, Canvas, sessionStorage and install APIs are capability-checked or guarded. Their
-  absence cannot prevent normal storefront rendering or booking.
+- Only the tenant Home route advertises installation, using a tenant-branded floating banner above
+  the bottom navigation. The mobile header does not render an install action, hamburger control or
+  account avatar.
+- The banner appears on every Home navigation entry or reload. Closing it affects only that Home
+  entry; no visit counter, session counter or persistent dismissal is stored.
+- Chromium and other capable browsers use the captured `beforeinstallprompt` event directly from
+  the banner action, without an intermediate custom dialog.
+- iOS uses the same **Install now** action but opens the required browser Share → Add to Home Screen
+  instructions because iOS does not expose a direct install prompt.
+- All install UI is hidden in standalone mode; platform, suspended-tenant and non-Home pages never
+  promote installation.
+- Browsers without a direct install prompt that are not iOS do not show install UI. Service Worker,
+  Canvas and install APIs are capability-checked or guarded; their absence cannot prevent normal
+  storefront rendering or booking.
+- Guest mobile headers keep the registration action. Signed-in customers use the persistent bottom
+  navigation to reach their account. Desktop header behaviour is unchanged.
 
 There is deliberately no push notification, background sync, offline booking/data store, Workbox,
 image-processing backend, database migration or PWA test suite.
@@ -115,5 +106,6 @@ pnpm --filter=@booking/storefront start
 ```
 
 Confirm manifest MIME/colors/icon ownership, worker URL/cache identity, offline navigation fallback,
-tenant-branded mobile Chromium/iOS install promotion, manual/unsupported-browser guides, route and
-desktop exclusions, once-per-session dismissal, and the user-confirmed A → B update lifecycle.
+the Home-only Chromium/iOS install flows, per-entry banner dismissal, non-Home and desktop exclusions,
+and the user-confirmed A → B update lifecycle. Verify both `/vi` and `/en`, signed-in and guest mobile
+headers, and the installed standalone experience.

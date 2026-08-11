@@ -9,6 +9,8 @@
  */
 export interface SiteHeaderRouteHandle {
   overlayHeader?: boolean;
+  /** Advertise tenant PWA installation from this route's mobile chrome. */
+  showPwaInstall?: boolean;
   /** A page-owned app bar below `md`; the shared tenant chrome stays unchanged above it. */
   mobileChrome?: 'search' | 'detail' | 'flow' | 'account';
   /** A route-owned sticky action occupies the bottom safe area. */
@@ -20,6 +22,7 @@ export const OVERLAY_HEADER_HANDLE: SiteHeaderRouteHandle = { overlayHeader: tru
 
 export const HOME_HEADER_HANDLE: SiteHeaderRouteHandle = {
   overlayHeader: true,
+  showPwaInstall: true,
 };
 
 export const SEARCH_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = { mobileChrome: 'search' };
@@ -32,5 +35,10 @@ export const ACCOUNT_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = { mobileChrom
 
 export const CHECKOUT_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = {
   mobileChrome: 'flow',
+  hideBottomNav: true,
+};
+
+export const BOOKING_DETAIL_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = {
+  mobileChrome: 'account',
   hideBottomNav: true,
 };
