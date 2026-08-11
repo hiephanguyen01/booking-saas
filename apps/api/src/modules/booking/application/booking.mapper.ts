@@ -30,6 +30,10 @@ function bookingVatBps(snapshot: unknown): number {
   const tax = (snapshot as CommissionSnapshot | null)?.tax;
   return typeof tax?.vatBps === 'number' ? tax.vatBps : 0;
 }
+
+function max0(value: bigint): bigint {
+  return value > 0n ? value : 0n;
+}
 import { maskPhone } from '../domain/mask-phone';
 import type { CancelResult } from './use-cases/cancel-booking.use-case';
 import type { ReturnResult } from './use-cases/mark-returned.use-case';
@@ -167,6 +171,9 @@ function toCore(b: BookingRecord) {
     // from — that also holds the tenant's take-rate (§VAT).
     vatBps: bookingVatBps(b.commissionSnapshot),
     vatAmount: vatFromGross(b.finalAmount, bookingVatBps(b.commissionSnapshot)).toString(),
+    balanceAmount: max0(b.finalAmount - b.paidAmount).toString(),
+    // Only a confirmed booking that still owes money can be settled online (§8.3).
+    canPayBalance: b.status === 'confirmed' && b.finalAmount - b.paidAmount > 0n,
     securityDeposit: b.securityDeposit.toString(),
     pickedUpAt: b.pickedUpAt?.toISOString() ?? null,
     returnedAt: b.returnedAt?.toISOString() ?? null,
