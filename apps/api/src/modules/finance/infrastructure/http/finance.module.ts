@@ -5,6 +5,7 @@ import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.
 import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { COMMISSION_RULE_REPOSITORY } from '../../domain/ports/commission-rule-repository.port';
+import { TAX_RATE_REPOSITORY } from '../../domain/ports/tax-rate-repository.port';
 import { LEDGER_REPOSITORY } from '../../domain/ports/ledger-repository.port';
 import { PAYOUT_REPOSITORY } from '../../domain/ports/payout-repository.port';
 import { SETTLEMENT_REPOSITORY } from '../../domain/ports/settlement-repository.port';
@@ -13,6 +14,7 @@ import { FINANCE_TENANT_HOST_READER } from '../../domain/ports/finance-tenant-ho
 import { PAYOUT_POLICY_STORE } from '../../domain/ports/payout-policy-store.port';
 import { PLATFORM_FINANCE_READER } from '../../domain/ports/platform-finance-reader.port';
 import { PrismaCommissionRuleRepository } from '../repositories/prisma-commission-rule.repository';
+import { PrismaTaxRateRepository } from '../repositories/prisma-tax-rate.repository';
 import { PrismaLedgerRepository } from '../repositories/prisma-ledger.repository';
 import { PrismaPayoutRepository } from '../repositories/prisma-payout.repository';
 import { PrismaSettlementRepository } from '../repositories/prisma-settlement.repository';
@@ -21,6 +23,7 @@ import { PrismaFinanceTenantHostReader } from '../repositories/prisma-finance-te
 import { PrismaPayoutPolicyStore } from '../repositories/prisma-payout-policy.store';
 import { PrismaPlatformFinanceReader } from '../repositories/prisma-platform-finance.reader';
 import { ResolveCommissionUseCase } from '../../application/use-cases/resolve-commission.use-case';
+import { ResolveTaxUseCase } from '../../application/use-cases/resolve-tax.use-case';
 import { RecordClawbackJournalUseCase } from '../../application/use-cases/record-clawback-journal.use-case';
 import { ComputePayoutPayableUseCase } from '../../application/use-cases/compute-payout-payable.use-case';
 import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
@@ -51,6 +54,7 @@ import { OpenSettlementDisputeUseCase } from '../../application/use-cases/open-s
 import { ResolveSettlementDisputeUseCase } from '../../application/use-cases/resolve-settlement-dispute.use-case';
 import { ListSettlementDisputesUseCase } from '../../application/use-cases/list-settlement-disputes.use-case';
 import { ListPlatformDisputesUseCase } from '../../application/use-cases/list-platform-disputes.use-case';
+import { UpdateTenantPlatformRateUseCase } from '../../application/use-cases/update-tenant-platform-rate.use-case';
 import { GetSettlementSummaryUseCase } from '../../application/use-cases/get-settlement-summary.use-case';
 import { ListPlatformSettlementsUseCase } from '../../application/use-cases/list-platform-settlements.use-case';
 import { GetTenantPayoutPolicyUseCase } from '../../application/use-cases/get-tenant-payout-policy.use-case';
@@ -77,6 +81,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
   ],
   providers: [
     { provide: COMMISSION_RULE_REPOSITORY, useClass: PrismaCommissionRuleRepository },
+    { provide: TAX_RATE_REPOSITORY, useClass: PrismaTaxRateRepository },
     { provide: LEDGER_REPOSITORY, useClass: PrismaLedgerRepository },
     { provide: PAYOUT_REPOSITORY, useClass: PrismaPayoutRepository },
     { provide: SETTLEMENT_REPOSITORY, useClass: PrismaSettlementRepository },
@@ -88,6 +93,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     { provide: PAYOUT_POLICY_STORE, useClass: PrismaPayoutPolicyStore },
     { provide: PLATFORM_FINANCE_READER, useClass: PrismaPlatformFinanceReader },
     ResolveCommissionUseCase,
+    ResolveTaxUseCase,
     RecordClawbackJournalUseCase,
     ComputePayoutPayableUseCase,
     ListCommissionRulesUseCase,
@@ -118,6 +124,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     ResolveSettlementDisputeUseCase,
     ListSettlementDisputesUseCase,
     ListPlatformDisputesUseCase,
+    UpdateTenantPlatformRateUseCase,
     GetSettlementSummaryUseCase,
     ListPlatformSettlementsUseCase,
     GetTenantPayoutPolicyUseCase,
@@ -129,7 +136,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     SettlementReleaseWorker,
   ],
   // Exported so the booking module can snapshot the commission at booking time.
-  exports: [ResolveCommissionUseCase],
+  exports: [ResolveCommissionUseCase, ResolveTaxUseCase],
 })
 export class FinanceModule implements OnModuleInit {
   private readonly logger = new Logger(FinanceModule.name);

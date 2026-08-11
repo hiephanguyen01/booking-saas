@@ -11,21 +11,15 @@ import { userInitials } from '~/features/account/lib/account-nav';
 import type { AccountOverviewStats } from '~/features/account/server/account-overview-route.server';
 
 export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | null }) {
-  const { user, locale, tenant, accountMenuSummary } = useOutletContext<AccountOutletContext>();
+  const { user, locale, accountMenuSummary } = useOutletContext<AccountOutletContext>();
   const { t } = useTranslation(NsI18n.Account);
   const { fetcher, groups, logoutAction } = useAccountShellController({
     locale,
     accountMenuSummary,
   });
-
   return (
     <div className="-mx-4 -mt-4 sm:-mx-6 lg:mx-0 lg:mt-0">
-      <div className="bg-foreground px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-20 text-background md:hidden">
-        <p className="text-sm font-medium text-background/60">{tenant.name}</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('overview.title')}</h1>
-      </div>
-
-      <div className="relative mx-auto -mt-14 w-full max-w-3xl px-3 md:mt-0 md:px-0">
+      <div className="relative mx-auto w-full max-w-3xl px-3 pt-(--sf-section-gap) md:px-0 md:pt-0">
         <section className={cn(PANEL_SURFACE, 'bg-card p-(--sf-surface-pad)')}>
           <div className="flex items-center gap-4">
             <Avatar className="size-18 ring-4 ring-background">
@@ -61,7 +55,11 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
                     key={item.key}
                     to={item.to}
                     prefetch="intent"
-                    className={`flex min-h-14 items-center gap-3 px-(--sf-surface-pad) text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${index ? 'border-t border-border' : ''}`}
+                    className={cn(
+                      'flex min-h-14 items-center gap-3 px-(--sf-surface-pad) text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                      index > 0 &&
+                        '[border-top:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)]',
+                    )}
                   >
                     <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
                       <Icon className="size-4.5" aria-hidden="true" />

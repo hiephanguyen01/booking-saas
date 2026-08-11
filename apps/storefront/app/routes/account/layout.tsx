@@ -5,7 +5,10 @@ import { getAccountMenuSummary } from '~/features/account/server/account-menu.se
 import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { requireLocale } from '~/lib/server/i18n.server';
 import { useAccountLayoutController } from '~/features/account/hooks/use-account-layout-controller';
+import { ACCOUNT_MOBILE_CHROME_HANDLE } from '~/features/site-shell/lib/site-header-handle';
 import type { Route } from './+types/layout';
+
+export const handle = ACCOUNT_MOBILE_CHROME_HANDLE;
 
 export function meta() {
   return [{ title: 'Account | BookingOS' }, { name: 'robots', content: 'noindex' }];

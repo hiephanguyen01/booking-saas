@@ -361,6 +361,18 @@ app-level `code`: `{ statusCode, code, message, details? }`. Known codes:
 stack traces, or internal IDs. Backend placement and deduplication rules are in
 [Backend error placement](#backend-error-placement).
 
+## Money and VAT
+
+Full rules in [`features/vat.md`](./features/vat.md); two that bite immediately:
+
+- **Prices are VAT-inclusive gross.** Extract VAT with `vatFromGross(gross, bps)` —
+  `gross × bps / (10000 + bps)` — never `percentOfBps`, which computes VAT to *add* to a net price and
+  overstates it by ~8% of the whole booking. Take the net with `netOfVat`, not a second rounding, so
+  the two legs re-sum to the exact gross.
+- **Never display a rate as a literal string.** Customer-facing money copy reads the rate from the
+  quote (checkout) or from the frozen `commission_snapshot.tax` (an existing booking). A constant goes
+  stale the moment the law changes and is already wrong for a VAT-exempt seller.
+
 ## Migrations
 
 Hand-authored — **do not run `prisma migrate dev`** (it's not the workflow here). To add/change schema:

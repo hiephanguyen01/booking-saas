@@ -170,7 +170,10 @@ export async function handleAccountBookingDetailAction(
     return data<BookingDisputeActionData>({ ok: true, error: null, intent: 'dispute' });
   }
 
-  if (booking.status !== 'pending_payment') {
+  // Two payable shapes: a booking still awaiting its first payment, and a
+  // confirmed one that still owes a balance (§8.3). `canPayBalance` is the
+  // server's own rule, so this never re-derives it from amounts.
+  if (booking.status !== 'pending_payment' && !booking.canPayBalance) {
     return data({ ok: false, error: 'PAYMENT_NOT_AVAILABLE' }, { status: 409 });
   }
 

@@ -236,6 +236,12 @@ export interface IBookingRepository {
    * exclusion constraint rejects entry into an active state (§10).
    */
   applyTransition(tx: PrismaTx, params: TransitionParams): Promise<BookingRecord>;
+  /**
+   * Add a balance payment to `paid_amount` (§8.3). Never overwrites — confirmation
+   * already SET it to the deposit. Must not double-count a redelivered outbox
+   * event; the implementation carries that guard.
+   */
+  addPaidAmount(tx: PrismaTx, bookingId: string, amount: bigint): Promise<void>;
   findById(tx: PrismaTx, id: string): Promise<BookingRecord | null>;
   findByCode(tx: PrismaTx, code: string): Promise<BookingRecord | null>;
   findByIdempotencyKey(tx: PrismaTx, key: string): Promise<BookingRecord | null>;

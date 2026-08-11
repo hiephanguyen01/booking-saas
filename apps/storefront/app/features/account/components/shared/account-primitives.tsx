@@ -21,8 +21,13 @@ export function AccountPanel({
 
 export function PageHeading({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
-    <div className="flex min-h-13 flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
+    <div
+      className={cn(
+        'min-h-13 flex-wrap items-center justify-between gap-3',
+        action ? 'flex' : 'hidden md:flex',
+      )}
+    >
+      <div className="hidden items-center gap-3 md:flex">
         <h1 className="text-lg font-semibold leading-7 text-foreground">{title}</h1>
       </div>
       {action}

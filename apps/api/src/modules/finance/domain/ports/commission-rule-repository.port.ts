@@ -33,6 +33,8 @@ export interface IncompatibleDepositCoverage {
 export interface ICommissionRuleRepository {
   /** All rules for the current tenant (RLS-scoped) — precedence resolved in the domain. */
   list(tx: PrismaTx): Promise<CommissionRuleRecord[]>;
+  /** Set the platform fee on every rule of the current tenant (RLS-scoped). */
+  updatePlatformRateForTenant(tx: PrismaTx, platformRate: number): Promise<number>;
   findById(tx: PrismaTx, id: string): Promise<CommissionRuleRecord | null>;
   findIncompatibleListingsForRule(
     tx: PrismaTx,

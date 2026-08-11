@@ -57,6 +57,24 @@ export function FavoriteListingCard({
   );
 }
 
+/** The exact compact Filter result card, for account collections below `md`. */
+export function FavoriteMobileSearchResultCard({
+  listing,
+  dismissControl,
+}: {
+  listing: PublicListingResponse;
+  dismissControl?: ListingCardDismissControl;
+}) {
+  const favoriteControl = useFavoriteControl(listing);
+  return (
+    <SearchResultCard
+      listing={listing}
+      favoriteControl={favoriteControl}
+      dismissControl={dismissControl}
+    />
+  );
+}
+
 /** SearchResultCard (filter page row) with a wired favorite heart. */
 export function FavoriteSearchResultCard({
   listing,

@@ -746,7 +746,21 @@ Every transition goes through a single domain function (`booking.transitionTo(ne
 
 ### 8.3. Paying the Remaining Balance (deposit)
 
-If `deposit_percent < 100`: the booking becomes `confirmed` after paying the deposit; the remainder creates a `kind=balance` payment with a due date (default: before the usage time, or paid on-site — configured on the listing as `balance_due: online_before | on_arrival`). Reminders are sent via a job. If not paid on time (for `online_before`): the tenant configures whether to auto-cancel per policy or keep the booking.
+If `deposit_percent < 100`: the booking becomes `confirmed` after paying the deposit, and the remainder
+is settled one of two ways, configured on the listing as `balance_due: online_before | on_arrival`.
+
+**As implemented (2026-08-11):** the customer settles an `online_before` balance from their own booking
+page — the same **Thanh toán ngay** form, relabelled **Thanh toán số dư**, which creates a second
+`kind=balance` payment for exactly `final_amount − paid_amount`. Paying it leaves the booking
+`confirmed` and only raises `paid_amount`; the settlement's `online_held_amount` is recomputed from all
+succeeded payments, so custody covers both. **There is deliberately no deadline and no auto-cancel:** a
+balance left unpaid simply falls through to on-site collection at completion, exactly as `on_arrival`
+does, so a booking can never be stranded by an unpaid balance. Reminder notifications are not built.
+
+> Until 2026-08-11 nothing implemented `online_before` at all: `Payment.assertPayable` refused any
+> payment on a `confirmed` booking, so the page showed an outstanding balance the customer had no way
+> to pay, and the two `balance_due` modes were measurably identical. See
+> [`docs/superpowers/plans/2026-08-11-money-flow-results.md`](./docs/superpowers/plans/2026-08-11-money-flow-results.md) → D1.
 
 **Extra charges (overtime, surcharges)** — a routine occurrence in the studio industry: the partner adds a line to the booking's `additional_charges` **before** `completed` (the customer is notified); this amount has commission computed on it just like an `on_arrival` amount (the partner collects on the platform's behalf). Without this mechanism, overtime charges would be collected in cash outside the system — real GMV would exceed recorded GMV, and the tenant would miss out on commission in its core vertical.
 
@@ -1051,13 +1065,24 @@ Validation when creating a `funded_by = tenant` promotion: warn (and block if it
 
 ### 13.2. Journal Entries for the Section 3.3 Example (2,000,000 ₫ booking, completed)
 
+Prices are **VAT-inclusive gross** and every rate bites on the amount **net of
+VAT** (see [`docs/features/vat.md`](./docs/features/vat.md)). At the 8% rate in
+force until 2026-12-31, the 2,000,000 ₫ contains 148,148 ₫ of VAT, so the rates
+apply to 1,851,852 ₫:
+
 | #   | Account                                     | Debit     | Credit    |
 | --- | ------------------------------------------- | --------- | --------- |
 | 1   | Tenant — cash received via gateway (asset)  | 2,000,000 |           |
-| 2   | Partner payable                             |           | 1,700,000 |
-| 3   | Affiliate payable                           |           | 100,000   |
-| 4   | Platform fee payable (tenant owes platform) |           | 40,000    |
-| 5   | Tenant revenue (net commission revenue)     |           | 160,000   |
+| 2   | Partner payable                             |           | 1,722,222 |
+| 3   | Affiliate payable                           |           | 92,593    |
+| 4   | Platform fee payable (tenant owes platform) |           | 37,037    |
+| 5   | Tenant revenue (net commission revenue)     |           | 148,148   |
+
+The partner keeps the **gross** residual (2,000,000 − 277,778 tenant commission):
+under the agent model the VAT inside its share is the partner's own to remit, which
+is why the journal still balances with no VAT line. A seller that charges no VAT
+(a household under the 200M ₫/year threshold) produces the pre-VAT figures
+instead — 1,700,000 / 100,000 / 40,000 / 160,000.
 
 For a booking with a `funded_by = tenant` promotion: cash received is only 1,900,000 ₫ but partner payable is still 1,700,000 ₫ (based on the original price) — the journal balances thanks to a `promo_discount` line of 100,000 ₫ debited to the tenant's share (sections 12.4/12.5).
 
@@ -1356,7 +1381,7 @@ Definition of done per phase: `pnpm turbo lint typecheck test` green + E2E green
 | 4   | Zalo ZNS requires an OA + pre-approved templates                                        | Start the registration process early in Phase 1, integrate in Phase 2                                                                        |
 | 5   | The `platform% + affiliate% ≤ tenant%` constraint                                       | Validate in both the UI + the domain layer when saving a commission rule                                                                     |
 | 6   | Production hosting/deployment                                                           | Not yet decided (VPS + Docker, or a PaaS). Doesn't block Phase 0–1 (docker-compose for dev)                                                  |
-| 7   | Vietnamese tax / e-invoicing                                                            | Out of scope for the MVP; the ledger already has enough data to generate reports later                                                       |
+| 7   | Vietnamese e-invoicing (hóa đơn điện tử)                                                | VAT itself is **implemented** — see [`docs/features/vat.md`](./docs/features/vat.md). E-invoice issuance and NĐ 117/2025 withholding are still out of scope |
 | 8   | Personal data protection (Decree 13/2023/NĐ-CP)                                         | A privacy policy + consent at data collection; encryption of sensitive PII; a data-deletion process on request; customer data-access logging |
 | 9   | Customer–partner disputes (service not as described...)                                 | Dedicated custody dispute state is implemented; Tenant still adjudicates manually and performs SePay refunds by bank transfer with evidence |
 

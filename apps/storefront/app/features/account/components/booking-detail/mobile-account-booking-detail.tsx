@@ -53,6 +53,7 @@ export function MobileAccountBookingDetail({
         locale={locale}
         backHref={storefrontPaths.account.bookings(locale)}
         chatHref={storefrontPaths.account.messages(locale)}
+        showHeader={false}
         settlement={settlement}
         actionError={actionError}
         extraSections={

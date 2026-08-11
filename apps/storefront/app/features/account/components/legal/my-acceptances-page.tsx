@@ -45,7 +45,7 @@ export function MyAcceptancesPage({
   return (
     <div className="flex flex-col gap-(--sf-section-gap) py-2 font-studio md:gap-4">
       <div>
-        <h1 className="text-base font-semibold leading-6 text-foreground">
+        <h1 className="hidden text-base font-semibold leading-6 text-foreground md:block">
           {t('myAcceptancesTitle')}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('myAcceptancesSubtitle')}</p>

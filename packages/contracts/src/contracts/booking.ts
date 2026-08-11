@@ -260,6 +260,23 @@ const bookingCoreSchema = z.object({
   /** Exact cancellation decision persisted for refund recovery; null before cancellation. */
   refundDueAmount: z.string().nullable(),
   refundPercent: z.number().int().min(0).max(100).nullable(),
+  /**
+   * VAT frozen onto this booking (§VAT), in basis points — 800 = 8%, 0 = the
+   * seller charges none. Derived from `commission_snapshot.tax`, which is NOT
+   * itself exposed to the customer; only the tax facts are, since they belong on
+   * the customer's own receipt while the take-rate does not.
+   */
+  vatBps: z.number().int().min(0),
+  /** VND đồng digit string; the VAT already inside `finalAmount`. */
+  vatAmount: z.string(),
+  /** VND đồng digit string; `finalAmount − paidAmount`, floored at 0. */
+  balanceAmount: z.string(),
+  /**
+   * Whether the customer may settle that balance online right now — true only for
+   * a confirmed booking that still owes money (§8.3). The server owns this rule so
+   * the storefront never re-derives it.
+   */
+  canPayBalance: z.boolean(),
   /** Inventory (§9.4): refundable deposit + fulfillment state. */
   securityDeposit: z.string(),
   pickedUpAt: z.string().nullable(),

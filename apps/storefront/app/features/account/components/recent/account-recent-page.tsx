@@ -4,11 +4,15 @@ import { Link, useOutletContext } from 'react-router';
 import type { AccountOutletContext } from '~/features/account/hooks/use-account-layout-controller';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
+import {
+  FavoriteListingCard,
+  FavoriteMobileSearchResultCard,
+} from '~/features/favorites/components/favorite-cards';
 import {
   AccountListState,
   AccountTypeTabs,
 } from '~/features/account/components/shared/account-primitives';
+import { MobileAccountListingCollection } from '~/features/account/components/shared/mobile-account-listing-collection';
 import { useAccountRecentPageController } from '~/features/account/hooks/use-account-recent-page-controller';
 import type { loadAccountRecentRoute } from '~/features/account/server/account-recent-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';
@@ -31,46 +35,73 @@ export function AccountRecentPage({
     selectType,
     visibleItems,
   } = useAccountRecentPageController(loaderData.items);
+  const tabs = [
+    { key: 'all', label: t('recent.all'), active: isAllSelected, onSelect: selectAll },
+    ...listingTypes.map((type) => ({
+      key: type.id,
+      label: type.name,
+      active: isTypeSelected(type.slug),
+      onSelect: () => selectType(type.slug),
+    })),
+  ];
+
+  const content =
+    visibleItems.length > 0 ? (
+      <div className="grid grid-cols-1 gap-(--sf-section-gap) sm:grid-cols-2 md:gap-5 xl:grid-cols-3">
+        {visibleItems.map((item) => (
+          <FavoriteListingCard
+            key={keyOf(item)}
+            listing={item}
+            className="sm:min-h-98.5"
+            dismissControl={{
+              label: t('recent.remove', { title: item.title }),
+              onDismiss: () => removeItem(item),
+            }}
+          />
+        ))}
+      </div>
+    ) : (
+      <AccountListState
+        icon={Clock3}
+        message={t('recent.empty')}
+        action={
+          <Button asChild>
+            <Link to={storefrontPaths.home(loaderData.locale)}>{t('recent.explore')}</Link>
+          </Button>
+        }
+      />
+    );
 
   return (
-    <div className="flex flex-col gap-(--sf-section-gap) py-2 font-studio md:gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-base font-semibold leading-6 text-foreground">{t('recent.title')}</h1>
-        {hasItems ? (
-          <Button variant="ghost" size="sm" onClick={clearAll}>
-            {t('recent.clear')}
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-(--sf-section-gap) md:gap-3">
-        <AccountTypeTabs
-          label={t('recent.filterLabel')}
-          tabs={[
-            { key: 'all', label: t('recent.all'), active: isAllSelected, onSelect: selectAll },
-            ...listingTypes.map((type) => ({
-              key: type.id,
-              label: type.name,
-              active: isTypeSelected(type.slug),
-              onSelect: () => selectType(type.slug),
-            })),
-          ]}
-        />
-
+    <>
+      <MobileAccountListingCollection
+        filterLabel={t('recent.filterLabel')}
+        tabs={tabs}
+        resultCount={visibleItems.length}
+        action={
+          hasItems ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 shrink-0 px-2 text-xs text-muted-foreground"
+              onClick={clearAll}
+            >
+              {t('recent.clear')}
+            </Button>
+          ) : undefined
+        }
+      >
         {visibleItems.length > 0 ? (
-          <div className="grid grid-cols-1 gap-(--sf-section-gap) sm:grid-cols-2 md:gap-5 xl:grid-cols-3">
-            {visibleItems.map((item) => (
-              <FavoriteListingCard
-                key={keyOf(item)}
-                listing={item}
-                className="sm:min-h-98.5"
-                dismissControl={{
-                  label: t('recent.remove', { title: item.title }),
-                  onDismiss: () => removeItem(item),
-                }}
-              />
-            ))}
-          </div>
+          visibleItems.map((item) => (
+            <FavoriteMobileSearchResultCard
+              key={keyOf(item)}
+              listing={item}
+              dismissControl={{
+                label: t('recent.remove', { title: item.title }),
+                onDismiss: () => removeItem(item),
+              }}
+            />
+          ))
         ) : (
           <AccountListState
             icon={Clock3}
@@ -82,7 +113,23 @@ export function AccountRecentPage({
             }
           />
         )}
+      </MobileAccountListingCollection>
+
+      <div className="hidden flex-col gap-(--sf-section-gap) py-2 font-studio md:flex md:gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-base font-semibold leading-6 text-foreground">{t('recent.title')}</h1>
+          {hasItems ? (
+            <Button variant="ghost" size="sm" onClick={clearAll}>
+              {t('recent.clear')}
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-(--sf-section-gap) md:gap-3">
+          <AccountTypeTabs label={t('recent.filterLabel')} tabs={tabs} />
+          {content}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

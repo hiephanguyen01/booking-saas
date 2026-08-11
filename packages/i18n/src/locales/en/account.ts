@@ -115,6 +115,7 @@ export const enAccount = {
     },
     chat: 'Chat',
     payNow: 'Pay now',
+    payBalance: 'Pay the balance',
     cancel: 'Cancel booking',
     review: 'Review',
     dispute: 'Dispute',
@@ -159,7 +160,8 @@ export const enAccount = {
       securityDeposit: 'Security deposit',
       method: 'Payment method',
       balance: 'Remaining balance',
-      taxNote: 'Price includes 8% tax and 5% service fee',
+      taxNote: 'Includes {percent}% VAT ({amount})',
+      taxNoteNone: 'Final price, not subject to VAT',
     },
     refund: {
       title: 'Cancellation and refund',

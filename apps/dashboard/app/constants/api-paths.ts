@@ -55,6 +55,12 @@ export const apiPaths = {
     payments: '/platform/payments',
     reviews: '/platform/reviews',
     financeDisputes: '/platform/finance/disputes',
+    /** A tenant's commission rules, read by the platform admin. */
+    tenantCommissionRules: (tenantId: string) =>
+      `/platform/finance/tenants/${segment(tenantId)}/commission-rules`,
+    /** PATCH a tenant's platform fee % (platform.finance.manage). */
+    tenantPlatformRate: (tenantId: string) =>
+      `/platform/finance/tenants/${segment(tenantId)}/platform-rate`,
   },
 
   tenant: {

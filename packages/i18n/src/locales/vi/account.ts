@@ -112,6 +112,7 @@ export const viAccount = {
     },
     chat: 'Chat',
     payNow: 'Thanh toán ngay',
+    payBalance: 'Thanh toán số dư',
     cancel: 'Hủy đơn',
     review: 'Đánh giá',
     dispute: 'Khiếu nại',
@@ -156,7 +157,8 @@ export const viAccount = {
       securityDeposit: 'Cọc bảo đảm',
       method: 'Phương thức thanh toán',
       balance: 'Còn lại phải thanh toán',
-      taxNote: 'Giá đã bao gồm: Thuế 8%, Phí dịch vụ 5%',
+      taxNote: 'Đã bao gồm thuế GTGT {percent}% ({amount})',
+      taxNoteNone: 'Giá cuối cùng, không chịu thuế GTGT',
     },
     refund: {
       title: 'Hủy đơn và hoàn tiền',
