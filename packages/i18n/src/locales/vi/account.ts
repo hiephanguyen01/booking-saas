@@ -112,6 +112,7 @@ export const viAccount = {
     },
     chat: 'Chat',
     payNow: 'Thanh toán ngay',
+    payBalance: 'Thanh toán số dư',
     cancel: 'Hủy đơn',
     review: 'Đánh giá',
     dispute: 'Khiếu nại',

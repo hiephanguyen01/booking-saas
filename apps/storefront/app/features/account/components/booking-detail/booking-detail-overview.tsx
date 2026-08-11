@@ -61,6 +61,7 @@ export function BookingDetailOverview({
         locale={locale}
         state={state}
         canPay={controller.canPay}
+        canPayBalance={controller.canPayBalance}
         canCancel={controller.canCancel}
         canDispute={controller.canDispute}
         disputeUntil={controller.disputeUntil}
@@ -176,6 +177,7 @@ function PolicyActions({
   locale,
   state,
   canPay,
+  canPayBalance,
   canCancel,
   canDispute,
   disputeUntil,
@@ -189,6 +191,7 @@ function PolicyActions({
   locale: Locale;
   state: BookingDetailState;
   canPay: boolean;
+  canPayBalance: boolean;
   canCancel: boolean;
   canDispute: boolean;
   disputeUntil: string | null;
@@ -222,14 +225,18 @@ function PolicyActions({
         {deadlineLabel ? <p>· {t('bookings.disputeDeadline', { date: deadlineLabel })}</p> : null}
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">
-        {canPay ? (
+        {/* One form, two labels: the first payment and a balance payment use the
+            same `pay` intent, and the backend decides which from the booking's
+            state (§8.3). The two flags are mutually exclusive by construction —
+            `pending_payment` vs `confirmed`. */}
+        {canPay || canPayBalance ? (
           <BookingPaymentForm
             buttonProps={{
               className:
                 'h-10 rounded-sm bg-primary px-6 text-primary-foreground hover:bg-primary/90',
             }}
           >
-            {t('bookings.payNow')}
+            {canPayBalance ? t('bookings.payBalance') : t('bookings.payNow')}
           </BookingPaymentForm>
         ) : null}
         {canCancel ? (
