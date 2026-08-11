@@ -24,38 +24,6 @@ function LoadingRegion({
   );
 }
 
-export function CatalogResultSkeleton() {
-  return (
-    <div
-      className={cn(
-        PANEL_SURFACE,
-        'flex min-h-32 gap-3 overflow-hidden bg-card p-(--sf-surface-pad) md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5 md:rounded-lg md:border-[1.4px] md:border-border md:p-0 md:shadow-none',
-      )}
-      aria-hidden="true"
-    >
-      <StorefrontSkeleton className="w-28 shrink-0 rounded-(--sf-image-radius) md:w-auto md:min-h-0 md:rounded-none" />
-      <div className="hidden min-h-0 grid-rows-2 gap-1.5 bg-muted md:grid">
-        <StorefrontSkeleton className="min-h-0 rounded-none" />
-        <StorefrontSkeleton className="min-h-0 rounded-none" />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 py-1 md:gap-3 md:px-5 md:py-4 md:pr-6 md:pl-[18px]">
-        <div className="flex flex-col gap-2">
-          <StorefrontSkeleton className="h-7 w-3/5" />
-          <StorefrontSkeleton className="h-5 w-2/5" />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <StorefrontSkeleton className="h-4 w-24" />
-          <StorefrontSkeleton className="h-5 w-24" />
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <StorefrontSkeleton className="h-6 w-48" />
-          <StorefrontSkeleton className="h-5 w-20" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function SearchBarSkeleton({ label }: { label: string }) {
   return (
     <LoadingRegion label={label} className="bg-foreground font-studio text-background">

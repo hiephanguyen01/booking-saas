@@ -2,6 +2,7 @@ import type { PublicListingResponse } from '@booking/contracts';
 import { Heart, Images, MapPin, X } from 'lucide-react';
 import { Link } from 'react-router';
 import { Image } from '@booking/ui/components/media/image';
+import { cn } from '@booking/ui/lib/utils';
 import { RatingStars, RatingSummary } from '~/components/rating-stars';
 import { DiscountBadge } from '~/components/discount-badge';
 import type {
@@ -17,6 +18,12 @@ import type {
   ListingFavoriteControl,
 } from '~/features/catalog/lib/listing-card.types';
 import { calculateDiscountPercent } from '~/features/catalog/lib/listing-card-presentation';
+import {
+  CATALOG_RESULT_CARD_SHELL_CLASS,
+  CATALOG_RESULT_CONTENT_CLASS,
+  CATALOG_RESULT_PRIMARY_MEDIA_CLASS,
+  CATALOG_RESULT_SECONDARY_MEDIA_CLASS,
+} from './catalog-result-card-layout';
 
 type SearchResultCardListing = EnrichedSearchListing | PublicListingResponse;
 
@@ -59,7 +66,12 @@ export function SearchResultCard({
     // resolve its `h-full` against and sized itself from its own aspect ratio
     // instead. A 4:3 source happened to land on this card's 184px, which is why
     // only portrait uploads broke out of the card.
-    <article className="group relative flex min-h-32 gap-3 overflow-hidden bg-card p-(--sf-surface-pad) transition-[border-color,box-shadow] rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow) hover:border-primary/50 md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:grid-rows-1 md:gap-x-1.5 md:p-0">
+    <article
+      className={cn(
+        CATALOG_RESULT_CARD_SHELL_CLASS,
+        'group transition-[border-color,box-shadow] hover:border-primary/50',
+      )}
+    >
       {favoriteControl ? (
         <button
           type="button"
@@ -91,7 +103,10 @@ export function SearchResultCard({
         // No height below `md`: as a flex child the photo stretches to the row,
         // which is both a definite height for the `h-full` image inside and a
         // photo that is always exactly as tall as the card beside it.
-        className="relative w-28 shrink-0 overflow-hidden rounded-(--sf-image-radius) bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:h-full md:w-auto md:rounded-none"
+        className={cn(
+          CATALOG_RESULT_PRIMARY_MEDIA_CLASS,
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+        )}
       >
         {photos[0] ? (
           <Image
@@ -111,7 +126,7 @@ export function SearchResultCard({
         ) : null}
       </Link>
 
-      <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
+      <div className={CATALOG_RESULT_SECONDARY_MEDIA_CLASS}>
         {[
           { slot: 'secondary', photo: photos[1] },
           { slot: 'tertiary', photo: photos[2] },
@@ -130,7 +145,7 @@ export function SearchResultCard({
         ))}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1 py-0.5 pr-0.5 md:justify-center md:gap-3 md:px-5 md:py-4 md:pr-6 md:pl-[18px]">
+      <div className={CATALOG_RESULT_CONTENT_CLASS}>
         <div className="min-w-0">
           <Link
             to={href}
