@@ -1,4 +1,4 @@
-import type { BookingStatus, PublicListingResponse } from '@booking/contracts';
+import type { BookingStatus } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { BadgeCheck, CalendarDays, History, Home, Search, WalletCards } from 'lucide-react';
@@ -8,12 +8,13 @@ import { storefrontPaths } from '~/constants/paths';
 import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
 import { BookingOutcomeLayout } from './booking-outcome-layout';
 import { MobileFlowHeader } from '~/features/site-shell/components/mobile-flow-header';
-import { ListingCard } from '~/features/catalog/components/listing-card';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 import { formatVnd } from '~/lib/ui';
 import { MobileBookingDetail } from './mobile-booking-detail';
 import { MobileStickyActionBar } from '~/features/site-shell/components/mobile-sticky-action-bar';
 import { cn } from '@booking/ui/lib/utils';
 import { PANEL_SURFACE } from '~/constants/surfaces';
+import { BookingRecommendationsSection } from './booking-recommendations-section';
 
 interface BookingSuccessViewProps {
   code: string;
@@ -23,7 +24,7 @@ interface BookingSuccessViewProps {
   bookingStatus: BookingStatus | null;
   paidAmount: string | null;
   booking: BookingDetailViewModel | null;
-  recommendations: PublicListingResponse[];
+  recommendations: DiscoveryListingCardData[];
   showDetail: boolean;
   submitting: boolean;
 }
@@ -88,6 +89,7 @@ export function BookingSuccessView({
             bookingStatus={bookingStatus}
             paidAmount={paidAmount}
             booking={booking}
+            recommendations={recommendations}
             primaryHref={desktopPrimaryHref}
             PrimaryIcon={PrimaryIcon}
           />
@@ -117,6 +119,7 @@ export function BookingSuccessView({
           bookingStatus={bookingStatus}
           paidAmount={paidAmount}
           booking={booking}
+          recommendations={recommendations}
           primaryHref={desktopPrimaryHref}
           PrimaryIcon={PrimaryIcon}
         />
@@ -133,9 +136,10 @@ function DesktopSuccess({
   bookingStatus,
   paidAmount,
   booking,
+  recommendations,
   primaryHref,
   PrimaryIcon,
-}: Omit<BookingSuccessViewProps, 'recommendations' | 'showDetail' | 'submitting'> & {
+}: Omit<BookingSuccessViewProps, 'showDetail' | 'submitting'> & {
   primaryHref: string;
   PrimaryIcon: typeof History;
 }) {
@@ -149,6 +153,13 @@ function DesktopSuccess({
       bookingStatus={bookingStatus}
       paidAmount={paidAmount}
       booking={booking}
+      afterDetails={
+        <BookingRecommendationsSection
+          items={recommendations}
+          headingId="booking-recommendations-desktop-heading"
+          className="mt-(--sf-section-gap) md:mt-4"
+        />
+      }
       icon={
         <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-success/10 text-success ring-1 ring-inset ring-success/20">
           <BadgeCheck className="size-6" strokeWidth={1.8} aria-hidden="true" />
@@ -209,7 +220,7 @@ function MobileSuccess({
   maskedEmail: string | null;
   booking: BookingDetailViewModel | null;
   primaryHref: string;
-  recommendations: PublicListingResponse[];
+  recommendations: DiscoveryListingCardData[];
 }) {
   const { t } = useTranslation(NsI18n.Booking);
   return (
@@ -264,30 +275,10 @@ function MobileSuccess({
           </Button>
         </section>
 
-        {recommendations.length ? (
-          <section className="mt-7" aria-labelledby="booking-recommendations-heading">
-            <div className="flex items-end justify-between px-4">
-              <div>
-                <p className="text-xs font-semibold tracking-wider text-primary uppercase">
-                  {t('success.mobileExplore')}
-                </p>
-                <h2 id="booking-recommendations-heading" className="mt-1 text-lg font-bold">
-                  {t('success.recommendations')}
-                </h2>
-              </div>
-            </div>
-            <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-3">
-              {recommendations.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  layout="stacked"
-                  className="w-52 shrink-0 snap-start"
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <BookingRecommendationsSection
+          items={recommendations}
+          headingId="booking-recommendations-mobile-heading"
+        />
       </main>
     </div>
   );

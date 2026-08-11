@@ -1,4 +1,4 @@
-import { customerPaymentMethodSchema, type PublicListingResponse } from '@booking/contracts';
+import { customerPaymentMethodSchema } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import { getOptionalAuth } from '~/lib/server/auth.server';
@@ -21,12 +21,16 @@ import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
 import { rethrowCriticalDataError } from '~/lib/server/optional-data.server';
 import { toBookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,
   isMockPaymentRedirect,
 } from '~/features/checkout/server/payment-redirect.server';
-import { fetchListing, fetchListings } from '~/features/catalog/server/catalog.server';
+import {
+  fetchDiscoveryListings,
+  fetchListing,
+} from '~/features/catalog/server/catalog.server';
 
 const BOOKING_DETAIL_MAX_FORM_BYTES = 16 * 1024;
 
@@ -74,7 +78,7 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
     rethrowCriticalDataError(error);
   }
 
-  let recommendations: PublicListingResponse[] = [];
+  let recommendations: DiscoveryListingCardData[] = [];
   const bookingSucceeded =
     status.paymentStatus === 'succeeded' ||
     booking?.status === 'confirmed' ||
@@ -83,7 +87,7 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
     try {
       const bookedListing = await fetchListing(request, booking.listingSlug);
       if (!bookedListing) throw new Error('Booked listing unavailable');
-      const candidates = await fetchListings(
+      const candidates = await fetchDiscoveryListings(
         request,
         new URLSearchParams({
           type: bookedListing.listingTypeSlug,
@@ -92,7 +96,7 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
         }),
       );
       recommendations = candidates
-        .filter((candidate) => candidate.slug !== booking?.listingSlug)
+        .filter((candidate) => candidate.listing.slug !== booking?.listingSlug)
         .slice(0, 6);
     } catch {
       // Recommendations are supplementary; payment outcome must remain available.

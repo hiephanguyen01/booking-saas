@@ -286,7 +286,7 @@ export function ListingCard({
               </p>
             ) : null}
             {presentation?.distanceMeters !== undefined ? (
-              <p className="text-xs font-medium text-primary">
+              <p className="text-xs font-bold text-right text-success">
                 {formatDistance(presentation.distanceMeters, locale)}
               </p>
             ) : null}
