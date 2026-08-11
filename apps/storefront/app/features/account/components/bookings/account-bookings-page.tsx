@@ -20,7 +20,6 @@ import {
 import { useAccountBookingsPageController } from '~/features/account/hooks/use-account-bookings-page-controller';
 import type { loadAccountBookingsRoute } from '~/features/account/server/account-bookings-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';
-import { MobileFlowHeader } from '~/features/site-shell/components/mobile-flow-header';
 import { MobileBookingHistoryCard } from './mobile-booking-history-card';
 
 export function AccountBookingsPage({
@@ -59,7 +58,6 @@ export function AccountBookingsPage({
   return (
     <>
       <div className="-mx-4 -mt-4 bg-muted/35 pb-5 sm:-mx-6 md:hidden">
-        <MobileFlowHeader title={t('bookings.title')} backLabel={t('bookings.mobile.back')} />
         <div className="border-b border-background/10 bg-foreground px-4 pb-4">
           <label className="relative block">
             <span className="sr-only">{t('bookings.mobile.searchLabel')}</span>

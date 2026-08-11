@@ -8,6 +8,7 @@ import { ACCOUNT_NAV_ICONS } from '~/components/account-nav-icons';
 import { userInitials } from '~/features/account/lib/account-nav';
 import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import { useAccountShellController } from '~/features/account/hooks/use-account-shell-controller';
+import { AccountMobileHeader } from './account-mobile-header';
 
 export function AccountShell({
   user,
@@ -23,6 +24,7 @@ export function AccountShell({
   const { t } = useTranslation(NsI18n.Account);
   return (
     <div className="bg-muted/35 font-studio">
+      <AccountMobileHeader locale={locale} />
       <div className="mx-auto grid w-full max-w-292.5 gap-6 px-4 py-4 sm:px-6 lg:grid-cols-[270px_minmax(0,1fr)] lg:gap-7.5 lg:py-4 xl:px-0">
         <aside className="mt-2 hidden w-64 self-start lg:block" aria-label={t('title')}>
           <AccountIdentity user={user} />

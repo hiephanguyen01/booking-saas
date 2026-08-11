@@ -27,6 +27,7 @@ export function MobileBookingDetail({
   actionBar,
   extraSections,
   actionError,
+  showHeader = true,
 }: {
   booking: BookingDetailViewModel;
   locale: Locale;
@@ -36,6 +37,7 @@ export function MobileBookingDetail({
   actionBar?: ReactNode;
   extraSections?: ReactNode;
   actionError?: ReactNode;
+  showHeader?: boolean;
 }) {
   const { t } = useTranslation([NsI18n.Booking, NsI18n.Account]);
 
@@ -46,13 +48,15 @@ export function MobileBookingDetail({
         actionBar ? 'pb-28' : 'pb-(--sf-section-gap)',
       )}
     >
-      <MobileFlowHeader
-        title={t('booking:viewDetails')}
-        backHref={backHref}
-        backLabel={t('booking:mobile.back')}
-        chatHref={chatHref}
-        chatLabel={t('account:bookings.chat')}
-      />
+      {showHeader ? (
+        <MobileFlowHeader
+          title={t('booking:viewDetails')}
+          backHref={backHref}
+          backLabel={t('booking:mobile.back')}
+          chatHref={chatHref}
+          chatLabel={t('account:bookings.chat')}
+        />
+      ) : null}
 
       <main className="mx-auto flex w-full max-w-lg flex-col gap-(--sf-section-gap) px-3 py-(--sf-section-gap)">
         <section className={cn(PANEL_SURFACE, 'overflow-hidden bg-card')}>

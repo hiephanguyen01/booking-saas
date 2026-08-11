@@ -41,7 +41,9 @@ export function ProfileIdentityCard({
 
   return (
     <AccountPanel className="p-(--sf-surface-pad) md:px-8 md:py-8 lg:px-10">
-      <h1 className="text-lg font-semibold leading-7 text-foreground">{t('profile.title')}</h1>
+      <h1 className="hidden text-lg font-semibold leading-7 text-foreground md:block">
+        {t('profile.title')}
+      </h1>
       <p className="mt-1 text-sm leading-5 text-muted-foreground">
         {t('profile.identityDescription')}
       </p>

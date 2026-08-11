@@ -3,7 +3,6 @@ import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, MessageCircle } from 'lucide-react';
 import { Link, useOutletContext } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
-import { MobileFlowHeader } from '~/features/site-shell/components/mobile-flow-header';
 import type { AccountOutletContext } from '~/features/account/hooks/use-account-layout-controller';
 import {
   AccountPanel,
@@ -18,12 +17,6 @@ export function AccountMessagesPage() {
   return (
     <>
       <div className="-mx-4 -mt-4 bg-muted/35 pb-5 sm:-mx-6 md:hidden">
-        <MobileFlowHeader
-          title={t('messages.title')}
-          backHref={storefrontPaths.account.overview(locale)}
-          backLabel={t('messages.mobile.back')}
-        />
-
         <main className="px-3 pt-(--sf-section-gap)">
           <AccountPanel className="flex min-h-72 flex-col items-center justify-center p-(--sf-surface-pad) text-center">
             <span className="grid size-14 place-items-center rounded-full bg-primary/10 text-primary">
