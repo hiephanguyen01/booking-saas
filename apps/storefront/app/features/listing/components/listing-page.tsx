@@ -135,7 +135,7 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
             attributeSchema={listing.attributeSchema}
             capacity={listing.capacity}
           />
-          <div className="order-5 md:order-none">
+          <div className="max-md:order-5! md:order-none">
             <Suspense
               fallback={
                 <>

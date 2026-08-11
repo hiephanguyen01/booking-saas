@@ -153,6 +153,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
         onActiveIndexChange={setActiveIndex}
         labels={viewerLabels}
         title={title}
+        mobileMediaLayout="full-bleed"
         description={t('group.photoCounter', {
           current: activeIndex + 1,
           total: Math.max(photos.length, 1),

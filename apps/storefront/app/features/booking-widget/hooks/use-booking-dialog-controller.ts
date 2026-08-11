@@ -379,7 +379,7 @@ export function useBookingDialogController({
   ]);
 
   return {
-    triggerLabel: t('group.chooseSchedule'),
+    triggerLabel: t('group.bookNow'),
     shellProps: {
       desktopOpen,
       mobileOpen,
