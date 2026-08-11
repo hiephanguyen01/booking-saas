@@ -19,14 +19,18 @@ import { useLocationComboboxController } from '~/features/search/hooks/use-locat
 import type { SearchFormVariant } from '~/features/search/lib/search-form-types';
 import type { SearchMode } from '~/features/search/lib/search-state';
 
-type ModeAppearance = 'pills' | 'tabs';
+export type SearchControlAppearance = 'default' | 'hero';
+
+type ModeAppearance = 'hero-pills' | 'pills' | 'tabs';
 
 export function LocationCombobox({
   initialValue,
   options,
+  appearance = 'default',
 }: {
   initialValue: string;
   options: { value: string; label: string }[];
+  appearance?: SearchControlAppearance;
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const { listId, open, select, selected, setOpen, value } = useLocationComboboxController({
@@ -46,7 +50,12 @@ export function LocationCombobox({
             aria-expanded={open}
             aria-controls={listId}
             aria-label={placeholder}
-            className="flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-left text-foreground shadow-xs hover:bg-accent focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+            className={cn(
+              'flex h-11 w-full min-w-0 items-center gap-2 border border-border bg-background px-4 text-left text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30',
+              appearance === 'hero'
+                ? 'rounded-sm shadow-none hover:bg-background'
+                : 'rounded-md shadow-xs hover:bg-accent',
+            )}
           >
             <MapPin className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span
@@ -58,7 +67,10 @@ export function LocationCombobox({
               {selected?.label ?? placeholder}
             </span>
             <ChevronsUpDown
-              className="size-4 shrink-0 text-muted-foreground opacity-70"
+              className={cn(
+                'shrink-0 text-muted-foreground opacity-70',
+                appearance === 'hero' ? 'size-5' : 'size-4',
+              )}
               aria-hidden="true"
             />
           </button>
@@ -138,16 +150,15 @@ export function CategoryPicker({
       className={cn(
         'w-full overscroll-x-contain rounded-none',
         isHero
-          ? // One scrolling row of underlined tabs at every width. The tiled grid
-            // this replaced spent 100px of the card's height on a phone before the
-            // first field, and it could not show more than six types without
-            // growing a third row; a rail shows the seventh by scrolling.
-            'sf-scroll-x flex justify-start gap-0 rounded-t-(--sf-surface-radius) border-b border-border bg-card px-1'
+          ? // On a phone each item owns its breathing room through inline padding,
+            // while the rail itself keeps a zero gap. Desktop switches back to
+            // equal implicit columns so the six-item Figma rhythm is unchanged.
+            'sf-scroll-x flex h-14 justify-start gap-0 overflow-x-auto rounded-t-(--sf-surface-radius) bg-muted/60 pr-4 lg:grid lg:grid-flow-col lg:auto-cols-[minmax(10rem,1fr)] lg:pr-0'
           : 'mx-auto max-w-292.5 overflow-x-auto px-4 pt-5 pb-4 lg:px-0',
       )}
     >
       {types.map((type) => {
-        const iconClass = cn(isHero ? 'size-4 sm:size-4.5' : 'size-5');
+        const iconClass = cn(isHero ? 'size-6 lg:size-8' : 'size-5');
         return (
           <ToggleGroupItem
             key={type.id}
@@ -155,7 +166,7 @@ export function CategoryPicker({
             className={cn(
               'font-medium',
               isHero
-                ? 'h-auto min-h-12 flex-none gap-1.5 rounded-none! border-b-2 border-transparent bg-transparent px-3 py-3 text-xs leading-4 whitespace-nowrap text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:border-b-primary data-[state=on]:bg-transparent data-[state=on]:font-bold data-[state=on]:text-primary data-[state=on]:shadow-none! sm:px-4 sm:text-sm'
+                ? 'h-14 min-w-0 flex-none gap-2 rounded-none! border-0 bg-transparent px-5 py-3 text-sm leading-5 whitespace-nowrap text-foreground hover:bg-card/70 hover:text-primary data-[state=on]:rounded-none! data-[state=on]:border-0 data-[state=on]:border-b-3 data-[state=on]:border-b-primary data-[state=on]:bg-card data-[state=on]:text-primary data-[state=on]:shadow-(--sf-surface-shadow)! lg:gap-3 lg:px-4 lg:text-base lg:leading-6'
                 : 'min-h-11 gap-2 rounded-full! border border-transparent px-4 py-2 text-sm whitespace-nowrap text-background/75 hover:bg-background/10 hover:text-background data-[state=on]:border-background data-[state=on]:bg-transparent data-[state=on]:text-background',
             )}
           >
@@ -171,6 +182,8 @@ export function CategoryPicker({
 }
 
 const MODE_ITEM_CLASS: Record<ModeAppearance, string> = {
+  'hero-pills':
+    'h-10 rounded-full border-border px-4 text-sm font-medium text-muted-foreground shadow-none hover:border-success hover:bg-success/10 hover:text-success data-[state=on]:border-success data-[state=on]:bg-success/10 data-[state=on]:text-success data-[state=on]:shadow-none',
   pills:
     'h-9 rounded-full border-border px-4 text-xs font-semibold data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary',
   tabs: 'h-14 rounded-none! border-0 border-b-2 border-transparent bg-transparent data-[state=on]:border-primary data-[state=on]:bg-transparent data-[state=on]:text-primary',
@@ -188,14 +201,15 @@ export function ModeToggle({
   appearance: ModeAppearance;
 }) {
   const { t } = useTranslation(NsI18n.Common);
-  const isPills = appearance === 'pills';
+  const isPills = appearance !== 'tabs';
+  const spacing = appearance === 'hero-pills' ? 3 : isPills ? 3 : 0;
   return (
     <ToggleGroup
       type="single"
       value={mode}
       onValueChange={(value) => value && onModeChange(value as SearchMode)}
       variant={isPills ? 'outline' : 'default'}
-      spacing={isPills ? 3 : 0}
+      spacing={spacing}
       // The two pills sit side by side at ~270px, wider than the hero card on a
       // 320px screen — let them wrap instead of pushing out of the card.
       className={cn(isPills ? 'max-w-full flex-wrap' : 'mx-auto grid grid-cols-2 px-6')}
@@ -218,11 +232,13 @@ export function SearchField({
   label,
   children,
   asLabel = true,
+  appearance = 'default',
 }: {
   icon: LucideIcon;
   label: string;
   children: ReactNode;
   asLabel?: boolean;
+  appearance?: SearchControlAppearance;
 }) {
   const content = (
     <>
@@ -231,8 +247,10 @@ export function SearchField({
       <span className="min-w-0 flex-1 [&_[data-slot=select-trigger]]:w-full">{children}</span>
     </>
   );
-  const className =
-    'flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30';
+  const className = cn(
+    'flex h-11 w-full min-w-0 items-center gap-2 border border-border bg-background px-4 text-foreground focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30',
+    appearance === 'hero' ? 'rounded-sm shadow-none' : 'rounded-md shadow-xs',
+  );
 
   return asLabel ? (
     <label className={className}>{content}</label>
