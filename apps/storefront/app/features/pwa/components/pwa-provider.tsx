@@ -106,7 +106,7 @@ export function PwaProvider({
 
       {!installBannerDismissed && canInstall ? (
         <aside
-          className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto grid max-w-xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-white/15 bg-neutral-950/80 p-3 pr-9 text-white shadow-2xl backdrop-blur-md lg:hidden"
+          className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto grid max-w-xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-background/15 bg-foreground/80 p-3 pr-9 text-background shadow-2xl backdrop-blur-md lg:hidden"
           aria-label={t('install.title')}
         >
           <Image
@@ -116,7 +116,7 @@ export function PwaProvider({
           />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{appName}</p>
-            <p className="line-clamp-2 text-xs leading-4 text-white/75">
+            <p className="line-clamp-2 text-xs leading-4 text-background/75">
               {t('install.description')}
             </p>
           </div>
@@ -132,7 +132,7 @@ export function PwaProvider({
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute right-0 top-0 size-9 text-white/80 hover:bg-white/10 hover:text-white"
+            className="absolute right-0 top-0 size-9 text-background/80 hover:bg-background/10 hover:text-background"
             onClick={dismissInstall}
             aria-label={t('install.dismiss')}
           >
