@@ -1,5 +1,5 @@
-import type { PublicListingResponse } from '@booking/contracts';
 import { useState } from 'react';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 import {
   filterHomeListingsByLocation,
   type HomeLocationKey,
@@ -7,7 +7,7 @@ import {
 
 const PAGE_SIZE = 8;
 
-export function useRecommendedSectionController(listings: PublicListingResponse[]) {
+export function useRecommendedSectionController(listings: DiscoveryListingCardData[]) {
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [location, setLocation] = useState<HomeLocationKey>('hcm');
   const filtered = filterHomeListingsByLocation(listings, location);

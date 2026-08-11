@@ -3,6 +3,7 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { ListingCard } from '~/features/catalog/components/listing-card';
 import { SearchResultCard } from '~/features/catalog/components/search-result-card';
 import type {
+  DiscoveryListingCardData,
   ListingCardDismissControl,
   ListingCardLayout,
   ListingCardPresentation,
@@ -53,6 +54,27 @@ export function FavoriteListingCard({
       favoriteControl={favoriteControl}
       dismissControl={dismissControl}
       layout={layout}
+    />
+  );
+}
+
+/** The shared Figma-aligned card for storefront discovery rails and grids. */
+export function FavoriteDiscoveryListingCard({
+  item,
+  className,
+}: {
+  item: DiscoveryListingCardData;
+  className?: string;
+}) {
+  const favoriteControl = useFavoriteControl(item.listing);
+  return (
+    <ListingCard
+      listing={item.listing}
+      presentation={item.presentation}
+      className={className}
+      favoriteControl={favoriteControl}
+      layout="stacked"
+      variant="discovery"
     />
   );
 }

@@ -7,10 +7,12 @@ import { Link } from 'react-router';
 import { DiscountBadge } from '~/components/discount-badge';
 import { RatingStars, RatingSummary } from '~/components/rating-stars';
 import { storefrontPaths } from '~/constants/paths';
+import { SURFACE_FRAME } from '~/constants/surfaces';
 import type {
   ListingCardDismissControl,
   ListingCardLayout,
   ListingCardPresentation,
+  ListingCardVariant,
   ListingFavoriteControl,
 } from '~/features/catalog/lib/listing-card.types';
 import { useLocale } from '~/hooks/use-locale';
@@ -55,6 +57,7 @@ export function ListingCard({
   dismissControl,
   presentation,
   layout = 'responsive-row',
+  variant = 'default',
 }: {
   listing: PublicListingResponse;
   className?: string;
@@ -62,6 +65,7 @@ export function ListingCard({
   dismissControl?: ListingCardDismissControl;
   presentation?: ListingCardPresentation;
   layout?: ListingCardLayout;
+  variant?: ListingCardVariant;
 }) {
   const locale = useLocale();
   const { t } = useTranslation(NsI18n.Listing);
@@ -72,12 +76,19 @@ export function ListingCard({
   const rating = listing.ratingAvg;
   const ratingCount = listing.reviewCount;
   const isRow = layout === 'responsive-row';
+  const isDiscovery = variant === 'discovery';
   const chipLayout = isRow ? 'row' : 'stacked';
+  const hasDiscount = presentation?.discountPercent != null;
 
   const originalPrice = presentation?.originalPrice ? formatVnd(presentation.originalPrice) : null;
 
-  const meta =
-    rating !== null && ratingCount > 0 ? (
+  const meta = isDiscovery ? (
+    <DiscoveryListingMeta
+      rating={rating}
+      ratingCount={ratingCount}
+      completedBookings={presentation?.completedBookings}
+    />
+  ) : rating !== null && ratingCount > 0 ? (
       <ListingRating rating={rating} count={ratingCount} row={isRow} />
     ) : summary ? (
       <p
@@ -97,19 +108,24 @@ export function ListingCard({
       // that is the full width of the card.
       <div
         className={cn(
-          isRow ? 'shrink-0 text-right text-xs sm:text-sm' : 'mt-auto text-sm @max-[220px]:text-xs',
+          isRow
+            ? 'shrink-0 text-right text-xs sm:text-sm'
+            : 'mt-auto text-sm @max-[220px]:text-xs',
+          isDiscovery && 'text-right',
         )}
       >
         <p
           className={cn(
             'flex flex-wrap items-baseline gap-x-1.5',
-            isRow ? 'justify-end' : 'justify-start',
+            isRow || isDiscovery ? 'justify-end' : 'justify-start',
           )}
         >
-          {originalPrice ? (
+          {hasDiscount && originalPrice ? (
             <span className="text-muted-foreground line-through">{originalPrice}</span>
           ) : null}
-          <span className={presentation?.discountPercent ? 'text-brand-accent' : 'text-foreground'}>
+          <span
+            className={hasDiscount ? 'text-brand-accent' : 'text-foreground'}
+          >
             <span className="font-normal">{t('fromPriceShort')} </span>
             <span
               className={cn(
@@ -124,7 +140,7 @@ export function ListingCard({
         <p
           className={cn(
             'mt-0.5 text-xs',
-            presentation?.discountPercent ? 'text-brand-accent' : 'text-muted-foreground',
+            hasDiscount ? 'text-brand-accent' : 'text-muted-foreground',
           )}
         >
           {presentation?.priceUnit ? t(`priceUnit.${presentation.priceUnit}`) : t('fromPrice')}
@@ -146,7 +162,8 @@ export function ListingCard({
   return (
     <article
       className={cn(
-        'group/card @container relative flex h-full flex-col overflow-hidden bg-card rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow)',
+        SURFACE_FRAME,
+        'group/card @container relative flex h-full flex-col overflow-hidden bg-card',
         className,
       )}
     >
@@ -163,7 +180,9 @@ export function ListingCard({
           // `min-h-30` is what a two-line title, a location and the price line
           // actually need; before this the row was whatever its text came to and
           // a rated card stood 52px taller than an unrated one beside it.
-          isRow
+          isDiscovery
+            ? 'h-[calc(24.625rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] min-h-[calc(24.625rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] flex-col @max-[220px]:h-[calc(18rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[220px]:min-h-[calc(18rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[190px]:h-[calc(16rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[190px]:min-h-[calc(16rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))]'
+            : isRow
             ? 'min-h-30 flex-row sm:min-h-76 sm:flex-col'
             : 'min-h-72 flex-col @max-[220px]:min-h-64 @max-[190px]:min-h-60',
         )}
@@ -178,7 +197,11 @@ export function ListingCard({
             // Three photo heights, one per width the card actually gets rendered
             // at: a full-width column, a ~208px rail slide, and a ~172px cell of
             // the two-up recommendation grid.
-            isRow ? 'w-28 sm:h-40 sm:w-auto' : 'h-40 @max-[220px]:h-34 @max-[190px]:h-28',
+            isDiscovery
+              ? 'h-46 @max-[220px]:h-34 @max-[190px]:h-28'
+              : isRow
+                ? 'w-28 sm:h-40 sm:w-auto'
+                : 'h-40 @max-[220px]:h-34 @max-[190px]:h-28',
           )}
         >
           {cover ? (
@@ -194,14 +217,23 @@ export function ListingCard({
               {listing.title}
             </div>
           )}
-          {presentation?.discountPercent ? (
-            <DiscountBadge percent={presentation.discountPercent} />
+          {presentation?.discountPercent != null ? (
+            <DiscountBadge
+              percent={presentation.discountPercent}
+              className={
+                isDiscovery
+                  ? 'top-5 h-10 w-18 text-base font-semibold sm:h-10 sm:w-18 sm:text-base @max-[220px]:top-2.5 @max-[220px]:h-6 @max-[220px]:w-14 @max-[220px]:text-xs'
+                  : undefined
+              }
+            />
           ) : null}
         </div>
         <div
           className={cn(
             'flex min-w-0 flex-1 flex-col',
-            isRow
+            isDiscovery
+              ? 'gap-3 p-(--sf-surface-pad) @max-[220px]:gap-2'
+              : isRow
               ? 'gap-1 p-(--sf-surface-pad) sm:gap-2.5 sm:p-3.5'
               : 'gap-2.5 p-(--sf-surface-pad) sm:p-3.5 @max-[220px]:gap-2',
           )}
@@ -209,15 +241,21 @@ export function ListingCard({
           <div
             className={cn(
               'flex flex-col',
-              isRow ? 'gap-0.5 sm:gap-1.5' : 'gap-1.5 @max-[220px]:gap-1',
+              isDiscovery
+                ? 'gap-2 @max-[220px]:gap-1'
+                : isRow
+                  ? 'gap-0.5 sm:gap-1.5'
+                  : 'gap-1.5 @max-[220px]:gap-1',
             )}
           >
             <h3
               className={cn(
-                'line-clamp-2 font-bold text-foreground transition-colors group-hover:text-primary',
-                isRow
-                  ? 'pr-9 text-base leading-5 sm:pr-0 sm:text-base sm:leading-6'
-                  : 'text-base leading-6 @max-[220px]:text-sm @max-[220px]:leading-5',
+                'line-clamp-2 text-foreground transition-colors group-hover:text-primary',
+                isDiscovery
+                  ? 'text-lg leading-7 font-semibold @max-[220px]:text-sm @max-[220px]:leading-5'
+                  : isRow
+                  ? 'pr-9 text-base leading-5 font-bold sm:pr-0 sm:text-base sm:leading-6'
+                  : 'text-base leading-6 font-bold @max-[220px]:text-sm @max-[220px]:leading-5',
               )}
             >
               {listing.title}
@@ -226,7 +264,9 @@ export function ListingCard({
               <p
                 className={cn(
                   'flex items-center text-muted-foreground',
-                  isRow
+                  isDiscovery
+                    ? 'gap-1 text-sm leading-5 @max-[220px]:text-xs'
+                    : isRow
                     ? 'gap-1 text-xs sm:gap-1.5 sm:text-sm'
                     : 'gap-1.5 text-sm @max-[220px]:gap-1 @max-[220px]:text-xs',
                 )}
@@ -234,7 +274,11 @@ export function ListingCard({
                 <MapPin
                   className={cn(
                     'shrink-0',
-                    isRow ? 'size-3.5 sm:size-4' : 'size-4 @max-[220px]:size-3',
+                    isDiscovery
+                      ? 'size-5 @max-[220px]:size-3'
+                      : isRow
+                        ? 'size-3.5 sm:size-4'
+                        : 'size-4 @max-[220px]:size-3',
                   )}
                   aria-hidden="true"
                 />
@@ -247,7 +291,7 @@ export function ListingCard({
               </p>
             ) : null}
           </div>
-          {isRow ? (
+          {isRow && !isDiscovery ? (
             // Rating and price share one line on the row, and go back to two
             // stacked blocks from `sm:` up where the card is a column again.
             // Two rows here is what a rated card paid 52px for.
@@ -269,7 +313,11 @@ export function ListingCard({
           aria-label={favoriteControl.label}
           aria-pressed={favoriteControl.selected}
           onClick={favoriteControl.onToggle}
-          className={cn(CHIP_CLASS, 'text-primary', CHIP_PLACEMENT.right[chipLayout])}
+          className={cn(
+            CHIP_CLASS,
+            'text-primary',
+            isDiscovery ? DISCOVERY_CHIP_PLACEMENT : CHIP_PLACEMENT.right[chipLayout],
+          )}
         >
           <Heart
             className="size-4.5 @max-[220px]:size-4"
@@ -279,7 +327,11 @@ export function ListingCard({
       ) : (
         <span
           aria-hidden="true"
-          className={cn(CHIP_CLASS, 'text-primary', CHIP_PLACEMENT.right[chipLayout])}
+          className={cn(
+            CHIP_CLASS,
+            'text-primary',
+            isDiscovery ? DISCOVERY_CHIP_PLACEMENT : CHIP_PLACEMENT.right[chipLayout],
+          )}
         >
           <Heart className="size-4.5 @max-[220px]:size-4" />
         </span>
@@ -299,6 +351,42 @@ export function ListingCard({
         </button>
       ) : null}
     </article>
+  );
+}
+
+function DiscoveryListingMeta({
+  rating,
+  ratingCount,
+  completedBookings,
+}: {
+  rating: number | null;
+  ratingCount: number;
+  completedBookings?: number;
+}) {
+  const { t } = useTranslation(NsI18n.Listing);
+  const hasRating = rating !== null && ratingCount > 0;
+  if (!hasRating && completedBookings === undefined) return null;
+
+  return (
+    <div className="flex min-h-5 items-center justify-between gap-2 text-sm leading-5 text-muted-foreground @max-[220px]:text-xs">
+      {hasRating ? (
+        <>
+          <RatingStars rating={rating} className="@max-[220px]:hidden" />
+          <RatingSummary
+            rating={rating}
+            count={ratingCount}
+            className="hidden @max-[220px]:inline-flex"
+          />
+        </>
+      ) : (
+        <span aria-hidden="true" />
+      )}
+      {completedBookings !== undefined ? (
+        <span className="shrink-0 text-right tabular-nums">
+          {t('bookedCount', { count: completedBookings })}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -355,6 +443,9 @@ const CHIP_PLACEMENT = {
     row: 'left-2 top-2 size-9 sm:left-2.5 sm:top-2.5',
   },
 } as const;
+
+const DISCOVERY_CHIP_PLACEMENT =
+  'right-5 top-5 size-10 @max-[220px]:right-2.5 @max-[220px]:top-2.5 @max-[220px]:size-8';
 
 function formatDistance(distanceMeters: number, locale: string): string {
   if (distanceMeters < 1_000) return `${distanceMeters.toLocaleString(locale)} m`;

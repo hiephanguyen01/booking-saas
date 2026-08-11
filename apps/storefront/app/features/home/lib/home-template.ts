@@ -1,4 +1,5 @@
-import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
+import type { PublicListingTypeResponse } from '@booking/contracts';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 import type { LocationOption } from '~/features/search/components/search-form';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { StudioHome } from '~/features/home/components/home';
@@ -10,7 +11,7 @@ import { StudioHome } from '~/features/home/components/home';
 export interface HomeTemplateProps {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
-  listings: PublicListingResponse[];
+  listings: DiscoveryListingCardData[];
   locations: LocationOption[];
 }
 

@@ -16,8 +16,8 @@ import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisio
 import { fetchAvailability } from '~/features/booking/server/booking.server';
 import {
   fetchListing,
+  fetchDiscoveryListings,
   fetchListingGroup,
-  fetchListings,
   fetchQuote,
 } from '~/features/catalog/server/catalog.server';
 import { openDailyDates } from '~/lib/availability';
@@ -73,7 +73,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
         ...availability,
       };
     }),
-    safe(fetchListings(request, relatedSearch)),
+    safe(fetchDiscoveryListings(request, relatedSearch)),
     loadAdministrativeProvinces(request),
     loadPublicReviews(request, url.searchParams, 'group', groupSlug),
   ]);
@@ -89,7 +89,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
   const childIds = new Set(group.listings.map((listing) => listing.id));
   const relatedListings = (catalogCandidates ?? [])
     .filter(
-      (listing) =>
+      ({ listing }) =>
         listing.id !== group.id &&
         !childIds.has(listing.id) &&
         listing.listingTypeSlug === group.listingTypeSlug,

@@ -16,6 +16,7 @@ import type {
   ListingCardDismissControl,
   ListingFavoriteControl,
 } from '~/features/catalog/lib/listing-card.types';
+import { calculateDiscountPercent } from '~/features/catalog/lib/listing-card-presentation';
 
 type SearchResultCardListing = EnrichedSearchListing | PublicListingResponse;
 
@@ -243,16 +244,4 @@ function priceUnitLabel(
     return { key: 'listing:forHours', count: context.selectedHours };
   }
   return { key: PRICE_UNIT_KEYS[priceUnit] };
-}
-
-function calculateDiscountPercent(
-  regularPrice: string | null,
-  salePrice: string | null,
-): number | null {
-  if (!regularPrice || !salePrice) return null;
-  const regular = BigInt(regularPrice);
-  const sale = BigInt(salePrice);
-  if (regular <= 0n || sale >= regular) return null;
-
-  return Number(((regular - sale) * 100n + regular / 2n) / regular);
 }

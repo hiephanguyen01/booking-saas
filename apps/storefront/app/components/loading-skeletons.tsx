@@ -1,7 +1,7 @@
 import { Skeleton } from '@booking/ui/components/ui/skeleton';
 import { cn } from '@booking/ui/lib/utils';
 import type { ComponentProps, ReactNode } from 'react';
-import { PANEL_SURFACE } from '~/constants/surfaces';
+import { PANEL_SURFACE, SURFACE_FRAME } from '~/constants/surfaces';
 
 function StorefrontSkeleton({ className, ...props }: ComponentProps<typeof Skeleton>) {
   return <Skeleton className={cn('motion-reduce:animate-none', className)} {...props} />;
@@ -168,26 +168,27 @@ export function HomeListingCardsSkeleton({
       <div
         className={cn(
           layout === 'grid'
-            ? 'grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4'
-            : 'flex gap-3 overflow-hidden sm:gap-4',
+            ? 'grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'
+            : 'flex gap-3 overflow-hidden sm:gap-4 xl:gap-6',
         )}
       >
         {Array.from({ length: count }, (_, index) => (
           <div
             key={index}
             className={cn(
-              PANEL_SURFACE,
-              'min-w-0 overflow-hidden bg-background md:rounded-lg md:border md:border-border md:shadow-none',
+              SURFACE_FRAME,
+              'h-72 min-w-0 overflow-hidden bg-card sm:h-98.5',
               layout === 'carousel'
-                ? 'basis-[13rem] shrink-0 sm:basis-[calc(33.333%-0.667rem)] lg:basis-[calc(25%-0.75rem)]'
+                ? 'basis-[13rem] shrink-0 sm:basis-[calc((100%_-_2rem)/3)] lg:basis-[calc((100%_-_3rem)/4)] xl:basis-[277.5px]'
                 : '',
             )}
           >
-            <StorefrontSkeleton className="aspect-4/3 rounded-(--sf-image-radius) md:rounded-none" />
-            <div className="space-y-2 p-(--sf-surface-pad) md:p-3.5">
-              <StorefrontSkeleton className="h-5 w-4/5" />
-              <StorefrontSkeleton className="h-3.5 w-3/5" />
-              <StorefrontSkeleton className="h-5 w-24" />
+            <StorefrontSkeleton className="h-34 rounded-(--sf-image-radius) sm:h-46 sm:rounded-none" />
+            <div className="space-y-3 p-(--sf-surface-pad)">
+              <StorefrontSkeleton className="h-6 w-4/5" />
+              <StorefrontSkeleton className="h-5 w-3/5" />
+              <StorefrontSkeleton className="h-5 w-full" />
+              <StorefrontSkeleton className="ml-auto h-10 w-3/5" />
             </div>
           </div>
         ))}
