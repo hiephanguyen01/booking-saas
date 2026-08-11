@@ -69,7 +69,11 @@ export function SearchForm({
   }
 
   const queryField = (
-    <SearchField icon={Search} label={t('home.searchPlaceholder')}>
+    <SearchField
+      icon={Search}
+      label={t('home.searchPlaceholder')}
+      appearance={isHero ? 'hero' : 'default'}
+    >
       <Input
         name="q"
         defaultValue={state.q}
@@ -80,7 +84,12 @@ export function SearchForm({
   );
 
   const locationField = (
-    <LocationCombobox key={state.location} initialValue={state.location} options={options} />
+    <LocationCombobox
+      key={state.location}
+      initialValue={state.location}
+      options={options}
+      appearance={isHero ? 'hero' : 'default'}
+    />
   );
 
   /**
@@ -104,6 +113,7 @@ export function SearchForm({
               showModeTabs={!isHero}
               availableModes={availableModes}
               singleDate={fixedPackages}
+              appearance={isHero ? 'hero' : 'default'}
             />
           ),
         }
@@ -112,7 +122,12 @@ export function SearchForm({
       ? {
           key: 'guests',
           node: (
-            <SearchField icon={Users} label={t('home.guests')} asLabel={false}>
+            <SearchField
+              icon={Users}
+              label={t('home.guests')}
+              asLabel={false}
+              appearance={isHero ? 'hero' : 'default'}
+            >
               <Select name="guests" defaultValue={String(state.guests)}>
                 <SelectTrigger
                   aria-label={t('home.guests')}
@@ -136,7 +151,11 @@ export function SearchForm({
       ? {
           key: 'quantity',
           node: (
-            <SearchField icon={Info} label={t('home.quantity')}>
+            <SearchField
+              icon={Info}
+              label={t('home.quantity')}
+              appearance={isHero ? 'hero' : 'default'}
+            >
               <Input
                 name="quantity"
                 type="number"
@@ -151,7 +170,7 @@ export function SearchForm({
       : null,
   ].filter((field) => field !== null);
 
-  if (isHero || isMobileSheet) {
+  if (isHero) {
     return (
       <Form
         ref={formRef}
@@ -160,12 +179,11 @@ export function SearchForm({
         onSubmit={onSubmit}
         aria-label={t('home.search')}
         className={cn(
-          'bg-card font-studio text-card-foreground',
-          isHero && PANEL_SURFACE,
-          isMobileSheet && 'rounded-none',
+          PANEL_SURFACE,
+          'relative overflow-visible bg-card font-studio text-card-foreground lg:mb-6',
         )}
       >
-        {isHero && types.length ? (
+        {types.length ? (
           <CategoryPicker
             types={types}
             selectedType={selectedType}
@@ -174,12 +192,85 @@ export function SearchForm({
           />
         ) : null}
 
-        <div className={cn('flex flex-col gap-3', isMobileSheet ? 'px-4 pb-8' : 'p-4 sm:p-5')}>
+        <div className="flex flex-col gap-3 p-4 sm:p-5 lg:gap-0 lg:px-6 lg:pt-5 lg:pb-12">
           {availableModes.length ? (
-            <div className="flex flex-col items-start gap-2">
+            <div className="flex flex-col items-start gap-2 lg:gap-4">
               {/* Only offer the day/hour toggle when the type actually supports both.
                   A type with a single booking mode needs no toggle — its lone mode is
                   applied silently (the hidden `mode` input below still carries it). */}
+              {availableModes.length > 1 ? (
+                <ModeToggle
+                  mode={mode}
+                  modes={availableModes}
+                  onModeChange={changeMode}
+                  appearance="hero-pills"
+                />
+              ) : null}
+              <span className="text-xs leading-4 font-medium text-success">
+                {modeHint(mode, t)}
+              </span>
+            </div>
+          ) : null}
+
+          <SearchStateInputs
+            date={date}
+            dailyRange={dailyRange}
+            fixedPackages={fixedPackages}
+            mode={mode}
+          />
+
+          <div
+            className={cn(
+              'flex flex-col gap-2.5',
+              'lg:grid lg:grid-cols-[repeat(auto-fit,minmax(0,1fr))] lg:gap-4',
+              availableModes.length && 'lg:mt-4.5',
+            )}
+          >
+            <div className="min-w-0">{queryField}</div>
+            <div className="min-w-0">{locationField}</div>
+            {compactFields.length ? (
+              <div
+                className={cn(
+                  'grid gap-2.5',
+                  'lg:contents',
+                  compactFields.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
+                )}
+              >
+                {compactFields.map((field) => (
+                  <div key={field.key} className="min-w-0">
+                    {field.node}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <Button
+            type="submit"
+            size="control"
+            className="mt-0.5 w-full font-semibold lg:absolute lg:bottom-0 lg:left-1/2 lg:mt-0 lg:h-12 lg:w-60 lg:-translate-x-1/2 lg:translate-y-1/2 lg:rounded-(--sf-surface-radius) lg:text-base lg:shadow-(--sf-surface-shadow)"
+            disabled={!canSubmit}
+          >
+            {t('home.search')}
+          </Button>
+        </div>
+      </Form>
+    );
+  }
+
+  if (isMobileSheet) {
+    return (
+      <Form
+        ref={formRef}
+        method="get"
+        action={action}
+        onSubmit={onSubmit}
+        aria-label={t('home.search')}
+        className="rounded-none bg-card font-studio text-card-foreground"
+      >
+        <div className="flex flex-col gap-3 px-4 pb-8">
+          {availableModes.length ? (
+            <div className="flex flex-col items-start gap-2">
               {availableModes.length > 1 ? (
                 <ModeToggle
                   mode={mode}
@@ -199,19 +290,13 @@ export function SearchForm({
             mode={mode}
           />
 
-          <div
-            className={cn(
-              'flex flex-col gap-2.5',
-              !isMobileSheet && 'lg:flex-row lg:items-start lg:gap-3',
-            )}
-          >
-            <div className={cn('min-w-0', !isMobileSheet && 'lg:flex-1')}>{queryField}</div>
-            <div className={cn('min-w-0', !isMobileSheet && 'lg:flex-1')}>{locationField}</div>
+          <div className="flex flex-col gap-2.5">
+            <div className="min-w-0">{queryField}</div>
+            <div className="min-w-0">{locationField}</div>
             {compactFields.length ? (
               <div
                 className={cn(
                   'grid gap-2.5',
-                  !isMobileSheet && 'lg:flex-1 lg:auto-cols-fr lg:grid-flow-col lg:gap-3',
                   compactFields.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
                 )}
               >
@@ -224,17 +309,10 @@ export function SearchForm({
             ) : null}
           </div>
 
-          {/* In the card, full width. It used to straddle the card's bottom edge,
-              which cost the section below it a 24px gutter it could not use for
-              anything else and left the button orphaned from the fields it
-              submits. */}
           <Button
             type="submit"
             size="control"
-            className={cn(
-              'mt-0.5 w-full font-bold',
-              !isMobileSheet && 'lg:w-auto lg:min-w-44 lg:self-end',
-            )}
+            className="mt-0.5 w-full font-bold"
             disabled={!canSubmit}
           >
             {t('home.search')}

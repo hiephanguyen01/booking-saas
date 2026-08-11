@@ -1,8 +1,7 @@
-import type { PublicListingResponse } from '@booking/contracts';
 import { data } from 'react-router';
 import {
-  groupDetailToCard,
-  listingDetailToCard,
+  groupDetailToDiscoveryCard,
+  listingDetailToDiscoveryCard,
 } from '~/features/account/lib/recently-viewed-item';
 import { viewedRefKey, type ViewedRef } from '~/features/account/lib/recently-viewed-ref';
 import {
@@ -16,13 +15,14 @@ import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { mapWithConcurrency } from '~/lib/server/concurrency.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { isAbortLikeError } from '~/lib/server/optional-data.server';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 
 /** One page of history is one read per entry; keep the fan-out bounded. */
 const READ_CONCURRENCY = 6;
 const MAX_RECENT_FORM_BYTES = 8 * 1024;
 
 type Resolved =
-  | { state: 'ok'; card: PublicListingResponse }
+  | { state: 'ok'; card: DiscoveryListingCardData }
   | { state: 'gone' }
   | { state: 'unavailable' };
 
@@ -62,10 +62,12 @@ async function resolveRef(request: Request, ref: ViewedRef): Promise<Resolved> {
   try {
     if (ref.kind === 'group') {
       const group = await fetchListingGroup(request, ref.slug);
-      return group ? { state: 'ok', card: groupDetailToCard(group) } : { state: 'gone' };
+      return group ? { state: 'ok', card: groupDetailToDiscoveryCard(group) } : { state: 'gone' };
     }
     const listing = await fetchListing(request, ref.slug);
-    return listing ? { state: 'ok', card: listingDetailToCard(listing) } : { state: 'gone' };
+    return listing
+      ? { state: 'ok', card: listingDetailToDiscoveryCard(listing) }
+      : { state: 'gone' };
   } catch (error) {
     if (isAbortLikeError(error)) throw error;
     return { state: 'unavailable' };

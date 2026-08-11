@@ -1,10 +1,10 @@
-import type { PublicListingResponse } from '@booking/contracts';
-import { fetchListings } from '~/features/catalog/server/catalog.server';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
+import { fetchDiscoveryListings } from '~/features/catalog/server/catalog.server';
 
 export interface HomeCatalogResult {
-  listings: PublicListingResponse[];
+  listings: DiscoveryListingCardData[];
 }
 
 export async function loadHomeCatalog(request: Request): Promise<HomeCatalogResult> {
-  return { listings: await fetchListings(request, new URLSearchParams()) };
+  return { listings: await fetchDiscoveryListings(request, new URLSearchParams()) };
 }

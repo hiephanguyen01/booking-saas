@@ -32,13 +32,13 @@ export function LocationTabs({
     >
       <TabsList
         variant="line"
-        className="sf-scroll-x h-10! w-full justify-start gap-0 rounded-none bg-transparent p-0"
+        className="sf-scroll-x h-10! w-full justify-start gap-0 rounded-none bg-transparent p-0 sm:h-13!"
       >
         {locations.map((loc) => (
           <TabsTrigger
             key={loc.key}
             value={loc.key}
-            className="h-10! flex-none rounded-none border-x-0 border-t-0 border-b-2 border-b-transparent px-3 py-2 text-xs leading-4 font-medium text-muted-foreground shadow-none after:hidden data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:font-bold data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5 sm:text-sm"
+            className="h-10! flex-none rounded-none border-x-0 border-t-0 border-b-2 border-b-transparent px-3 py-2 text-xs leading-4 font-medium text-muted-foreground shadow-none after:hidden data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:font-bold data-[state=active]:text-primary data-[state=active]:shadow-none sm:h-13! sm:px-5 sm:text-sm"
           >
             {loc.label}
           </TabsTrigger>

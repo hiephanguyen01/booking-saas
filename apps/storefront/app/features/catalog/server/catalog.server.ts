@@ -4,6 +4,7 @@ import type {
   PublicListingTypeResponse,
   PublicListingGroupDetailResponse,
   PublicCatalogSearchResponse,
+  PublicCatalogSearchItem,
   QuoteResponse,
 } from '@booking/contracts';
 import {
@@ -18,6 +19,11 @@ import { publicGetData } from '~/lib/server/api.server';
 import { mapWithConcurrency } from '~/lib/server/concurrency.server';
 import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 import { apiPaths } from '~/constants/api-paths';
+import {
+  discoveryListingFromCatalogItem,
+  publicListingFromCatalogItem,
+} from '~/features/catalog/lib/listing-card-presentation';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 
 const listingTypesSchema = z.array(publicListingTypeResponseSchema);
 const LISTING_TYPES_CACHE_TTL_MS = 60_000;
@@ -83,6 +89,23 @@ export async function fetchListings(
   request: Request,
   search: URLSearchParams,
 ): Promise<PublicListingResponse[]> {
+  const items = await fetchCatalogItems(request, search);
+  return items.map(publicListingFromCatalogItem);
+}
+
+/** Catalog cards that retain real sale, price-unit and completed-booking metadata. */
+export async function fetchDiscoveryListings(
+  request: Request,
+  search: URLSearchParams,
+): Promise<DiscoveryListingCardData[]> {
+  const items = await fetchCatalogItems(request, search);
+  return items.map(discoveryListingFromCatalogItem);
+}
+
+async function fetchCatalogItems(
+  request: Request,
+  search: URLSearchParams,
+): Promise<PublicCatalogSearchItem[]> {
   if (!search.has('type')) {
     const types = await fetchListingTypes(request);
     const batches = await mapWithConcurrency(
@@ -92,30 +115,13 @@ export async function fetchListings(
         const scoped = new URLSearchParams(search);
         scoped.set('type', type.slug);
         scoped.set('pageSize', '48');
-        return fetchListings(request, scoped);
+        return fetchCatalogItems(request, scoped);
       },
     );
     return batches.flat();
   }
   const result = await searchListings(request, search);
-  return result.items.map((item) => ({
-    id: item.id,
-    kind: item.kind,
-    title: item.title,
-    slug: item.slug,
-    listingTypeSlug: item.listingTypeSlug,
-    attributes: {},
-    photos: item.photos,
-    priceFrom: item.priceFrom,
-    itemLabel: null,
-    ratingAvg: item.ratingAvg,
-    reviewCount: item.reviewCount,
-    provinceCode: item.provinceCode,
-    provinceName: item.provinceName,
-    wardCode: item.wardCode,
-    wardName: item.wardName,
-    address: item.address,
-  }));
+  return result.items;
 }
 
 export function searchListings(

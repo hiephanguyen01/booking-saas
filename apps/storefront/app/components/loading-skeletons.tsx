@@ -1,7 +1,7 @@
 import { Skeleton } from '@booking/ui/components/ui/skeleton';
 import { cn } from '@booking/ui/lib/utils';
 import type { ComponentProps, ReactNode } from 'react';
-import { PANEL_SURFACE } from '~/constants/surfaces';
+import { PANEL_SURFACE, SURFACE_FRAME } from '~/constants/surfaces';
 
 function StorefrontSkeleton({ className, ...props }: ComponentProps<typeof Skeleton>) {
   return <Skeleton className={cn('motion-reduce:animate-none', className)} {...props} />;
@@ -20,38 +20,6 @@ function LoadingRegion({
     <div className={className} role="status" aria-live="polite" aria-busy="true" aria-label={label}>
       <div aria-hidden="true">{children}</div>
       <span className="sr-only">{label}</span>
-    </div>
-  );
-}
-
-export function CatalogResultSkeleton() {
-  return (
-    <div
-      className={cn(
-        PANEL_SURFACE,
-        'flex min-h-32 gap-3 overflow-hidden bg-card p-(--sf-surface-pad) md:grid md:h-46 md:min-h-0 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5 md:rounded-lg md:border-[1.4px] md:border-border md:p-0 md:shadow-none',
-      )}
-      aria-hidden="true"
-    >
-      <StorefrontSkeleton className="w-28 shrink-0 rounded-(--sf-image-radius) md:w-auto md:min-h-0 md:rounded-none" />
-      <div className="hidden min-h-0 grid-rows-2 gap-1.5 bg-muted md:grid">
-        <StorefrontSkeleton className="min-h-0 rounded-none" />
-        <StorefrontSkeleton className="min-h-0 rounded-none" />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 py-1 md:gap-3 md:px-5 md:py-4 md:pr-6 md:pl-[18px]">
-        <div className="flex flex-col gap-2">
-          <StorefrontSkeleton className="h-7 w-3/5" />
-          <StorefrontSkeleton className="h-5 w-2/5" />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <StorefrontSkeleton className="h-4 w-24" />
-          <StorefrontSkeleton className="h-5 w-24" />
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <StorefrontSkeleton className="h-6 w-48" />
-          <StorefrontSkeleton className="h-5 w-20" />
-        </div>
-      </div>
     </div>
   );
 }
@@ -168,35 +136,49 @@ export function HomeListingCardsSkeleton({
       <div
         className={cn(
           layout === 'grid'
-            ? 'grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4'
-            : 'flex gap-3 overflow-hidden sm:gap-4',
+            ? 'grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4 lg:gap-6'
+            : 'flex gap-3 overflow-hidden sm:gap-4 xl:gap-6',
         )}
       >
         {Array.from({ length: count }, (_, index) => (
-          <div
+          <DiscoveryListingCardSkeleton
             key={index}
             className={cn(
-              PANEL_SURFACE,
-              'min-w-0 overflow-hidden bg-background md:rounded-lg md:border md:border-border md:shadow-none',
+              'min-w-0',
               layout === 'carousel'
-                ? 'basis-[13rem] shrink-0 sm:basis-[calc(33.333%-0.667rem)] lg:basis-[calc(25%-0.75rem)]'
+                ? 'basis-[13rem] shrink-0 sm:basis-[calc((100%_-_2rem)/3)] lg:basis-[calc((100%_-_3rem)/4)] xl:basis-[277.5px]'
                 : '',
             )}
-          >
-            <StorefrontSkeleton className="aspect-4/3 rounded-(--sf-image-radius) md:rounded-none" />
-            <div className="space-y-2 p-(--sf-surface-pad) md:p-3.5">
-              <StorefrontSkeleton className="h-5 w-4/5" />
-              <StorefrontSkeleton className="h-3.5 w-3/5" />
-              <StorefrontSkeleton className="h-5 w-24" />
-            </div>
-          </div>
+          />
         ))}
       </div>
     </LoadingRegion>
   );
 }
 
-export type AccountContentSkeletonVariant = 'list' | 'form' | 'detail';
+function DiscoveryListingCardSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        SURFACE_FRAME,
+        '@container overflow-hidden bg-card',
+        className,
+      )}
+    >
+      <div className="h-[calc(24.625rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[220px]:h-[calc(18rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[190px]:h-[calc(16rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))]">
+        <StorefrontSkeleton className="h-46 rounded-(--sf-image-radius) sm:rounded-none @max-[220px]:h-34 @max-[190px]:h-28" />
+        <div className="space-y-3 p-(--sf-surface-pad) @max-[220px]:space-y-2">
+          <StorefrontSkeleton className="h-6 w-4/5 @max-[220px]:h-5" />
+          <StorefrontSkeleton className="h-5 w-3/5 @max-[220px]:h-4" />
+          <StorefrontSkeleton className="h-5 w-full @max-[220px]:h-4" />
+          <StorefrontSkeleton className="ml-auto h-10 w-3/5 @max-[220px]:h-8" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export type AccountContentSkeletonVariant = 'list' | 'listing-grid' | 'form' | 'detail';
 
 export function AccountResultsSkeleton({ label, count = 4 }: { label: string; count?: number }) {
   return (
@@ -289,10 +271,24 @@ function AccountListSkeletonBody() {
   );
 }
 
+function AccountListingGridSkeletonBody() {
+  return (
+    <div className="space-y-3">
+      <StorefrontSkeleton className="h-12 w-full rounded-none" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
+        {Array.from({ length: 6 }, (_, index) => (
+          <DiscoveryListingCardSkeleton key={index} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const ACCOUNT_SKELETON_BODIES: Record<AccountContentSkeletonVariant, () => React.ReactElement> = {
   form: AccountFormSkeletonBody,
   detail: AccountDetailSkeletonBody,
   list: AccountListSkeletonBody,
+  'listing-grid': AccountListingGridSkeletonBody,
 };
 
 export function AccountContentSkeleton({

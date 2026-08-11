@@ -9,11 +9,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@booking/ui/components/ui/dialog';
-import { Download, RefreshCw, Share, X } from 'lucide-react';
+import { Download, EllipsisVertical, ExternalLink, RefreshCw, Share, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useLocation } from 'react-router';
 import { useServiceWorker } from '~/features/pwa/hooks/use-service-worker';
 import { useShowPwaInstall } from '~/features/pwa/hooks/use-show-pwa-install';
+import {
+  detectInstallDevice,
+  type InstallDeviceProfile,
+  type ManualInstallMode,
+} from '~/features/pwa/lib/install-device';
 import { pwaBrand, type PwaTenantBrandInput } from '~/features/pwa/lib/manifest';
 import { PwaContext } from '~/features/pwa/lib/pwa-context';
 
@@ -31,13 +35,12 @@ export function PwaProvider({
 }) {
   const { t } = useTranslation(NsI18n.Pwa);
   const { applyUpdate, updateAvailable } = useServiceWorker();
-  const location = useLocation();
   const showPwaInstall = useShowPwaInstall();
+  const [device, setDevice] = useState<InstallDeviceProfile | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [isIos, setIsIos] = useState(false);
   const [installBannerDismissed, setInstallBannerDismissed] = useState(false);
-  const [showIosGuide, setShowIosGuide] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState<ManualInstallMode | null>(null);
   const brand = pwaBrand(tenant);
   const appName = tenant?.name.trim() || brand.shortName;
 
@@ -49,7 +52,7 @@ export function PwaProvider({
     const syncStandalone = () => setIsStandalone(standalone());
     syncStandalone();
     standaloneQuery.addEventListener?.('change', syncStandalone);
-    setIsIos(isIosDevice());
+    setDevice(detectInstallDevice(window.navigator));
     return () => standaloneQuery.removeEventListener?.('change', syncStandalone);
   }, []);
 
@@ -61,6 +64,7 @@ export function PwaProvider({
     const onInstalled = () => {
       setInstallPrompt(null);
       setInstallBannerDismissed(true);
+      setShowInstallGuide(null);
       setIsStandalone(true);
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
@@ -73,16 +77,16 @@ export function PwaProvider({
 
   useEffect(() => {
     if (showPwaInstall) setInstallBannerDismissed(false);
-    setShowIosGuide(false);
-  }, [location.key, showPwaInstall]);
+    setShowInstallGuide(null);
+  }, [showPwaInstall]);
 
   const install = useCallback(async () => {
     if (isStandalone) return;
     if (installPrompt) {
       try {
         await installPrompt.prompt();
-        const choice = await installPrompt.userChoice;
-        if (choice.outcome === 'accepted') setInstallBannerDismissed(true);
+        await installPrompt.userChoice;
+        setInstallBannerDismissed(true);
       } catch {
         // A prompt can expire between the click and browser UI. Keep browsing.
       } finally {
@@ -90,14 +94,16 @@ export function PwaProvider({
       }
       return;
     }
-    if (isIos) setShowIosGuide(true);
-  }, [installPrompt, isIos, isStandalone]);
+    if (device?.manualMode) setShowInstallGuide(device.manualMode);
+  }, [device, installPrompt, isStandalone]);
 
   const dismissInstall = useCallback(() => {
     setInstallBannerDismissed(true);
   }, []);
 
-  const canInstall = Boolean(tenant && showPwaInstall && !isStandalone && (installPrompt || isIos));
+  const canInstall = Boolean(
+    tenant && showPwaInstall && !isStandalone && (installPrompt || device?.manualMode),
+  );
   const value = useMemo(() => ({ canInstall, install }), [canInstall, install]);
 
   return (
@@ -161,37 +167,100 @@ export function PwaProvider({
         </aside>
       ) : null}
 
-      <Dialog open={showIosGuide} onOpenChange={setShowIosGuide}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('ios.title')}</DialogTitle>
-            <DialogDescription>{t('ios.description')}</DialogDescription>
-          </DialogHeader>
-          <ol className="space-y-3 text-sm">
-            <li className="flex gap-3">
-              <Share className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-              <span>{t('ios.shareStep')}</span>
-            </li>
-            <li className="flex gap-3">
-              <Download className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-              <span>{t('ios.addStep')}</span>
-            </li>
-          </ol>
-          <DialogFooter>
-            <Button type="button" onClick={() => setShowIosGuide(false)}>
-              {t('ios.close')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InstallGuideDialog
+        mode={showInstallGuide}
+        open={showInstallGuide !== null}
+        onOpenChange={(open) => {
+          if (!open) setShowInstallGuide(null);
+        }}
+      />
     </PwaContext.Provider>
   );
 }
 
-function isIosDevice(): boolean {
-  const ua = navigator.userAgent;
+function InstallGuideDialog({
+  mode,
+  open,
+  onOpenChange,
+}: {
+  mode: ManualInstallMode | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useTranslation(NsI18n.Pwa);
+  if (!mode) return null;
+
+  const guide =
+    mode === 'ios-safari'
+      ? {
+          title: t('ios.title'),
+          description: t('ios.description'),
+          firstStep: t('ios.shareStep'),
+          secondStep: t('ios.addStep'),
+          firstIcon: <Share className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />,
+        }
+      : mode === 'android-chrome'
+        ? {
+            title: t('android.title'),
+            description: t('android.description'),
+            firstStep: t('android.menuStep'),
+            secondStep: t('android.addStep'),
+            firstIcon: (
+              <EllipsisVertical
+                className="mt-0.5 size-5 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+            ),
+          }
+        : mode === 'ios-browser'
+          ? {
+              title: t('browser.iosTitle'),
+              description: t('browser.iosDescription'),
+              firstStep: t('browser.iosOpenStep'),
+              secondStep: t('browser.iosAddStep'),
+              firstIcon: (
+                <ExternalLink
+                  className="mt-0.5 size-5 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+              ),
+            }
+          : {
+              title: t('browser.androidTitle'),
+              description: t('browser.androidDescription'),
+              firstStep: t('browser.androidOpenStep'),
+              secondStep: t('browser.androidAddStep'),
+              firstIcon: (
+                <ExternalLink
+                  className="mt-0.5 size-5 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+              ),
+            };
+
   return (
-    /iPad|iPhone|iPod/.test(ua) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{guide.title}</DialogTitle>
+          <DialogDescription>{guide.description}</DialogDescription>
+        </DialogHeader>
+        <ol className="space-y-3 text-sm">
+          <li className="flex gap-3">
+            {guide.firstIcon}
+            <span>{guide.firstStep}</span>
+          </li>
+          <li className="flex gap-3">
+            <Download className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+            <span>{guide.secondStep}</span>
+          </li>
+        </ol>
+        <DialogFooter>
+          <Button type="button" onClick={() => onOpenChange(false)}>
+            {t('guide.close')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

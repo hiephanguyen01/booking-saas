@@ -179,7 +179,7 @@ export function PolicyList({ depositPercent }: { depositPercent: number }) {
           key={policy}
           className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
         >
-          <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+          <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
           {policy}
         </span>
       ))}

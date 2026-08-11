@@ -1,12 +1,19 @@
-export type ListingPriceUnit = 'hour' | 'day' | 'item' | 'session' | 'package';
+import type { PublicListingResponse } from '@booking/contracts';
 
-export type ListingCardLayout = 'stacked' | 'responsive-row';
+export type ListingPriceUnit = 'hour' | 'day' | 'item' | 'session' | 'package';
 
 export interface ListingCardPresentation {
   originalPrice: string | null;
   discountPercent: number | null;
   priceUnit: ListingPriceUnit | null;
+  completedBookings?: number;
   distanceMeters?: number;
+}
+
+/** A listing plus the real catalog metadata used by image-forward discovery cards. */
+export interface DiscoveryListingCardData {
+  listing: PublicListingResponse;
+  presentation: ListingCardPresentation;
 }
 
 export interface ListingFavoriteControl {

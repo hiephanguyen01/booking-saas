@@ -1,7 +1,6 @@
 import type {
   BookingStatus,
   PaymentStatusResponse,
-  PublicListingResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Spinner } from '@booking/ui/components/ui/spinner';
@@ -10,6 +9,7 @@ import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { BookingDetailViewModel } from '~/features/booking/lib/booking-detail-model';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 import { BookingOutcomeLayout } from './booking-outcome-layout';
 import { BookingSuccessView } from './booking-success-view';
 
@@ -29,7 +29,7 @@ interface BookingPaymentViewProps {
   signedIn: boolean;
   actionError: string | null;
   booking: BookingDetailViewModel | null;
-  recommendations: PublicListingResponse[];
+  recommendations: DiscoveryListingCardData[];
   showDetail: boolean;
 }
 

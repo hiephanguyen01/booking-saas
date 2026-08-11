@@ -5,11 +5,14 @@ import {
   type MediaViewerBaseProps,
   type MediaViewerItem,
   type MediaViewerLabels,
+  type MediaViewerMobileLayout,
 } from "./media-viewer-core"
 
-export type { MediaViewerItem, MediaViewerLabels }
+export type { MediaViewerItem, MediaViewerLabels, MediaViewerMobileLayout }
 
-export type MediaViewerDialogProps = MediaViewerBaseProps
+export interface MediaViewerDialogProps extends MediaViewerBaseProps {
+  mobileMediaLayout?: MediaViewerMobileLayout
+}
 
 export function MediaViewerDialog(props: MediaViewerDialogProps) {
   return <MediaViewerCore {...props} />

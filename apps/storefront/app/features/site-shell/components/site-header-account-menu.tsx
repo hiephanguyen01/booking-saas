@@ -116,11 +116,11 @@ export function SiteHeaderAccountAvatar({
   className?: string;
 }) {
   return (
-    <Avatar size="lg" className={className}>
+    <Avatar size="lg"  className={className}>
       {currentUser.avatarUrl ? (
-        <AvatarImage src={currentUser.avatarUrl} alt="" className="object-cover" />
+        <AvatarImage src={currentUser.avatarUrl}  alt="" className="object-cover" />
       ) : null}
-      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+      <AvatarFallback >
         {userInitials(currentUser.fullName)}
       </AvatarFallback>
     </Avatar>

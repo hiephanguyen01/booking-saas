@@ -44,7 +44,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
               width={780}
               height={480}
               priority
-              className="size-full object-cover object-top"
+              className="block size-full object-cover object-top"
             />
           ) : (
             <GalleryPlaceholder title={title} />
@@ -74,19 +74,19 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
                   alt=""
                   width={144}
                   height={112}
-                  className="size-full object-cover object-top"
+                  className="block size-full object-cover object-top"
                 />
               </button>
             ))}
           </div>
         ) : null}
       </div>
-      <div className="hidden h-64 overflow-hidden bg-muted rounded-(--sf-image-radius) md:grid md:h-85 md:grid-cols-[460px_1fr] md:gap-3">
+      <div className="hidden h-64 min-w-0 overflow-hidden bg-muted rounded-(--sf-image-radius) md:grid md:h-85 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:gap-3">
         <button
           type="button"
           onClick={(event) => showPhoto(0, event.currentTarget)}
           disabled={!visiblePhotos[0]}
-          className="group relative min-h-64 overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
+          className="group relative min-h-64 min-w-0 overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
           aria-label={
             visiblePhotos[0] ? t('group.viewMainPhoto', { title }) : t('group.noPhotoOf', { title })
           }
@@ -98,7 +98,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
               width={920}
               height={680}
               priority
-              className="size-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
+              className="block size-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
             <GalleryPlaceholder title={title} />
@@ -109,7 +109,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
             </span>
           ) : null}
         </button>
-        <div className="hidden grid-cols-3 grid-rows-2 gap-3 md:grid">
+        <div className="hidden min-h-0 min-w-0 grid-cols-[repeat(3,minmax(0,1fr))] grid-rows-[repeat(2,minmax(0,1fr))] gap-3 md:grid">
           {Array.from({ length: TILE_COUNT }, (_, index) => {
             const photo = visiblePhotos[index + 1];
             const isLast = index === TILE_COUNT - 1;
@@ -119,7 +119,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
                 key={photo ?? `placeholder-${index}`}
                 onClick={(event) => showPhoto(index + 1, event.currentTarget)}
                 disabled={!photo}
-                className="relative overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                className="relative min-h-0 min-w-0 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 aria-label={
                   photo ? t('group.viewPhoto', { index: index + 2, title }) : t('group.noPhoto')
                 }
@@ -130,7 +130,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
                     alt=""
                     width={430}
                     height={328}
-                    className="size-full object-cover object-top"
+                    className="block size-full object-cover object-top"
                   />
                 ) : (
                   <GalleryPlaceholder />
@@ -153,6 +153,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
         onActiveIndexChange={setActiveIndex}
         labels={viewerLabels}
         title={title}
+        mobileMediaLayout="full-bleed"
         description={t('group.photoCounter', {
           current: activeIndex + 1,
           total: Math.max(photos.length, 1),

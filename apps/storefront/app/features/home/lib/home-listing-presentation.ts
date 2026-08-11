@@ -1,4 +1,4 @@
-import type { PublicListingResponse } from '@booking/contracts';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 
 export type HomeLocationKey = 'hcm' | 'hanoi' | 'danang' | 'sapa' | 'dalat';
 
@@ -14,15 +14,15 @@ const LOCATION_MATCHERS: Record<HomeLocationKey, string[]> = {
  * Split the loaded catalog into the two home rails.
  *
  * The rails used to be ordered by a booking count hashed from the listing id,
- * which presented invented popularity as real ranking. Until the public
- * contract exposes booking totals there is nothing to rank on, so both rails
- * follow the order the API returned. Recommendations intentionally reuse the
- * full catalog: a popular studio can also be relevant, and small real catalogs
- * should not lose the entire recommendation section after filling the top rail.
+ * which presented invented popularity as real ranking. They now keep the real
+ * catalog presentation metadata, while their order still follows the API's
+ * selected sort. Recommendations intentionally reuse the full catalog: a
+ * popular studio can also be relevant, and small real catalogs should not lose
+ * the entire recommendation section after filling the top rail.
  */
-export function splitHomeListings(listings: PublicListingResponse[]): {
-  top: PublicListingResponse[];
-  recommended: PublicListingResponse[];
+export function splitHomeListings(listings: DiscoveryListingCardData[]): {
+  top: DiscoveryListingCardData[];
+  recommended: DiscoveryListingCardData[];
 } {
   return { top: listings.slice(0, 10), recommended: listings };
 }
@@ -32,11 +32,11 @@ function normalized(value: string): string {
 }
 
 export function filterHomeListingsByLocation(
-  listings: PublicListingResponse[],
+  listings: DiscoveryListingCardData[],
   location: HomeLocationKey,
-): PublicListingResponse[] {
+): DiscoveryListingCardData[] {
   const matchers = LOCATION_MATCHERS[location];
-  return listings.filter((listing) => {
+  return listings.filter(({ listing }) => {
     const locationText = normalized(
       [listing.address, listing.wardName, listing.provinceName].filter(Boolean).join(' '),
     );

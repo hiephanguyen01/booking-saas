@@ -16,7 +16,6 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router';
-import { CatalogResultSkeleton } from '~/components/loading-skeletons';
 import type { loadCatalogRoute } from '~/features/catalog/server/catalog-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 import { NsI18n, useTranslation } from '@booking/i18n';
@@ -30,6 +29,7 @@ import {
   useCatalogPageController,
 } from '~/features/catalog/hooks/use-catalog-page-controller';
 import { MobileCatalogPage } from './mobile-catalog-page';
+import { CatalogResultSkeleton } from './catalog-result-skeleton';
 
 export interface CatalogPageProps {
   loaderData: ServerDataFrom<typeof loadCatalogRoute>;
