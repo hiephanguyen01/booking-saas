@@ -1,6 +1,7 @@
 import type {
   IdentityDocumentType,
   PartnerStatus,
+  PartnerTaxStatus,
   PartnerType,
   PartnerVerificationStatus,
 } from '@booking/contracts';
@@ -24,6 +25,7 @@ export interface PartnerState {
   partnerType: PartnerType;
   isHouse: boolean;
   status: PartnerStatus;
+  taxStatus: PartnerTaxStatus;
   verificationStatus: PartnerVerificationStatus;
   verifiedAt: Date | null;
   dateOfBirth: Date | null;

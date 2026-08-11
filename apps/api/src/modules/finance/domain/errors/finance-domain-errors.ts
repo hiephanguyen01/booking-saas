@@ -187,3 +187,47 @@ export class PartialRefundMustBePartial extends DomainError {
     );
   }
 }
+
+export class TaxFilingNotFound extends DomainError {
+  constructor() {
+    super('TAX_FILING_NOT_FOUND', 404, 'Tax filing period not found');
+  }
+}
+
+export class TaxFilingNotSubmittable extends DomainError {
+  constructor() {
+    super('TAX_FILING_NOT_SUBMITTABLE', 409, 'Only a draft tax filing can be submitted');
+  }
+}
+
+export class TaxFilingNotPayable extends DomainError {
+  constructor() {
+    super('TAX_FILING_NOT_PAYABLE', 409, 'Only a submitted tax filing can be marked paid');
+  }
+}
+
+export class TaxFilingConcurrentChange extends DomainError {
+  constructor() {
+    super('TAX_FILING_CONCURRENT_CHANGE', 409, 'Tax filing was concurrently changed');
+  }
+}
+
+export class TaxRemittanceAmountMismatch extends DomainError {
+  constructor() {
+    super(
+      'TAX_REMITTANCE_AMOUNT_MISMATCH',
+      409,
+      'Remittance VAT and PIT must match the submitted filing totals',
+    );
+  }
+}
+
+export class TaxFilingHasNoPayableAmount extends DomainError {
+  constructor() {
+    super(
+      'TAX_FILING_HAS_NO_PAYABLE_AMOUNT',
+      409,
+      'This filing has no positive tax amount to remit; carry the credit forward or refund it instead',
+    );
+  }
+}

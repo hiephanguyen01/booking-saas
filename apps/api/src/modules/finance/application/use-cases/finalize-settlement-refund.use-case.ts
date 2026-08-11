@@ -6,6 +6,7 @@ import {
 } from '../../domain/ports/settlement-repository.port';
 import { GetPayoutPolicyUseCase } from './get-payout-policy.use-case';
 import { Settlement } from '../../domain/entities/settlement.entity';
+import { RecordWithholdingReversalUseCase } from './record-withholding-reversal.use-case';
 
 /** Apply provider/manual refund truth to custody; partial retention still waits for disputes. */
 @Injectable()
@@ -13,6 +14,7 @@ export class FinalizeSettlementRefundUseCase {
   constructor(
     @Inject(SETTLEMENT_REPOSITORY) private readonly settlements: ISettlementRepository,
     private readonly policy: GetPayoutPolicyUseCase,
+    private readonly reverseWithholding: RecordWithholdingReversalUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -29,13 +31,22 @@ export class FinalizeSettlementRefundUseCase {
       const finalized = Settlement.rehydrate(settlement).finalizeRefund(refundId, amount, reason);
       if (!finalized) return;
       const payoutPolicy = await this.policy.execute(tx, tenantId);
-      await this.settlements.finalizeRefund(
+      const updated = await this.settlements.finalizeRefund(
         tx,
         bookingId,
         finalized.refundId,
         finalized.refundedAmount,
         payoutPolicy.holdingDays,
       );
+      if (updated) {
+        await this.reverseWithholding.execute(
+          tx,
+          tenantId,
+          updated,
+          finalized.refundId,
+          finalized.refundedAmount,
+        );
+      }
     });
   }
 }

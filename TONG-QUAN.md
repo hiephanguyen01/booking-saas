@@ -1081,7 +1081,8 @@ apply to 1,851,852 ₫:
 The partner keeps the **gross** residual (2,000,000 − 277,778 tenant commission):
 under the agent model the VAT inside its share is the partner's own to remit, which
 is why the journal still balances with no VAT line. A seller that charges no VAT
-(a household under the 200M ₫/year threshold) produces the pre-VAT figures
+(a household under the effective annual threshold — 1B ₫ from 2026)
+produces the pre-VAT figures
 instead — 1,700,000 / 100,000 / 40,000 / 160,000.
 
 For a booking with a `funded_by = tenant` promotion: cash received is only 1,900,000 ₫ but partner payable is still 1,700,000 ₫ (based on the original price) — the journal balances thanks to a `promo_discount` line of 100,000 ₫ debited to the tenant's share (sections 12.4/12.5).
@@ -1381,7 +1382,7 @@ Definition of done per phase: `pnpm turbo lint typecheck test` green + E2E green
 | 4   | Zalo ZNS requires an OA + pre-approved templates                                        | Start the registration process early in Phase 1, integrate in Phase 2                                                                        |
 | 5   | The `platform% + affiliate% ≤ tenant%` constraint                                       | Validate in both the UI + the domain layer when saving a commission rule                                                                     |
 | 6   | Production hosting/deployment                                                           | Not yet decided (VPS + Docker, or a PaaS). Doesn't block Phase 0–1 (docker-compose for dev)                                                  |
-| 7   | Vietnamese e-invoicing (hóa đơn điện tử)                                                | VAT itself is **implemented** — see [`docs/features/vat.md`](./docs/features/vat.md). E-invoice issuance and NĐ 117/2025 withholding are still out of scope |
+| 7   | Vietnamese e-invoicing (hóa đơn điện tử)                                                | VAT, completion-time withholding, tax-authority liability accounting, monthly filing/remittance records and annual certificate metadata are **implemented** — see [`docs/features/vat.md`](./docs/features/vat.md). Direct tax-portal integration, e-invoice issuance and automatic annual credit/refund remain out of scope |
 | 8   | Personal data protection (Decree 13/2023/NĐ-CP)                                         | A privacy policy + consent at data collection; encryption of sensitive PII; a data-deletion process on request; customer data-access logging |
 | 9   | Customer–partner disputes (service not as described...)                                 | Dedicated custody dispute state is implemented; Tenant still adjudicates manually and performs SePay refunds by bank transfer with evidence |
 

@@ -1,6 +1,7 @@
 import { data as routeData } from 'react-router';
 import type { PartnerResponse, UpdatePartnerDocumentsInput } from '@booking/contracts';
 import {
+  recordPartnerTaxDeclarationInputSchema,
   submitIdentityInputSchema,
   updatePartnerDocumentsInputSchema,
   updatePayoutInfoInputSchema,
@@ -9,7 +10,8 @@ import { apiGet, apiPatch, apiPost, type ApiAuth } from '~/lib/api.server';
 import { apiPaths } from '~/constants/api-paths';
 import { actionMessages } from '~/constants/messages';
 
-export type PartnerProfileIntent = 'payout' | 'identity' | 'documents' | 'deleteDoc';
+export type PartnerProfileIntent =
+  'payout' | 'identity' | 'documents' | 'deleteDoc' | 'declare-tax-revenue';
 
 /**
  * Result shape of every partner-profile intent. Profile cards type against this
@@ -26,7 +28,8 @@ const fail = (
   intent: PartnerProfileIntent | '',
   error: string | null,
   fieldErrors: PartnerProfileActionResult['fieldErrors'] = null,
-) => routeData<PartnerProfileActionResult>({ intent, ok: false, error, fieldErrors }, { status: 400 });
+) =>
+  routeData<PartnerProfileActionResult>({ intent, ok: false, error, fieldErrors }, { status: 400 });
 
 const succeed = (intent: PartnerProfileIntent): PartnerProfileActionResult => ({
   intent,
@@ -102,6 +105,17 @@ export async function runPartnerProfileAction(
   // Plain form posts: deleting a single license document.
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
+  if (intent === 'declare-tax-revenue') {
+    const parsed = recordPartnerTaxDeclarationInputSchema.safeParse({
+      taxYear: form.get('taxYear'),
+      externalRevenue: String(form.get('externalRevenue') ?? ''),
+      note: String(form.get('note') ?? '').trim() || undefined,
+    });
+    if (!parsed.success) return fail(intent, 'Doanh thu khai báo không hợp lệ.');
+    const res = await apiPost(apiPaths.partner.profileTaxDeclarations, parsed.data, auth);
+    if (!res.ok) return fail(intent, res.error ?? 'Không ghi nhận được doanh thu ngoài BookingOS.');
+    return succeed(intent);
+  }
   if (intent === 'deleteDoc') {
     const url = String(form.get('url') ?? '');
     const current = await apiGet<PartnerResponse>(apiPaths.partner.profile, auth);

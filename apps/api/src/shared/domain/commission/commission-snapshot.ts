@@ -1,5 +1,6 @@
 import type { CommissionRates, RateType } from './commission-split';
 import { noTax, type TaxSnapshot } from '../tax/tax';
+import { noWithholding, type WithholdingSnapshot } from '../tax/withholding';
 
 /**
  * The immutable commission configuration captured on a booking at creation time
@@ -23,6 +24,8 @@ export interface CommissionSnapshot {
    * as `vatBps: 0`, which makes every rate fall back to the gross base.
    */
   tax?: TaxSnapshot;
+  /** Optional so bookings created before NĐ 117 replay with no withholding. */
+  withholding?: WithholdingSnapshot;
 }
 
 /** A safe zero-commission snapshot (partner keeps everything) when no rule matches. */
@@ -40,6 +43,7 @@ export function defaultCommissionSnapshot(
     affiliateRate: '0',
     isHouse,
     tax: noTax(at),
+    withholding: noWithholding(at),
   };
 }
 
@@ -56,5 +60,7 @@ export function snapshotToRates(snapshot: CommissionSnapshot): CommissionRates {
     // Pre-regime bookings were all deduction-method sellers, so that is the safe
     // default — it also reproduces their original arithmetic exactly.
     vatMethod: snapshot.tax?.method ?? 'deduction',
+    withholdingVatBps: snapshot.withholding?.vatBps ?? 0,
+    withholdingPitBps: snapshot.withholding?.pitBps ?? 0,
   };
 }

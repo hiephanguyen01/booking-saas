@@ -2,6 +2,8 @@ import '../src/config/load-root-env';
 import { prisma } from './seed/client';
 import { seedAdministrativeDivisions } from './seed/administrative-divisions';
 import { seedTaxRates } from './seed/tax-rates';
+import { seedWithholdingRates } from './seed/withholding-rates';
+import { seedTaxThresholdRules } from './seed/tax-threshold-rules';
 import { seedPlatform } from './seed/platform';
 import { seedPlans } from './seed/plans';
 import { seedScope } from './seed/scope';
@@ -26,6 +28,8 @@ async function main() {
   const scope = seedScope();
   await seedAdministrativeDivisions(prisma);
   await seedTaxRates(prisma);
+  await seedWithholdingRates(prisma);
+  await seedTaxThresholdRules(prisma);
   await seedPlatform();
   const plan = await seedPlans();
 

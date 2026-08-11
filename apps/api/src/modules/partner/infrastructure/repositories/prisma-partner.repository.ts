@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Partner as PrismaPartnerRow, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
-import { toStatusCounts, type RepoPageWithCounts, pageOffset } from '../../../../shared/pagination/pagination';
+import {
+  toStatusCounts,
+  type RepoPageWithCounts,
+  pageOffset,
+} from '../../../../shared/pagination/pagination';
 import type { PartnerTaxStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
@@ -75,6 +79,7 @@ function toState(p: PrismaPartnerRow): PartnerState {
     partnerType: p.partnerType,
     isHouse: p.isHouse,
     status: p.status,
+    taxStatus: p.taxStatus,
     verificationStatus: p.verificationStatus,
     verifiedAt: p.verifiedAt,
     dateOfBirth: p.dateOfBirth,
@@ -142,10 +147,7 @@ export class PrismaPartnerRepository implements IPartnerRepository, IPartnerRead
     return p ? toState(p) : null;
   }
 
-  async list(
-    tx: PrismaTx,
-    filter: ListPartnersFilter,
-  ): Promise<RepoPageWithCounts<PartnerRecord>> {
+  async list(tx: PrismaTx, filter: ListPartnersFilter): Promise<RepoPageWithCounts<PartnerRecord>> {
     // `baseWhere` carries every filter EXCEPT status, so each status tab's count
     // reflects the search box while ignoring the active tab. `items`/`total` use
     // the full `where` (status included) — filtered identically or the pager lies.

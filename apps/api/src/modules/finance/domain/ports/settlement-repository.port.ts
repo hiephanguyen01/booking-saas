@@ -24,6 +24,8 @@ export interface SettlementRecord {
   tenantNetEarning: bigint;
   partnerGrossEarning: bigint;
   partnerPayable: bigint;
+  partnerVatWithheld: bigint;
+  partnerPitWithheld: bigint;
   platformFee: bigint;
   affiliateCommission: bigint;
   refundedAmount: bigint;
@@ -40,6 +42,7 @@ export interface SettlementRecord {
   disputeUntil: Date | null;
   releasedAt: Date | null;
   releaseJournalId: string | null;
+  withholdingJournalId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +52,8 @@ export interface ReleaseAmounts {
   tenantNetEarning: bigint;
   partnerGrossEarning: bigint;
   partnerPayable: bigint;
+  partnerVatWithheld: bigint;
+  partnerPitWithheld: bigint;
   platformFee: bigint;
   affiliateCommission: bigint;
 }

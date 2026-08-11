@@ -10,6 +10,12 @@ import {
   type TenantPayableResponse,
   type SettlementSummaryResponse,
   type PayoutPolicyDto as PayoutPolicyResponse,
+  type PrepareTaxFilingInput,
+  type SubmitTaxFilingInput,
+  type RecordTaxRemittanceInput,
+  type IssueTaxCertificateInput,
+  type TaxFilingPeriodResponse,
+  type TaxWithholdingCertificateResponse,
 } from '@booking/contracts';
 import {
   Body,
@@ -50,6 +56,8 @@ import {
   toTenantFinanceSummaryResponse,
   toTenantPayableResponse,
   toSettlementSummaryResponse,
+  toTaxFilingPeriodResponse,
+  toTaxWithholdingCertificateResponse,
 } from '../../application/finance.mapper';
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
 import { CreatePayoutUseCase } from '../../application/use-cases/create-payout.use-case';
@@ -68,6 +76,12 @@ import { ListPayoutsUseCase } from '../../application/use-cases/list-payouts.use
 import { ListTenantLedgerUseCase } from '../../application/use-cases/list-tenant-ledger.use-case';
 import { MarkPayoutPaidUseCase } from '../../application/use-cases/mark-payout-paid.use-case';
 import { UpdateCommissionRuleUseCase } from '../../application/use-cases/update-commission-rule.use-case';
+import { PrepareTaxFilingPeriodUseCase } from '../../application/use-cases/prepare-tax-filing-period.use-case';
+import { ListTaxFilingPeriodsUseCase } from '../../application/use-cases/list-tax-filing-periods.use-case';
+import { SubmitTaxFilingPeriodUseCase } from '../../application/use-cases/submit-tax-filing-period.use-case';
+import { RecordTaxRemittanceUseCase } from '../../application/use-cases/record-tax-remittance.use-case';
+import { IssueTaxWithholdingCertificateUseCase } from '../../application/use-cases/issue-tax-withholding-certificate.use-case';
+import { ListTaxWithholdingCertificatesUseCase } from '../../application/use-cases/list-tax-withholding-certificates.use-case';
 import {
   BookingSettlementResponseDto,
   BookingSettlementsQueryDto,
@@ -86,6 +100,12 @@ import {
   UpdateCommissionRuleDto,
   SettlementSummaryResponseDto,
   PayoutPolicyDto,
+  PrepareTaxFilingDto,
+  SubmitTaxFilingDto,
+  RecordTaxRemittanceDto,
+  IssueTaxCertificateDto,
+  TaxFilingPeriodResponseDto,
+  TaxWithholdingCertificateResponseDto,
 } from './dto/finance.dto';
 
 /** Tenant finance: commission rules, ledger overview + manual payouts (§13.3). */
@@ -110,6 +130,12 @@ export class TenantFinanceController {
     private readonly getSettlementSummaryUseCase: GetSettlementSummaryUseCase,
     private readonly getPayoutPolicyUseCase: GetTenantPayoutPolicyUseCase,
     private readonly updatePayoutPolicyUseCase: UpdatePayoutPolicyUseCase,
+    private readonly prepareTaxFilingUseCase: PrepareTaxFilingPeriodUseCase,
+    private readonly listTaxFilingsUseCase: ListTaxFilingPeriodsUseCase,
+    private readonly submitTaxFilingUseCase: SubmitTaxFilingPeriodUseCase,
+    private readonly recordTaxRemittanceUseCase: RecordTaxRemittanceUseCase,
+    private readonly issueTaxCertificateUseCase: IssueTaxWithholdingCertificateUseCase,
+    private readonly listTaxCertificatesUseCase: ListTaxWithholdingCertificatesUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -254,6 +280,121 @@ export class TenantFinanceController {
   ): Promise<PartnerFinanceResponse> {
     return toPartnerFinanceResponse(
       await this.partnerFinanceUseCase.execute(this.tenantId, partnerId),
+    );
+  }
+
+  // ── Tax operations ───────────────────────────────────────────────────────
+
+  @RequirePermissions('tenant.finance.read')
+  @Get('tax/filings')
+  @ApiOperation({ summary: 'List monthly partner-tax filing periods' })
+  @ApiOkResponse({ type: [TaxFilingPeriodResponseDto] })
+  async taxFilings(): Promise<TaxFilingPeriodResponse[]> {
+    return (await this.listTaxFilingsUseCase.execute(this.tenantId)).map(
+      toTaxFilingPeriodResponse,
+    );
+  }
+
+  @RequirePermissions('tenant.payouts.manage')
+  @Post('tax/filings/prepare')
+  @ApiOperation({ summary: 'Prepare or refresh a draft monthly tax filing' })
+  @ApiOkResponse({ type: TaxFilingPeriodResponseDto })
+  async prepareTaxFiling(
+    @Body() input: PrepareTaxFilingDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<TaxFilingPeriodResponse> {
+    const value: PrepareTaxFilingInput = input;
+    return toTaxFilingPeriodResponse(
+      await this.prepareTaxFilingUseCase.execute(
+        this.tenantId,
+        value.taxYear,
+        value.taxMonth,
+        principal.userId,
+      ),
+    );
+  }
+
+  @RequirePermissions('tenant.payouts.manage')
+  @Post('tax/filings/:id/submit')
+  @UuidParam()
+  @ApiOperation({ summary: 'Record submission of a monthly tax filing' })
+  @ApiOkResponse({ type: TaxFilingPeriodResponseDto })
+  async submitTaxFiling(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() input: SubmitTaxFilingDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<TaxFilingPeriodResponse> {
+    const value: SubmitTaxFilingInput = input;
+    return toTaxFilingPeriodResponse(
+      await this.submitTaxFilingUseCase.execute(
+        this.tenantId,
+        id,
+        value.submissionReference,
+        principal.userId,
+      ),
+    );
+  }
+
+  @RequirePermissions('tenant.payouts.manage')
+  @Post('tax/filings/:id/remittances')
+  @UuidParam()
+  @ApiOperation({ summary: 'Record tax remittance and settle the authority liability' })
+  @ApiOkResponse({ type: TaxFilingPeriodResponseDto })
+  async recordTaxRemittance(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() input: RecordTaxRemittanceDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<TaxFilingPeriodResponse> {
+    const value: RecordTaxRemittanceInput = input;
+    return toTaxFilingPeriodResponse(
+      await this.recordTaxRemittanceUseCase.execute(
+        this.tenantId,
+        id,
+        {
+          vatAmount: BigInt(value.vatAmount),
+          pitAmount: BigInt(value.pitAmount),
+          paymentReference: value.paymentReference,
+          paidAt: new Date(value.paidAt),
+          evidence: value.evidence,
+        },
+        principal.userId,
+      ),
+    );
+  }
+
+  @RequirePermissions('tenant.finance.read')
+  @Get('tax/certificates')
+  @ApiOperation({ summary: 'List annual partner withholding certificates' })
+  @ApiOkResponse({ type: [TaxWithholdingCertificateResponseDto] })
+  async taxCertificates(
+    @Query('partnerId', new ZodValidationPipe(uuidSchema.optional())) partnerId?: string,
+  ): Promise<TaxWithholdingCertificateResponse[]> {
+    return (await this.listTaxCertificatesUseCase.execute(this.tenantId, partnerId)).map(
+      toTaxWithholdingCertificateResponse,
+    );
+  }
+
+  @RequirePermissions('tenant.payouts.manage')
+  @Post('tax/certificates')
+  @ApiOperation({ summary: 'Issue annual withholding certificate metadata' })
+  @ApiCreatedResponse({ type: TaxWithholdingCertificateResponseDto })
+  async issueTaxCertificate(
+    @Body() input: IssueTaxCertificateDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<TaxWithholdingCertificateResponse> {
+    const value: IssueTaxCertificateInput = input;
+    return toTaxWithholdingCertificateResponse(
+      await this.issueTaxCertificateUseCase.execute(
+        this.tenantId,
+        value.partnerId,
+        value.taxYear,
+        {
+          certificateNumber: value.certificateNumber,
+          fileKey: value.fileKey,
+          checksum: value.checksum,
+        },
+        principal.userId,
+      ),
     );
   }
 

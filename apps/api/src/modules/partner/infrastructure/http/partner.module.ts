@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
@@ -7,8 +7,11 @@ import { AdministrativeDivisionModule } from '../../../administrative-division/i
 import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { PARTNER_READER } from '../../domain/ports/partner-reader.port';
 import { PARTNER_REPOSITORY } from '../../domain/ports/partner-repository.port';
+import { PARTNER_TAX_REPOSITORY } from '../../domain/ports/partner-tax-repository.port';
+import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PARTNER_ROLES } from '../../domain/ports/partner-roles.port';
 import { PrismaPartnerRepository } from '../repositories/prisma-partner.repository';
+import { PrismaPartnerTaxRepository } from '../repositories/prisma-partner-tax.repository';
 import { PrismaPartnerRoles } from '../services/prisma-partner-roles';
 import { ApplyAsPartnerUseCase } from '../../application/use-cases/apply-as-partner.use-case';
 import { CreateHousePartnerUseCase } from '../../application/use-cases/create-house-partner.use-case';
@@ -19,6 +22,11 @@ import { UpdatePayoutInfoUseCase } from '../../application/use-cases/update-payo
 import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/update-partner-documents.use-case';
 import { SuspendPartnerUseCase } from '../../application/use-cases/suspend-partner.use-case';
 import { UpdatePartnerTaxStatusUseCase } from '../../application/use-cases/update-partner-tax-status.use-case';
+import { GetPartnerTaxAssessmentUseCase } from '../../application/use-cases/get-partner-tax-assessment.use-case';
+import { RecordPartnerTaxDeclarationUseCase } from '../../application/use-cases/record-partner-tax-declaration.use-case';
+import { RecordPartnerTaxRevenueUseCase } from '../../application/use-cases/record-partner-tax-revenue.use-case';
+import { ReassessPartnerTaxThresholdUseCase } from '../../application/use-cases/reassess-partner-tax-threshold.use-case';
+import { PartnerTaxReassessmentWorker } from '../partner-tax-reassessment.worker';
 import { ListPartnersUseCase } from '../../application/use-cases/list-partners.use-case';
 import { GetPartnerUseCase } from '../../application/use-cases/get-partner.use-case';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
@@ -50,6 +58,7 @@ import { PublicPartnerController } from './public-partner.controller';
     PrismaPartnerRepository,
     { provide: PARTNER_REPOSITORY, useExisting: PrismaPartnerRepository },
     { provide: PARTNER_READER, useExisting: PrismaPartnerRepository },
+    { provide: PARTNER_TAX_REPOSITORY, useClass: PrismaPartnerTaxRepository },
     { provide: PARTNER_ROLES, useClass: PrismaPartnerRoles },
     { provide: PUBLIC_PARTNER_REPOSITORY, useClass: PrismaPublicPartnerRepository },
     ApplyAsPartnerUseCase,
@@ -61,6 +70,11 @@ import { PublicPartnerController } from './public-partner.controller';
     UpdatePartnerDocumentsUseCase,
     SuspendPartnerUseCase,
     UpdatePartnerTaxStatusUseCase,
+    GetPartnerTaxAssessmentUseCase,
+    RecordPartnerTaxDeclarationUseCase,
+    RecordPartnerTaxRevenueUseCase,
+    ReassessPartnerTaxThresholdUseCase,
+    PartnerTaxReassessmentWorker,
     ListPartnersUseCase,
     GetPartnerUseCase,
     GetPartnerProfileUseCase,
@@ -72,4 +86,48 @@ import { PublicPartnerController } from './public-partner.controller';
   // (application/assert-can-serve-listing-type.ts), imported directly.
   exports: [PARTNER_REPOSITORY],
 })
-export class PartnerModule {}
+export class PartnerModule implements OnModuleInit {
+  constructor(
+    private readonly registry: OutboxHandlerRegistry,
+    private readonly recordTaxRevenue: RecordPartnerTaxRevenueUseCase,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register('finance.partner_revenue_recognized', (event) => {
+      if (!event.tenantId) return Promise.resolve();
+      const payload = event.payload as {
+        partnerId: string;
+        journalId: string;
+        amount: string;
+        serviceDate: string;
+        bookingId: string;
+      };
+      return this.recordTaxRevenue.execute(event.tenantId, {
+        partnerId: payload.partnerId,
+        sourceType: 'settlement_release',
+        sourceId: payload.journalId,
+        amount: BigInt(payload.amount),
+        serviceDate: new Date(payload.serviceDate),
+        bookingId: payload.bookingId,
+      });
+    });
+    this.registry.register('finance.partner_revenue_reversed', (event) => {
+      if (!event.tenantId) return Promise.resolve();
+      const payload = event.payload as {
+        partnerId: string;
+        journalId: string;
+        reversesJournalId: string;
+        serviceDate: string;
+        bookingId: string;
+      };
+      return this.recordTaxRevenue.execute(event.tenantId, {
+        partnerId: payload.partnerId,
+        sourceType: 'settlement_clawback',
+        sourceId: payload.journalId,
+        reversesSourceId: payload.reversesJournalId,
+        serviceDate: new Date(payload.serviceDate),
+        bookingId: payload.bookingId,
+      });
+    });
+  }
+}

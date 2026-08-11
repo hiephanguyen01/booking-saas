@@ -33,6 +33,12 @@ import {
   respondSettlementDisputeInputSchema,
   tenantSettlementDisputesQuerySchema,
   partnerSettlementDisputesQuerySchema,
+  prepareTaxFilingInputSchema,
+  submitTaxFilingInputSchema,
+  recordTaxRemittanceInputSchema,
+  issueTaxCertificateInputSchema,
+  taxFilingPeriodResponseSchema,
+  taxWithholdingCertificateResponseSchema,
 } from '@booking/contracts';
 
 // Request bodies
@@ -50,6 +56,10 @@ export class PayoutPolicyDto extends createZodDto(payoutPolicySchema) {}
 export class RespondSettlementDisputeDto extends createZodDto(
   respondSettlementDisputeInputSchema,
 ) {}
+export class PrepareTaxFilingDto extends createZodDto(prepareTaxFilingInputSchema) {}
+export class SubmitTaxFilingDto extends createZodDto(submitTaxFilingInputSchema) {}
+export class RecordTaxRemittanceDto extends createZodDto(recordTaxRemittanceInputSchema) {}
+export class IssueTaxCertificateDto extends createZodDto(issueTaxCertificateInputSchema) {}
 
 // Query params
 export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
@@ -93,3 +103,7 @@ export class PartnerSettlementDisputeResponseDto extends createZodDto(
   partnerSettlementDisputeResponseSchema,
 ) {}
 export class SettlementSummaryResponseDto extends createZodDto(settlementSummaryResponseSchema) {}
+export class TaxFilingPeriodResponseDto extends createZodDto(taxFilingPeriodResponseSchema) {}
+export class TaxWithholdingCertificateResponseDto extends createZodDto(
+  taxWithholdingCertificateResponseSchema,
+) {}

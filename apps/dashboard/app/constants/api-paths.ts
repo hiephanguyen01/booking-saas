@@ -104,6 +104,13 @@ export const apiPaths = {
     settlement: (bookingId: string) => tenantPath(`/finance/settlements/${segment(bookingId)}`),
     financeDisputes: tenantPath('/finance/disputes'),
     financeSummary: tenantPath('/finance/summary'),
+    taxFilings: tenantPath('/finance/tax/filings'),
+    taxFilingPrepare: tenantPath('/finance/tax/filings/prepare'),
+    taxFilingSubmit: (filingId: string) =>
+      tenantPath(`/finance/tax/filings/${segment(filingId)}/submit`),
+    taxFilingRemittances: (filingId: string) =>
+      tenantPath(`/finance/tax/filings/${segment(filingId)}/remittances`),
+    taxCertificates: tenantPath('/finance/tax/certificates'),
 
     /**
      * Tenant feature flags. `TenantSettingsController` is `@Controller('tenant')`
@@ -143,6 +150,10 @@ export const apiPaths = {
     /** POST a partner's tax status — decides their VAT regime (§VAT). */
     partnerTaxStatus: (partnerId: string) =>
       tenantPath(`/partners/${segment(partnerId)}/tax-status`),
+    partnerTaxAssessment: (partnerId: string) =>
+      tenantPath(`/partners/${segment(partnerId)}/tax-assessment`),
+    partnerTaxDeclarations: (partnerId: string) =>
+      tenantPath(`/partners/${segment(partnerId)}/tax-declarations`),
     housePartners: tenantPath('/partners/house'),
 
     payments: tenantPath('/payments'),
@@ -207,6 +218,8 @@ export const apiPaths = {
     profileDocuments: partnerPath('/profile/documents'),
     profileIdentity: partnerPath('/profile/identity'),
     profilePayout: partnerPath('/profile/payout'),
+    profileTaxAssessment: partnerPath('/profile/tax-assessment'),
+    profileTaxDeclarations: partnerPath('/profile/tax-declarations'),
 
     promotions: partnerPath('/promotions'),
     promotion: (promotionId: string) => partnerPath(`/promotions/${segment(promotionId)}`),

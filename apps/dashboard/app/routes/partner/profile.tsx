@@ -1,5 +1,9 @@
 import { CircleAlert } from 'lucide-react';
-import type { PartnerAgreementResponse, PartnerResponse } from '@booking/contracts';
+import type {
+  PartnerAgreementResponse,
+  PartnerResponse,
+  PartnerTaxAssessmentResponse,
+} from '@booking/contracts';
 import { Image } from '@booking/ui/components/media/image';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
@@ -24,6 +28,7 @@ import { readString } from '~/lib/records';
 import { PARTNER_TYPE_LABEL } from '~/constants/partner';
 import { FormSurface, Section } from '~/components/form-layout';
 import { apiPaths } from '~/constants/api-paths';
+import { PartnerTaxAssessmentCard } from '~/features/tax/components/partner-tax-assessment-card';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Hồ sơ đối tác · Đối tác · BookingOS' }];
@@ -39,17 +44,25 @@ export async function loader({ request }: Route.LoaderArgs) {
       canManage: false as const,
       partner: null,
       agreements: [] as PartnerAgreementResponse[],
+      taxAssessment: null as PartnerTaxAssessmentResponse | null,
       loadError: null as string | null,
     };
   }
-  const [res, agreementRes] = await Promise.all([
-    apiGet<PartnerResponse>(apiPaths.partner.profile, auth),
+  const res = await apiGet<PartnerResponse>(apiPaths.partner.profile, auth);
+  const household =
+    res.data?.taxStatus === 'household_below_threshold' ||
+    res.data?.taxStatus === 'household_declaring';
+  const [agreementRes, taxRes] = await Promise.all([
     apiGet<PartnerAgreementResponse[]>(apiPaths.partner.profileAgreements, auth),
+    household
+      ? apiGet<PartnerTaxAssessmentResponse>(apiPaths.partner.profileTaxAssessment, auth)
+      : Promise.resolve(null),
   ]);
   return {
     canManage: true as const,
     partner: res.ok && res.data ? res.data : null,
     agreements: agreementRes.ok && agreementRes.data ? agreementRes.data : [],
+    taxAssessment: taxRes?.ok ? (taxRes.data ?? null) : null,
     loadError: res.ok ? null : (res.error ?? 'Không tải được hồ sơ đối tác.'),
   };
 }
@@ -60,7 +73,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function PartnerProfile({ loaderData, actionData }: Route.ComponentProps) {
-  const { canManage, partner, agreements, loadError } = loaderData;
+  const { canManage, partner, agreements, taxAssessment, loadError } = loaderData;
 
   const resultFor = (intent: PartnerProfileIntent): PartnerProfileActionResult | null =>
     actionData && actionData.intent === intent ? actionData : null;
@@ -167,6 +180,15 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
         <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-foreground">
           Hồ sơ đang chờ tenant duyệt. Bạn có thể đăng tin sau khi hồ sơ được phê duyệt.
         </div>
+      ) : null}
+
+      {taxAssessment ? <PartnerTaxAssessmentCard assessment={taxAssessment} canDeclare /> : null}
+
+      {actionData?.intent === 'declare-tax-revenue' && !actionData.ok ? (
+        <Alert variant="destructive">
+          <CircleAlert className="size-4" />
+          <AlertDescription>{actionData.error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <FormSurface>

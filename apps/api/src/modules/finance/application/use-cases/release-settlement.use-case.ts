@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
   LEDGER_REPOSITORY,
   type ILedgerRepository,
@@ -22,6 +23,7 @@ export class ReleaseSettlementUseCase {
   constructor(
     @Inject(SETTLEMENT_REPOSITORY) private readonly settlements: ISettlementRepository,
     @Inject(LEDGER_REPOSITORY) private readonly ledger: ILedgerRepository,
+    private readonly outbox: OutboxService,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -50,6 +52,19 @@ export class ReleaseSettlementUseCase {
         plan.amounts,
       );
       if (!released) throw new SettlementNotReleasable();
+      if (!booking.snapshot.isHouse && plan.taxRevenueAmount > 0n) {
+        await this.outbox.emit(tx, {
+          tenantId,
+          eventType: 'finance.partner_revenue_recognized',
+          payload: {
+            partnerId: booking.partnerId,
+            journalId,
+            amount: plan.taxRevenueAmount.toString(),
+            serviceDate: booking.serviceDate.toISOString(),
+            bookingId: booking.id,
+          },
+        });
+      }
     });
   }
 }

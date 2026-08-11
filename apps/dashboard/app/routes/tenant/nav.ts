@@ -14,6 +14,7 @@ import {
   Star,
   Heart,
   Scale,
+  ReceiptText,
   ShieldAlert,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
@@ -104,6 +105,12 @@ export const tenantNavSections: DashboardNavSection[] = [
         title: 'Sổ cái',
         to: dashboardPaths.tenant.ledger,
         icon: BookText,
+        permission: 'tenant.finance.read',
+      },
+      {
+        title: 'Thuế đối tác',
+        to: dashboardPaths.tenant.taxOperations,
+        icon: ReceiptText,
         permission: 'tenant.finance.read',
       },
       {

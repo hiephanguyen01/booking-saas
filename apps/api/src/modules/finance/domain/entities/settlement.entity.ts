@@ -1,5 +1,8 @@
 import { computeCommissionSplit } from '../../../../shared/domain/commission/commission-split';
-import { snapshotToRates, type CommissionSnapshot } from '../../../../shared/domain/commission/commission-snapshot';
+import {
+  snapshotToRates,
+  type CommissionSnapshot,
+} from '../../../../shared/domain/commission/commission-snapshot';
 import {
   SettlementJournalExists,
   SettlementOnsiteAmountMismatch,
@@ -42,6 +45,7 @@ export type RefundPlan =
   | {
       action: 'window';
       onsiteCollectedAmount: 0n;
+      taxRevenueAmount: 0n;
       amounts: ReleaseAmounts;
       kind: 'cancellation_fee';
     };
@@ -54,6 +58,8 @@ export interface FinalizedRefund {
 export interface SettlementWindowPlan {
   onsiteCollectedAmount: bigint;
   amounts: ReleaseAmounts;
+  /** Total actual partner revenue assessed when service completion is confirmed. */
+  taxRevenueAmount: bigint;
   kind?: SettlementRecord['kind'];
 }
 
@@ -61,6 +67,8 @@ export interface SettlementReleasePlan {
   amounts: ReleaseAmounts;
   legs: JournalLeg[];
   memo: 'settlement.cancellation_fee.released' | 'settlement.released';
+  /** Gross service revenue the partner is entitled to before tenant commission. */
+  taxRevenueAmount: bigint;
 }
 
 export class Settlement {
@@ -95,13 +103,21 @@ export class Settlement {
 
     return {
       onsiteCollectedAmount,
+      taxRevenueAmount: partnerBasis,
       amounts: {
         tenantCommissionGross: booking.snapshot.isHouse
           ? effectiveFinal
           : partnerBasis - split.partnerShare,
         tenantNetEarning: split.tenantNet,
         partnerGrossEarning: split.partnerShare,
-        partnerPayable: max0(split.partnerShare - onsiteCollectedAmount),
+        partnerPayable: max0(
+          split.partnerShare -
+            onsiteCollectedAmount -
+            split.partnerVatWithheld -
+            split.partnerPitWithheld,
+        ),
+        partnerVatWithheld: split.partnerVatWithheld,
+        partnerPitWithheld: split.partnerPitWithheld,
         platformFee: split.platformFee,
         affiliateCommission: split.affiliateCommission,
       },
@@ -122,13 +138,18 @@ export class Settlement {
 
     return {
       onsiteCollectedAmount: 0n,
+      taxRevenueAmount: commissionBase,
       amounts: {
         tenantCommissionGross: booking.snapshot.isHouse
           ? commissionBase
           : commissionBase - split.partnerShare,
         tenantNetEarning: split.tenantNet,
         partnerGrossEarning: split.partnerShare,
-        partnerPayable: split.partnerShare,
+        partnerPayable: max0(
+          split.partnerShare - split.partnerVatWithheld - split.partnerPitWithheld,
+        ),
+        partnerVatWithheld: split.partnerVatWithheld,
+        partnerPitWithheld: split.partnerPitWithheld,
         platformFee: split.platformFee,
         affiliateCommission: split.affiliateCommission,
       },
@@ -162,11 +183,14 @@ export class Settlement {
     return {
       action: 'window',
       onsiteCollectedAmount: 0n,
+      taxRevenueAmount: 0n,
       amounts: {
         tenantCommissionGross: retained,
         tenantNetEarning: retained,
         partnerGrossEarning: 0n,
         partnerPayable: 0n,
+        partnerVatWithheld: 0n,
+        partnerPitWithheld: 0n,
         platformFee: 0n,
         affiliateCommission: 0n,
       },
@@ -204,11 +228,14 @@ export class Settlement {
           tenantNetEarning: retained,
           partnerGrossEarning: 0n,
           partnerPayable: 0n,
+          partnerVatWithheld: 0n,
+          partnerPitWithheld: 0n,
           platformFee: 0n,
           affiliateCommission: 0n,
         },
         legs: LedgerJournal.cancellationFee({ tenantId: this.state.tenantId, retained }),
         memo: 'settlement.cancellation_fee.released',
+        taxRevenueAmount: 0n,
       };
     }
 
@@ -233,7 +260,14 @@ export class Settlement {
         : partnerBasis - split.partnerShare,
       tenantNetEarning: split.tenantNet,
       partnerGrossEarning: split.partnerShare,
-      partnerPayable: max0(split.partnerShare - this.state.onsiteCollectedAmount),
+      partnerPayable: max0(
+        split.partnerShare -
+          this.state.onsiteCollectedAmount -
+          split.partnerVatWithheld -
+          split.partnerPitWithheld,
+      ),
+      partnerVatWithheld: split.partnerVatWithheld,
+      partnerPitWithheld: split.partnerPitWithheld,
       platformFee: split.platformFee,
       affiliateCommission: split.affiliateCommission,
     };
@@ -252,6 +286,7 @@ export class Settlement {
         cashEntryType: 'booking_revenue',
       }),
       memo: 'settlement.released',
+      taxRevenueAmount: partnerBasis,
     };
   }
 

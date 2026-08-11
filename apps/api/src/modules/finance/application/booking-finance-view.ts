@@ -15,6 +15,7 @@ export interface BookingFinanceView {
   additionalCharges: bigint;
   snapshot: CommissionSnapshot;
   fundedBy: 'tenant' | 'partner' | null;
+  serviceDate: Date;
 }
 
 /**
@@ -42,10 +43,20 @@ export async function loadBookingFinanceView(
     },
   });
   if (!b) return null;
+  const serviceRows = await tx.$queryRaw<{ serviceDate: Date | null }[]>`
+    SELECT lower(COALESCE(timeslot, blocked_period)) AS "serviceDate"
+    FROM bookings
+    WHERE id = ${bookingId}::uuid
+  `;
+  const serviceDate = serviceRows[0]?.serviceDate;
+  if (!serviceDate) throw new Error(`Booking ${bookingId} has no service date`);
 
   let snapshot = b.commissionSnapshot as CommissionSnapshot | null;
   if (!snapshot) {
-    const partner = await tx.partner.findUnique({ where: { id: b.partnerId }, select: { isHouse: true } });
+    const partner = await tx.partner.findUnique({
+      where: { id: b.partnerId },
+      select: { isHouse: true },
+    });
     snapshot = defaultCommissionSnapshot(partner?.isHouse ?? false);
   }
   const promo = b.promotionSnapshot as { fundedBy?: 'tenant' | 'partner' } | null;
@@ -61,6 +72,7 @@ export async function loadBookingFinanceView(
     additionalCharges: sumCharges(b.additionalCharges),
     snapshot,
     fundedBy,
+    serviceDate,
   };
 }
 

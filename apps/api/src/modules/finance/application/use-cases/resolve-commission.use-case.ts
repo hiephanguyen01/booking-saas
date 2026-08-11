@@ -13,6 +13,7 @@ import {
   type CommissionSnapshot,
 } from '../../../../shared/domain/commission/commission-snapshot';
 import { ResolveTaxUseCase } from './resolve-tax.use-case';
+import { ResolveWithholdingUseCase } from './resolve-withholding.use-case';
 
 export interface ResolveCommissionTarget {
   tenantId: string;
@@ -40,6 +41,7 @@ export class ResolveCommissionUseCase {
   constructor(
     @Inject(COMMISSION_RULE_REPOSITORY) private readonly rules: ICommissionRuleRepository,
     private readonly tax: ResolveTaxUseCase,
+    private readonly withholding: ResolveWithholdingUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -60,7 +62,17 @@ export class ResolveCommissionUseCase {
       listingTypeId: target.listingTypeId,
       serviceDate: target.serviceDate,
     });
-    if (!rule) return { ...defaultCommissionSnapshot(target.isHouse, target.serviceDate), tax };
+    const withholding = await this.withholding.execute(tx, {
+      partnerId: target.partnerId,
+      serviceDate: target.serviceDate,
+    });
+    if (!rule) {
+      return {
+        ...defaultCommissionSnapshot(target.isHouse, target.serviceDate),
+        tax,
+        withholding,
+      };
+    }
     return {
       ruleId: rule.id,
       appliesTo: rule.appliesTo,
@@ -71,7 +83,7 @@ export class ResolveCommissionUseCase {
       affiliateRate: rule.affiliateRate.toString(),
       isHouse: target.isHouse,
       tax,
+      withholding,
     };
   }
-
 }

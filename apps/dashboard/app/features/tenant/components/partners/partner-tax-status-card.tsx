@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from '@booking/ui/components/ui/card';
 import { Label } from '@booking/ui/components/ui/label';
+import { Input } from '@booking/ui/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -40,16 +41,17 @@ export function PartnerTaxStatusCard({
   const submit = useSubmit();
   const navigation = useNavigation();
   const [value, setValue] = useState<PartnerTaxStatus>(taxStatus);
+  const [reason, setReason] = useState('');
   const pending = busy || navigation.state === 'submitting';
   const dirty = value !== taxStatus;
 
   return (
     <Card aria-busy={pending}>
       <CardHeader>
-        <CardTitle>Hồ sơ thuế</CardTitle>
+        <CardTitle>Điều chỉnh thủ công</CardTitle>
         <CardDescription>
-          Quyết định thuế suất GTGT áp cho mọi booking của đối tác này. Booking đã đặt không đổi —
-          mỗi booking giữ mức thuế đã đóng băng lúc đặt.
+          Chỉ dùng khi hồ sơ pháp lý cần ghi đè kết quả tự động. Điều chỉnh hết hạn vào cuối năm;
+          booking đã đặt vẫn giữ snapshot cũ.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -72,11 +74,27 @@ export function PartnerTaxStatusCard({
             {PARTNER_TAX_STATUS_HINTS[value]}
           </p>
         </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="partner-tax-override-reason">Lý do điều chỉnh</Label>
+          <Input
+            id="partner-tax-override-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            minLength={3}
+            maxLength={500}
+            placeholder="Ví dụ: hồ sơ cơ quan thuế xác nhận diện kê khai"
+          />
+        </div>
         <Button
           type="button"
           size="sm"
-          disabled={pending || !dirty}
-          onClick={() => submit({ intent: 'set-tax-status', taxStatus: value }, { method: 'post' })}
+          disabled={pending || !dirty || reason.trim().length < 3}
+          onClick={() =>
+            submit(
+              { intent: 'set-tax-status', taxStatus: value, reason: reason.trim() },
+              { method: 'post' },
+            )
+          }
         >
           Lưu
         </Button>

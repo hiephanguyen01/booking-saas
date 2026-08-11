@@ -114,7 +114,7 @@ enum TaxCategory {
 }
 
 /// Whether a seller charges output VAT. `household_below_threshold` is the
-/// <=200M VND/year exemption (Luật 48/2024/QH15); `individual` is a
+/// effective annual-revenue exemption (1B VND from 2026 under NĐ 141/2026/NĐ-CP); `individual` is a
 /// non-business person. Both resolve to a 0% rate.
 enum PartnerTaxStatus {
   company_vat
@@ -192,7 +192,7 @@ Create `apps/api/prisma/migrations/20260811120000_vat_tax_rates/migration.sql`:
 --      fan-out across every tenant's rows.
 --   2. `listing_types.tax_category` — the tenant classifies WHAT it sells.
 --   3. `partners.tax_status` / `tenants.tax_status` — WHO sells decides whether
---      output VAT applies at all (<=200M VND/year households are exempt).
+--      output VAT applies at all (households under the effective annual threshold are exempt).
 
 CREATE TYPE "tax_category" AS ENUM (
   'standard',
@@ -372,7 +372,7 @@ export type PartnerTaxStatus =
 
 /**
  * Only a VAT-registered company or a declaring household charges output VAT.
- * A household under the 200M VND/year threshold (Luật 48/2024/QH15) and a
+ * A household under the effective annual threshold and a
  * non-business individual both resolve to 0% regardless of listing type.
  */
 export function partnerChargesVat(status: PartnerTaxStatus): boolean {

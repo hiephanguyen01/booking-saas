@@ -58,7 +58,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   const partnerOwnerRole = await prisma.role.findFirstOrThrow({
     where: { name: 'Partner Owner', scopeLevel: 'partner', isSystem: true },
   });
-  // ── Partners (a company partner + a house partner) ──────────────────────────
+  // ── Partners (company, two household regimes, and house inventory) ──────────
   const partner = await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: tenant.id, slug: 'giang-studio' } },
     update: {
@@ -145,7 +145,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
       });
     }
   }
-  // A pending individual partner — the approval-queue + identity-verification fixture.
+  // A pending household partner — the approval-queue + identity-verification fixture.
   const applicantUser = await prisma.user.upsert({
     where: { email: 'trang@makeup.vn' },
     update: {},
@@ -164,7 +164,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
       name: 'Trang Makeup',
       slug: 'trang-makeup',
       partnerType: 'individual',
-      // Under the 200M VND/year threshold — charges no VAT, so the 0% branch is
+      // Under the effective annual threshold — charges no VAT, so the 0% branch is
       // visible in the running app and not only in theory.
       taxStatus: 'household_below_threshold',
       status: 'pending',
@@ -191,6 +191,50 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   ) {
     await prisma.partnerMember.create({
       data: { tenantId: tenant.id, partnerId: pendingPartner.id, userId: applicantUser.id },
+    });
+  }
+  // A declaring household makes the deliberate difference visible in the demo:
+  // its current sale rate is 4%, while NĐ 117 withholds 5% VAT at source.
+  const declaringUser = await prisma.user.upsert({
+    where: { email: 'lan@lancreative.vn' },
+    update: {},
+    create: {
+      email: 'lan@lancreative.vn',
+      passwordHash: password,
+      fullName: 'Lan Creative',
+      phone: '0900000004',
+      emailVerifiedAt: new Date(),
+    },
+  });
+  const declaringPartner = await prisma.partner.upsert({
+    where: { tenantId_slug: { tenantId: tenant.id, slug: 'lan-creative' } },
+    update: { taxStatus: 'household_declaring' },
+    create: {
+      tenantId: tenant.id,
+      name: 'Lan Creative',
+      slug: 'lan-creative',
+      description: 'Hộ kinh doanh sáng tạo nội dung và chụp ảnh sản phẩm',
+      partnerType: 'individual',
+      status: 'approved',
+      verifiedAt: new Date(),
+      taxStatus: 'household_declaring',
+      businessInfo: { taxId: '0312345680' },
+      contactInfo: { phone: '0900000004' },
+      payoutInfo: {
+        bank: 'Vietcombank',
+        accountNumber: '0011223355',
+        holderName: 'HO KINH DOANH LAN CREATIVE',
+      },
+    },
+  });
+  await ensureRoleAssignment(declaringUser.id, partnerOwnerRole.id, tenant.id, declaringPartner.id);
+  if (
+    !(await prisma.partnerMember.findFirst({
+      where: { partnerId: declaringPartner.id, userId: declaringUser.id },
+    }))
+  ) {
+    await prisma.partnerMember.create({
+      data: { tenantId: tenant.id, partnerId: declaringPartner.id, userId: declaringUser.id },
     });
   }
   const housePartner = await prisma.partner.upsert({

@@ -15,6 +15,10 @@ import type { CommissionSplit } from '../../../shared/domain/commission/commissi
 export type LedgerEntryType =
   | 'booking_revenue'
   | 'partner_share'
+  | 'vat_withheld'
+  | 'pit_withheld'
+  | 'vat_remitted'
+  | 'pit_remitted'
   | 'platform_fee'
   | 'affiliate_commission'
   | 'promo_discount'
@@ -26,7 +30,7 @@ export type LedgerEntryType =
   | 'refund'
   | 'payout';
 
-export type OwnerType = 'platform' | 'tenant' | 'partner' | 'affiliate';
+export type OwnerType = 'platform' | 'tenant' | 'partner' | 'affiliate' | 'tax_authority';
 
 /** Which tenant sub-account a leg targets (only meaningful for `tenant` legs). */
 export type TenantAccount = 'cash' | 'revenue';
@@ -170,6 +174,8 @@ export function buildRevenueJournal(input: RevenueJournalInput): JournalLeg[] {
 
   if (!isHouse && split.partnerShare > 0n)
     legs.push(credit(owner('partner', partnerId), 'partner_share', split.partnerShare));
+  // Withholding is journaled at service completion. Release recognizes the
+  // partner's gross share only and must not create the tax liability twice.
   if (split.platformFee > 0n)
     legs.push(credit(owner('platform', null), 'platform_fee', split.platformFee));
   if (split.affiliateCommission > 0n && affiliateId) {
@@ -179,6 +185,82 @@ export function buildRevenueJournal(input: RevenueJournalInput): JournalLeg[] {
   }
 
   return withTenantResidual(tenantId, legs);
+}
+
+/** Service completion: reduce the partner balance and recognize tax payable. */
+export function buildWithholdingJournal(params: {
+  tenantId: string;
+  partnerId: string;
+  vatAmount: Vnd;
+  pitAmount: Vnd;
+}): JournalLeg[] {
+  const partner = owner('partner', params.partnerId);
+  // ownerId=tenantId gives each tenant exactly one non-null authority account;
+  // the current ledger account uniqueness rule treats NULL values as distinct.
+  const authority = owner('tax_authority', params.tenantId);
+  const legs: JournalLeg[] = [];
+  if (params.vatAmount > 0n) {
+    legs.push(
+      debit(partner, 'vat_withheld', params.vatAmount),
+      credit(authority, 'vat_withheld', params.vatAmount),
+    );
+  }
+  if (params.pitAmount > 0n) {
+    legs.push(
+      debit(partner, 'pit_withheld', params.pitAmount),
+      credit(authority, 'pit_withheld', params.pitAmount),
+    );
+  }
+  return legs;
+}
+
+/** Confirmed refund: return provisional tax to the partner and reduce liability. */
+export function buildWithholdingReversalJournal(params: {
+  tenantId: string;
+  partnerId: string;
+  vatAmount: Vnd;
+  pitAmount: Vnd;
+}): JournalLeg[] {
+  const partner = owner('partner', params.partnerId);
+  const authority = owner('tax_authority', params.tenantId);
+  const legs: JournalLeg[] = [];
+  if (params.vatAmount > 0n) {
+    legs.push(
+      debit(authority, 'vat_withheld', params.vatAmount),
+      credit(partner, 'vat_withheld', params.vatAmount),
+    );
+  }
+  if (params.pitAmount > 0n) {
+    legs.push(
+      debit(authority, 'pit_withheld', params.pitAmount),
+      credit(partner, 'pit_withheld', params.pitAmount),
+    );
+  }
+  return legs;
+}
+
+/** Payment to the tax authority: settle liability from tenant cash. */
+export function buildTaxRemittanceJournal(params: {
+  tenantId: string;
+  vatAmount: Vnd;
+  pitAmount: Vnd;
+}): JournalLeg[] {
+  const authority = owner('tax_authority', params.tenantId);
+  const cash = owner('tenant', null);
+  const legs: JournalLeg[] = [];
+  if (params.vatAmount > 0n) {
+    legs.push(
+      debit(authority, 'vat_remitted', params.vatAmount),
+      credit(cash, 'vat_remitted', params.vatAmount),
+    );
+  }
+  if (params.pitAmount > 0n) {
+    legs.push(
+      debit(authority, 'pit_remitted', params.pitAmount),
+      credit(cash, 'pit_remitted', params.pitAmount),
+    );
+  }
+  return legs;
 }
 
 /**

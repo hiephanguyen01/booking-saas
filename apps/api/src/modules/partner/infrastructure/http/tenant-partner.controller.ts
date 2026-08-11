@@ -1,32 +1,15 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Ip,
-  Param,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Ip, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   uuidSchema,
   type PaginatedWithCounts,
   type PartnerResponse,
+  type PartnerTaxAssessmentResponse,
 } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { toPaginated } from '../../../../shared/pagination/pagination';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
-import {
-  ApiPaginatedResponse,
-  UuidParam,
-} from '../../../../shared/openapi/decorators';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
@@ -40,12 +23,18 @@ import { ApprovePartnerUseCase } from '../../application/use-cases/approve-partn
 import { VerifyIdentityUseCase } from '../../application/use-cases/verify-identity.use-case';
 import { SuspendPartnerUseCase } from '../../application/use-cases/suspend-partner.use-case';
 import { UpdatePartnerTaxStatusUseCase } from '../../application/use-cases/update-partner-tax-status.use-case';
+import { GetPartnerTaxAssessmentUseCase } from '../../application/use-cases/get-partner-tax-assessment.use-case';
+import { RecordPartnerTaxDeclarationUseCase } from '../../application/use-cases/record-partner-tax-declaration.use-case';
 import { toPartnerResponse } from '../../application/partner.mapper';
+import { toPartnerTaxAssessmentResponse } from '../../application/partner-tax.mapper';
 import {
   ApprovePartnerDto,
   CreateHousePartnerDto,
   ListPartnersQueryDto,
   PartnerResponseDto,
+  PartnerTaxAssessmentResponseDto,
+  PartnerTaxYearQueryDto,
+  RecordPartnerTaxDeclarationDto,
   UpdatePartnerTaxStatusDto,
   VerifyIdentityDto,
 } from './dto/partner.dto';
@@ -62,6 +51,8 @@ export class TenantPartnerController {
     private readonly verifyIdentity: VerifyIdentityUseCase,
     private readonly suspendPartner: SuspendPartnerUseCase,
     private readonly updateTaxStatus: UpdatePartnerTaxStatusUseCase,
+    private readonly getTaxAssessment: GetPartnerTaxAssessmentUseCase,
+    private readonly recordTaxDeclaration: RecordPartnerTaxDeclarationUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -69,9 +60,7 @@ export class TenantPartnerController {
   @Get()
   @ApiOperation({ summary: 'List partners under the tenant' })
   @ApiPaginatedResponse(PartnerResponseDto)
-  async list(
-    @Query() query: ListPartnersQueryDto,
-  ): Promise<PaginatedWithCounts<PartnerResponse>> {
+  async list(@Query() query: ListPartnersQueryDto): Promise<PaginatedWithCounts<PartnerResponse>> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const result = await this.listPartners.execute(tenantId, query);
     return { ...toPaginated(query, result, toPartnerResponse), counts: result.counts };
@@ -83,9 +72,7 @@ export class TenantPartnerController {
   @Post('house')
   @ApiOperation({ summary: 'Create a house partner for the tenant' })
   @ApiCreatedResponse({ type: PartnerResponseDto })
-  async createHouse(
-    @Body() input: CreateHousePartnerDto,
-  ): Promise<PartnerResponse> {
+  async createHouse(@Body() input: CreateHousePartnerDto): Promise<PartnerResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return toPartnerResponse(await this.createHousePartner.execute(tenantId, input));
   }
@@ -95,10 +82,48 @@ export class TenantPartnerController {
   @ApiOperation({ summary: 'Get a partner by id' })
   @UuidParam()
   @ApiOkResponse({ type: PartnerResponseDto })
-  async get(
+  async get(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<PartnerResponse> {
+    return toPartnerResponse(
+      await this.getPartner.execute(this.tenantContext.tenantIdOrThrow(), id),
+    );
+  }
+
+  @RequirePermissions('tenant.partners.read')
+  @Get(':id/tax-assessment')
+  @ApiOperation({ summary: "Get a partner's annual household tax assessment" })
+  @UuidParam()
+  @ApiOkResponse({ type: PartnerTaxAssessmentResponseDto })
+  async taxAssessment(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-  ): Promise<PartnerResponse> {
-    return toPartnerResponse(await this.getPartner.execute(this.tenantContext.tenantIdOrThrow(), id));
+    @Query() query: PartnerTaxYearQueryDto,
+  ): Promise<PartnerTaxAssessmentResponse> {
+    const result = await this.getTaxAssessment.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+      query.year,
+    );
+    return toPartnerTaxAssessmentResponse(result.assessment, result.taxStatus);
+  }
+
+  @RequirePermissions('tenant.partners.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Post(':id/tax-declarations')
+  @HttpCode(200)
+  @ApiOperation({ summary: "Record a partner's revenue outside BookingOS" })
+  @UuidParam()
+  @ApiOkResponse({ type: PartnerTaxAssessmentResponseDto })
+  async declareTaxRevenue(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() input: RecordPartnerTaxDeclarationDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<PartnerTaxAssessmentResponse> {
+    const result = await this.recordTaxDeclaration.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+      input,
+      principal.userId,
+    );
+    return toPartnerTaxAssessmentResponse(result.assessment, result.taxStatus);
   }
 
   @RequirePermissions('tenant.partners.approve')
@@ -168,9 +193,15 @@ export class TenantPartnerController {
   async setTaxStatus(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() input: UpdatePartnerTaxStatusDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PartnerResponse> {
     return toPartnerResponse(
-      await this.updateTaxStatus.execute(this.tenantContext.tenantIdOrThrow(), id, input),
+      await this.updateTaxStatus.execute(
+        this.tenantContext.tenantIdOrThrow(),
+        id,
+        input,
+        principal.userId,
+      ),
     );
   }
 }

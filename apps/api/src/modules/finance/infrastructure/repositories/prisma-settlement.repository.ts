@@ -92,6 +92,8 @@ function toRecord(row: EnrichedRow): SettlementRecord {
     tenantNetEarning: row.tenantNetEarning,
     partnerGrossEarning: row.partnerGrossEarning,
     partnerPayable: row.partnerPayable,
+    partnerVatWithheld: row.partnerVatWithheld,
+    partnerPitWithheld: row.partnerPitWithheld,
     platformFee: row.platformFee,
     affiliateCommission: row.affiliateCommission,
     refundedAmount: row.refundedAmount,
@@ -108,6 +110,7 @@ function toRecord(row: EnrichedRow): SettlementRecord {
     disputeUntil: row.disputeUntil,
     releasedAt: row.releasedAt,
     releaseJournalId: row.releaseJournalId,
+    withholdingJournalId: row.withholdingJournalId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -216,6 +219,8 @@ export class PrismaSettlementRepository implements ISettlementRepository {
           tenant_net_earning = ${amounts.tenantNetEarning},
           partner_gross_earning = ${amounts.partnerGrossEarning},
           partner_payable = ${amounts.partnerPayable},
+          partner_vat_withheld = ${amounts.partnerVatWithheld},
+          partner_pit_withheld = ${amounts.partnerPitWithheld},
           platform_fee = ${amounts.platformFee},
           affiliate_commission = ${amounts.affiliateCommission},
           retained_amount = CASE
@@ -312,6 +317,8 @@ export class PrismaSettlementRepository implements ISettlementRepository {
           tenant_net_earning = ${amounts.tenantNetEarning},
           partner_gross_earning = ${amounts.partnerGrossEarning},
           partner_payable = ${amounts.partnerPayable},
+          partner_vat_withheld = ${amounts.partnerVatWithheld},
+          partner_pit_withheld = ${amounts.partnerPitWithheld},
           platform_fee = ${amounts.platformFee},
           affiliate_commission = ${amounts.affiliateCommission},
           updated_at = now()

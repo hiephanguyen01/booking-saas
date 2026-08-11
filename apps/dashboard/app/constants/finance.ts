@@ -19,6 +19,10 @@ import type {
 export const LEDGER_ENTRY_LABEL: Record<LedgerEntryTypeDto, string> = {
   booking_revenue: 'Doanh thu đặt chỗ',
   partner_share: 'Phần đối tác',
+  vat_withheld: 'Khấu trừ thuế GTGT (NĐ 117)',
+  pit_withheld: 'Khấu trừ thuế TNCN (NĐ 117)',
+  vat_remitted: 'Đã nộp thuế GTGT',
+  pit_remitted: 'Đã nộp thuế TNCN',
   platform_fee: 'Phí nền tảng',
   affiliate_commission: 'Hoa hồng CTV',
   promo_discount: 'Giảm giá khuyến mãi',
@@ -37,6 +41,7 @@ export const LEDGER_OWNER_LABEL: Record<LedgerOwnerTypeDto, string> = {
   tenant: 'Cửa hàng',
   partner: 'Đối tác',
   affiliate: 'Cộng tác viên',
+  tax_authority: 'Cơ quan thuế',
 };
 
 export const SETTLEMENT_STATUS_LABEL: Record<SettlementStatusDto, string> = {
@@ -78,9 +83,9 @@ export const DISPUTE_STATUS_LABEL: Record<SettlementDisputeResponse['status'], s
  * their own copy and had drifted: `open` read "Chờ xử lý" on one and "Đang xử
  * lý" on the other two.
  */
-export const DISPUTE_STATUS_FILTER_OPTIONS = (
-  ['open', 'accepted', 'rejected'] as const
-).map((status) => ({ value: status, label: DISPUTE_STATUS_LABEL[status] }));
+export const DISPUTE_STATUS_FILTER_OPTIONS = (['open', 'accepted', 'rejected'] as const).map(
+  (status) => ({ value: status, label: DISPUTE_STATUS_LABEL[status] }),
+);
 
 /** What a commission rule applies to → Vietnamese label. */
 export const COMMISSION_SCOPE_LABEL: Record<CommissionAppliesToDto, string> = {

@@ -4,6 +4,9 @@ import {
   buildClawbackJournal,
   buildPayoutJournal,
   buildRevenueJournal,
+  buildTaxRemittanceJournal,
+  buildWithholdingJournal,
+  buildWithholdingReversalJournal,
   hasRevenueJournal,
   type JournalLeg,
   type RevenueJournalInput,
@@ -32,6 +35,32 @@ export class LedgerJournal {
 
   static clawback(original: JournalLeg[]): JournalLeg[] {
     return buildClawbackJournal(original);
+  }
+
+  static withholding(input: {
+    tenantId: string;
+    partnerId: string;
+    vatAmount: bigint;
+    pitAmount: bigint;
+  }): JournalLeg[] {
+    return buildWithholdingJournal(input);
+  }
+
+  static withholdingReversal(input: {
+    tenantId: string;
+    partnerId: string;
+    vatAmount: bigint;
+    pitAmount: bigint;
+  }): JournalLeg[] {
+    return buildWithholdingReversalJournal(input);
+  }
+
+  static taxRemittance(input: {
+    tenantId: string;
+    vatAmount: bigint;
+    pitAmount: bigint;
+  }): JournalLeg[] {
+    return buildTaxRemittanceJournal(input);
   }
 
   static activeRevenueId(

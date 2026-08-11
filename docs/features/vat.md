@@ -28,7 +28,7 @@ listing type — decides which applies:
 | Seller | Method | Rate | Arithmetic |
 | --- | --- | --- | --- |
 | `company_vat` | **khấu trừ** (deduction) | 8% → 10% from 2027-01-01 | contained in the gross: `g × r / (100+r)` |
-| `household_declaring` | **tỷ lệ % trên doanh thu** | **5%** for services | straight on revenue: `g × r` |
+| `household_declaring` | **tỷ lệ % trên doanh thu** | **4% → 5% from 2027-01-01** for services | straight on revenue: `g × r` |
 | `household_below_threshold`, `individual` | none | 0 | — |
 
 They differ in the arithmetic as well as the rate: on 280,000 ₫ the deduction
@@ -44,9 +44,8 @@ one service rate whatever it sells, so its category is always
 > billed 8% by the deduction formula — wrong on both counts. No seeded partner used
 > that status, so no data was affected.
 
-**Open for the accountant:** past VAT-reduction resolutions also cut the percentage
-rate by 20%, which would make it 4% until 2026-12-31. If confirmed, that is one
-extra row in `tax_rates`, not a code change.
+The VAT-reduction window also cuts the percentage-method service rate by 20%, so
+the schedule contains 4% through 2026-12-31 and 5% from 2027-01-01.
 
 ## Prices are VAT-inclusive gross
 
@@ -92,7 +91,7 @@ decision — `TONG-QUAN.md` §13.2 already booked tenant revenue as *net commiss
 
 | Party | Declares VAT on |
 | --- | --- |
-| Partner | the gross booking — or nothing, if under the 200M ₫/year threshold |
+| Partner | the gross booking — or nothing, if under the effective annual threshold (1B ₫ from 2026) |
 | Tenant | its commission |
 | Platform | its 2% fee + subscription |
 
@@ -121,6 +120,86 @@ of sync. `tax` is **optional**, and `snapshotToRates` reads a missing one as
 `vatBps: 0`, so a booking created before this feature behaves exactly as it did.
 
 An invoice issued in 2027 for a 2026 booking therefore still prints 8%.
+
+## NĐ 117 withholding at source
+
+When the platform/tenant collects payment for a household or individual partner,
+the product applies provisional withholding under NĐ 117/2025/NĐ-CP. The service
+schedule is **5% VAT + 2% PIT**, effective 2025-07-01.
+Companies and house inventory are not withheld from: a company declares for
+itself, while house inventory has no third-party seller.
+
+The current BookingOS operational trigger is **`booking.completed`**, not the
+later payout release. This product gate treats confirmed service completion as
+the successful service transaction. The literal wording of Article 5 is earlier:
+“ngay khi xác nhận giao dịch thành công và chấp nhận thanh toán”, so tax counsel
+must validate that mapping before production. The dispute window only keeps the
+partner payout unavailable. A confirmed refund creates a linked, proportional
+reversal instead of mutating the original event.
+
+This is a deduction from the partner's existing gross share, not a customer charge
+and not new tenant revenue. For a 280,000 ₫ declaring-household booking:
+
+```text
+partner gross share       240,100
+VAT withheld (5% gross)   -14,000
+PIT withheld (2% gross)    -5,600
+partner payable           220,500
+```
+
+`partnerShare + platformFee + affiliate + tenantNet` remains equal to customer
+cash. The ledger first credits the full partner share, then debits the two withheld
+amounts and credits a dedicated **tax-authority liability**, never tenant revenue.
+`booking_settlements` stores the
+two deductions separately, and the immutable booking snapshot freezes the rate
+beside VAT so historical releases replay exactly.
+
+The assessment base is the partner's total actual service revenue, including an
+amount collected on site; it is not limited to cash that passed through the
+gateway. All individual/household branches are provisionally withheld at 5% + 2%.
+Any excess caused by the seller's final annual status is carried forward or
+refunded during reconciliation.
+
+Two cases look surprising but are intentional:
+
+- A declaring household's sale currently uses 4% VAT while the platform withholds
+  5% VAT. The difference is handled in annual reconciliation; the code must not
+  silently net the two rates.
+- A household below the current 1B ₫ annual threshold has a 0% sale rate but is
+  still provisionally withheld from on a platform-collected transaction. The
+  amount is credited or reclaimed through the applicable annual process.
+
+Tenant finance now includes monthly draft preparation, filing-reference capture,
+remittance evidence, liability settlement and annual withholding-certificate
+metadata. The operator still submits/pays through the official tax channel and
+uploads the resulting artifact reference; BookingOS records and reconciles that
+work rather than impersonating the tax portal. Annual credit/refund execution is
+still manual. Legal reference: [NĐ 117/2025/NĐ-CP](https://vanban.chinhphu.vn/?classid=1&docid=213883&orggroupid=2&pageid=27160)
+
+## Automatic annual-threshold classification
+
+The threshold is not a frontend constant. `tax_threshold_rules` is global,
+effective-dated legal reference data; the active 2026 row is 1B ₫ under
+NĐ 141/2026/NĐ-CP. `partner_tax_year_assessments` combines two sources:
+
+- BookingOS settlement revenue, recorded as append-only idempotent
+  `partner_tax_revenue_events`; and
+- the latest partner declaration of revenue earned outside BookingOS, with every
+  declaration retained in `partner_tax_declarations` for audit.
+
+A household without an external-revenue declaration is classified conservatively
+as `household_declaring`. Once declared, total revenue at or below the rule becomes
+`household_below_threshold`; strictly above it becomes `household_declaring`.
+Revenue-driven crossings are sticky for the year so refunds cannot oscillate the
+status. A legal-rule revision can reassess both directions. The daily worker also
+backfills released settlements and applies retroactive rule changes. Manual
+overrides require a reason, are audited, and expire at the next Vietnam tax year.
+
+The booking's `commission_snapshot.tax` remains immutable. Automatic status
+changes affect later bookings; retrospective quarter/year differences belong to
+the reconciliation workflow rather than mutation of an existing booking or
+ledger journal.
+and [NĐ 68/2026/NĐ-CP guidance](https://xaydungchinhsach.chinhphu.vn/huong-dan-khai-thue-khau-tru-thue-voi-hoat-dong-kinh-doanh-tren-nen-tang-thuong-mai-dien-tu-119260309150311529.htm).
 
 ## The 2027 changeover needs no deploy
 
@@ -168,11 +247,10 @@ Changing either only affects **future** bookings; existing ones replay the rate
 frozen on their snapshot.
 
 ## Not implemented
-- **NĐ 117/2025 withholding** — where the tenant has the payment function and the
-  partner is a household/individual, the tenant must withhold 5% VAT + 2% PIT and
-  remit. This is what a `vat_withheld` ledger entry type would be for; it changes the
-  payout amount, so it needs an accountant's sign-off.
 - **E-invoicing** (hóa đơn điện tử) and VAT reporting exports.
+- Direct tax-portal submission/payment integration and automatic annual
+  credit/refund execution. BookingOS records filings, remittances and certificate
+  metadata, but a human operator performs the external legal act.
 
 ## Open question for the accountant
 

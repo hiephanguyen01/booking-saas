@@ -3,8 +3,10 @@ import {
   createCommissionRuleInputSchema,
   updateCommissionRuleInputSchema,
   updatePartnerTaxStatusInputSchema,
+  recordPartnerTaxDeclarationInputSchema,
   type CommissionRuleResponse,
   type PartnerResponse,
+  type PartnerTaxAssessmentResponse,
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import {
@@ -33,6 +35,7 @@ import { PartnerLegalCard } from '~/features/tenant/components/partners/partner-
 import { PartnerModerationActions } from '~/features/tenant/components/partners/partner-moderation-actions';
 import { PartnerPayoutCard } from '~/features/tenant/components/partners/partner-payout-card';
 import { PartnerTaxStatusCard } from '~/features/tenant/components/partners/partner-tax-status-card';
+import { PartnerTaxAssessmentCard } from '~/features/tax/components/partner-tax-assessment-card';
 import { PartnerCommissionCard } from '~/features/tenant/components/partners/partner-commission-card';
 import {
   readCommissionRatePatch,
@@ -50,19 +53,29 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.partners.read');
   const canCommissions = can('tenant.commissions.manage');
-  const [res, rulesRes] = await Promise.all([
-    apiGet<PartnerResponse>(apiPaths.tenant.partner(params.partnerId), auth),
+  const res = await apiGet<PartnerResponse>(apiPaths.tenant.partner(params.partnerId), auth);
+  if (!res.ok || !res.data) throw new Response('Không tìm thấy đối tác', { status: 404 });
+  const household =
+    res.data.taxStatus === 'household_below_threshold' ||
+    res.data.taxStatus === 'household_declaring';
+  const [rulesRes, taxRes] = await Promise.all([
     canCommissions
       ? apiGet<CommissionRuleResponse[]>(apiPaths.tenant.commissionRules, auth)
       : Promise.resolve(null),
+    household
+      ? apiGet<PartnerTaxAssessmentResponse>(
+          apiPaths.tenant.partnerTaxAssessment(params.partnerId),
+          auth,
+        )
+      : Promise.resolve(null),
   ]);
-  if (!res.ok || !res.data) throw new Response('Không tìm thấy đối tác', { status: 404 });
   const rules = rulesRes?.ok ? (rulesRes.data ?? []) : [];
   return {
     partner: res.data,
     canApprove: can('tenant.partners.approve'),
     canManage: can('tenant.partners.manage'),
     canCommissions,
+    taxAssessment: taxRes?.ok ? (taxRes.data ?? null) : null,
     defaultCommission: rules.find((rule) => rule.appliesTo === 'tenant_default') ?? null,
     partnerCommission:
       rules.find((rule) => rule.appliesTo === 'partner' && rule.partnerId === params.partnerId) ??
@@ -91,10 +104,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       return routeData({ error: 'Bạn không có quyền quản lý hoa hồng.' }, { status: 403 });
     }
 
-    const rulesRes = await apiGet<CommissionRuleResponse[]>(
-      apiPaths.tenant.commissionRules,
-      auth,
-    );
+    const rulesRes = await apiGet<CommissionRuleResponse[]>(apiPaths.tenant.commissionRules, auth);
     if (!rulesRes.ok) {
       return routeData(
         { error: rulesRes.error ?? 'Không kiểm tra được quy tắc hoa hồng.' },
@@ -165,6 +175,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
     const parsed = updatePartnerTaxStatusInputSchema.safeParse({
       taxStatus: String(form.get('taxStatus') ?? ''),
+      reason: String(form.get('reason') ?? ''),
     });
     if (!parsed.success) {
       return routeData({ error: 'Diện thuế không hợp lệ.' }, { status: 400 });
@@ -175,8 +186,31 @@ export async function action({ request, params }: Route.ActionArgs) {
       auth,
     );
     if (!res.ok) {
+      return routeData({ error: res.error ?? 'Không cập nhật được hồ sơ thuế.' }, { status: 400 });
+    }
+    return { ok: true, intent, verificationStatus: null };
+  }
+
+  if (intent === 'declare-tax-revenue') {
+    if (!can('tenant.partners.manage')) {
+      return routeData({ error: 'Bạn không có quyền quản lý đối tác.' }, { status: 403 });
+    }
+    const parsed = recordPartnerTaxDeclarationInputSchema.safeParse({
+      taxYear: form.get('taxYear'),
+      externalRevenue: String(form.get('externalRevenue') ?? ''),
+      note: String(form.get('note') ?? '').trim() || undefined,
+    });
+    if (!parsed.success) {
+      return routeData({ error: 'Doanh thu khai báo không hợp lệ.' }, { status: 400 });
+    }
+    const res = await apiPost<PartnerTaxAssessmentResponse>(
+      apiPaths.tenant.partnerTaxDeclarations(params.partnerId),
+      parsed.data,
+      auth,
+    );
+    if (!res.ok) {
       return routeData(
-        { error: res.error ?? 'Không cập nhật được hồ sơ thuế.' },
+        { error: res.error ?? 'Không ghi nhận được doanh thu ngoài BookingOS.' },
         { status: 400 },
       );
     }
@@ -204,8 +238,15 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function PartnerDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { partner, canApprove, canManage, canCommissions, defaultCommission, partnerCommission } =
-    loaderData;
+  const {
+    partner,
+    canApprove,
+    canManage,
+    canCommissions,
+    taxAssessment,
+    defaultCommission,
+    partnerCommission,
+  } = loaderData;
   const { readOnly } = useTenantArea();
   const error = actionData && 'error' in actionData ? actionData.error : null;
   const success = actionData && 'ok' in actionData ? actionData : null;
@@ -263,11 +304,12 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
       </Card>
 
       <PartnerIdentityCard partner={partner} business={business} />
-      <PartnerTaxStatusCard
-        taxStatus={partner.taxStatus}
-        busy={readOnly}
-        error={error}
-      />
+      {taxAssessment ? (
+        <PartnerTaxAssessmentCard assessment={taxAssessment} canDeclare={canManage && !readOnly} />
+      ) : null}
+      {canManage && !readOnly ? (
+        <PartnerTaxStatusCard taxStatus={partner.taxStatus} busy={false} error={error} />
+      ) : null}
 
       <PartnerPayoutCard payoutInfo={partner.payoutInfo} />
       {canCommissions && !partner.isHouse ? (
@@ -319,5 +361,7 @@ function successMessage(result: { intent: string; verificationStatus: string | n
   if (result.intent === 'update-partner-commission') return 'Đã cập nhật mức hoa hồng của đối tác.';
   if (result.intent === 'delete-partner-commission')
     return 'Đối tác đã quay lại dùng mức mặc định.';
+  if (result.intent === 'declare-tax-revenue') return 'Đã ghi nhận doanh thu ngoài BookingOS.';
+  if (result.intent === 'set-tax-status') return 'Đã lưu điều chỉnh hồ sơ thuế đến cuối năm.';
   return 'Thao tác thành công.';
 }

@@ -11,6 +11,8 @@ import {
 } from '../../domain/ports/settlement-repository.port';
 import { Settlement } from '../../domain/entities/settlement.entity';
 import { LedgerJournal } from '../../domain/entities/ledger-journal.entity';
+import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { loadBookingFinanceView } from '../booking-finance-view';
 
 /**
  * Post-completion dispute/refund → a clawback reversing the completion journal
@@ -24,6 +26,7 @@ export class RecordClawbackJournalUseCase {
   constructor(
     @Inject(LEDGER_REPOSITORY) private readonly ledger: ILedgerRepository,
     @Inject(SETTLEMENT_REPOSITORY) private readonly settlements: ISettlementRepository,
+    private readonly outbox: OutboxService,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -48,10 +51,24 @@ export class RecordClawbackJournalUseCase {
           credit: e.credit,
         })),
       );
-      await this.ledger.recordJournal(tx, tenantId, legs, {
+      const journalId = await this.ledger.recordJournal(tx, tenantId, legs, {
         bookingId,
         memo: `settlement.clawback:${activeJournalId}`,
       });
+      const booking = await loadBookingFinanceView(tx, bookingId);
+      if (booking && !booking.snapshot.isHouse) {
+        await this.outbox.emit(tx, {
+          tenantId,
+          eventType: 'finance.partner_revenue_reversed',
+          payload: {
+            partnerId: booking.partnerId,
+            journalId,
+            reversesJournalId: activeJournalId,
+            serviceDate: booking.serviceDate.toISOString(),
+            bookingId,
+          },
+        });
+      }
     });
   }
 }

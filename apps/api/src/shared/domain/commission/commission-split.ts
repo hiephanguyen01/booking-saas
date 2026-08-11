@@ -48,6 +48,9 @@ export interface CommissionRates {
    * on it, not just on the rate.
    */
   vatMethod: TaxMethod;
+  /** NĐ 117 withholding rates in basis points; zero for a company/house seller. */
+  withholdingVatBps: number;
+  withholdingPitBps: number;
 }
 
 export interface SplitInput {
@@ -61,10 +64,14 @@ export interface SplitInput {
   rates: CommissionRates;
 }
 
-export type SplitFlag = 'PARTNER_SHARE_FLOORED' | 'TENANT_NET_NEGATIVE';
+export type SplitFlag =
+  'PARTNER_SHARE_FLOORED' | 'TENANT_NET_NEGATIVE' | 'WITHHOLDING_EXCEEDS_PARTNER_SHARE';
 
 export interface CommissionSplit {
   partnerShare: Vnd;
+  /** Amounts carved out of `partnerShare`, not additional charges. */
+  partnerVatWithheld: Vnd;
+  partnerPitWithheld: Vnd;
   platformFee: Vnd;
   affiliateCommission: Vnd;
   /** Tenant's net take (may be negative when a fixed/promo combo bites — flagged). */
@@ -120,7 +127,17 @@ export function computeCommissionSplit(input: SplitInput): CommissionSplit {
     // the tenant's own liability and must not leak out of the journal.
     const tenantNet = finalAmount - platformFee - affiliateCommission;
     if (tenantNet < 0n) flags.push('TENANT_NET_NEGATIVE');
-    return { partnerShare: 0n, platformFee, affiliateCommission, tenantNet, promoDiscount, fundedBy, flags };
+    return {
+      partnerShare: 0n,
+      partnerVatWithheld: 0n,
+      partnerPitWithheld: 0n,
+      platformFee,
+      affiliateCommission,
+      tenantNet,
+      promoDiscount,
+      fundedBy,
+      flags,
+    };
   }
 
   // Gross basis pays the partner; net basis sizes the tenant's commission (§VAT).
@@ -142,8 +159,32 @@ export function computeCommissionSplit(input: SplitInput): CommissionSplit {
     flags.push('PARTNER_SHARE_FLOORED');
   }
 
+  // NĐ 117 is collected on the full customer-paid revenue. The two amounts are
+  // carved out of the partner's existing share, so the four-way cash split and
+  // tenant/platform earnings remain unchanged.
+  const withholdingBasis = fundedBy === 'tenant' ? totalAmount : finalAmount;
+  let partnerVatWithheld = percentOfBps(withholdingBasis, rates.withholdingVatBps);
+  let partnerPitWithheld = percentOfBps(withholdingBasis, rates.withholdingPitBps);
+  if (partnerVatWithheld + partnerPitWithheld > partnerShare) {
+    // A fixed commission may leave less than the statutory deduction. Do not
+    // fund the state from tenant earnings; flag the booking for manual handling.
+    partnerVatWithheld = 0n;
+    partnerPitWithheld = 0n;
+    flags.push('WITHHOLDING_EXCEEDS_PARTNER_SHARE');
+  }
+
   const tenantNet = tenantCommission - platformFee - affiliateCommission - promoDiscount;
   if (tenantNet < 0n) flags.push('TENANT_NET_NEGATIVE');
 
-  return { partnerShare, platformFee, affiliateCommission, tenantNet, promoDiscount, fundedBy, flags };
+  return {
+    partnerShare,
+    partnerVatWithheld,
+    partnerPitWithheld,
+    platformFee,
+    affiliateCommission,
+    tenantNet,
+    promoDiscount,
+    fundedBy,
+    flags,
+  };
 }

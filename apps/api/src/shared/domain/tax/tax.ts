@@ -12,11 +12,7 @@ import { percentOfBps, vatFromGross, type Vnd } from '../../money/money';
 
 /** Structurally identical to Prisma's generated `TaxCategory` enum. */
 export type TaxCategory =
-  | 'standard'
-  | 'reduced_5'
-  | 'exempt'
-  | 'not_taxable'
-  | 'percentage_service';
+  'standard' | 'reduced_5' | 'exempt' | 'not_taxable' | 'percentage_service';
 
 /**
  * The two Vietnamese VAT regimes. They are mutually exclusive and chosen by WHO
@@ -36,14 +32,12 @@ export type TaxMethod = 'deduction' | 'percentage';
 
 /** Structurally identical to Prisma's generated `PartnerTaxStatus` enum. */
 export type PartnerTaxStatus =
-  | 'company_vat'
-  | 'household_declaring'
-  | 'household_below_threshold'
-  | 'individual';
+  'company_vat' | 'household_declaring' | 'household_below_threshold' | 'individual';
 
 /**
  * Only a VAT-registered company or a declaring household charges output VAT.
- * A household under the 200M VND/year threshold (Luật 48/2024/QH15) and a
+ * A household under the effective annual threshold (1B VND from 2026 under
+ * NĐ 141/2026/NĐ-CP) and a
  * non-business individual both resolve to 0% regardless of listing type.
  */
 export function partnerChargesVat(status: PartnerTaxStatus): boolean {

@@ -45,6 +45,7 @@ export const dashboardPaths = {
     bookings: tenantPath('/bookings'),
     booking: (bookingId: string) => tenantPath(`/bookings/${segment(bookingId)}`),
     finance: tenantPath('/finance'),
+    taxOperations: tenantPath('/finance/tax'),
     ledger: tenantPath('/finance/ledger'),
     settlements: tenantPath('/finance/settlements'),
     disputes: tenantPath('/finance/disputes'),

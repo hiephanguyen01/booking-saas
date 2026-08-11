@@ -1,8 +1,14 @@
-import type { PartnerAgreementResponse, PartnerResponse } from '@booking/contracts';
-import { Body, Controller, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
+import type {
+  PartnerAgreementResponse,
+  PartnerResponse,
+  PartnerTaxAssessmentResponse,
+} from '@booking/contracts';
+import { Body, Controller, Get, HttpCode, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { ListPartnerAcceptancesUseCase } from '../../../legal/application/use-cases/list-partner-acceptances.use-case';
 import { toPartnerResponse } from '../../application/partner.mapper';
@@ -11,8 +17,14 @@ import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/us
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
 import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/update-partner-documents.use-case';
 import { UpdatePayoutInfoUseCase } from '../../application/use-cases/update-payout-info.use-case';
+import { GetPartnerTaxAssessmentUseCase } from '../../application/use-cases/get-partner-tax-assessment.use-case';
+import { RecordPartnerTaxDeclarationUseCase } from '../../application/use-cases/record-partner-tax-declaration.use-case';
+import { toPartnerTaxAssessmentResponse } from '../../application/partner-tax.mapper';
 import {
   PartnerResponseDto,
+  PartnerTaxAssessmentResponseDto,
+  PartnerTaxYearQueryDto,
+  RecordPartnerTaxDeclarationDto,
   PartnerAgreementListResponseDto,
   SetDefaultCancellationPolicyDto,
   SubmitIdentityDto,
@@ -41,6 +53,8 @@ export class PartnerProfileController {
     private readonly updatePayoutInfo: UpdatePayoutInfoUseCase,
     private readonly updateDocuments: UpdatePartnerDocumentsUseCase,
     private readonly submitIdentity: SubmitIdentityUseCase,
+    private readonly getTaxAssessment: GetPartnerTaxAssessmentUseCase,
+    private readonly recordTaxDeclaration: RecordPartnerTaxDeclarationUseCase,
     private readonly setDefaultPolicy: SetPartnerDefaultCancellationPolicyUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -66,6 +80,40 @@ export class PartnerProfileController {
       this.tenantContext.tenantIdOrThrow(),
       this.tenantContext.partnerIdOrThrow(),
     );
+  }
+
+  @RequirePermissions('partner.profile.manage')
+  @Get('tax-assessment')
+  @ApiOperation({ summary: "Get the calling partner's annual tax assessment" })
+  @ApiOkResponse({ type: PartnerTaxAssessmentResponseDto })
+  async taxAssessment(
+    @Query() query: PartnerTaxYearQueryDto,
+  ): Promise<PartnerTaxAssessmentResponse> {
+    const result = await this.getTaxAssessment.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      this.tenantContext.partnerIdOrThrow(),
+      query.year,
+    );
+    return toPartnerTaxAssessmentResponse(result.assessment, result.taxStatus);
+  }
+
+  @RequirePermissions('partner.profile.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
+  @Post('tax-declarations')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Declare annual revenue earned outside BookingOS' })
+  @ApiOkResponse({ type: PartnerTaxAssessmentResponseDto })
+  async declareTaxRevenue(
+    @Body() input: RecordPartnerTaxDeclarationDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<PartnerTaxAssessmentResponse> {
+    const result = await this.recordTaxDeclaration.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      this.tenantContext.partnerIdOrThrow(),
+      input,
+      principal.userId,
+    );
+    return toPartnerTaxAssessmentResponse(result.assessment, result.taxStatus);
   }
 
   @RequirePermissions('partner.profile.manage')

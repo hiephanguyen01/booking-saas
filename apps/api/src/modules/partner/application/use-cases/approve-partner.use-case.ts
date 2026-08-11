@@ -29,6 +29,7 @@ function toPartnerState(partner: PartnerRecord): PartnerState {
     partnerType: partner.partnerType,
     isHouse: partner.isHouse,
     status: partner.status,
+    taxStatus: partner.taxStatus,
     verificationStatus: partner.verificationStatus,
     verifiedAt: partner.verifiedAt,
     dateOfBirth: partner.dateOfBirth,

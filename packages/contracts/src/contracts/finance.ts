@@ -157,6 +157,10 @@ export type CommissionRuleResponse = z.infer<typeof commissionRuleResponseSchema
 export const ledgerEntryTypeSchema = z.enum([
   'booking_revenue',
   'partner_share',
+  'vat_withheld',
+  'pit_withheld',
+  'vat_remitted',
+  'pit_remitted',
   'platform_fee',
   'affiliate_commission',
   'promo_discount',
@@ -170,7 +174,13 @@ export const ledgerEntryTypeSchema = z.enum([
 ]);
 export type LedgerEntryTypeDto = z.infer<typeof ledgerEntryTypeSchema>;
 
-export const ledgerOwnerTypeSchema = z.enum(['platform', 'tenant', 'partner', 'affiliate']);
+export const ledgerOwnerTypeSchema = z.enum([
+  'platform',
+  'tenant',
+  'partner',
+  'affiliate',
+  'tax_authority',
+]);
 export type LedgerOwnerTypeDto = z.infer<typeof ledgerOwnerTypeSchema>;
 
 export const ledgerEntryResponseSchema = z.object({
@@ -303,6 +313,8 @@ export const bookingSettlementResponseSchema = z.object({
   tenantNetEarning: signedVndDigits,
   partnerGrossEarning: vndDigits,
   partnerPayable: vndDigits,
+  partnerVatWithheld: vndDigits,
+  partnerPitWithheld: vndDigits,
   platformFee: vndDigits,
   affiliateCommission: vndDigits,
   refundedAmount: vndDigits,
@@ -322,6 +334,83 @@ export const bookingSettlementResponseSchema = z.object({
   updatedAt: z.string(),
 });
 export type BookingSettlementResponse = z.infer<typeof bookingSettlementResponseSchema>;
+
+// ── Tax operations ──────────────────────────────────────────────────────────
+
+export const taxFilingStatusSchema = z.enum(['draft', 'submitted', 'paid']);
+export type TaxFilingStatusDto = z.infer<typeof taxFilingStatusSchema>;
+
+export const prepareTaxFilingInputSchema = z.object({
+  taxYear: z.number().int().min(2026).max(2100),
+  taxMonth: z.number().int().min(1).max(12),
+});
+export type PrepareTaxFilingInput = z.infer<typeof prepareTaxFilingInputSchema>;
+
+export const submitTaxFilingInputSchema = z.object({
+  submissionReference: z.string().trim().min(1).max(200),
+});
+export type SubmitTaxFilingInput = z.infer<typeof submitTaxFilingInputSchema>;
+
+export const recordTaxRemittanceInputSchema = z.object({
+  vatAmount: vndDigits,
+  pitAmount: vndDigits,
+  paymentReference: z.string().trim().min(1).max(200),
+  paidAt: z.string().datetime(),
+  evidence: z
+    .object({
+      fileKey: z.string().trim().min(1).max(500).optional(),
+      note: z.string().trim().max(1000).optional(),
+    })
+    .strict()
+    .optional(),
+});
+export type RecordTaxRemittanceInput = z.infer<typeof recordTaxRemittanceInputSchema>;
+
+export const taxFilingPeriodResponseSchema = z.object({
+  id: uuidSchema,
+  taxYear: z.number().int(),
+  taxMonth: z.number().int(),
+  status: taxFilingStatusSchema,
+  taxableRevenue: signedVndDigits,
+  vatAmount: signedVndDigits,
+  pitAmount: signedVndDigits,
+  eventCount: z.number().int().nonnegative(),
+  submissionReference: z.string().nullable(),
+  submittedAt: z.string().nullable(),
+  paidAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type TaxFilingPeriodResponse = z.infer<typeof taxFilingPeriodResponseSchema>;
+
+export const issueTaxCertificateInputSchema = z.object({
+  partnerId: uuidSchema,
+  taxYear: z.number().int().min(2026).max(2100),
+  certificateNumber: z.string().trim().min(1).max(100),
+  fileKey: z.string().trim().min(1).max(500),
+  checksum: z.string().trim().min(16).max(256),
+});
+export type IssueTaxCertificateInput = z.infer<typeof issueTaxCertificateInputSchema>;
+
+export const taxCertificateStatusSchema = z.enum(['draft', 'issued', 'voided']);
+export const taxWithholdingCertificateResponseSchema = z.object({
+  id: uuidSchema,
+  partnerId: uuidSchema,
+  partnerName: z.string(),
+  taxYear: z.number().int(),
+  status: taxCertificateStatusSchema,
+  certificateNumber: z.string().nullable(),
+  vatAmount: vndDigits,
+  pitAmount: vndDigits,
+  fileKey: z.string().nullable(),
+  checksum: z.string().nullable(),
+  issuedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type TaxWithholdingCertificateResponse = z.infer<
+  typeof taxWithholdingCertificateResponseSchema
+>;
 
 /** Partner-safe projection: no tenant net/platform/affiliate internals. */
 export const partnerBookingSettlementResponseSchema = bookingSettlementResponseSchema.pick({

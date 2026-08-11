@@ -67,3 +67,19 @@ export class PublicPartnerNotFound extends DomainError {
     super('PUBLIC_PARTNER_NOT_FOUND', 404, 'Public partner profile not found');
   }
 }
+
+export class PartnerTaxAssessmentNotApplicable extends DomainError {
+  constructor() {
+    super(
+      'PARTNER_TAX_ASSESSMENT_NOT_APPLICABLE',
+      409,
+      'Annual revenue threshold assessment only applies to household businesses',
+    );
+  }
+}
+
+export class FutureTaxYearDeclaration extends DomainError {
+  constructor() {
+    super('FUTURE_TAX_YEAR_DECLARATION', 400, 'Cannot declare revenue for a future tax year');
+  }
+}

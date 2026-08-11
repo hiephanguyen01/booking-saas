@@ -14,6 +14,8 @@ import type {
   CustomerDisputeState,
   PartnerSettlementDisputeResponse,
   SettlementSummaryResponse,
+  TaxFilingPeriodResponse,
+  TaxWithholdingCertificateResponse,
 } from '@booking/contracts';
 import type { CommissionRuleRecord } from '../domain/ports/commission-rule-repository.port';
 import type { LedgerEntryView, OwnerBalance } from '../domain/ports/ledger-repository.port';
@@ -27,6 +29,10 @@ import type { SettlementDisputeRecord } from '../domain/ports/settlement-dispute
 import type { SettlementSummary } from '../domain/ports/settlement-repository.port';
 import type { CustomerBookingSettlementView } from './use-cases/get-customer-booking-settlement.use-case';
 import type { CustomerDisputeStateView } from './use-cases/list-customer-dispute-states.use-case';
+import type {
+  TaxCertificateRecord,
+  TaxFilingPeriodRecord,
+} from '../domain/ports/tax-compliance-repository.port';
 
 export function toCommissionRuleResponse(r: CommissionRuleRecord): CommissionRuleResponse {
   return {
@@ -118,6 +124,8 @@ export function toBookingSettlementResponse(
     tenantNetEarning: settlement.tenantNetEarning.toString(),
     partnerGrossEarning: settlement.partnerGrossEarning.toString(),
     partnerPayable: settlement.partnerPayable.toString(),
+    partnerVatWithheld: settlement.partnerVatWithheld.toString(),
+    partnerPitWithheld: settlement.partnerPitWithheld.toString(),
     platformFee: settlement.platformFee.toString(),
     affiliateCommission: settlement.affiliateCommission.toString(),
     refundedAmount: settlement.refundedAmount.toString(),
@@ -135,6 +143,46 @@ export function toBookingSettlementResponse(
     releasedAt: settlement.releasedAt?.toISOString() ?? null,
     createdAt: settlement.createdAt.toISOString(),
     updatedAt: settlement.updatedAt.toISOString(),
+  };
+}
+
+export function toTaxFilingPeriodResponse(
+  period: TaxFilingPeriodRecord,
+): TaxFilingPeriodResponse {
+  return {
+    id: period.id,
+    taxYear: period.taxYear,
+    taxMonth: period.taxMonth,
+    status: period.status,
+    taxableRevenue: period.taxableRevenue.toString(),
+    vatAmount: period.vatAmount.toString(),
+    pitAmount: period.pitAmount.toString(),
+    eventCount: period.eventCount,
+    submissionReference: period.submissionReference,
+    submittedAt: period.submittedAt?.toISOString() ?? null,
+    paidAt: period.paidAt?.toISOString() ?? null,
+    createdAt: period.createdAt.toISOString(),
+    updatedAt: period.updatedAt.toISOString(),
+  };
+}
+
+export function toTaxWithholdingCertificateResponse(
+  certificate: TaxCertificateRecord,
+): TaxWithholdingCertificateResponse {
+  return {
+    id: certificate.id,
+    partnerId: certificate.partnerId,
+    partnerName: certificate.partnerName,
+    taxYear: certificate.taxYear,
+    status: certificate.status,
+    certificateNumber: certificate.certificateNumber,
+    vatAmount: certificate.vatAmount.toString(),
+    pitAmount: certificate.pitAmount.toString(),
+    fileKey: certificate.fileKey,
+    checksum: certificate.checksum,
+    issuedAt: certificate.issuedAt?.toISOString() ?? null,
+    createdAt: certificate.createdAt.toISOString(),
+    updatedAt: certificate.updatedAt.toISOString(),
   };
 }
 
