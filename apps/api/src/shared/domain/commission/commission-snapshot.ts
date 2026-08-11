@@ -53,5 +53,8 @@ export function snapshotToRates(snapshot: CommissionSnapshot): CommissionRates {
     affiliateRate: BigInt(snapshot.affiliateRate),
     isHouse: snapshot.isHouse,
     vatBps: snapshot.tax?.vatBps ?? 0,
+    // Pre-regime bookings were all deduction-method sellers, so that is the safe
+    // default — it also reproduces their original arithmetic exactly.
+    vatMethod: snapshot.tax?.method ?? 'deduction',
   };
 }

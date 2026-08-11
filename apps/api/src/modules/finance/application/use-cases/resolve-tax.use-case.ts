@@ -4,6 +4,8 @@ import {
   noTax,
   partnerChargesVat,
   selectTaxRate,
+  taxMethodFor,
+  PERCENTAGE_METHOD_CATEGORY,
   type TaxSnapshot,
 } from '../../../../shared/domain/tax/tax';
 import {
@@ -57,23 +59,29 @@ export class ResolveTaxUseCase {
       : partner.taxStatus;
     if (!sellerStatus || !partnerChargesVat(sellerStatus)) return none;
 
-    const listingType = await tx.listingType.findUnique({
-      where: { id: target.listingTypeId },
-      select: { taxCategory: true },
-    });
-    if (!listingType) return none;
+    // WHO sells picks the regime; only a deduction-method seller then reads the
+    // listing type's classification. A declaring household is on tỷ lệ % and has
+    // one service rate whatever it sells, so its category never comes from the
+    // catalogue.
+    const method = taxMethodFor(sellerStatus);
+    let category = PERCENTAGE_METHOD_CATEGORY;
+    if (method === 'deduction') {
+      const listingType = await tx.listingType.findUnique({
+        where: { id: target.listingTypeId },
+        select: { taxCategory: true },
+      });
+      if (!listingType) return none;
+      category = listingType.taxCategory;
+    }
 
-    const rate = selectTaxRate(
-      await this.taxRates.list(tx),
-      listingType.taxCategory,
-      target.serviceDate,
-    );
+    const rate = selectTaxRate(await this.taxRates.list(tx), category, target.serviceDate);
     if (!rate) return none;
 
     return {
       taxRateId: rate.id,
       category: rate.category,
       vatBps: rate.rateBps,
+      method,
       legalRef: rate.legalRef,
       resolvedFor: target.serviceDate.toISOString(),
     };

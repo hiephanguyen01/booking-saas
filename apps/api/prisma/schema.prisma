@@ -97,11 +97,16 @@ enum PartnerType {
 
 /// VAT treatment of a listing type (§VAT). The tenant picks the CATEGORY; the
 /// platform owns the rate that category maps to at a given date (`tax_rates`).
+/// VAT treatment. The first four are DEDUCTION-method categories a tenant picks
+/// for a listing type; `percentage_service` belongs to the tỷ-lệ-%-trên-doanh-thu
+/// method and is never chosen by a tenant — it is selected by WHO sells, because
+/// a household on that method has one rate whatever it sells.
 enum TaxCategory {
   standard
   reduced_5
   exempt
   not_taxable
+  percentage_service
 
   @@map("tax_category")
 }

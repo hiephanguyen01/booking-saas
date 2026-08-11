@@ -20,6 +20,34 @@ must be one row edit rather than a fan-out across every tenant's rows.
 `administrative_provinces` and `subscription_plans` as global reference data, and
 `check:rls` correctly ignores it.
 
+## Two regimes, chosen by WHO sells
+
+Vietnam has two mutually exclusive VAT methods, and the seller's status — not the
+listing type — decides which applies:
+
+| Seller | Method | Rate | Arithmetic |
+| --- | --- | --- | --- |
+| `company_vat` | **khấu trừ** (deduction) | 8% → 10% from 2027-01-01 | contained in the gross: `g × r / (100+r)` |
+| `household_declaring` | **tỷ lệ % trên doanh thu** | **5%** for services | straight on revenue: `g × r` |
+| `household_below_threshold`, `individual` | none | 0 | — |
+
+They differ in the arithmetic as well as the rate: on 280,000 ₫ the deduction
+method yields **20,741** and the percentage method **14,000**. `taxMethodFor()`
+picks the regime, `vatOf()` applies the right formula, and the method is frozen on
+the snapshot beside the rate.
+
+A declaring household therefore never reads `listing_types.tax_category` — it has
+one service rate whatever it sells, so its category is always
+`percentage_service`. Only a deduction-method seller consults the catalogue.
+
+> Until 2026-08-11 `household_declaring` shared the `company_vat` branch and was
+> billed 8% by the deduction formula — wrong on both counts. No seeded partner used
+> that status, so no data was affected.
+
+**Open for the accountant:** past VAT-reduction resolutions also cut the percentage
+rate by 20%, which would make it 4% until 2026-12-31. If confirmed, that is one
+extra row in `tax_rates`, not a code change.
+
 ## Prices are VAT-inclusive gross
 
 `listing.price`, `bookings.total_amount` and `final_amount` are **gross, VAT
