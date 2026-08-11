@@ -18,8 +18,11 @@ import type {
   BookingStatusHistoryRecord,
   PartnerBookingStat,
 } from '../domain/ports/booking-repository.port';
-import { vatFromGross } from '../../../shared/money/money';
+import { vatOf, type TaxMethod } from '../../../shared/domain/tax/tax';
 import type { CommissionSnapshot } from '../../../shared/domain/commission/commission-snapshot';
+import { maskPhone } from '../domain/mask-phone';
+import type { CancelResult } from './use-cases/cancel-booking.use-case';
+import type { ReturnResult } from './use-cases/mark-returned.use-case';
 
 /**
  * VAT rate frozen on a booking, or 0 for one created before dynamic VAT existed
@@ -31,12 +34,14 @@ function bookingVatBps(snapshot: unknown): number {
   return typeof tax?.vatBps === 'number' ? tax.vatBps : 0;
 }
 
+/** Pre-regime bookings were all deduction-method sellers — the safe default. */
+function bookingVatMethod(snapshot: unknown): TaxMethod {
+  return (snapshot as CommissionSnapshot | null)?.tax?.method ?? 'deduction';
+}
+
 function max0(value: bigint): bigint {
   return value > 0n ? value : 0n;
 }
-import { maskPhone } from '../domain/mask-phone';
-import type { CancelResult } from './use-cases/cancel-booking.use-case';
-import type { ReturnResult } from './use-cases/mark-returned.use-case';
 
 /**
  * Booking → wire, split by AUDIENCE. There are three entry points and the caller
@@ -170,7 +175,13 @@ function toCore(b: BookingRecord) {
     // Only the tax facts cross to the customer, never the snapshot they came
     // from — that also holds the tenant's take-rate (§VAT).
     vatBps: bookingVatBps(b.commissionSnapshot),
-    vatAmount: vatFromGross(b.finalAmount, bookingVatBps(b.commissionSnapshot)).toString(),
+    // Through the frozen regime, not the deduction formula: a percentage-method
+    // seller's VAT is `gross × rate`, not `gross × rate / (100 + rate)`.
+    vatAmount: vatOf(
+      b.finalAmount,
+      bookingVatBps(b.commissionSnapshot),
+      bookingVatMethod(b.commissionSnapshot),
+    ).toString(),
     balanceAmount: max0(b.finalAmount - b.paidAmount).toString(),
     // Only a confirmed booking that still owes money can be settled online (§8.3).
     canPayBalance: b.status === 'confirmed' && b.finalAmount - b.paidAmount > 0n,

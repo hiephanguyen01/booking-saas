@@ -4,6 +4,7 @@ import type {
   BookingSelection,
   ListingStructure,
   ListingTypeSearchConfig,
+  TenantTaxCategory,
 } from '@booking/contracts';
 import {
   BookingSelectionLocked,
@@ -76,6 +77,8 @@ export interface NewListingType {
   requiresIdentityVerification: boolean;
   structure: ListingStructure;
   itemLabel: string | null;
+  /** VAT treatment of everything sold under this type (§VAT). */
+  taxCategory: TenantTaxCategory;
 }
 
 /** The diff to persist — `undefined` on a key means "leave the stored value alone". */
@@ -98,6 +101,7 @@ export interface ListingTypeCreateFields {
   requiresIdentityVerification: boolean;
   structure: ListingStructure;
   itemLabel?: string | null;
+  taxCategory: TenantTaxCategory;
 }
 
 /** Contract-shaped PATCH input — every key optional. */
@@ -140,6 +144,7 @@ export class ListingType {
       requiresIdentityVerification: input.requiresIdentityVerification,
       structure: input.structure,
       itemLabel: input.itemLabel ?? null,
+      taxCategory: input.taxCategory,
     };
   }
 
@@ -194,6 +199,7 @@ export class ListingType {
       requiresIdentityVerification: input.requiresIdentityVerification,
       structure: input.structure,
       itemLabel: input.itemLabel,
+      taxCategory: input.taxCategory,
     };
   }
 

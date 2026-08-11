@@ -8,15 +8,15 @@
 
 **Tech Stack:** NestJS 11 (hexagonal, no service classes), Prisma + hand-written SQL migrations, PostgreSQL 16 with RLS, bigint VND money.
 
-## ⛔ Do not start before these are answered
+## Decisions — answered by the owner 2026-08-11
 
-This plan is **blocked on an accountant**, not on engineering. Three questions change the numbers, and building first means building twice:
+The three questions that were blocking this plan are settled. They are recorded here because each one changes the numbers, and a future reader must not silently re-assume otherwise:
 
-1. **What is the withholding base** — the full price the customer paid (280,000), or what the partner nets after commission (240,100)? This plan assumes **the full price**, on the reasoning that the percentage method exists precisely because it does not allow expense deduction, and the tenant's commission is the partner's expense. If the answer is the net, every figure below changes.
-2. **Does a household under the 200M ₫/year threshold still get withheld at source?** They owe neither VAT nor PIT for the year, yet the platform withholds per transaction. Either the threshold exempts them from withholding too, or they are withheld and reconcile annually. This plan assumes **exempt** — consistent with how the codebase already resolves them to 0% VAT.
-3. **Is the tenant or the platform the "đơn vị có chức năng thanh toán"?** Money lands in the tenant's gateway account (`TONG-QUAN.md` §risk 2), so the duty looks like the tenant's. Today both are the same legal entity, so it is moot — but the answer decides who is fined when it is not.
+1. **Withholding base = the full price the customer paid** (280,000), not the partner's net. Consistent with the percentage method existing precisely because it allows no expense deduction — the tenant's commission is the partner's expense, not a reduction of its revenue.
+2. **A household under the 200M ₫/year threshold IS still withheld from.** Withhold every transaction; the individual reclaims at annual settlement if they end the year under the threshold. **This reverses the plan's original assumption** and widens `partnerIsWithheld` to every non-company seller.
+3. **Tenant and platform are one legal entity** today, with no third-party tenants, so there is no ambiguity about who holds the payment function. The withholding sits on the tenant side of the ledger.
 
-Question 3 is currently answered by the owner: **tenant and platform are one company**, with no third-party tenants yet. That removes the ambiguity for now and is why this plan puts the withholding on the tenant side of the ledger.
+Note the consequence of (2): a `household_below_threshold` partner has **0% VAT** but is still **withheld 5% VAT + 2% PIT**. That looks contradictory and is not — the VAT *rate* on their sale is zero, while the withholding is a provisional collection the seller reclaims. Anyone reading the settlement will ask; the code comments must say so.
 
 ## Global Constraints
 
@@ -44,11 +44,14 @@ Reuses `partners.tax_status`, already in the schema:
 | Status | VAT regime today | Withholding |
 | --- | --- | --- |
 | `company_vat` | deduction 8/10% | **none** — a company invoices and declares for itself |
-| `household_declaring` | percentage 5% | **5% VAT + 2% PIT** |
-| `household_below_threshold` | 0 | **none** (assumption 2) |
-| `individual` | 0 | **none** (assumption 2) |
+| `household_declaring` | percentage 4% → 5% from 2027 | **5% VAT + 2% PIT** |
+| `household_below_threshold` | 0 | **5% VAT + 2% PIT** — reclaimed at annual settlement |
+| `individual` | 0 | **5% VAT + 2% PIT** — reclaimed at annual settlement |
 
-Note the coincidence that makes this tractable: for `household_declaring` the 5% withheld VAT **is** their percentage-method VAT obligation, already computed by `resolve-tax`. The withholding is the collection mechanism, not a second tax. Only the 2% PIT is genuinely new money leaving the partner.
+Two things worth stating plainly, because both look wrong at a glance:
+
+- For `household_declaring` the withheld VAT is essentially their own percentage-method obligation collected at source, not a second tax. Only the 2% PIT is genuinely new money leaving them. Note the rates need not match — their VAT rate is currently **4%** while the withholding is **5%**; the difference is settled annually, not netted here.
+- For a below-threshold seller the VAT *rate on the sale* is 0 while 5% is still withheld. That is deliberate (decision 2): the withholding is provisional and reclaimed. Do not "fix" it by skipping the withholding.
 
 ## Worked example (280,000 ₫, household_declaring, tenant 15% / platform 2%)
 
@@ -223,13 +226,13 @@ export interface WithholdingRateCandidate {
  * Only a household or individual is withheld from. A company invoices and
  * declares for itself, so withholding from it would be double collection.
  *
- * `household_below_threshold` and `individual` return false on the standing
- * assumption that the 200M ₫/year exemption also exempts them from withholding —
- * see the blocking questions at the top of this plan. If the accountant says
- * otherwise, this one function is where that changes.
+ * A below-threshold household IS withheld from even though its VAT rate is 0:
+ * the withholding is provisional and the seller reclaims it at annual settlement
+ * (owner decision, 2026-08-11). Do not "fix" the apparent contradiction by
+ * skipping it.
  */
 export function partnerIsWithheld(status: PartnerTaxStatus): boolean {
-  return status === 'household_declaring';
+  return status !== 'company_vat';
 }
 
 /** The rate in force for `activity` at `at`; time is the only axis, as in `tax.ts`. */
@@ -500,7 +503,9 @@ git commit -m "feat(api): record NĐ 117 withholding on the ledger and net the p
 
 - [ ] **Step 2: Give the demo a withheld partner**
 
-No seeded partner is `household_declaring` today, so the withholding branch would never run. Set `trang-makeup` to `household_declaring` — on **both** upsert branches, since a field set only on `create` never converges on an existing database. Note in the seed comment that this also moves it off the 0%-VAT branch, so the exempt case loses its only partner; if that case still needs cover, add a fourth demo partner rather than reusing this one.
+Since decision 2 makes **every non-company seller** withheld from, `trang-makeup` (`household_below_threshold`) already exercises the branch — and it exercises the more surprising case, where the VAT rate is 0 but withholding still applies. Leave it as it is.
+
+Add a fourth demo partner on `household_declaring` instead, so the percentage-method VAT (4%) and the withholding (5%) are both visible at once and their deliberate mismatch is on screen rather than only in this document. Set `taxStatus` on **both** upsert branches — a field set only on `create` never converges on an existing database.
 
 - [ ] **Step 3: Reseed and verify**
 
@@ -559,7 +564,7 @@ Zero unbalanced journals across the database, and the withheld booking carries a
 
 - [ ] **Step 5: Update the docs**
 
-Extend `docs/features/vat.md` with a withholding section: who is withheld from, that the 5% VAT withheld *is* the household's percentage-method obligation rather than a second tax, the three assumptions this plan was built on, and that remittance itself is still manual.
+Extend `docs/features/vat.md` with a withholding section: who is withheld from, that the withheld VAT is the household's own obligation collected at source rather than a second tax, that a below-threshold seller is withheld from anyway and reclaims annually, the three decisions above, and that remittance itself is still manual.
 
 - [ ] **Step 6: Commit**
 

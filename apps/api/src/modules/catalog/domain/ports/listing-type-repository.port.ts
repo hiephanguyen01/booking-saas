@@ -3,6 +3,7 @@ import type {
   BookingMode,
   BookingSelection,
   ListingStructure,
+  TenantTaxCategory,
   ListingTypeSearchConfig,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -28,6 +29,8 @@ export interface ListingTypeRecord {
   requiresIdentityVerification: boolean;
   structure: ListingStructure;
   itemLabel: string | null;
+  /** VAT treatment of everything sold under this type (§VAT). */
+  taxCategory: TenantTaxCategory;
   /** Listings currently using this type (a type in use cannot be deleted). */
   listingCount: number;
   createdAt: Date;

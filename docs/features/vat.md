@@ -154,10 +154,20 @@ tenant's take-rate does not.
 > is no 5% customer-facing service fee in this system — the platform fee is 2% and
 > comes out of the tenant's share. Do not reintroduce a fee the customer does not pay.
 
-## Not implemented
+## Who sets what, and where
 
-- **Tenant UI** for `tax_category` / `tax_status` — set via seed or SQL today. This
-  is the largest remaining gap for a real tenant.
+Both classifications are tenant-editable in the dashboard — a wrong one silently
+mis-taxes every booking, so neither should ever need SQL:
+
+| Field | Screen | Notes |
+| --- | --- | --- |
+| `listing_types.tax_category` | listing-type create/edit form | Offers only the four **deduction-method** categories. `percentage_service` is deliberately absent: it is chosen by the seller, and letting a tenant set it here would set a rate the resolver ignores. |
+| `partners.tax_status` | partner detail → **Hồ sơ thuế** | Each option shows its consequence (`4% (5% từ 2027)` vs `8% (10% từ 2027)` vs `0`), because the names alone do not reveal that two of the four mean no VAT. |
+
+Changing either only affects **future** bookings; existing ones replay the rate
+frozen on their snapshot.
+
+## Not implemented
 - **NĐ 117/2025 withholding** — where the tenant has the payment function and the
   partner is a household/individual, the tenant must withhold 5% VAT + 2% PIT and
   remit. This is what a `vat_withheld` ledger entry type would be for; it changes the

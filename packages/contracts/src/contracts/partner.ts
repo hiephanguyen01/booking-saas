@@ -8,6 +8,7 @@ import {
 } from './administrative-division';
 import { slugSchema } from './tenancy';
 import { acceptanceRecordSchema, legalConsentInputSchema } from './legal';
+import { partnerTaxStatusSchema } from './tax';
 
 /** Partner classification (§7.3): a freelancer vs a registered company. */
 export const partnerTypeSchema = z.enum(['individual', 'company']);
@@ -352,6 +353,8 @@ export const partnerResponseSchema = z.object({
   isHouse: z.boolean(),
   status: partnerStatusSchema,
   verificationStatus: partnerVerificationStatusSchema,
+  /** Decides the partner's VAT regime, and later whether payouts are withheld (§VAT). */
+  taxStatus: partnerTaxStatusSchema,
   verifiedAt: z.string().nullable(),
   dateOfBirth: z.string().nullable(),
   payoutInfo: z.record(z.unknown()),

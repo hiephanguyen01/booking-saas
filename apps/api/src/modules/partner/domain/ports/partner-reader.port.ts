@@ -1,4 +1,9 @@
-import type { PartnerStatus, PartnerType, PartnerVerificationStatus } from '@booking/contracts';
+import type {
+  PartnerStatus,
+  PartnerTaxStatus,
+  PartnerType,
+  PartnerVerificationStatus,
+} from '@booking/contracts';
 
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RepoPageWithCounts } from '../../../../shared/pagination/pagination';
@@ -25,6 +30,8 @@ export interface PartnerRecord {
   isHouse: boolean;
   status: PartnerStatus;
   verificationStatus: PartnerVerificationStatus;
+  /** Decides the VAT regime, and later whether payouts are withheld (§VAT). */
+  taxStatus: PartnerTaxStatus;
   verifiedAt: Date | null;
   dateOfBirth: Date | null;
   payoutInfo: Record<string, unknown>;

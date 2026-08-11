@@ -20,6 +20,7 @@ export function toListingTypeResponse(t: ListingTypeRecord): ListingTypeResponse
     requiresIdentityVerification: t.requiresIdentityVerification,
     structure: t.structure,
     itemLabel: t.itemLabel,
+    taxCategory: t.taxCategory,
     listingCount: t.listingCount,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),

@@ -1,3 +1,4 @@
+import type { PartnerTaxStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   PartnerBusinessInfoIntent,
@@ -55,6 +56,8 @@ export interface IPartnerRepository {
     intent: PartnerBusinessInfoIntent,
   ): Promise<PartnerRecord>;
 
+  /** Tenant sets a partner's tax status (§VAT) — narrow, because it changes money. */
+  updateTaxStatus(tx: PrismaTx, id: string, taxStatus: PartnerTaxStatus): Promise<PartnerRecord>;
   updateDefaultCancellationPolicy(
     tx: PrismaTx,
     id: string,

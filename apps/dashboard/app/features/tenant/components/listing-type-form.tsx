@@ -113,6 +113,23 @@ const fields: FieldConfig<CreateListingTypeInput>[] = [
     colSpan: 1,
   },
   {
+    // Only the DEDUCTION-method categories are offered. A partner on the
+    // percentage method (hộ kê khai) has one service rate whatever this says, so
+    // its regime is decided on the partner, not here.
+    name: 'taxCategory',
+    type: 'select',
+    label: 'Nhóm thuế GTGT',
+    description:
+      'Áp cho mọi dịch vụ thuộc loại này khi nhà cung cấp là doanh nghiệp. Hộ kinh doanh dùng thuế suất riêng theo hồ sơ thuế của họ.',
+    colSpan: 2,
+    options: [
+      { value: 'standard', label: 'Phổ thông — 8% (10% từ 1/1/2027)' },
+      { value: 'reduced_5', label: 'Ưu đãi 5%' },
+      { value: 'exempt', label: 'Không chịu thuế GTGT' },
+      { value: 'not_taxable', label: 'Không thuộc diện chịu thuế' },
+    ],
+  },
+  {
     name: 'structure',
     type: 'select',
     label: 'Cấu trúc tin đăng',
@@ -151,6 +168,7 @@ export function listingTypeFormDefaultValues(t?: ListingTypeResponse): CreateLis
     sortOrder: t?.sortOrder ?? 0,
     isActive: t?.isActive ?? true,
     requiresIdentityVerification: t?.requiresIdentityVerification ?? false,
+    taxCategory: t?.taxCategory ?? 'standard',
     structure,
     // A standalone type hides this field. Keep it absent so the schema does not
     // reject the hidden empty string before `transform` gets a chance to drop it.
@@ -237,6 +255,7 @@ export function ListingTypeForm({
               {fieldNode(renderedFields, 'sortOrder')}
               {fieldNode(renderedFields, 'isActive')}
               {fieldNode(renderedFields, 'requiresIdentityVerification')}
+              {fieldNode(renderedFields, 'taxCategory')}
             </Grid>
           ),
           'type-booking': (
@@ -378,6 +397,7 @@ export function ListingTypeForm({
           sortOrder: Math.max(0, Math.round(Number(d.sortOrder) || 0)),
           isActive: d.isActive,
           requiresIdentityVerification: d.requiresIdentityVerification,
+          taxCategory: d.taxCategory,
           structure: d.structure,
           itemLabel:
             d.structure === 'standalone' ? undefined : d.itemLabel?.trim() || undefined,
