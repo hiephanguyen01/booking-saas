@@ -3,20 +3,21 @@ import type { viPwa } from '../vi/pwa';
 
 export const enPwa = {
   install: {
-    title: 'Install {tenant}',
+    title: 'Install this store app',
     titleFallback: 'Install this store app',
-    description: 'Launch {tenant} from your home screen and see a fallback page when offline.',
+    description: 'Launch from your home screen and see a fallback page when offline.',
     descriptionFallback: 'Launch from your home screen and see a fallback page when offline.',
-    headerAction: 'Install app',
     compactAction: 'Install',
-    action: 'Install app',
+    action: 'Install now',
     later: 'Maybe later',
+    dismiss: 'Close the install invitation',
   },
   ios: {
     title: 'Add to Home Screen',
-    description: 'Safari on iPhone and iPad installs apps from the Share menu.',
-    shareStep: 'Tap the Share button in the Safari toolbar.',
+    description: 'On iPhone and iPad, install the app from your browser Share menu.',
+    shareStep: 'Tap the Share button in your browser toolbar.',
     addStep: 'Choose “Add to Home Screen”, then confirm Add.',
+    close: 'Got it',
   },
   android: {
     title: 'Install from Chrome',

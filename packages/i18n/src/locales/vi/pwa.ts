@@ -1,19 +1,20 @@
 export const viPwa = {
   install: {
-    title: 'Cài {tenant}',
+    title: 'Cài ứng dụng của cửa hàng',
     titleFallback: 'Cài ứng dụng của cửa hàng',
-    description: 'Mở {tenant} nhanh từ màn hình chính và dùng trang dự phòng khi mất mạng.',
+    description: 'Mở nhanh từ màn hình chính và dùng trang dự phòng khi mất mạng.',
     descriptionFallback: 'Mở nhanh từ màn hình chính và dùng trang dự phòng khi mất mạng.',
-    headerAction: 'Cài app',
     compactAction: 'Cài',
-    action: 'Cài app',
+    action: 'Cài ngay',
     later: 'Để sau',
+    dismiss: 'Đóng lời mời cài đặt',
   },
   ios: {
     title: 'Thêm vào Màn hình chính',
-    description: 'Safari trên iPhone và iPad cài ứng dụng qua menu Chia sẻ.',
-    shareStep: 'Chạm nút Chia sẻ trên thanh công cụ Safari.',
+    description: 'Trên iPhone và iPad, hãy cài ứng dụng qua menu Chia sẻ của trình duyệt.',
+    shareStep: 'Chạm nút Chia sẻ trên thanh công cụ của trình duyệt.',
     addStep: 'Chọn “Thêm vào Màn hình chính”, sau đó xác nhận Thêm.',
+    close: 'Đã hiểu',
   },
   android: {
     title: 'Cài từ Chrome',
