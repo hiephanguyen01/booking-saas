@@ -62,6 +62,9 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   const partner = await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: tenant.id, slug: 'giang-studio' } },
     update: {
+      // Also on `update` — a field set only on `create` never converges on an
+      // already-seeded database, which is the whole point of an idempotent seed.
+      taxStatus: 'company_vat',
       contactInfo: {
         phone: '0900000002',
         provinceCode: '79',
@@ -82,6 +85,9 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
       status: 'approved',
       verifiedAt: new Date(),
       businessInfo: { taxId: '0312345678' },
+      // A VAT-registered company — its bookings carry the standard rate, so the
+      // VAT branch of the split is exercised by seeded data.
+      taxStatus: 'company_vat',
       contactInfo: {
         phone: '0900000002',
         provinceCode: '79',
@@ -152,12 +158,15 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   });
   const pendingPartner = await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: tenant.id, slug: 'trang-makeup' } },
-    update: {},
+    update: { taxStatus: 'household_below_threshold' },
     create: {
       tenantId: tenant.id,
       name: 'Trang Makeup',
       slug: 'trang-makeup',
       partnerType: 'individual',
+      // Under the 200M VND/year threshold — charges no VAT, so the 0% branch is
+      // visible in the running app and not only in theory.
+      taxStatus: 'household_below_threshold',
       status: 'pending',
       verificationStatus: 'pending',
       dateOfBirth: new Date('1996-05-20T00:00:00.000Z'),
@@ -186,7 +195,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   }
   const housePartner = await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: tenant.id, slug: 'bookingstudio-house' } },
-    update: {},
+    update: { taxStatus: 'company_vat' },
     create: {
       tenantId: tenant.id,
       name: 'BookingStudio House',
@@ -194,6 +203,9 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
       partnerType: 'company',
       isHouse: true,
       status: 'approved',
+      // House inventory is sold by the TENANT, so this column is not what the
+      // resolver reads — `tenants.tax_status` is. Set consistently anyway.
+      taxStatus: 'company_vat',
     },
   });
 
