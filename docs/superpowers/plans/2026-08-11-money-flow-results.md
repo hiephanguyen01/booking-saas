@@ -3,9 +3,13 @@
 Run against branch `feat/dynamic-vat` on the local dev stack. Plan:
 [`2026-08-11-money-flow-browser-verification.md`](./2026-08-11-money-flow-browser-verification.md).
 
-**Headline:** 11 scenarios, every one matching its predicted split to the đồng. Across the whole
-database: **0 unbalanced journals, 0 negative legs.** Two product defects found, both about money the
-system says it will collect but cannot.
+**Headline:** 13 scenarios, every one matching its predicted split to the đồng. Across the whole
+database: **0 unbalanced journals, 0 negative legs.** Two defects found — one seed fixture (fixed) and
+one real product gap (open).
+
+`S7` reached the VAT-exempt branch by temporarily flipping `giang-studio.tax_status` in SQL and
+restoring it afterwards, because no endpoint exposes a partner's tax status yet — that tenant UI is the
+known gap from the VAT work.
 
 ## Method, and its one caveat
 
@@ -42,6 +46,8 @@ tenant 15 % / platform 2 % / affiliate 5 % unless stated.
 | MF9-1 | free cancellation (>168 h) | 0 | 0 | 0 | 0 | refund 140,000 ✓ |
 | MF9-2 | penalty cancellation (<48 h) | 0 | 0 | 0 | **140,000** | 140,000 ✓ |
 | MF9-3 | customer no-show | 120,555 | 2,593 | 0 | 16,852 | **140,000** ✓ |
+| MF9-4 | dispute → partial refund | 241,111 | 5,185 | 0 | 33,704 | refunded 50,000 / retained 90,000 ✓ |
+| S7 | **VAT-exempt seller (0 %)** | **238,000** | **5,600** | 0 | **36,400** | 280,000 ✓ |
 | MF10 | payout | — | — | — | — | balance → **0** ✓ |
 
 ### What each result proves
@@ -63,6 +69,13 @@ tenant 15 % / platform 2 % / affiliate 5 % unless stated.
   credits the retained amount **entirely to the tenant** (no partner or platform leg).
 - **A no-show commissions only what was actually collected.** Base is `online_held_amount` (140,000),
   not the 280,000 booking value.
+- **A dispute refund is capped by what is still held.** A 200,000 refund against 140,000 held is
+  rejected with `INVALID_REFUND_AMOUNT`; a 50,000 partial refund moves the settlement to
+  `refund_pending` with `retained_amount` 90,000.
+- **VAT exemption moves money the way option B predicts.** With no VAT the partner receives **less**
+  (238,000 vs 241,111) and the platform **more** (5,600 vs 5,185), because every rate then bites on the
+  full gross rather than the VAT-exclusive base. A reversed direction would mean option B is wired
+  backwards. The frozen snapshot reads `vatBps: 0`.
 - **The payout closes the loop.** 8 released settlements → payable 1,098,869, agreed by the settlement
   table, the ledger-derived partner API balance, and hand addition. Paying it produced a balanced
   `payout` journal, 8 allocations summing to 1,098,869, and a partner balance of **0**.
@@ -98,7 +111,7 @@ the balance can only be collected on site.
 
 Either implement balance payment, or stop offering `online_before` as a choice.
 
-### D2 — The seeded overdue payout over-claims the partner's payable (medium)
+### D2 — The seeded overdue payout over-claims the partner's payable (medium) — **FIXED**
 
 `payouts` carries a seeded `pending` row of **1,275,000 ₫** for `giang-studio`. The partner's mature
 payable from seeded bookings is **0** — the entire 1,098,869 observed came from this run's settlements.
@@ -106,8 +119,10 @@ Because `available = maturePayable − outstanding`, that fixture makes the payo
 `NOTHING_TO_PAY` on a fresh database, i.e. **payouts cannot be exercised out of the box**. Marking it
 paid would drive the partner's ledger balance to −176,131.
 
-It was failed (not paid) during this run to free the claim. Fix the fixture to a plausible amount, or
-seed the settlements that would justify it.
+**Fixed** in `seed/demo/studio-demo.ts`: the fixture is now **150,000 ₫** with a comment explaining
+that a pending payout claims against mature payable, so the amount must stay small enough not to
+deadlock the flow. The board still shows an overdue run, and payouts free themselves as soon as one
+real booking releases. Database reset and reseeded to pick it up.
 
 ## Not covered
 
@@ -116,12 +131,10 @@ Stated explicitly rather than implied:
 - **S5 house partner / inventory mode.** All 40 `bookingstudio-house` listings are `inventory` with a
   3,500,000 ₫ security deposit, and settle through the pickup/return flow, not `complete`. Needs a
   different driver.
-- **S7 VAT-exempt seller through the UI.** `trang-makeup` still has no published listing. The 0 %
-  branch was verified programmatically against the real resolver and DB during the VAT work, not
-  through a booking.
-- **MF9-4 dispute refund.** Needs `holdingDays > 0` to keep a dispute window open; this run used 0 so
-  settlements released in ~20 s.
 - **Damage deductions, `clawback` after release, reschedule fees.**
+- **The provider side of a refund.** `MF9-4` leaves the settlement in `refund_pending`; the mock
+  gateway's refund is `manual_required`, so the money leaving the tenant's account and the retained
+  90,000 completing its second holding window were not driven.
 - **BookingStad.** Nothing here books on the second tenant, so cross-tenant isolation of money is
   untested.
 - **UI as a third surface.** The settlement row and the ledger were compared for every scenario; the

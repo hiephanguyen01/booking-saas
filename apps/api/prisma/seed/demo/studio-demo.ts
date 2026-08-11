@@ -524,6 +524,15 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   }
 
   // An overdue partner payout: still pending with period_to in the past.
+  //
+  // Keep the amount SMALL. A pending payout claims against the payee's mature
+  // payable (`available = maturePayable − outstanding`, see
+  // ComputePayoutPayableUseCase), and this fixture has no released settlements
+  // behind it — on a freshly seeded database the partner's payable is 0. The
+  // previous 1,275,000 therefore deadlocked the payout flow with NOTHING_TO_PAY
+  // and would have driven the partner's ledger balance to −1,275,000 if paid.
+  // At 150,000 the board still shows an overdue run, and the flow frees itself
+  // as soon as one real booking releases.
   if (
     !(await prisma.payout.findFirst({
       where: { tenantId: tenant.id, payeeType: 'partner', payeeId: partner.id },
@@ -534,7 +543,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
         tenantId: tenant.id,
         payeeType: 'partner',
         payeeId: partner.id,
-        amount: 1_275_000n,
+        amount: 150_000n,
         periodFrom: daysAgo(37),
         periodTo: daysAgo(7), // < now → counts as overdue on the board
         status: 'pending',
