@@ -87,7 +87,13 @@ export class CheckoutUseCase {
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
       if (!booking) throw new BookingNotFound();
-      Payment.assertPayable(booking);
+      // Two legal shapes: the FIRST payment on a booking awaiting payment, and a
+      // BALANCE payment on one already confirmed but not fully paid (§8.3). The
+      // two guards stay separate so the deposit path keeps its strict
+      // `pending_payment` check.
+      const isBalance = booking.status === 'confirmed';
+      if (isBalance) Payment.assertBalancePayable(booking);
+      else Payment.assertPayable(booking);
 
       const configs = await this.configs.findActiveAll(tx, tenant.id);
       const routed = pickConfigForMethod(configs, paymentMethod);
@@ -109,7 +115,7 @@ export class CheckoutUseCase {
       );
       if (existing) return { paymentId: existing.id, destination: existing.destination };
 
-      const { amount, kind } = Payment.plan(booking);
+      const { amount, kind } = isBalance ? Payment.planBalance(booking) : Payment.plan(booking);
       const origin = storefrontOrigin(host); // the tenant's own domain (from the Host the customer used)
       Payment.assertGatewayAccepts({
         gatewayKey: gateway.key,
