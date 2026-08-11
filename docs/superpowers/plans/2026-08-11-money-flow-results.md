@@ -95,7 +95,7 @@ Both land exactly on the observed figures.
 
 ## Defects
 
-### D1 — An `online_before` balance can never be paid (high)
+### D1 — An `online_before` balance can never be paid (high) — **FIXED**
 
 A 50 %-deposit booking with `balance_due = online_before` reaches `confirmed` after the deposit. From
 there:
@@ -109,7 +109,19 @@ listings are configured this way.** Confirmed quantitatively: MF6b (`on_arrival`
 **identical** to S1 (`online_before`) — the setting currently makes no difference, because either way
 the balance can only be collected on site.
 
-Either implement balance payment, or stop offering `online_before` as a choice.
+**Fixed** by [`2026-08-11-online-before-balance-payment.md`](./2026-08-11-online-before-balance-payment.md)
+on branch `feat/balance-payment`. The customer now settles the balance from their booking page; the
+three payment shapes finally differ as they should:
+
+| Shape | `online_held` | `onsite_collected` | `partner_payable` |
+| --- | --- | --- | --- |
+| pay 100 % upfront | 280,000 | 0 | 241,111 |
+| 50 % + **balance paid online** | **280,000** | **0** | **241,111** |
+| 50 % + `on_arrival` | 140,000 | 140,000 | 101,111 |
+
+The split stays 241,111 / 5,185 / 33,704 in all three — how the customer pays still does not change
+what anyone earns. Redelivering the balance webhook was verified to move neither `paid_amount` nor
+`online_held_amount`.
 
 ### D2 — The seeded overdue payout over-claims the partner's payable (medium) — **FIXED**
 
