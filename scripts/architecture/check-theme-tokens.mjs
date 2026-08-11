@@ -86,8 +86,8 @@ const RULES = [
  * as well: a fixed `p-4`, `shadow-sm` or image radius otherwise survives every
  * colour-only CI run while the dashboard still claims the setting is editable.
  *
- * Feature components may consume `PANEL_SURFACE` instead of spelling out its
- * four low-level tokens. The shared constant itself is checked separately, so
+ * Feature components may consume shared surface constants instead of spelling
+ * out their low-level tokens. The shared constants are checked separately, so
  * this remains one contract rather than duplicated class strings.
  */
 const REQUIRED_SURFACE_CONTRACTS = new Map([
@@ -116,7 +116,11 @@ const REQUIRED_SURFACE_CONTRACTS = new Map([
   ],
   [
     'apps/storefront/app/features/catalog/components/search-result-card.tsx',
-    ['--sf-image-radius', '--sf-surface-pad'],
+    ['CATALOG_RESULT_CARD_SHELL_CLASS', 'CATALOG_RESULT_PRIMARY_MEDIA_CLASS'],
+  ],
+  [
+    'apps/storefront/app/features/catalog/components/catalog-result-card-layout.ts',
+    ['SURFACE_FRAME', '--sf-image-radius', '--sf-surface-pad'],
   ],
   ['apps/storefront/app/components/room-photo-strip.tsx', ['--sf-image-radius']],
   [
