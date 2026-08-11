@@ -23,6 +23,7 @@ import { PrismaFinanceTenantHostReader } from '../repositories/prisma-finance-te
 import { PrismaPayoutPolicyStore } from '../repositories/prisma-payout-policy.store';
 import { PrismaPlatformFinanceReader } from '../repositories/prisma-platform-finance.reader';
 import { ResolveCommissionUseCase } from '../../application/use-cases/resolve-commission.use-case';
+import { ResolveTaxUseCase } from '../../application/use-cases/resolve-tax.use-case';
 import { RecordClawbackJournalUseCase } from '../../application/use-cases/record-clawback-journal.use-case';
 import { ComputePayoutPayableUseCase } from '../../application/use-cases/compute-payout-payable.use-case';
 import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
@@ -92,6 +93,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     { provide: PAYOUT_POLICY_STORE, useClass: PrismaPayoutPolicyStore },
     { provide: PLATFORM_FINANCE_READER, useClass: PrismaPlatformFinanceReader },
     ResolveCommissionUseCase,
+    ResolveTaxUseCase,
     RecordClawbackJournalUseCase,
     ComputePayoutPayableUseCase,
     ListCommissionRulesUseCase,
@@ -134,7 +136,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     SettlementReleaseWorker,
   ],
   // Exported so the booking module can snapshot the commission at booking time.
-  exports: [ResolveCommissionUseCase],
+  exports: [ResolveCommissionUseCase, ResolveTaxUseCase],
 })
 export class FinanceModule implements OnModuleInit {
   private readonly logger = new Logger(FinanceModule.name);

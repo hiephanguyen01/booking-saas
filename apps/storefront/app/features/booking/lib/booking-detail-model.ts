@@ -83,6 +83,10 @@ export interface BookingDetailViewModel {
   cancellationTiers: CancellationTier[];
   refundAmount: string | null;
   refundPercent: number | null;
+  /** VAT frozen on this booking, basis points — 800 = 8%, 0 = seller charges none. */
+  vatBps: number;
+  /** VND đồng digit string; the VAT already inside the final amount. */
+  vatAmount: string;
   cancelledAt: string | null;
   cancellationReason: string | null;
   attributes: SpecCard[];
@@ -212,6 +216,8 @@ export function toBookingDetailViewModel(
     ),
     refundAmount: booking.refundDueAmount,
     refundPercent: booking.refundPercent,
+    vatBps: booking.vatBps,
+    vatAmount: booking.vatAmount,
     cancelledAt: null,
     cancellationReason: null,
     attributes: specCards(booking.listingAttributes, booking.listingAttributeSchema),

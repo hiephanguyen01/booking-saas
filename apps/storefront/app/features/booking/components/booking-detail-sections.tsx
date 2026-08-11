@@ -6,6 +6,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { Info } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { RatingStars } from '~/components/rating-stars';
+import { useLocale } from '~/hooks/use-locale';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { subtractMoney } from '~/lib/money';
 import {
@@ -81,14 +82,25 @@ export function BookingFinancialSection({
 
 export function PaymentTaxNote({ booking }: { booking: BookingDetailViewModel }) {
   const { t } = useTranslation(NsI18n.Account);
+  const locale = useLocale();
   const state = bookingDetailState(booking.status);
   if (state === 'absent') return null;
+  // The rate is the one FROZEN on this booking, so a receipt printed in 2027 for
+  // a 2026 booking still reads 8% (§VAT). A seller under the VAT threshold has
+  // vatBps 0, and "includes 0% VAT" would be nonsense — say nothing is due.
+  const taxNote =
+    booking.vatBps > 0
+      ? t('bookings.payment.taxNote', {
+          percent: booking.vatBps / 100,
+          amount: money(booking.vatAmount, locale),
+        })
+      : t('bookings.payment.taxNoteNone');
   return (
     <p className="flex items-start gap-2 px-0.5 text-xs leading-5 text-muted-foreground">
       <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-foreground" />
       {state === 'cancelled'
         ? t('bookings.refund.policyNote', { percent: booking.refundPercent ?? 0 })
-        : t('bookings.payment.taxNote')}
+        : taxNote}
     </p>
   );
 }

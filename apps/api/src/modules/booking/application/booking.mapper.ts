@@ -18,6 +18,18 @@ import type {
   BookingStatusHistoryRecord,
   PartnerBookingStat,
 } from '../domain/ports/booking-repository.port';
+import { vatFromGross } from '../../../shared/money/money';
+import type { CommissionSnapshot } from '../../../shared/domain/commission/commission-snapshot';
+
+/**
+ * VAT rate frozen on a booking, or 0 for one created before dynamic VAT existed
+ * (§VAT) — the same fallback `snapshotToRates` uses, so display and money maths
+ * can never disagree about an old booking.
+ */
+function bookingVatBps(snapshot: unknown): number {
+  const tax = (snapshot as CommissionSnapshot | null)?.tax;
+  return typeof tax?.vatBps === 'number' ? tax.vatBps : 0;
+}
 import { maskPhone } from '../domain/mask-phone';
 import type { CancelResult } from './use-cases/cancel-booking.use-case';
 import type { ReturnResult } from './use-cases/mark-returned.use-case';
@@ -151,6 +163,10 @@ function toCore(b: BookingRecord) {
     paidAmount: b.paidAmount.toString(),
     refundDueAmount: b.refundDueAmount?.toString() ?? null,
     refundPercent: b.refundPercent,
+    // Only the tax facts cross to the customer, never the snapshot they came
+    // from — that also holds the tenant's take-rate (§VAT).
+    vatBps: bookingVatBps(b.commissionSnapshot),
+    vatAmount: vatFromGross(b.finalAmount, bookingVatBps(b.commissionSnapshot)).toString(),
     securityDeposit: b.securityDeposit.toString(),
     pickedUpAt: b.pickedUpAt?.toISOString() ?? null,
     returnedAt: b.returnedAt?.toISOString() ?? null,

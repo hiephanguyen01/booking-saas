@@ -6,6 +6,7 @@ import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { CatalogModule } from '../../../catalog/infrastructure/http/catalog.module';
 import { PartnerModule } from '../../../partner/infrastructure/http/partner.module';
+import { FinanceModule } from '../../../finance/infrastructure/http/finance.module';
 import { AdministrativeDivisionModule } from '../../../administrative-division/infrastructure/http/administrative-division.module';
 import { COMMISSION_COVERAGE_READER } from '../../domain/ports/commission-coverage-reader.port';
 import { REVIEW_AGGREGATE_PROJECTOR } from '../../domain/ports/review-aggregate-projector.port';
@@ -109,6 +110,9 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     PartnerModule,
     AdministrativeDivisionModule,
     LegalModule,
+    // For ResolveTaxUseCase — the checkout quote must show the same VAT rate the
+    // booking will freeze. `finance` does not import `listing`, so no cycle.
+    FinanceModule,
   ],
   controllers: [
     TenantListingGroupController,

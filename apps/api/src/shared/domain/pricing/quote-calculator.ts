@@ -301,12 +301,21 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
 }
 
 /**
- * {@link computeQuote} mapped to the `QuoteResponse` transport shape (VND
- * bigints → digit strings). Pure; throws {@link PricingError} on invalid input
- * — HTTP callers go through `application/pricing.ts#priceQuote`, which maps
- * pricing errors to 400s.
+ * A priced quote before tax. VAT is not pricing — it depends on WHO sells and
+ * WHEN the service happens, neither of which this kernel knows — so the VAT
+ * fields of `QuoteResponse` are filled in by the use-case that has that context
+ * (§VAT). Keeping them out here is what stops the pricing kernel from growing a
+ * dependency on the tax schedule.
  */
-export function computeQuoteResponse(input: QuoteInput): QuoteResponse {
+export type PricedQuote = Omit<QuoteResponse, 'vatBps' | 'vatAmount'>;
+
+/**
+ * {@link computeQuote} mapped to the `QuoteResponse` transport shape (VND
+ * bigints → digit strings), minus the VAT fields. Pure; throws
+ * {@link PricingError} on invalid input — HTTP callers go through
+ * `application/pricing.ts#priceQuote`, which maps pricing errors to 400s.
+ */
+export function computeQuoteResponse(input: QuoteInput): PricedQuote {
   const result = computeQuote(input);
   return {
     currency: 'VND',

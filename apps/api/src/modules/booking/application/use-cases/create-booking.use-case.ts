@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { CreateBookingInput, ModeConfig, QuoteResponse } from '@booking/contracts';
+import type { CreateBookingInput, ModeConfig } from '@booking/contracts';
+import type { PricedQuote } from '../../../../shared/domain/pricing/quote-calculator';
 import {
   TenantDbService,
   type PrismaTx,
@@ -267,7 +268,9 @@ export class CreateBookingUseCase {
     tenantId: string,
     args: {
       listing: ListingRecord;
-      quote: QuoteResponse;
+      // Pre-tax: `pricing_snapshot` records what was priced; the VAT that applied
+      // lives in `commission_snapshot.tax` (§VAT), so it is not duplicated here.
+      quote: PricedQuote;
       effectivePolicyId: string | null;
       policyRules: unknown;
       customerId: string;

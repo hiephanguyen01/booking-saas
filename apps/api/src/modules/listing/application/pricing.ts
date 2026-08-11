@@ -1,7 +1,7 @@
-import type { QuoteResponse } from '@booking/contracts';
 import {
   computeQuoteResponse,
   PricingError,
+  type PricedQuote,
   type QuoteInput,
 } from '../../../shared/domain/pricing/quote-calculator';
 import { ListingPricingRejected } from '../domain/errors/pricing-rule-errors';
@@ -12,7 +12,7 @@ import { ListingPricingRejected } from '../domain/errors/pricing-rule-errors';
  * application-service quote method) — used by the public quote endpoint, scheduling
  * availability (Task 1.6), and booking creation (Task 1.7).
  */
-export function priceQuote(input: QuoteInput): QuoteResponse {
+export function priceQuote(input: QuoteInput): PricedQuote {
   try {
     return computeQuoteResponse(input);
   } catch (err) {

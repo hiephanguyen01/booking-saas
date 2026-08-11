@@ -12,16 +12,7 @@ import {
   defaultCommissionSnapshot,
   type CommissionSnapshot,
 } from '../../../../shared/domain/commission/commission-snapshot';
-import {
-  noTax,
-  partnerChargesVat,
-  selectTaxRate,
-  type TaxSnapshot,
-} from '../../../../shared/domain/tax/tax';
-import {
-  TAX_RATE_REPOSITORY,
-  type ITaxRateRepository,
-} from '../../domain/ports/tax-rate-repository.port';
+import { ResolveTaxUseCase } from './resolve-tax.use-case';
 
 export interface ResolveCommissionTarget {
   tenantId: string;
@@ -48,7 +39,7 @@ export interface ResolveCommissionTarget {
 export class ResolveCommissionUseCase {
   constructor(
     @Inject(COMMISSION_RULE_REPOSITORY) private readonly rules: ICommissionRuleRepository,
-    @Inject(TAX_RATE_REPOSITORY) private readonly taxRates: ITaxRateRepository,
+    private readonly tax: ResolveTaxUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -63,7 +54,12 @@ export class ResolveCommissionUseCase {
       },
       await this.tenantDb.databaseNow(tx),
     );
-    const tax = await this.resolveTax(tx, target);
+    const tax = await this.tax.execute(tx, {
+      tenantId: target.tenantId,
+      partnerId: target.partnerId,
+      listingTypeId: target.listingTypeId,
+      serviceDate: target.serviceDate,
+    });
     if (!rule) return { ...defaultCommissionSnapshot(target.isHouse, target.serviceDate), tax };
     return {
       ruleId: rule.id,
@@ -78,46 +74,4 @@ export class ResolveCommissionUseCase {
     };
   }
 
-  /**
-   * Two gates before a rate even matters: WHO sells (an exempt household charges
-   * no VAT whatever it sells) and WHAT is sold (the listing type's category).
-   * A house partner is sold by the TENANT, so the tenant's own status governs.
-   * Any miss falls back to 0% — the pre-VAT behaviour — rather than guessing.
-   */
-  private async resolveTax(tx: PrismaTx, target: ResolveCommissionTarget): Promise<TaxSnapshot> {
-    const none = noTax(target.serviceDate);
-    if (!target.listingTypeId) return none;
-
-    const seller = target.isHouse
-      ? await tx.tenant.findUnique({
-          where: { id: target.tenantId },
-          select: { taxStatus: true },
-        })
-      : await tx.partner.findUnique({
-          where: { id: target.partnerId },
-          select: { taxStatus: true },
-        });
-    if (!seller || !partnerChargesVat(seller.taxStatus)) return none;
-
-    const listingType = await tx.listingType.findUnique({
-      where: { id: target.listingTypeId },
-      select: { taxCategory: true },
-    });
-    if (!listingType) return none;
-
-    const rate = selectTaxRate(
-      await this.taxRates.list(tx),
-      listingType.taxCategory,
-      target.serviceDate,
-    );
-    if (!rate) return none;
-
-    return {
-      taxRateId: rate.id,
-      category: rate.category,
-      vatBps: rate.rateBps,
-      legalRef: rate.legalRef,
-      resolvedFor: target.serviceDate.toISOString(),
-    };
-  }
 }
