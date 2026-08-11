@@ -6,6 +6,7 @@ import {
   AmountMismatch,
   BookingNotPayable,
   NoActiveGateway,
+  NothingLeftToPay,
 } from '../errors/payment-errors';
 
 /**
@@ -46,6 +47,38 @@ export class Payment {
     const amount = booking.depositAmount + booking.securityDeposit;
     const kind = booking.depositAmount >= booking.finalAmount ? 'full' : 'deposit';
     return { amount, kind };
+  }
+
+  /**
+   * A balance payment is only legal on a booking that is already confirmed and
+   * still owes money (§8.3). Deliberately separate from {@link assertPayable} so
+   * the deposit path's `pending_payment` guard stays strict — widening that one
+   * would let a cancelled or refunded booking take money.
+   */
+  static assertBalancePayable(booking: {
+    status: string;
+    finalAmount: bigint;
+    paidAmount: bigint;
+  }): void {
+    if (booking.status !== 'confirmed') {
+      throw new BookingNotPayable(booking.status);
+    }
+    if (booking.finalAmount - booking.paidAmount <= 0n) {
+      throw new NothingLeftToPay();
+    }
+  }
+
+  /**
+   * What is still owed. `additional_charges` are excluded on purpose: they accrue
+   * at completion, after the service, and settle on site — not through a
+   * pre-service balance payment. The security deposit was already taken with the
+   * deposit payment, so it is never charged twice.
+   */
+  static planBalance(booking: { finalAmount: bigint; paidAmount: bigint }): {
+    amount: bigint;
+    kind: 'balance';
+  } {
+    return { amount: booking.finalAmount - booking.paidAmount, kind: 'balance' };
   }
 
   /**

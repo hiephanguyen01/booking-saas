@@ -15,7 +15,6 @@ import {
   cancellationPolicyLines as sharedCancellationPolicyLines,
   type CancellationPolicyLine,
 } from '~/lib/cancellation-policy';
-import { subtractMoney } from '~/lib/money';
 import { bookingDateInTz, bookingTimeInTz, dateOnlyInTz, nightsBetween } from '~/lib/time';
 import { specCards, type SpecCard } from '~/lib/listing-attributes';
 
@@ -80,6 +79,8 @@ export interface BookingDetailViewModel {
   expiresAt: string | null;
   createdAt: string;
   balanceAmount: string;
+  /** Server's rule for "the customer may settle this online now" (§8.3). */
+  canPayBalance: boolean;
   cancellationTiers: CancellationTier[];
   refundAmount: string | null;
   refundPercent: number | null;
@@ -210,7 +211,10 @@ export function toBookingDetailViewModel(
     returnedAt: booking.returnedAt,
     expiresAt: booking.expiresAt,
     createdAt: booking.createdAt,
-    balanceAmount: subtractMoney(booking.finalAmount, booking.paidAmount),
+    // Both come from the server so the storefront and the payability guard can
+    // never drift apart (§8.3).
+    balanceAmount: booking.balanceAmount,
+    canPayBalance: booking.canPayBalance,
     cancellationTiers: [...(booking.cancellationPolicySnapshot ?? [])].sort(
       (a, b) => b.hoursBefore - a.hoursBefore,
     ),

@@ -28,6 +28,9 @@ export function useBookingDetailOverviewController({
       : 'other';
   const isInventory = booking.bookingMode === 'inventory';
   const canPay = booking.status === 'pending_payment';
+  // Settling an outstanding balance on an already-confirmed booking (§8.3). The
+  // backend owns the rule; this never re-derives it from amounts.
+  const canPayBalance = booking.canPayBalance;
   const canCancel = booking.status === 'confirmed';
   // The backend owns this decision: the settlement must sit in an open dispute
   // window, before `disputeUntil`, with no dispute already used. Deriving it
@@ -41,6 +44,7 @@ export function useBookingDetailOverviewController({
     canCancel,
     canDispute,
     canPay,
+    canPayBalance,
     cancelOpen,
     disputeOpen,
     disputeUntil: canDispute ? (settlement?.disputeUntil ?? null) : null,
@@ -49,7 +53,7 @@ export function useBookingDetailOverviewController({
     participantCount: String(isInventory ? booking.quantity : booking.guestCount),
     setCancelOpen,
     setDisputeOpen,
-    showActions: showPolicy || canPay || canCancel || canDispute,
+    showActions: showPolicy || canPay || canPayBalance || canCancel || canDispute,
     showPolicy,
   };
 }

@@ -115,6 +115,7 @@ export const enAccount = {
     },
     chat: 'Chat',
     payNow: 'Pay now',
+    payBalance: 'Pay the balance',
     cancel: 'Cancel booking',
     review: 'Review',
     dispute: 'Dispute',

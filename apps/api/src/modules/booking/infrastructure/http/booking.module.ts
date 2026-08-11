@@ -13,6 +13,7 @@ import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.modu
 import { ApproveBookingUseCase } from '../../application/use-cases/approve-booking.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
+import { RecordBalancePaymentUseCase } from '../../application/use-cases/record-balance-payment.use-case';
 import { CreateBookingUseCase } from '../../application/use-cases/create-booking.use-case';
 import { FinalizeRefundedBookingUseCase } from '../../application/use-cases/finalize-refunded-booking.use-case';
 import { GetBookingByCodeUseCase } from '../../application/use-cases/get-booking-by-code.use-case';
@@ -71,6 +72,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     { provide: BOOKING_PARTNER_READER, useClass: PrismaBookingPartnerReader },
     CreateBookingUseCase,
     ConfirmBookingUseCase,
+    RecordBalancePaymentUseCase,
     CancelBookingUseCase,
     ApproveBookingUseCase,
     RejectBookingUseCase,
@@ -100,6 +102,7 @@ export class BookingModule implements OnModuleInit {
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly confirmBooking: ConfirmBookingUseCase,
+    private readonly recordBalancePayment: RecordBalancePaymentUseCase,
     private readonly finalizeRefundedBooking: FinalizeRefundedBookingUseCase,
   ) {}
 
@@ -109,6 +112,10 @@ export class BookingModule implements OnModuleInit {
       if (payload.skipBookingConfirmation === true) return;
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);
       if (!tenantId) return;
+      // A payment on an ALREADY-CONFIRMED booking is a balance payment (§8.3):
+      // add the money and stop. Re-running confirmation would SET `paid_amount`
+      // back to the deposit and lose the balance.
+      if (await this.recordBalancePayment.execute(tenantId, payload.bookingId)) return;
       await this.confirmBooking.execute(tenantId, payload.bookingId);
     });
     this.registry.register('refund.completed', async (event) => {

@@ -746,7 +746,21 @@ Every transition goes through a single domain function (`booking.transitionTo(ne
 
 ### 8.3. Paying the Remaining Balance (deposit)
 
-If `deposit_percent < 100`: the booking becomes `confirmed` after paying the deposit; the remainder creates a `kind=balance` payment with a due date (default: before the usage time, or paid on-site — configured on the listing as `balance_due: online_before | on_arrival`). Reminders are sent via a job. If not paid on time (for `online_before`): the tenant configures whether to auto-cancel per policy or keep the booking.
+If `deposit_percent < 100`: the booking becomes `confirmed` after paying the deposit, and the remainder
+is settled one of two ways, configured on the listing as `balance_due: online_before | on_arrival`.
+
+**As implemented (2026-08-11):** the customer settles an `online_before` balance from their own booking
+page — the same **Thanh toán ngay** form, relabelled **Thanh toán số dư**, which creates a second
+`kind=balance` payment for exactly `final_amount − paid_amount`. Paying it leaves the booking
+`confirmed` and only raises `paid_amount`; the settlement's `online_held_amount` is recomputed from all
+succeeded payments, so custody covers both. **There is deliberately no deadline and no auto-cancel:** a
+balance left unpaid simply falls through to on-site collection at completion, exactly as `on_arrival`
+does, so a booking can never be stranded by an unpaid balance. Reminder notifications are not built.
+
+> Until 2026-08-11 nothing implemented `online_before` at all: `Payment.assertPayable` refused any
+> payment on a `confirmed` booking, so the page showed an outstanding balance the customer had no way
+> to pay, and the two `balance_due` modes were measurably identical. See
+> [`docs/superpowers/plans/2026-08-11-money-flow-results.md`](./docs/superpowers/plans/2026-08-11-money-flow-results.md) → D1.
 
 **Extra charges (overtime, surcharges)** — a routine occurrence in the studio industry: the partner adds a line to the booking's `additional_charges` **before** `completed` (the customer is notified); this amount has commission computed on it just like an `on_arrival` amount (the partner collects on the platform's behalf). Without this mechanism, overtime charges would be collected in cash outside the system — real GMV would exceed recorded GMV, and the tenant would miss out on commission in its core vertical.
 

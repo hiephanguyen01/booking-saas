@@ -151,6 +151,13 @@ function CardFooter({
             {t('bookings.payNow')}
           </BookingPaymentForm>
         ) : null}
+        {/* Same form and same `pay` intent as the first payment — the backend
+            decides deposit vs balance from the booking's state (§8.3). */}
+        {booking.canPayBalance ? (
+          <BookingPaymentForm action={detailPath} buttonProps={{ size: 'sm' }}>
+            {t('bookings.payBalance')}
+          </BookingPaymentForm>
+        ) : null}
         {booking.variant === 'completed' && review?.status === 'pending' ? (
           <Button type="button" variant="outline" size="sm" onClick={() => onReview(review)}>
             {t('bookings.review')}

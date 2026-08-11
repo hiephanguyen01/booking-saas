@@ -127,11 +127,19 @@ export class PrismaSettlementRepository implements ISettlementRepository {
       include: { booking: { select: { id: true, partnerId: true, securityDeposit: true } } },
     });
     if (!payment || payment.status !== 'succeeded') return null;
+    // Custody is derived from EVERY succeeded payment on the booking, not just
+    // this one, because a balance payment (§8.3) is a second payment on an
+    // already-confirmed booking and the held funds must cover both.
+    const paid = await tx.payment.aggregate({
+      where: { bookingId: payment.bookingId, status: 'succeeded' },
+      _sum: { amount: true },
+    });
+    const totalPaid = paid._sum.amount ?? 0n;
+    // The security deposit is taken once, with the first payment; the rest is
+    // service money. Identical to the old single-payment maths when there is one.
     const securityDepositHeld =
-      payment.booking.securityDeposit < payment.amount
-        ? payment.booking.securityDeposit
-        : payment.amount;
-    const onlineHeldAmount = payment.amount - securityDepositHeld;
+      payment.booking.securityDeposit < totalPaid ? payment.booking.securityDeposit : totalPaid;
+    const onlineHeldAmount = totalPaid - securityDepositHeld;
     return toRecord(
       await tx.bookingSettlement.upsert({
         where: { bookingId: payment.bookingId },
@@ -143,7 +151,16 @@ export class PrismaSettlementRepository implements ISettlementRepository {
           onlineHeldAmount,
           securityDepositHeld,
         },
-        update: {},
+        // SET from the derived total, never `{ increment }`: outbox delivery is
+        // at-least-once, and an increment would inflate custody — and every split
+        // derived from it — on a redelivery. Recomputing from the source of truth
+        // lands on the same number however many times it runs.
+        //
+        // `payment_id` deliberately keeps pointing at the deposit: the column is
+        // unique and one settlement serves one booking, so an automatic gateway
+        // refund can only target that first transaction and anything larger uses
+        // the existing manual refund flow.
+        update: { onlineHeldAmount, securityDepositHeld },
       }),
     );
   }

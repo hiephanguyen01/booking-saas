@@ -251,6 +251,22 @@ export class PrismaBookingRepository implements IBookingRepository {
     return this.byId(tx, id);
   }
 
+  /**
+   * Add a balance payment to `paid_amount` in ONE guarded statement (§8.3).
+   *
+   * The `paid_amount + $amount <= final_amount` predicate is what makes this safe
+   * under at-least-once outbox delivery: the first delivery brings the booking to
+   * exactly `final_amount`, so a redelivery would overshoot, matches no row, and
+   * silently no-ops. A read-modify-write would double-count instead.
+   */
+  async addPaidAmount(tx: PrismaTx, bookingId: string, amount: bigint): Promise<void> {
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE bookings
+         SET paid_amount = paid_amount + ${amount}, updated_at = now()
+       WHERE id = ${bookingId}::uuid
+         AND paid_amount + ${amount} <= final_amount`);
+  }
+
   async applyTransition(tx: PrismaTx, params: TransitionParams): Promise<BookingRecord> {
     const sets = [
       Prisma.sql`status = ${params.to}::booking_status`,

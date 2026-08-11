@@ -269,6 +269,14 @@ const bookingCoreSchema = z.object({
   vatBps: z.number().int().min(0),
   /** VND đồng digit string; the VAT already inside `finalAmount`. */
   vatAmount: z.string(),
+  /** VND đồng digit string; `finalAmount − paidAmount`, floored at 0. */
+  balanceAmount: z.string(),
+  /**
+   * Whether the customer may settle that balance online right now — true only for
+   * a confirmed booking that still owes money (§8.3). The server owns this rule so
+   * the storefront never re-derives it.
+   */
+  canPayBalance: z.boolean(),
   /** Inventory (§9.4): refundable deposit + fulfillment state. */
   securityDeposit: z.string(),
   pickedUpAt: z.string().nullable(),

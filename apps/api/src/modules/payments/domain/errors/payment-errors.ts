@@ -12,6 +12,13 @@ export class BookingNotPayable extends DomainError {
   }
 }
 
+/** A balance payment was requested on a booking that owes nothing (§8.3). */
+export class NothingLeftToPay extends DomainError {
+  constructor() {
+    super('NOTHING_LEFT_TO_PAY', 409, 'This booking has no outstanding balance');
+  }
+}
+
 export class PaymentMethodUnavailable extends DomainError {
   constructor() {
     super(
