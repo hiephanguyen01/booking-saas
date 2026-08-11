@@ -7,7 +7,6 @@ export const enPwa = {
     titleFallback: 'Install this store app',
     description: 'Launch from your home screen and see a fallback page when offline.',
     descriptionFallback: 'Launch from your home screen and see a fallback page when offline.',
-    headerAction: 'Install app',
     compactAction: 'Install',
     action: 'Install now',
     later: 'Maybe later',

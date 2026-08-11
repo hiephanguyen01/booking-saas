@@ -74,13 +74,13 @@ claims clients and removes older BookingOS storefront cache versions.
 
 ## Install experience
 
-- Only the tenant Home route advertises installation, using a separate filled 40px **Install app**
-  button with a Download icon in the mobile header and a tenant-branded floating banner above the
-  bottom navigation. The mobile header does not render a hamburger control or account avatar.
+- Only the tenant Home route advertises installation, using a tenant-branded floating banner above
+  the bottom navigation. The mobile header does not render an install action, hamburger control or
+  account avatar.
 - The banner appears on every Home navigation entry or reload. Closing it affects only that Home
   entry; no visit counter, session counter or persistent dismissal is stored.
 - Chromium and other capable browsers use the captured `beforeinstallprompt` event directly from
-  both install actions, without an intermediate custom dialog.
+  the banner action, without an intermediate custom dialog.
 - iOS uses the same **Install now** action but opens the required browser Share → Add to Home Screen
   instructions because iOS does not expose a direct install prompt.
 - All install UI is hidden in standalone mode; platform, suspended-tenant and non-Home pages never

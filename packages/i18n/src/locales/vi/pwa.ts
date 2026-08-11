@@ -4,7 +4,6 @@ export const viPwa = {
     titleFallback: 'Cài ứng dụng của cửa hàng',
     description: 'Mở nhanh từ màn hình chính và dùng trang dự phòng khi mất mạng.',
     descriptionFallback: 'Mở nhanh từ màn hình chính và dùng trang dự phòng khi mất mạng.',
-    headerAction: 'Cài app',
     compactAction: 'Cài',
     action: 'Cài ngay',
     later: 'Để sau',
