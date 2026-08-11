@@ -10,7 +10,12 @@ export const EMPTY_FAVORITE_REFS: FavoriteRefsResponse = {
  * than entries in `storefrontPaths` (which always carry a `/:locale` prefix).
  * They are route paths, not backend endpoints — do not reach for `apiPaths`.
  */
-const FAVOURITE_BEARING_PATHS = new Set(['/', '/community', '/account/favorites']);
+const FAVOURITE_BEARING_PATHS = new Set([
+  '/',
+  '/community',
+  '/account/favorites',
+  '/account/recent',
+]);
 const DETAIL_PATH_RE = /^\/(?:t|l|g|p)(?:\/|$)/;
 
 export function needsFavoriteRefs(pathname: string): boolean {

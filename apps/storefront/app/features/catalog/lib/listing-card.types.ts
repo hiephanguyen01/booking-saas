@@ -2,10 +2,6 @@ import type { PublicListingResponse } from '@booking/contracts';
 
 export type ListingPriceUnit = 'hour' | 'day' | 'item' | 'session' | 'package';
 
-export type ListingCardLayout = 'stacked' | 'responsive-row';
-
-export type ListingCardVariant = 'default' | 'discovery';
-
 export interface ListingCardPresentation {
   originalPrice: string | null;
   discountPercent: number | null;

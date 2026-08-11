@@ -5,8 +5,6 @@ import { SearchResultCard } from '~/features/catalog/components/search-result-ca
 import type {
   DiscoveryListingCardData,
   ListingCardDismissControl,
-  ListingCardLayout,
-  ListingCardPresentation,
   ListingFavoriteControl,
 } from '~/features/catalog/lib/listing-card.types';
 import { useFavorite } from '~/features/favorites/hooks/use-favorite';
@@ -30,67 +28,21 @@ function useFavoriteControl(listing: {
   };
 }
 
-/** ListingCard with a wired, persisted favorite heart (home / catalog / related / account). */
-export function FavoriteListingCard({
-  listing,
-  presentation,
-  className,
-  dismissControl,
-  layout,
-}: {
-  listing: PublicListingResponse;
-  presentation?: ListingCardPresentation;
-  className?: string;
-  /** Only the recently-viewed grid passes one; every other caller omits it. */
-  dismissControl?: ListingCardDismissControl;
-  layout?: ListingCardLayout;
-}) {
-  const favoriteControl = useFavoriteControl(listing);
-  return (
-    <ListingCard
-      listing={listing}
-      presentation={presentation}
-      className={className}
-      favoriteControl={favoriteControl}
-      dismissControl={dismissControl}
-      layout={layout}
-    />
-  );
-}
-
 /** The shared Figma-aligned card for storefront discovery rails and grids. */
 export function FavoriteDiscoveryListingCard({
   item,
   className,
+  dismissControl,
 }: {
   item: DiscoveryListingCardData;
   className?: string;
+  dismissControl?: ListingCardDismissControl;
 }) {
   const favoriteControl = useFavoriteControl(item.listing);
   return (
     <ListingCard
-      listing={item.listing}
-      presentation={item.presentation}
+      item={item}
       className={className}
-      favoriteControl={favoriteControl}
-      layout="stacked"
-      variant="discovery"
-    />
-  );
-}
-
-/** The exact compact Filter result card, for account collections below `md`. */
-export function FavoriteMobileSearchResultCard({
-  listing,
-  dismissControl,
-}: {
-  listing: PublicListingResponse;
-  dismissControl?: ListingCardDismissControl;
-}) {
-  const favoriteControl = useFavoriteControl(listing);
-  return (
-    <SearchResultCard
-      listing={listing}
       favoriteControl={favoriteControl}
       dismissControl={dismissControl}
     />

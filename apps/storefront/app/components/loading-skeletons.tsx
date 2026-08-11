@@ -173,31 +173,44 @@ export function HomeListingCardsSkeleton({
         )}
       >
         {Array.from({ length: count }, (_, index) => (
-          <div
+          <DiscoveryListingCardSkeleton
             key={index}
             className={cn(
-              SURFACE_FRAME,
-              'h-72 min-w-0 overflow-hidden bg-card sm:h-98.5',
+              'min-w-0',
               layout === 'carousel'
                 ? 'basis-[13rem] shrink-0 sm:basis-[calc((100%_-_2rem)/3)] lg:basis-[calc((100%_-_3rem)/4)] xl:basis-[277.5px]'
                 : '',
             )}
-          >
-            <StorefrontSkeleton className="h-34 rounded-(--sf-image-radius) sm:h-46 sm:rounded-none" />
-            <div className="space-y-3 p-(--sf-surface-pad)">
-              <StorefrontSkeleton className="h-6 w-4/5" />
-              <StorefrontSkeleton className="h-5 w-3/5" />
-              <StorefrontSkeleton className="h-5 w-full" />
-              <StorefrontSkeleton className="ml-auto h-10 w-3/5" />
-            </div>
-          </div>
+          />
         ))}
       </div>
     </LoadingRegion>
   );
 }
 
-export type AccountContentSkeletonVariant = 'list' | 'form' | 'detail';
+function DiscoveryListingCardSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        SURFACE_FRAME,
+        '@container overflow-hidden bg-card',
+        className,
+      )}
+    >
+      <div className="h-[calc(24.625rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[220px]:h-[calc(18rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[190px]:h-[calc(16rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))]">
+        <StorefrontSkeleton className="h-46 rounded-(--sf-image-radius) sm:rounded-none @max-[220px]:h-34 @max-[190px]:h-28" />
+        <div className="space-y-3 p-(--sf-surface-pad) @max-[220px]:space-y-2">
+          <StorefrontSkeleton className="h-6 w-4/5 @max-[220px]:h-5" />
+          <StorefrontSkeleton className="h-5 w-3/5 @max-[220px]:h-4" />
+          <StorefrontSkeleton className="h-5 w-full @max-[220px]:h-4" />
+          <StorefrontSkeleton className="ml-auto h-10 w-3/5 @max-[220px]:h-8" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export type AccountContentSkeletonVariant = 'list' | 'listing-grid' | 'form' | 'detail';
 
 export function AccountResultsSkeleton({ label, count = 4 }: { label: string; count?: number }) {
   return (
@@ -290,10 +303,24 @@ function AccountListSkeletonBody() {
   );
 }
 
+function AccountListingGridSkeletonBody() {
+  return (
+    <div className="space-y-3">
+      <StorefrontSkeleton className="h-12 w-full rounded-none" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
+        {Array.from({ length: 6 }, (_, index) => (
+          <DiscoveryListingCardSkeleton key={index} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const ACCOUNT_SKELETON_BODIES: Record<AccountContentSkeletonVariant, () => React.ReactElement> = {
   form: AccountFormSkeletonBody,
   detail: AccountDetailSkeletonBody,
   list: AccountListSkeletonBody,
+  'listing-grid': AccountListingGridSkeletonBody,
 };
 
 export function AccountContentSkeleton({

@@ -1,6 +1,6 @@
 import { publicPartnerProfileResponseSchema } from '@booking/contracts';
 import { publicGetData } from '~/lib/server/api.server';
-import { fetchListings } from '~/features/catalog/server/catalog.server';
+import { fetchDiscoveryListings } from '~/features/catalog/server/catalog.server';
 import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
 import { apiPaths } from '~/constants/api-paths';
 
@@ -23,7 +23,7 @@ export async function loadProviderRoute(request: Request, partnerSlug: string, u
     sort: 'bookings-desc',
   });
   const [listings, reviewData] = await Promise.all([
-    activeType ? fetchListings(request, search) : Promise.resolve([]),
+    activeType ? fetchDiscoveryListings(request, search) : Promise.resolve([]),
     loadPublicReviews(request, url.searchParams, 'partner', profile.slug),
   ]);
 

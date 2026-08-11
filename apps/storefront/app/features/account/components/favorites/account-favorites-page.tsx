@@ -10,8 +10,7 @@ import {
 } from '~/features/account/components/shared/account-primitives';
 import { MobileAccountListingCollection } from '~/features/account/components/shared/mobile-account-listing-collection';
 import {
-  FavoriteListingCard,
-  FavoriteMobileSearchResultCard,
+  FavoriteDiscoveryListingCard,
 } from '~/features/favorites/components/favorite-cards';
 import { useAccountTypeFilter } from '~/features/account/hooks/use-account-type-filter';
 import type { loadAccountFavoritesRoute } from '~/features/account/server/account-favorites-route.server';
@@ -25,7 +24,7 @@ export function AccountFavoritesPage({
   const { t } = useTranslation(NsI18n.Account);
   const { listingTypes } = useOutletContext<AccountOutletContext>();
   const { isAllSelected, isTypeSelected, selectAll, selectType, visibleItems } =
-    useAccountTypeFilter(loaderData.items, (item) => item.listingTypeSlug);
+    useAccountTypeFilter(loaderData.items, (item) => item.listing.listingTypeSlug);
   const tabs = [
     { key: 'all', label: t('favorites.all'), active: isAllSelected, onSelect: selectAll },
     ...listingTypes.map((type) => ({
@@ -39,9 +38,12 @@ export function AccountFavoritesPage({
   const content = loaderData.loadFailed ? (
     <AccountListState icon={Heart} tone="destructive" message={t('favorites.loadError')} />
   ) : visibleItems.length > 0 ? (
-    <div className="grid grid-cols-1 gap-(--sf-section-gap) sm:grid-cols-2 md:gap-5 xl:grid-cols-3">
+    <div className="grid grid-cols-3 gap-5">
       {visibleItems.map((item) => (
-        <FavoriteListingCard key={item.id} listing={item} className="sm:min-h-98.5" />
+        <FavoriteDiscoveryListingCard
+          key={`${item.listing.kind}:${item.listing.id}`}
+          item={item}
+        />
       ))}
     </div>
   ) : (
@@ -66,9 +68,14 @@ export function AccountFavoritesPage({
         {loaderData.loadFailed ? (
           <AccountListState icon={Heart} tone="destructive" message={t('favorites.loadError')} />
         ) : visibleItems.length > 0 ? (
-          visibleItems.map((item) => (
-            <FavoriteMobileSearchResultCard key={item.id} listing={item} />
-          ))
+          <div className="grid grid-cols-2 gap-3">
+            {visibleItems.map((item) => (
+              <FavoriteDiscoveryListingCard
+                key={`${item.listing.kind}:${item.listing.id}`}
+                item={item}
+              />
+            ))}
+          </div>
         ) : (
           <AccountListState
             icon={Heart}

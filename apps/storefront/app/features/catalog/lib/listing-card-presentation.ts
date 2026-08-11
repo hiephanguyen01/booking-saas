@@ -64,6 +64,31 @@ export function discoveryListingFromCatalogItem(
   };
 }
 
+/**
+ * Adapts a plain storefront card projection to the canonical discovery shape.
+ * Optional metadata is copied only when a caller actually owns a real value;
+ * in particular, zero remains a meaningful booking count or distance.
+ */
+export function discoveryListingFromPublicListing(
+  listing: PublicListingResponse,
+  overrides: Partial<ListingCardPresentation> = {},
+): DiscoveryListingCardData {
+  return {
+    listing,
+    presentation: {
+      originalPrice: overrides.originalPrice ?? null,
+      discountPercent: overrides.discountPercent ?? null,
+      priceUnit: overrides.priceUnit ?? null,
+      ...(overrides.completedBookings !== undefined
+        ? { completedBookings: overrides.completedBookings }
+        : {}),
+      ...(overrides.distanceMeters !== undefined
+        ? { distanceMeters: overrides.distanceMeters }
+        : {}),
+    },
+  };
+}
+
 export function discoveryListingFromNearbyItem(
   item: NearbyPublicListing,
 ): DiscoveryListingCardData {

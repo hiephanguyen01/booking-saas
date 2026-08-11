@@ -49,7 +49,8 @@ export function useAccountLayoutController(loaderData: AccountLayoutLoaderData) 
 
 function accountSkeletonVariant(pathname: string): AccountContentSkeletonVariant | null {
   if (/\/account\/bookings\/[^/]+\/?$/.test(pathname)) return 'detail';
-  if (/\/account\/(bookings|messages|reviews|favorites|recent)\/?$/.test(pathname)) {
+  if (/\/account\/(favorites|recent)\/?$/.test(pathname)) return 'listing-grid';
+  if (/\/account\/(bookings|messages|reviews)\/?$/.test(pathname)) {
     return 'list';
   }
   return null;
