@@ -29,7 +29,7 @@ export async function seedSportDemo(setup: TenantSetup): Promise<void> {
   });
   const stadPartner = await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: stadTenant.id, slug: 'hoang-gia-sport' } },
-    update: {},
+    update: { taxStatus: 'company_vat' },
     create: {
       tenantId: stadTenant.id,
       name: 'Hoàng Gia Sport',
@@ -39,6 +39,7 @@ export async function seedSportDemo(setup: TenantSetup): Promise<void> {
       status: 'approved',
       verifiedAt: new Date(),
       businessInfo: { taxId: '0401234567' },
+      taxStatus: 'company_vat',
       contactInfo: {
         phone: '0900000011',
         provinceCode: '48',

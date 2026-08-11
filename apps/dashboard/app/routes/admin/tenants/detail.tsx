@@ -3,6 +3,7 @@ import { CalendarClock, ExternalLink, ListChecks, Users } from 'lucide-react';
 import {
   currentSubscriptionResponseSchema,
   updateTenantInputSchema,
+  type CommissionRuleResponse,
   type DomainResponse,
   type Paginated,
   type PlanResponse,
@@ -33,6 +34,7 @@ import { tenantEditFields } from '~/features/admin/tenant-form-fields';
 import { TenantConfigSection } from '~/features/admin/components/tenant-config-section';
 import { TenantDangerSection } from '~/features/admin/components/tenant-danger-section';
 import { TenantDomainsCard } from '~/features/admin/components/tenant-domains-card';
+import { TenantPlatformRateCard } from '~/features/admin/components/tenant-platform-rate-card';
 import { TenantSubscriptionSection } from '~/features/admin/components/tenant-subscription-section';
 import { useBusy } from '~/hooks/use-busy';
 import { VERTICAL_LABELS } from '~/constants/tenancy';
@@ -62,18 +64,23 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     pageKey: 'subPage',
     pageSizeKey: 'subPageSize',
   });
-  const [tenantRes, subRes, historyRes, domainsRes, tenancyConfigRes, plansRes] = await Promise.all([
-    apiGet<TenantDetailResponse>(apiPaths.admin.tenant(id), auth),
-    apiGet(apiPaths.admin.tenantSubscription(id), auth, {
-      schema: currentSubscriptionResponseSchema.nullable(),
-    }),
-    apiGet<Paginated<SubscriptionHistoryItem>>(apiPaths.admin.tenantSubscriptions(id), auth, {
-      query: toApiQuery(),
-    }),
-    apiGet<DomainResponse[]>(apiPaths.admin.tenantDomains(id), auth),
-    apiGet<TenancyConfigResponse>(apiPaths.admin.tenancyConfig, auth),
-    apiGet<PlanResponse[]>(apiPaths.admin.plans, auth),
-  ]);
+  const [tenantRes, subRes, historyRes, domainsRes, tenancyConfigRes, plansRes, rulesRes] =
+    await Promise.all([
+      apiGet<TenantDetailResponse>(apiPaths.admin.tenant(id), auth),
+      apiGet(apiPaths.admin.tenantSubscription(id), auth, {
+        schema: currentSubscriptionResponseSchema.nullable(),
+      }),
+      apiGet<Paginated<SubscriptionHistoryItem>>(apiPaths.admin.tenantSubscriptions(id), auth, {
+        query: toApiQuery(),
+      }),
+      apiGet<DomainResponse[]>(apiPaths.admin.tenantDomains(id), auth),
+      apiGet<TenancyConfigResponse>(apiPaths.admin.tenancyConfig, auth),
+      apiGet<PlanResponse[]>(apiPaths.admin.plans, auth),
+      // Read from finance, not the tenant-detail response: `finance` already
+      // imports `TenancyModule`, so having tenancy read commission rules back
+      // would close a module cycle the API's check:module-cycles rejects.
+      apiGet<CommissionRuleResponse[]>(apiPaths.platform.tenantCommissionRules(id), auth),
+    ]);
   if (!tenantRes.ok || !tenantRes.data) {
     throw new Response('Không tìm thấy tenant', { status: tenantRes.status || 404 });
   }
@@ -88,6 +95,11 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     // works without it.
     tenancyConfig: tenancyConfigRes.ok ? (tenancyConfigRes.data ?? null) : null,
     plans: plansRes.ok ? (plansRes.data ?? []) : [],
+    // null → no rule to read the fee from (or the fetch failed); the card then
+    // explains rather than offering an input that would write nothing.
+    platformRate:
+      (rulesRes.ok ? rulesRes.data : null)?.find((r) => r.appliesTo === 'tenant_default')
+        ?.platformRate ?? null,
     subscriptionDates,
   };
 }
@@ -104,8 +116,17 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function TenantDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { tenant, subscription, history, historyTotal, domains, tenancyConfig, plans, subscriptionDates } =
-    loaderData;
+  const {
+    tenant,
+    subscription,
+    history,
+    historyTotal,
+    domains,
+    tenancyConfig,
+    plans,
+    platformRate,
+    subscriptionDates,
+  } = loaderData;
   const busy = useBusy();
   const [searchParams] = useSearchParams();
   const {
@@ -248,6 +269,12 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
         serverError={scopedError('subscription')}
         minDate={subscriptionDates.minDate}
         defaultExpiry={subscriptionDates.defaultExpiry}
+      />
+
+      <TenantPlatformRateCard
+        platformRate={platformRate}
+        busy={busy}
+        error={scopedError('platform-rate')}
       />
 
       <TenantConfigSection tenant={tenant} />

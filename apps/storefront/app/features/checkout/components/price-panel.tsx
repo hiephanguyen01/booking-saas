@@ -82,7 +82,12 @@ export function PricePanel({
         value={formatVnd(amounts.finalAmount)}
         className="mt-2 text-base leading-6 font-semibold"
       />
-      <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{t('totalIncludes')}</p>
+      {/* The rate comes from the quote, resolved by the same use-case that freezes
+          VAT onto the booking — never a constant. A seller under the VAT
+          threshold quotes 0, and saying "includes 0% VAT" would be nonsense. */}
+      <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
+        {quote.vatBps > 0 ? t('totalIncludes', { percent: quote.vatBps / 100 }) : t('totalNoVat')}
+      </p>
     </div>
   );
 }

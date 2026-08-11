@@ -1,4 +1,4 @@
-import { percentOfBps, type Vnd } from '../../money/money';
+import { netOfVat, percentOfBps, type Vnd } from '../../money/money';
 
 /**
  * Pure commission maths (TONG-QUAN.md §3.3 / §12.4 / §13.1). No framework or
@@ -8,7 +8,10 @@ import { percentOfBps, type Vnd } from '../../money/money';
  *
  * Rules that hold across every case:
  *  - The **platform fee** and **affiliate commission** are ALWAYS computed on the
- *    amount the customer actually pays (`final_amount`).
+ *    amount the customer actually pays (`final_amount`), NET of VAT (§VAT).
+ *  - Prices are VAT-INCLUSIVE gross. Every rate bites on the net; the partner
+ *    keeps the gross residual, because under the agent model the VAT inside its
+ *    share is its own to remit. Cash therefore still reconciles exactly.
  *  - The **partner share** depends on who funds a discount: `funded_by = tenant`
  *    pays the partner on the ORIGINAL price (`total_amount`); `funded_by = partner`
  *    (or no discount) pays on the discounted price (`final_amount`).
@@ -30,6 +33,13 @@ export interface CommissionRates {
   affiliateRate: Vnd;
   /** Tenant-owned inventory: no partner payable, platform fee on GMV (§7.3). */
   isHouse: boolean;
+  /**
+   * VAT contained in the gross amounts, in basis points (800 = 8%); 0 = no VAT.
+   * Every rate below bites on the amount NET of this (§VAT option B), so a
+   * published 15% take-rate is 15% of the seller's revenue rather than 15% of
+   * revenue + state VAT.
+   */
+  vatBps: number;
 }
 
 export interface SplitInput {
@@ -83,24 +93,37 @@ export function computeCommissionSplit(input: SplitInput): CommissionSplit {
   const discount = totalAmount > finalAmount ? totalAmount - finalAmount : 0n;
   const promoDiscount = fundedBy === 'tenant' ? discount : 0n;
 
-  // Platform + affiliate ALWAYS bite on final_amount.
-  const platformFee = pct(finalAmount, rates.platformRate);
+  // §VAT option B — rates apply to the VAT-EXCLUSIVE base. The partner keeps the
+  // GROSS residual because, under the agent model, the VAT inside its share is
+  // its own to remit. Cash therefore still reconciles and the ledger journal in
+  // `ledger-journal.entity.ts` is untouched.
+  const netFinal = netOfVat(finalAmount, rates.vatBps);
+  const netTotal = netOfVat(totalAmount, rates.vatBps);
+
+  // Platform + affiliate ALWAYS bite on final_amount — net of VAT (§VAT).
+  const platformFee = pct(netFinal, rates.platformRate);
   const affiliateCommission = hasAffiliate
-    ? applyRate(rates.affiliateRateType, rates.affiliateRate, finalAmount)
+    ? applyRate(rates.affiliateRateType, rates.affiliateRate, netFinal)
     : 0n;
 
   if (rates.isHouse) {
     // No partner leg; the tenant sells its own inventory and keeps the remainder.
+    // The take stays GROSS: the tenant is the seller here, so the VAT inside it is
+    // the tenant's own liability and must not leak out of the journal.
     const tenantNet = finalAmount - platformFee - affiliateCommission;
     if (tenantNet < 0n) flags.push('TENANT_NET_NEGATIVE');
     return { partnerShare: 0n, platformFee, affiliateCommission, tenantNet, promoDiscount, fundedBy, flags };
   }
 
+  // Gross basis pays the partner; net basis sizes the tenant's commission (§VAT).
   const partnerBasis = fundedBy === 'tenant' ? totalAmount : finalAmount;
+  const netPartnerBasis = fundedBy === 'tenant' ? netTotal : netFinal;
   // Compute the raw (uncapped) tenant commission so the partner-share floor below
   // detects — and flags — a fixed fee that exceeds the booking value (§13.1).
   let tenantCommission =
-    rates.tenantRateType === 'percent' ? pct(partnerBasis, Number(rates.tenantRate)) : rates.tenantRate;
+    rates.tenantRateType === 'percent'
+      ? pct(netPartnerBasis, Number(rates.tenantRate))
+      : rates.tenantRate;
   if (tenantCommission < 0n) tenantCommission = 0n;
   let partnerShare = partnerBasis - tenantCommission;
   if (partnerShare < 0n) {

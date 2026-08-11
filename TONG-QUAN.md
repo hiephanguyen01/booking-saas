@@ -1051,13 +1051,24 @@ Validation when creating a `funded_by = tenant` promotion: warn (and block if it
 
 ### 13.2. Journal Entries for the Section 3.3 Example (2,000,000 ₫ booking, completed)
 
+Prices are **VAT-inclusive gross** and every rate bites on the amount **net of
+VAT** (see [`docs/features/vat.md`](./docs/features/vat.md)). At the 8% rate in
+force until 2026-12-31, the 2,000,000 ₫ contains 148,148 ₫ of VAT, so the rates
+apply to 1,851,852 ₫:
+
 | #   | Account                                     | Debit     | Credit    |
 | --- | ------------------------------------------- | --------- | --------- |
 | 1   | Tenant — cash received via gateway (asset)  | 2,000,000 |           |
-| 2   | Partner payable                             |           | 1,700,000 |
-| 3   | Affiliate payable                           |           | 100,000   |
-| 4   | Platform fee payable (tenant owes platform) |           | 40,000    |
-| 5   | Tenant revenue (net commission revenue)     |           | 160,000   |
+| 2   | Partner payable                             |           | 1,722,222 |
+| 3   | Affiliate payable                           |           | 92,593    |
+| 4   | Platform fee payable (tenant owes platform) |           | 37,037    |
+| 5   | Tenant revenue (net commission revenue)     |           | 148,148   |
+
+The partner keeps the **gross** residual (2,000,000 − 277,778 tenant commission):
+under the agent model the VAT inside its share is the partner's own to remit, which
+is why the journal still balances with no VAT line. A seller that charges no VAT
+(a household under the 200M ₫/year threshold) produces the pre-VAT figures
+instead — 1,700,000 / 100,000 / 40,000 / 160,000.
 
 For a booking with a `funded_by = tenant` promotion: cash received is only 1,900,000 ₫ but partner payable is still 1,700,000 ₫ (based on the original price) — the journal balances thanks to a `promo_discount` line of 100,000 ₫ debited to the tenant's share (sections 12.4/12.5).
 
@@ -1356,7 +1367,7 @@ Definition of done per phase: `pnpm turbo lint typecheck test` green + E2E green
 | 4   | Zalo ZNS requires an OA + pre-approved templates                                        | Start the registration process early in Phase 1, integrate in Phase 2                                                                        |
 | 5   | The `platform% + affiliate% ≤ tenant%` constraint                                       | Validate in both the UI + the domain layer when saving a commission rule                                                                     |
 | 6   | Production hosting/deployment                                                           | Not yet decided (VPS + Docker, or a PaaS). Doesn't block Phase 0–1 (docker-compose for dev)                                                  |
-| 7   | Vietnamese tax / e-invoicing                                                            | Out of scope for the MVP; the ledger already has enough data to generate reports later                                                       |
+| 7   | Vietnamese e-invoicing (hóa đơn điện tử)                                                | VAT itself is **implemented** — see [`docs/features/vat.md`](./docs/features/vat.md). E-invoice issuance and NĐ 117/2025 withholding are still out of scope |
 | 8   | Personal data protection (Decree 13/2023/NĐ-CP)                                         | A privacy policy + consent at data collection; encryption of sensitive PII; a data-deletion process on request; customer data-access logging |
 | 9   | Customer–partner disputes (service not as described...)                                 | Dedicated custody dispute state is implemented; Tenant still adjudicates manually and performs SePay refunds by bank transfer with evidence |
 

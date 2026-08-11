@@ -13,6 +13,8 @@ import {
 import { priceQuote } from '../pricing';
 import { ListingNotFound } from '../../domain/errors/listing-errors';
 import { ModeNotEnabled } from '../../domain/errors/pricing-rule-errors';
+import { ResolveTaxUseCase } from '../../../finance/application/use-cases/resolve-tax.use-case';
+import { vatFromGross } from '../../../../shared/money/money';
 
 /** Storefront quote for a listing + mode + time range (read-only, host-resolved). */
 @Injectable()
@@ -21,6 +23,7 @@ export class GetPublicQuoteUseCase {
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
     @Inject(PRICING_RULE_REPOSITORY) private readonly rules: IPricingRuleRepository,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
+    private readonly resolveTax: ResolveTaxUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -35,7 +38,7 @@ export class GetPublicQuoteUseCase {
         throw new ModeNotEnabled(query.mode);
       }
       const pricingRules = await this.rules.listByListing(tx, listing.id);
-      return priceQuote({
+      const quote = priceQuote({
         mode: query.mode,
         modeConfig: listing.modeConfig as ModeConfig,
         pricingRules: pricingRules.map((r) => ({
@@ -55,6 +58,21 @@ export class GetPublicQuoteUseCase {
         bookingSelection: listing.bookingSelection,
         packageId: query.packageId,
       });
+
+      // Same resolver booking creation freezes onto the booking (§VAT), so the
+      // rate a customer is quoted can never disagree with the one they are
+      // charged. Resolved for the SERVICE date, not today.
+      const tax = await this.resolveTax.execute(tx, {
+        tenantId: tenant.id,
+        partnerId: listing.partnerId,
+        listingTypeId: listing.listingTypeId,
+        serviceDate: new Date(query.from),
+      });
+      return {
+        ...quote,
+        vatBps: tax.vatBps,
+        vatAmount: vatFromGross(BigInt(quote.subtotal), tax.vatBps).toString(),
+      };
     });
   }
 }

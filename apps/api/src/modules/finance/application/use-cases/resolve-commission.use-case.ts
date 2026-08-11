@@ -12,12 +12,20 @@ import {
   defaultCommissionSnapshot,
   type CommissionSnapshot,
 } from '../../../../shared/domain/commission/commission-snapshot';
+import { ResolveTaxUseCase } from './resolve-tax.use-case';
 
 export interface ResolveCommissionTarget {
+  tenantId: string;
   partnerId: string;
   listingTypeId: string | null;
   categoryId: string | null;
   isHouse: boolean;
+  /**
+   * Booking start. VAT on a service is fixed by the date the service is
+   * DELIVERED, so a 2026-12-20 booking for a 2027-01-15 session is a 10%
+   * booking. Never pass `now` here.
+   */
+  serviceDate: Date;
 }
 
 /**
@@ -31,6 +39,7 @@ export interface ResolveCommissionTarget {
 export class ResolveCommissionUseCase {
   constructor(
     @Inject(COMMISSION_RULE_REPOSITORY) private readonly rules: ICommissionRuleRepository,
+    private readonly tax: ResolveTaxUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -45,7 +54,13 @@ export class ResolveCommissionUseCase {
       },
       await this.tenantDb.databaseNow(tx),
     );
-    if (!rule) return defaultCommissionSnapshot(target.isHouse);
+    const tax = await this.tax.execute(tx, {
+      tenantId: target.tenantId,
+      partnerId: target.partnerId,
+      listingTypeId: target.listingTypeId,
+      serviceDate: target.serviceDate,
+    });
+    if (!rule) return { ...defaultCommissionSnapshot(target.isHouse, target.serviceDate), tax };
     return {
       ruleId: rule.id,
       appliesTo: rule.appliesTo,
@@ -55,6 +70,8 @@ export class ResolveCommissionUseCase {
       affiliateRateType: rule.affiliateRateType,
       affiliateRate: rule.affiliateRate.toString(),
       isHouse: target.isHouse,
+      tax,
     };
   }
+
 }

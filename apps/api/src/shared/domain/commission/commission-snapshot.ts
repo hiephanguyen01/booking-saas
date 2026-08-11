@@ -1,4 +1,5 @@
 import type { CommissionRates, RateType } from './commission-split';
+import { noTax, type TaxSnapshot } from '../tax/tax';
 
 /**
  * The immutable commission configuration captured on a booking at creation time
@@ -16,10 +17,19 @@ export interface CommissionSnapshot {
   affiliateRateType: RateType;
   affiliateRate: string;
   isHouse: boolean;
+  /**
+   * Frozen VAT context (§VAT). Optional: a booking created before dynamic VAT has
+   * none, and must keep behaving exactly as it did — `snapshotToRates` reads it
+   * as `vatBps: 0`, which makes every rate fall back to the gross base.
+   */
+  tax?: TaxSnapshot;
 }
 
 /** A safe zero-commission snapshot (partner keeps everything) when no rule matches. */
-export function defaultCommissionSnapshot(isHouse: boolean): CommissionSnapshot {
+export function defaultCommissionSnapshot(
+  isHouse: boolean,
+  at: Date = new Date(),
+): CommissionSnapshot {
   return {
     ruleId: null,
     appliesTo: 'none',
@@ -29,6 +39,7 @@ export function defaultCommissionSnapshot(isHouse: boolean): CommissionSnapshot 
     affiliateRateType: 'percent',
     affiliateRate: '0',
     isHouse,
+    tax: noTax(at),
   };
 }
 
@@ -41,5 +52,6 @@ export function snapshotToRates(snapshot: CommissionSnapshot): CommissionRates {
     affiliateRateType: snapshot.affiliateRateType,
     affiliateRate: BigInt(snapshot.affiliateRate),
     isHouse: snapshot.isHouse,
+    vatBps: snapshot.tax?.vatBps ?? 0,
   };
 }

@@ -92,6 +92,12 @@ rewrite history.
 
 - **Money is `bigint` VND** (đồng) everywhere — never a float, never cents. Format/parse with
   `apps/api/src/shared/money`.
+- **Prices are VAT-INCLUSIVE gross**, and every commission rate applies to the amount **net of VAT**
+  — see [`features/vat.md`](./features/vat.md). Extract VAT with `vatFromGross`, never
+  `percentOfBps`: on a 2,000,000 ₫ booking at 8% the answer is 148,148 ₫, not 160,000 ₫.
+- **`tax_rates` is the one global finance table** — no `tenant_id`, no RLS, because a VAT rate is
+  national law identical for every tenant. Classification is tenant-owned:
+  `listing_types.tax_category`, `partners.tax_status`, `tenants.tax_status`.
 - **Rates are integer percent 0–100.** `CommissionRule.tenantRate` / `platformRate` are whole percents
   (seed uses `15` = 15%, `2` = 2%), **not** basis points. (An older doc said "basis points" — it was
   wrong.) Rounding follows `TONG-QUAN.md` §18; the finance use-cases own it.

@@ -957,6 +957,14 @@ export const quoteResponseSchema = z.object({
   securityDeposit: z.string(),
   lineItems: z.array(quoteLineItemSchema),
   selectedPackage: selectedPackageSchema.optional(),
+  /**
+   * VAT contained in `subtotal`, in basis points — 800 = 8%, 0 = this seller
+   * charges no VAT. Prices are VAT-inclusive gross (§VAT), so this is the rate
+   * ALREADY inside the amounts above, never something to add at checkout.
+   */
+  vatBps: z.number(),
+  /** VND đồng digit string; the VAT already inside `subtotal`. */
+  vatAmount: z.string(),
 });
 export type QuoteResponse = z.infer<typeof quoteResponseSchema>;
 

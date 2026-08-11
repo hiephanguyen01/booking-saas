@@ -3,6 +3,7 @@ import {
   addDomainInputSchema,
   assignSubscriptionInputSchema,
   domainDnsCheckResponseSchema,
+  updatePlatformRateInputSchema,
   updateTenantInputSchema,
   type DomainDnsCheckResponse,
   type DomainResponse,
@@ -18,7 +19,7 @@ import { apiPaths } from '~/constants/api-paths';
 import { actionMessages } from '~/constants/messages';
 
 /** Which form/card an action result belongs to, so an error stays in its own card. */
-export type ActionScope = 'tenant' | 'domain' | 'subscription' | 'status';
+export type ActionScope = 'tenant' | 'domain' | 'subscription' | 'status' | 'platform-rate';
 
 export interface ActionResult {
   scope: ActionScope;
@@ -84,8 +85,39 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
   const permission =
-    intent === 'assign-subscription' ? 'platform.subscriptions.manage' : 'platform.tenants.write';
+    intent === 'assign-subscription'
+      ? 'platform.subscriptions.manage'
+      : intent === 'set-platform-rate'
+        ? 'platform.finance.manage'
+        : 'platform.tenants.write';
   const { auth } = await requirePlatform(request, permission);
+
+  if (intent === 'set-platform-rate') {
+    const parsed = updatePlatformRateInputSchema.safeParse({
+      platformRate: Number(form.get('platformRate')),
+    });
+    if (!parsed.success) {
+      return data<ActionResult>(
+        { scope: 'platform-rate', error: 'Phí nền tảng phải là số nguyên từ 0 đến 100.' },
+        { status: 400 },
+      );
+    }
+    const res = await apiPatch(apiPaths.platform.tenantPlatformRate(id), parsed.data, auth);
+    if (!res.ok) {
+      // The domain message is English; the dashboard is Vietnamese-hardcoded, and
+      // this is the one rejection an admin will actually hit.
+      const message =
+        res.code === 'COMMISSION_RATES_NEGATIVE_TENANT'
+          ? 'Phí nền tảng quá cao: phí nền tảng + hoa hồng cộng tác viên không được vượt mức hoa hồng tenant thu của partner. Không có quy tắc nào bị thay đổi.'
+          : res.error;
+      return data<ActionResult>({ scope: 'platform-rate', error: message }, { status: 400 });
+    }
+    return data<ActionResult>({
+      scope: 'platform-rate',
+      ok: true,
+      message: 'Đã cập nhật phí nền tảng.',
+    });
+  }
 
   if (intent === 'verify-domain') {
     const domainId = String(form.get('domainId') ?? '');

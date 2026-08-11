@@ -51,6 +51,31 @@ export function percentOfBps(amount: Vnd, bps: number): Vnd {
   return (numerator + half) / 10_000n;
 }
 
+/**
+ * The VAT *contained in* a VAT-INCLUSIVE amount: `gross × bps / (10000 + bps)`,
+ * half-up.
+ *
+ * This is NOT `percentOfBps(gross, bps)` — that computes the VAT to ADD to a net
+ * price. Storefront prices are gross (§VAT: giá niêm yết đã gồm thuế), so using
+ * the wrong one overstates VAT by ~8% of the whole booking. Always take the net
+ * with {@link netOfVat} rather than rounding a second time, so the two legs
+ * re-sum to the exact gross and the ledger cannot drift by a đồng.
+ */
+export function vatFromGross(gross: Vnd, bps: number): Vnd {
+  if (!Number.isSafeInteger(bps) || bps < 0) {
+    throw new TypeError(`bps must be a non-negative integer, got ${bps}`);
+  }
+  if (bps === 0 || gross <= 0n) return 0n;
+  const denominator = 10_000n + BigInt(bps);
+  // round(x/y) half-up === floor((2x + y) / 2y) for positive integers.
+  return (gross * BigInt(bps) * 2n + denominator) / (denominator * 2n);
+}
+
+/** The VAT-exclusive part of a gross amount. `netOfVat(g,b) + vatFromGross(g,b) === g`. */
+export function netOfVat(gross: Vnd, bps: number): Vnd {
+  return gross - vatFromGross(gross, bps);
+}
+
 export function formatVnd(amount: Vnd, locale: 'vi' | 'en' = 'vi'): string {
   return new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US', {
     style: 'currency',

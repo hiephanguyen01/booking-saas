@@ -11,6 +11,9 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'platform.plans.manage', scopeLevel: 'platform' },
   { key: 'platform.subscriptions.manage', scopeLevel: 'platform' },
   { key: 'platform.finance.read', scopeLevel: 'platform' },
+  /// Set a tenant's platform fee %. Deliberately NOT granted to Support — changing
+  /// a commercial term is not a support action.
+  { key: 'platform.finance.manage', scopeLevel: 'platform' },
   { key: 'platform.users.manage', scopeLevel: 'platform' },
   { key: 'platform.roles.manage', scopeLevel: 'platform' },
   { key: 'platform.reviews.read', scopeLevel: 'platform' },
