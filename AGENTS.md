@@ -75,6 +75,10 @@ prisma, redis, tenant-context, time, validation). Details in
   live. See [ADR 0003](./docs/decisions/0003-outbox-for-inter-module.md).
 - **Money is `bigint` VND** (đồng, never a float); **commission/platform rates are integer percent 0–100**;
   **time is `timestamptz` UTC**. Helpers in `apps/api/src/shared/{money,time}`.
+- **Prices are VAT-inclusive gross and every commission rate applies to the amount net of VAT.**
+  Extract VAT with `vatFromGross`, never `percentOfBps`. The rate is resolved for the **service date**
+  and frozen into `commission_snapshot.tax`; customer-facing copy reads it from there or from the
+  quote, never from a constant. See [`docs/features/vat.md`](./docs/features/vat.md).
 - **Frontends never fetch the backend from the browser.** All authenticated data goes through RR
   `loader`/`action` (server→server via `@booking/api-client`); the session cookie is `httpOnly`.
 
@@ -188,6 +192,6 @@ never drift between what production configures and what the demo fills in.
 - [`docs/deployment.md`](./docs/deployment.md) — staging & production containers, migrations, releases, scaling
 - [`docs/deployment-runbook.md`](./docs/deployment-runbook.md) — step-by-step first deploy (AWS + Cloudflare R2 + Resend)
 - [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services, listing edit revisions, legal documents)
-- [`docs/features/`](./docs/features/) — per-feature deep dives ([favorites](./docs/features/favorites.md), [legal documents & consent](./docs/features/legal-documents.md), [storefront PWA](./docs/features/storefront-pwa.md))
+- [`docs/features/`](./docs/features/) — per-feature deep dives ([favorites](./docs/features/favorites.md), [legal documents & consent](./docs/features/legal-documents.md), [storefront PWA](./docs/features/storefront-pwa.md), [VAT](./docs/features/vat.md))
 - [`docs/deprecated-artifacts.md`](./docs/deprecated-artifacts.md) — dead code slated for deletion (don't extend it)
 - Per-subtree `CLAUDE.md`: [`apps/api`](./apps/api/CLAUDE.md) · [`apps/storefront`](./apps/storefront/CLAUDE.md) · [`apps/dashboard`](./apps/dashboard/CLAUDE.md) · [`packages/ui`](./packages/ui/CLAUDE.md) · [`packages/contracts`](./packages/contracts/CLAUDE.md)
