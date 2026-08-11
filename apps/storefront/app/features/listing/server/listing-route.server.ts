@@ -10,7 +10,11 @@ import { appendViewedCookie } from '~/features/account/server/recently-viewed.se
 import { submitContentReport } from '~/features/content-reports/server/content-report.server';
 import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { fetchAvailability } from '~/features/booking/server/booking.server';
-import { fetchListing, fetchListings, fetchQuote } from '~/features/catalog/server/catalog.server';
+import {
+  fetchDiscoveryListings,
+  fetchListing,
+  fetchQuote,
+} from '~/features/catalog/server/catalog.server';
 import { openDailyDates, BOOKABLE_MODES } from '~/lib/availability';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
 import { datesInDailyRange, normalizeDailyRange } from '~/lib/daily-range';
@@ -88,12 +92,12 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
     ),
     [],
   );
-  const relatedPromise = optionalData(fetchListings(request, relatedSearch), []);
+  const relatedPromise = optionalData(fetchDiscoveryListings(request, relatedSearch), []);
   const auxiliaryData = Promise.all([reviewsPromise, relatedPromise]).then(
     ([reviewData, relatedCandidates]) => ({
       ...reviewData,
       relatedListings: relatedCandidates
-        .filter((candidate) => candidate.id !== listing.id)
+        .filter((candidate) => candidate.listing.id !== listing.id)
         .slice(0, 4),
     }),
   );

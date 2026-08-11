@@ -3,6 +3,8 @@ import type {
   PublicListingGroupDetailResponse,
   PublicListingResponse,
 } from '@booking/contracts';
+import { discoveryListingFromPublicListing } from '~/features/catalog/lib/listing-card-presentation';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 
 /**
  * Detail responses → the card shape the account grids render.
@@ -15,10 +17,10 @@ import type {
 
 const DIGITS_RE = /^\d+$/;
 
-export function listingDetailToCard(
+export function listingDetailToDiscoveryCard(
   detail: PublicListingDetailWithTimezoneResponse,
-): PublicListingResponse {
-  return {
+): DiscoveryListingCardData {
+  const listing: PublicListingResponse = {
     id: detail.id,
     kind: 'listing',
     title: detail.title,
@@ -36,12 +38,15 @@ export function listingDetailToCard(
     wardName: detail.wardName,
     address: detail.address,
   };
+  return discoveryListingFromPublicListing(listing, {
+    completedBookings: detail.trust.completedBookings,
+  });
 }
 
-export function groupDetailToCard(
+export function groupDetailToDiscoveryCard(
   detail: PublicListingGroupDetailResponse,
-): PublicListingResponse {
-  return {
+): DiscoveryListingCardData {
+  const listing: PublicListingResponse = {
     id: detail.id,
     kind: 'group',
     title: detail.title,
@@ -60,6 +65,9 @@ export function groupDetailToCard(
     wardName: detail.wardName,
     address: detail.address,
   };
+  return discoveryListingFromPublicListing(listing, {
+    completedBookings: detail.trust.completedBookings,
+  });
 }
 
 /**

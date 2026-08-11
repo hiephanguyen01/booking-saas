@@ -21,7 +21,6 @@ import { ListFilter, Search, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { ListingTypeGlyph } from '~/components/listing-type-glyph';
-import { CatalogResultSkeleton } from '~/components/loading-skeletons';
 import type { CatalogSortItem } from '~/features/catalog/hooks/use-catalog-page-controller';
 import { FavoriteSearchResultCard } from '~/features/favorites/components/favorite-cards';
 import { SearchForm } from '~/features/search/components/search-form';
@@ -33,6 +32,7 @@ import { buildTypeChangeCatalogHrefFromState } from '~/features/search/lib/type-
 import { useLocale } from '~/hooks/use-locale';
 import type { CatalogPageProps } from './catalog-page';
 import { CatalogPagination } from './catalog-pagination';
+import { CatalogResultSkeleton } from './catalog-result-skeleton';
 import { FilterPanel } from './filter-panel';
 import { PANEL_SURFACE } from '~/constants/surfaces';
 

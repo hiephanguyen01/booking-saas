@@ -1,5 +1,6 @@
-import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
+import type { PublicListingTypeResponse } from '@booking/contracts';
 import { useState } from 'react';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 import { useMinimumPendingPulse } from '~/hooks/use-minimum-pending';
 import { splitHomeListings } from '~/features/home/lib/home-listing-presentation';
 
@@ -8,7 +9,7 @@ export function useStudioHomeController({
   listings,
 }: {
   listingTypes: PublicListingTypeResponse[];
-  listings: PublicListingResponse[];
+  listings: DiscoveryListingCardData[];
 }) {
   // Default to the tenant's first listing type (by sortOrder from the API) — never a
   // hard-coded slug, so the home reflects whatever types the tenant actually created.
@@ -16,7 +17,7 @@ export function useStudioHomeController({
   const [filterPending, triggerFilterPending] = useMinimumPendingPulse();
   const selectedListingType = listingTypes.find((type) => type.slug === selectedType);
   const visibleListings = selectedType
-    ? listings.filter((listing) => listing.listingTypeSlug === selectedType)
+    ? listings.filter(({ listing }) => listing.listingTypeSlug === selectedType)
     : listings;
   const sections = splitHomeListings(visibleListings);
 

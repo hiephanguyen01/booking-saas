@@ -2,7 +2,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/a
 import { Badge } from '@booking/ui/components/ui/badge';
 import { BriefcaseBusiness, CalendarCheck, ShieldCheck, Star } from 'lucide-react';
 import { Link } from 'react-router';
-import { ListingCard } from '~/features/catalog/components/listing-card';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
 import { storefrontPaths } from '~/constants/paths';
@@ -12,6 +11,7 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { intlLocale } from '~/lib/intl';
 import { nameInitials } from '~/lib/ui';
 import type { ServerDataFrom } from '~/lib/react-router-data';
+import { FavoriteDiscoveryListingCard } from '~/features/favorites/components/favorite-cards';
 
 export function ProviderProfilePage({
   loaderData,
@@ -107,7 +107,10 @@ export function ProviderProfilePage({
           {listings.length ? (
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {listings.map((listing) => (
-                <ListingCard key={`${listing.kind}:${listing.id}`} listing={listing} />
+                <FavoriteDiscoveryListingCard
+                  key={`${listing.listing.kind}:${listing.listing.id}`}
+                  item={listing}
+                />
               ))}
             </div>
           ) : (

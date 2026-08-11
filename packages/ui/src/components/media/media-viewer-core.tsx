@@ -54,8 +54,11 @@ export interface MediaViewerBaseProps {
   returnFocusRef?: React.RefObject<HTMLElement | null>
 }
 
+export type MediaViewerMobileLayout = "inset" | "full-bleed"
+
 interface MediaViewerCoreProps extends MediaViewerBaseProps {
   details?: React.ReactNode
+  mobileMediaLayout?: MediaViewerMobileLayout
 }
 
 function IconButton({
@@ -94,6 +97,7 @@ export function MediaViewerCore({
   description,
   returnFocusRef,
   details,
+  mobileMediaLayout = "inset",
 }: MediaViewerCoreProps) {
   const safeIndex = Math.min(Math.max(activeIndex, 0), Math.max(items.length - 1, 0))
   const active = items[safeIndex]
@@ -166,6 +170,7 @@ export function MediaViewerCore({
   }
 
   const hasDetails = details !== undefined
+  const fullBleedMobile = !hasDetails && mobileMediaLayout === "full-bleed"
 
   return (
     <Dialog open={open && items.length > 0} onOpenChange={onOpenChange}>
@@ -205,7 +210,9 @@ export function MediaViewerCore({
                 "grid items-center gap-2 sm:gap-6",
                 hasDetails
                   ? "relative h-[min(540px,58vh)] shrink-0 grid-cols-1 lg:h-auto lg:min-h-0 lg:flex-1"
-                  : "min-h-0 flex-1 grid-cols-[40px_minmax(0,1fr)_40px] lg:gap-10",
+                  : fullBleedMobile
+                    ? "relative -mx-4 min-h-0 w-[calc(100%+2rem)] flex-1 grid-cols-1 sm:mx-0 sm:w-auto sm:grid-cols-[40px_minmax(0,1fr)_40px] lg:gap-10"
+                    : "min-h-0 flex-1 grid-cols-[40px_minmax(0,1fr)_40px] lg:gap-10",
               )}
             >
               <IconButton
@@ -215,7 +222,9 @@ export function MediaViewerCore({
                 className={
                   hasDetails
                     ? "absolute left-3 z-10 bg-foreground/35 text-background backdrop-blur-sm enabled:hover:bg-foreground/55 enabled:hover:text-background"
-                    : undefined
+                    : fullBleedMobile
+                      ? "max-sm:absolute max-sm:top-1/2 max-sm:left-3 max-sm:z-10 max-sm:-translate-y-1/2 max-sm:bg-foreground/35 max-sm:text-background max-sm:backdrop-blur-sm max-sm:enabled:hover:bg-foreground/55 max-sm:enabled:hover:text-background"
+                      : undefined
                 }
               >
                 <ChevronLeft className="size-6" aria-hidden="true" />
@@ -316,7 +325,9 @@ export function MediaViewerCore({
                 className={
                   hasDetails
                     ? "absolute right-3 z-10 bg-foreground/35 text-background backdrop-blur-sm enabled:hover:bg-foreground/55 enabled:hover:text-background"
-                    : undefined
+                    : fullBleedMobile
+                      ? "max-sm:absolute max-sm:top-1/2 max-sm:right-3 max-sm:z-10 max-sm:-translate-y-1/2 max-sm:bg-foreground/35 max-sm:text-background max-sm:backdrop-blur-sm max-sm:enabled:hover:bg-foreground/55 max-sm:enabled:hover:text-background"
+                      : undefined
                 }
               >
                 <ChevronRight className="size-6" aria-hidden="true" />

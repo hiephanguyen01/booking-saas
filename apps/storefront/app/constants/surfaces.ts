@@ -1,7 +1,15 @@
 /**
+ * The tenant-configurable frame shared by cards and panels. Shape, border and
+ * elevation all read the `--sf-surface-*` tokens; background and padding remain
+ * the caller's responsibility.
+ */
+export const SURFACE_FRAME =
+  'rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow)';
+
+/**
  * The tenant-configurable panel surface: radius, border and shadow all read the
- * `--sf-surface-*` tokens, so a tenant that configures a rounded, bordered look
- * gets it on every panel that opts in.
+ * shared frame, so a tenant that configures a rounded, bordered look gets it on
+ * every panel that opts in.
  *
  * A cross-feature constant rather than an account one. It began in
  * `features/account`, but the booking detail sections it styles are now shared
@@ -18,4 +26,4 @@
  * source order picking the winner.
  */
 export const PANEL_SURFACE =
-  'rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] bg-background shadow-(--sf-surface-shadow)';
+  `${SURFACE_FRAME} bg-background`;

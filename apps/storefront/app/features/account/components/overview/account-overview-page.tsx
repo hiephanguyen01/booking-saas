@@ -24,7 +24,7 @@ export function AccountOverviewPage({ stats }: { stats: AccountOverviewStats | n
           <div className="flex items-center gap-4">
             <Avatar className="size-18 ring-4 ring-background">
               {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
-              <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
+              <AvatarFallback >
                 {userInitials(user.fullName)}
               </AvatarFallback>
             </Avatar>

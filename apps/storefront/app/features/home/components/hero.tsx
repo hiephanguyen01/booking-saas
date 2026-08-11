@@ -34,7 +34,7 @@ export function StudioHero({
   const subtitle = tenant.themeConfig.hero?.subtitle || t('home.heroSubtitleFallback');
 
   return (
-    <section className="relative isolate pb-6 sm:pb-10">
+    <section className="relative isolate pb-6 sm:pb-12">
       <div className="absolute inset-x-0 top-0 -z-10 h-104 overflow-hidden bg-primary sm:h-120">
         {image ? (
           <Image src={image} alt="" priority className="size-full object-cover" />

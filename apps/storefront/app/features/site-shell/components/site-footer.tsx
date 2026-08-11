@@ -31,12 +31,11 @@ export function SiteFooter({
   return (
     <footer
       className={cn(
-        // On a phone it is a card-coloured band rather than more page: below `lg`
-        // the tab bar owns navigation, so this is the end of the document and it
-        // should read as one.
+        // Mobile navigation owns the compact viewport, so keep the document
+        // footer for tablet and desktop only.
         className,
         hideBelowMd && 'max-md:hidden',
-        'bg-card pb-6 font-studio text-foreground max-lg:border-t max-lg:border-border lg:bg-background',
+        'hidden bg-card pb-6 font-studio text-foreground md:block max-lg:border-t max-lg:border-border lg:bg-background',
       )}
     >
       <div className="mx-auto w-full max-w-292.5 px-4 pt-8 sm:px-6 xl:px-0 xl:pt-10 xl:pb-0">

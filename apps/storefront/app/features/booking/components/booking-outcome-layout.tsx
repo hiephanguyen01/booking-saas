@@ -42,6 +42,7 @@ export function BookingOutcomeLayout({
   bookingStatus,
   paidAmount,
   booking,
+  afterDetails,
 }: {
   locale: 'en' | 'vi';
   title: string;
@@ -59,6 +60,8 @@ export function BookingOutcomeLayout({
    * Null degrades to the code/status summary alone rather than failing the page.
    */
   booking?: BookingDetailViewModel | null;
+  /** Optional full-width content rendered after the detail/summary grid. */
+  afterDetails?: ReactNode;
 }) {
   const { t } = useTranslation(NsI18n.Booking);
 
@@ -180,6 +183,8 @@ export function BookingOutcomeLayout({
             ) : null}
           </aside>
         </div>
+
+        {afterDetails}
       </main>
     </div>
   );

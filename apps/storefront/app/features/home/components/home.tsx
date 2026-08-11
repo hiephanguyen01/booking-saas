@@ -1,4 +1,5 @@
-import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
+import type { PublicListingTypeResponse } from '@booking/contracts';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import {
   Empty,
   EmptyDescription,
@@ -6,18 +7,18 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
+import { cn } from '@booking/ui/lib/utils';
 import { Camera } from 'lucide-react';
+import { PANEL_SURFACE } from '~/constants/surfaces';
+import { useStudioHomeController } from '~/features/home/hooks/use-studio-home-controller';
+import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 import type { LocationOption } from '~/features/search/components/search-form';
-import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { BrandCarousel } from './brand-carousel';
 import { StudioHero } from './hero';
+import { NearbySection } from './nearby-section';
 import { RecommendedSection } from './recommended-section';
 import { TopListingsSection } from './top-listings-section';
-import { NearbySection } from './nearby-section';
-import { useStudioHomeController } from '~/features/home/hooks/use-studio-home-controller';
-import { PANEL_SURFACE } from '~/constants/surfaces';
-import { cn } from '@booking/ui/lib/utils';
 
 /**
  * Studio-vertical home (§16.1): hero + search, a lead rail, and a flat
@@ -32,7 +33,7 @@ export function StudioHome({
 }: {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
-  listings: PublicListingResponse[];
+  listings: DiscoveryListingCardData[];
   locations: LocationOption[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
@@ -53,7 +54,7 @@ export function StudioHome({
         locations={locations}
         onTypeChange={changeType}
       />
-      <div className="mx-auto flex max-w-292.5 flex-col gap-(--sf-section-gap) px-4 pb-12 sm:px-6 sm:pb-24 md:gap-10 xl:px-0">
+      <div className="mx-auto flex max-w-292.5 flex-col gap-6 px-4 pb-12 sm:gap-12 sm:px-6 sm:pb-24 xl:px-0">
         <BrandCarousel
           images={(tenant.themeConfig.carousel ?? []).filter(Boolean)}
           tenantName={tenant.name}

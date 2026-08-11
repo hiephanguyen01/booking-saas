@@ -8,11 +8,12 @@ import {
   DrawerTrigger,
 } from '@booking/ui/components/ui/drawer';
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
+import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronDown, Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { useLocale } from '~/hooks/use-locale';
-import { ModeToggle } from './search-form-controls';
+import { ModeToggle, type SearchControlAppearance } from './search-form-controls';
 import type { DateRange } from '~/features/search/lib/search-form-types';
 import { modeHint } from '~/features/search/lib/search-mode-hint';
 import type { SearchMode } from '~/features/search/lib/search-state';
@@ -28,6 +29,7 @@ export function SearchDatePicker({
   showModeTabs,
   availableModes,
   singleDate,
+  appearance = 'default',
 }: {
   mode: SearchMode;
   onModeChange: (mode: SearchMode) => void;
@@ -38,6 +40,7 @@ export function SearchDatePicker({
   showModeTabs: boolean;
   availableModes: SearchMode[];
   singleDate: boolean;
+  appearance?: SearchControlAppearance;
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
@@ -68,12 +71,21 @@ export function SearchDatePicker({
   const trigger = (
     <button
       type="button"
-      className="flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-left text-foreground shadow-xs focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+      className={cn(
+        'flex h-11 w-full min-w-0 items-center gap-2 border border-border bg-background px-4 text-left text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30',
+        appearance === 'hero' ? 'rounded-sm shadow-none' : 'rounded-md shadow-xs',
+      )}
       aria-label={`${t('home.dateLabel')}: ${label}`}
     >
       <CalendarDays className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-      <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <ChevronDown
+        className={cn(
+          'size-4 shrink-0 text-muted-foreground',
+          appearance === 'hero' && 'hidden',
+        )}
+        aria-hidden="true"
+      />
     </button>
   );
 

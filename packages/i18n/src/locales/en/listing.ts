@@ -195,6 +195,7 @@ export const enListing = {
     policyPrivacy: 'Your contact details stay private until the booking is confirmed',
     pickHours: 'Pick hours',
     chooseSchedule: 'Choose date/time',
+    bookNow: 'Book now',
     closeSchedule: 'Close schedule picker',
     changeDay: 'Change day',
     pickDayInstruction: 'Choose the day you want to use the room.',

@@ -5,8 +5,7 @@ import type { AccountOutletContext } from '~/features/account/hooks/use-account-
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import {
-  FavoriteListingCard,
-  FavoriteMobileSearchResultCard,
+  FavoriteDiscoveryListingCard,
 } from '~/features/favorites/components/favorite-cards';
 import {
   AccountListState,
@@ -47,14 +46,13 @@ export function AccountRecentPage({
 
   const content =
     visibleItems.length > 0 ? (
-      <div className="grid grid-cols-1 gap-(--sf-section-gap) sm:grid-cols-2 md:gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-3 gap-5">
         {visibleItems.map((item) => (
-          <FavoriteListingCard
+          <FavoriteDiscoveryListingCard
             key={keyOf(item)}
-            listing={item}
-            className="sm:min-h-98.5"
+            item={item}
             dismissControl={{
-              label: t('recent.remove', { title: item.title }),
+              label: t('recent.remove', { title: item.listing.title }),
               onDismiss: () => removeItem(item),
             }}
           />
@@ -92,16 +90,18 @@ export function AccountRecentPage({
         }
       >
         {visibleItems.length > 0 ? (
-          visibleItems.map((item) => (
-            <FavoriteMobileSearchResultCard
-              key={keyOf(item)}
-              listing={item}
-              dismissControl={{
-                label: t('recent.remove', { title: item.title }),
-                onDismiss: () => removeItem(item),
-              }}
-            />
-          ))
+          <div className="grid grid-cols-2 gap-3">
+            {visibleItems.map((item) => (
+              <FavoriteDiscoveryListingCard
+                key={keyOf(item)}
+                item={item}
+                dismissControl={{
+                  label: t('recent.remove', { title: item.listing.title }),
+                  onDismiss: () => removeItem(item),
+                }}
+              />
+            ))}
+          </div>
         ) : (
           <AccountListState
             icon={Clock3}
