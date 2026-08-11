@@ -77,17 +77,21 @@ claims clients and removes older BookingOS storefront cache versions.
 - Only the tenant Home route advertises installation, using a tenant-branded floating banner above
   the bottom navigation. The mobile header does not render an install action, hamburger control or
   account avatar.
-- The banner appears on every Home navigation entry or reload. Closing it affects only that Home
-  entry; no visit counter, session counter or persistent dismissal is stored.
+- On a supported mobile device, the banner appears on every actual Home route entry or full reload,
+  even while a native install prompt is unavailable. Closing it affects only that Home entry; query,
+  hash, revalidation and other navigation state changes that keep Home active do not show it again.
+  No visit counter, session counter or persistent dismissal is stored.
 - Chromium and other capable browsers use the captured `beforeinstallprompt` event directly from
   the banner action, without an intermediate custom dialog.
 - iOS uses the same **Install now** action but opens the required browser Share → Add to Home Screen
   instructions because iOS does not expose a direct install prompt.
+- Android uses the native prompt when available. If Chrome has not emitted it yet, the action opens
+  Chrome menu instructions; alternate Android browsers are directed to open the page in Chrome.
 - All install UI is hidden in standalone mode; platform, suspended-tenant and non-Home pages never
   promote installation.
-- Browsers without a direct install prompt that are not iOS do not show install UI. Service Worker,
-  Canvas and install APIs are capability-checked or guarded; their absence cannot prevent normal
-  storefront rendering or booking.
+- Unknown and non-mobile browsers without a direct install prompt do not show install UI. Service
+  Worker, Canvas and install APIs are capability-checked or guarded; their absence cannot prevent
+  normal storefront rendering or booking.
 - Guest mobile headers keep the registration action. Signed-in customers use the persistent bottom
   navigation to reach their account. Desktop header behaviour is unchanged.
 
