@@ -1326,7 +1326,9 @@ In `auth-middleware.server.ts`, resolve before anything else and thread it into 
 
 - [ ] **Step 6: Replace first-match membership lookup**
 
-In `workspace.ts`, keep `firstTenantMembership` / `firstPartnerMembership` for the platform-host workspaces directory, and add the two lookups the guards need:
+In `workspace.ts`, keep `firstTenantMembership` / `firstPartnerMembership` — `defaultDashboardPath`
+still uses them to pick a post-login landing area — and add the host-scoped lookups the guards need
+plus the plural readers the workspaces directory needs:
 
 ```ts
 export function tenantMembership(
@@ -1735,23 +1737,44 @@ In `prisma-notification.reader.ts`, add a second sub-select to each of the four 
               LIMIT 1) AS admin_hostname
 ```
 
-Add `admin_hostname: string | null` to `TenantBrandRow` and to the two inline row types on `loadListingContext` and `loadPartnerContext`. Add the helper beside `storefrontUrl`:
+Add `admin_hostname: string | null` to `TenantBrandRow` and to the two inline row types on `loadListingContext` and `loadPartnerContext`.
+
+**Replace** the existing private `storefrontUrl(hostname)` with one parameterised helper serving both surfaces, rather than adding a near-copy beside it. The two differ only in dev port and platform fallback, and a copy is how they drift:
 
 ```ts
   /**
-   * Mirrors {@link storefrontUrl}. Partner CTAs point at /partner/*, which lives
-   * only on a tenant console host — the platform console does not serve it.
+   * Absolute origin for a tenant-owned hostname. ONE helper for both surfaces:
+   * they differ only in the dev port and the platform fallback, so a second copy
+   * would only be a place for the two to drift apart.
+   *
+   * The console origin matters because partner CTAs point at /partner/*, which
+   * lives on a tenant console host — the platform console does not serve it.
    */
-  private dashboardUrl(hostname: string | null): string {
-    if (!hostname) return process.env.DASHBOARD_URL ?? 'http://localhost:5174';
-    if (hostname.endsWith('.localhost')) {
-      return `http://${hostname}:${process.env.DASHBOARD_PORT ?? '5174'}`;
-    }
+  private tenantOrigin(hostname: string | null, devPort: string, fallback: string): string {
+    if (!hostname) return fallback;
+    if (hostname.endsWith('.localhost')) return `http://${hostname}:${devPort}`;
     return `https://${hostname}`;
   }
 ```
 
-In `toBrand`, replace `dashboardUrl: process.env.DASHBOARD_URL ?? 'http://localhost:5174'` with `dashboardUrl: this.dashboardUrl(row.admin_hostname)`. The tenant-less `loadBrand()` branch keeps the env value — it has no tenant to resolve.
+In `toBrand`, both URLs now go through it:
+
+```ts
+      storefrontUrl: this.tenantOrigin(
+        row.primary_hostname,
+        process.env.STOREFRONT_PORT ?? '5173',
+        process.env.STOREFRONT_URL ?? 'http://localhost:5173',
+      ),
+      dashboardUrl: this.tenantOrigin(
+        row.admin_hostname,
+        process.env.DASHBOARD_PORT ?? '5174',
+        process.env.DASHBOARD_URL ?? 'http://localhost:5174',
+      ),
+```
+
+Delete the old `storefrontUrl` method once its two call sites are converted. The tenant-less `loadBrand()` branch keeps its literal env values — it has no tenant to resolve.
+
+`tenantDashboardOrigin` in the storefront (Step 1) stays a separate function: it lives in a different package and there is no shared utility package that both an app and the API import. Copying a four-line function across a package boundary is the lesser evil against inventing one to hold it.
 
 Update the two `this.toBrand({...})` literal call sites (in `loadBookingContext`) to pass `admin_hostname: row.admin_hostname`.
 
