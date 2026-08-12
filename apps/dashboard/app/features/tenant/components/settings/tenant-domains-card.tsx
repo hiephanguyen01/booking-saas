@@ -58,16 +58,34 @@ export interface DomainDnsCheckState {
   result: DomainDnsCheckResponse;
 }
 
+/**
+ * Raw domain-action response from `handleSettingsAction`, before either card
+ * decides whether it's the one that should render it. The route passes the
+ * *same* object to both the storefront and dashboard card (it has no way to
+ * know which one a tenant meant), so each card carries the identifying field
+ * the action echoes back — `kind` for the add-domain form, `domainId` for the
+ * row actions — against its own `kind`/`rows` and only renders what's its own.
+ */
+export interface DomainActionResult {
+  form: 'domain' | 'domain-verify' | 'domain-dns-check' | 'domain-primary' | 'domain-delete';
+  ok?: boolean;
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+  /** Present on `form: 'domain'` responses (add-domain). */
+  kind?: TenantDomainKind;
+  /** Present on row-action responses (verify/dns-check/primary/delete). */
+  domainId?: string;
+  /** Present on a successful `form: 'domain-dns-check'`. */
+  dnsCheck?: DomainDnsCheckResponse;
+}
+
 export function TenantDomainsCard({
   kind,
   domains,
   tenancyConfig,
   loadError,
   readOnly,
-  actionError,
-  domainError,
-  domainFieldErrors,
-  successMessage,
+  domainActionResult,
   dnsCheck,
 }: {
   kind: TenantDomainKind;
@@ -75,21 +93,66 @@ export function TenantDomainsCard({
   tenancyConfig: TenancyConfigResponse | null;
   loadError: string | null;
   readOnly: boolean;
-  actionError: string | null;
-  domainError: string | null;
-  domainFieldErrors: Record<string, string[]> | null;
-  successMessage: string | null;
+  domainActionResult: DomainActionResult | null;
   dnsCheck: DomainDnsCheckState | null;
 }) {
   const submit = useSubmit();
   const navigation = useNavigation();
-  const { busy, run } = useSubmissionGuard(navigation.state);
+  const rows = (domains ?? []).filter((domain) => domain.kind === kind);
+
+  // Both cards read the same page-wide `useNavigation()` — without this check,
+  // submitting in one would visibly disable the other's buttons too. Row actions
+  // submit `{ intent, domainId }` as urlencoded FormData; the add-domain form
+  // submits JSON carrying `kind`. A pending navigation only belongs to this card
+  // if its domainId is one of this card's own rows, or its kind matches this
+  // card's kind.
+  const pendingDomainId = navigation.formData?.get('domainId');
+  const pendingKind =
+    navigation.json && typeof navigation.json === 'object' && !Array.isArray(navigation.json)
+      ? (navigation.json as Record<string, unknown>).kind
+      : undefined;
+  const ownSubmissionInFlight =
+    navigation.state !== 'idle' &&
+    (rows.some((row) => row.id === pendingDomainId) || pendingKind === kind);
+
+  const { busy, run } = useSubmissionGuard(ownSubmissionInFlight ? navigation.state : 'idle');
 
   const submitDomainAction = (intent: DomainActionIntent, domainId: string): void => {
     run(() => submit({ intent, domainId }, { method: 'post' }));
   };
 
-  const rows = (domains ?? []).filter((domain) => domain.kind === kind);
+  // Same root cause as the busy-state scoping above: `domainActionResult` is one
+  // shared value handed to both cards. `kind` identifies an add-domain response;
+  // `domainId` identifies a row-action response against a domain this card
+  // actually renders. A result with neither (shouldn't happen — every branch of
+  // the action sets one) is treated as not this card's.
+  const ownsResult =
+    domainActionResult != null &&
+    (domainActionResult.kind != null
+      ? domainActionResult.kind === kind
+      : domainActionResult.domainId != null
+        ? rows.some((row) => row.id === domainActionResult.domainId)
+        : false);
+  const result = ownsResult ? domainActionResult : null;
+
+  const domainError = result?.form === 'domain' && !result.ok ? (result.error ?? null) : null;
+  const domainFieldErrors =
+    result?.form === 'domain' && !result.ok ? (result.fieldErrors ?? null) : null;
+  const actionError =
+    result && result.form !== 'domain' && !result.ok ? (result.error ?? null) : null;
+  const successMessage =
+    result?.ok
+      ? result.form === 'domain'
+        ? 'Đã thêm tên miền. Hãy cấu hình DNS để hoàn tất xác minh.'
+        : result.form === 'domain-verify'
+          ? 'Đã gửi yêu cầu kiểm tra DNS. Trạng thái sẽ cập nhật khi bản ghi được tìm thấy.'
+          : result.form === 'domain-primary'
+            ? 'Đã cập nhật tên miền chính.'
+            : result.form === 'domain-delete'
+              ? 'Đã xoá tên miền.'
+              : null // 'domain-dns-check' success already renders inline per-row, no banner
+      : null;
+
   const copy =
     kind === 'dashboard'
       ? {

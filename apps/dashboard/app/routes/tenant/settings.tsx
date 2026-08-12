@@ -23,6 +23,7 @@ import { PartnerPromotionsCard } from '~/features/tenant/components/settings/par
 import { TenantDefaultCancellationPolicyCard } from '~/features/tenant/components/settings/tenant-default-cancellation-policy-card';
 import {
   TenantDomainsCard,
+  type DomainActionResult,
   type DomainDnsCheckState,
 } from '~/features/tenant/components/settings/tenant-domains-card';
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
@@ -32,6 +33,15 @@ import { PaymentMethodSettingsCard } from '~/features/tenant/components/settings
 import { SettingsOverview } from '~/features/tenant/components/settings/settings-overview';
 import { SettingsSectionNav } from '~/features/tenant/components/settings/settings-section-nav';
 import { loadTenantSettings } from '~/features/tenant/server/settings-loader.server';
+
+/** `handleSettingsAction` forms that belong to one of the two domain cards. */
+const DOMAIN_ACTION_FORMS = new Set<DomainActionResult['form']>([
+  'domain',
+  'domain-verify',
+  'domain-dns-check',
+  'domain-primary',
+  'domain-delete',
+]);
 
 const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   theme: 'brand',
@@ -110,15 +120,29 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
   };
   const okFor = (form: string): boolean =>
     Boolean(actionData && 'form' in actionData && actionData.form === form && 'ok' in actionData);
-  // The dns-check action reports which row it ran on, so its verdict renders
-  // inside that domain instead of as one banner over the whole list.
-  const dnsCheckResult: DomainDnsCheckState | null =
-    actionData && 'dnsCheck' in actionData && 'domainId' in actionData
-      ? { domainId: actionData.domainId, result: actionData.dnsCheck }
-      : null;
   const fieldErrorsFor = (form: string): Record<string, string[]> | null =>
     actionData && 'form' in actionData && actionData.form === form && 'fieldErrors' in actionData
       ? ((actionData.fieldErrors as Record<string, string[]> | undefined) ?? null)
+      : null;
+
+  // Passed as-is to *both* domain cards — the action has no way to know which
+  // one a tenant meant, so it echoes `kind` (add-domain) or `domainId` (row
+  // actions) and each card decides for itself whether the result is its own.
+  const domainActionResult: DomainActionResult | null =
+    actionData &&
+    'form' in actionData &&
+    typeof actionData.form === 'string' &&
+    DOMAIN_ACTION_FORMS.has(actionData.form as DomainActionResult['form'])
+      ? (actionData as DomainActionResult)
+      : null;
+  // The dns-check action reports which row it ran on, so its verdict renders
+  // inside that domain instead of as one banner over the whole list.
+  const dnsCheckResult: DomainDnsCheckState | null =
+    domainActionResult?.form === 'domain-dns-check' &&
+    domainActionResult.ok &&
+    domainActionResult.domainId &&
+    domainActionResult.dnsCheck
+      ? { domainId: domainActionResult.domainId, result: domainActionResult.dnsCheck }
       : null;
 
   const settingsTabs = [
@@ -175,24 +199,6 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     (domain) => domain.kind === 'storefront' && domain.isPrimary && domain.verifiedAt,
   );
   const publicUrl = primaryDomain ? storefrontUrl(primaryDomain.hostname) : null;
-
-  const domainActionError =
-    errFor('domain-verify') ??
-    errFor('domain-dns-check') ??
-    errFor('domain-primary') ??
-    errFor('domain-delete');
-  // Neither card knows which one the action actually touched (the action response
-  // doesn't carry `kind`), so both storefront and dashboard domain cards show this
-  // same banner and it stays worded generically rather than naming a surface.
-  const domainSuccessMessage = okFor('domain')
-    ? 'Đã thêm tên miền. Hãy cấu hình DNS để hoàn tất xác minh.'
-    : okFor('domain-verify')
-      ? 'Đã gửi yêu cầu kiểm tra DNS. Trạng thái sẽ cập nhật khi bản ghi được tìm thấy.'
-      : okFor('domain-primary')
-        ? 'Đã cập nhật tên miền chính.'
-        : okFor('domain-delete')
-          ? 'Đã xoá tên miền.'
-          : null;
 
   const selectTab = (value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -276,11 +282,8 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 tenancyConfig={tenancyConfig}
                 loadError={domainsError}
                 readOnly={readOnly}
-                actionError={domainActionError}
-                domainError={errFor('domain')}
-                domainFieldErrors={fieldErrorsFor('domain')}
+                domainActionResult={domainActionResult}
                 dnsCheck={dnsCheckResult}
-                successMessage={domainSuccessMessage}
               />
               <TenantDomainsCard
                 kind="dashboard"
@@ -288,11 +291,8 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 tenancyConfig={tenancyConfig}
                 loadError={domainsError}
                 readOnly={readOnly}
-                actionError={domainActionError}
-                domainError={errFor('domain')}
-                domainFieldErrors={fieldErrorsFor('domain')}
+                domainActionResult={domainActionResult}
                 dnsCheck={dnsCheckResult}
-                successMessage={domainSuccessMessage}
               />
             </TabsContent>
           ) : null}
