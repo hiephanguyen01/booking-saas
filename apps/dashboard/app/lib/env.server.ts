@@ -77,8 +77,24 @@ function requiredHostname(
 
 const dashboardHost = requiredHostname('DASHBOARD_HOST', process.env.DASHBOARD_HOST, 'localhost');
 
+/**
+ * `dashboardUrl` is the origin every cross-host console link resolves against;
+ * `dashboardHost` is what `isPlatformHostname` (`tenant-host.server.ts`)
+ * compares an incoming Host header to. The two are only correct together when
+ * they name the same host — set them inconsistently (e.g. `DASHBOARD_URL`
+ * repointed to a new domain without updating `DASHBOARD_HOST`, or vice versa)
+ * and the "Đổi workspace" switcher links somewhere that is not the platform
+ * console, with every other gate still passing because each env var is valid
+ * on its own.
+ */
+if (dashboardUrl.hostname !== dashboardHost) {
+  invalidEnvironment(
+    `DASHBOARD_URL and DASHBOARD_HOST must agree: new URL(DASHBOARD_URL).hostname is ` +
+      `"${dashboardUrl.hostname}" but DASHBOARD_HOST is "${dashboardHost}"`,
+  );
+}
+
 export const dashboardEnv = Object.freeze({
-  production,
   /**
    * This console's own origin. Cross-host links — today just the "Đổi
    * workspace" switcher and the workspaces directory's per-tenant cards —

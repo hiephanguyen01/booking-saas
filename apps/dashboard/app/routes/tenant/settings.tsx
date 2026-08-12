@@ -126,8 +126,9 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
       : null;
 
   // Passed as-is to *both* domain cards — the action has no way to know which
-  // one a tenant meant, so it echoes `kind` (add-domain) or `domainId` (row
-  // actions) and each card decides for itself whether the result is its own.
+  // one a tenant meant, so every branch (add-domain and every row action alike)
+  // echoes `kind` and each card decides for itself whether the result is its
+  // own by comparing `kind` to its own prop.
   const domainActionResult: DomainActionResult | null =
     actionData &&
     'form' in actionData &&

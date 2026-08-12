@@ -10,7 +10,13 @@ import type { FieldConfig } from '@booking/ui/components/form/types';
 /**
  * `kind` deliberately stays out of this array — it isn't a field the tenant picks,
  * it's fixed by which card (storefront vs dashboard) the form was submitted from.
- * The card supplies it via `GenericForm`'s `defaultValues`/hidden input instead.
+ * The card supplies it via `GenericForm`'s `defaultValues` instead.
+ *
+ * `isPrimary` also stays out: a freshly added custom domain always starts
+ * unverified, and `AddDomainUseCase` now refuses `isPrimary: true` outright
+ * (a domain must be verified before it can become primary) — offering the
+ * switch here would just be a guaranteed-to-fail trap. Making an already
+ * verified domain primary is the existing "Đặt làm chính" row action.
  */
 export function domainFields(placeholder: string): FieldConfig<AddDomainInput>[] {
   return [
@@ -21,7 +27,6 @@ export function domainFields(placeholder: string): FieldConfig<AddDomainInput>[]
       placeholder,
       colSpan: 2,
     },
-    { name: 'isPrimary', type: 'switch', label: 'Đặt làm tên miền chính' },
   ];
 }
 

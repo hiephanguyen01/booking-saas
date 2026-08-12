@@ -427,9 +427,12 @@ export const tenancyConfigResponseSchema = z.object({
 export type TenancyConfigResponse = z.infer<typeof tenancyConfigResponseSchema>;
 
 /**
- * Pre-flight for the create-tenant form. Mirrors exactly the two conflicts
- * `POST /admin/tenants` enforces (`TENANT_SLUG_TAKEN`, `DOMAIN_TAKEN`), so a green
- * check here means create will not 409 on the slug.
+ * Pre-flight for the create-tenant form. Mirrors exactly the four conflicts
+ * `POST /admin/tenants` enforces, in the same order: the slug itself
+ * (`TENANT_SLUG_TAKEN`), the reserved `admin` prefix (`ADMIN_PREFIX_RESERVED`),
+ * the storefront subdomain (`DOMAIN_TAKEN`), and the console subdomain
+ * (`DOMAIN_TAKEN` on `admin.<slug>.<baseDomain>`) — so a green check here means
+ * create will not 4xx on the slug.
  */
 export const slugAvailabilityResponseSchema = z.object({
   slug: z.string(),
@@ -438,7 +441,9 @@ export const slugAvailabilityResponseSchema = z.object({
   subdomain: z.string(),
   baseDomain: z.string(),
   /** Why it is unavailable; null when it is available. */
-  reason: z.enum(['slug_taken', 'domain_taken']).nullable(),
+  reason: z
+    .enum(['slug_taken', 'admin_prefix_reserved', 'domain_taken', 'admin_domain_taken'])
+    .nullable(),
 });
 export type SlugAvailabilityResponse = z.infer<typeof slugAvailabilityResponseSchema>;
 

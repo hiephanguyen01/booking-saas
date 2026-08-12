@@ -232,16 +232,7 @@ export function TenantDomainsCard({
             submitPendingLabel="Đang thêm..."
             serverError={domainError}
             fieldErrors={domainFieldErrors}
-          >
-            {/*
-              Belt-and-suspenders for the pre-hydration native-POST fallback
-              (see the comment on GenericForm's <form>): `kind` isn't a
-              rendered/registered field, so `defaultValues` is what actually
-              carries it through the normal JS submit path — this hidden input
-              only matters if a submit fires before react-hook-form mounts.
-            */}
-            <input type="hidden" name="kind" value={kind} />
-          </GenericForm>
+          />
         </fieldset>
       </CardContent>
     </Card>

@@ -5,6 +5,7 @@ import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-foun
 import {
   AdminDomainPrefixRequired,
   AdminPrefixReserved,
+  DomainNotVerified,
   DomainTaken,
 } from '../../domain/errors/tenancy-errors';
 import { TenantDomain } from '../../domain/entities/tenant-domain.entity';
@@ -42,6 +43,18 @@ export class AddDomainUseCase {
     if (!(await this.tenants.findById(tenantId))) {
       throw new TenantNotFound();
     }
+    // A freshly requested custom domain is always born unverified (see
+    // TenantDomain.requestCustomDomain below), so it can never legitimately
+    // become primary at creation. SetPrimaryDomainUseCase is the only path
+    // that may promote a domain, and it always calls
+    // TenantDomain.assertCanBecomePrimary() first — this was the second,
+    // unguarded write path straight to the repository. Refuse rather than
+    // silently drop the flag: a silent no-op would leave the tenant believing
+    // they set it, and the domain still can't be verified from behind an
+    // already-primary row it just demoted.
+    if (input.isPrimary) {
+      throw new DomainNotVerified();
+    }
     await this.assertCustomDomainAllowed.execute(tenantId);
 
     const hostname = normalizeHostname(input.hostname);
@@ -59,23 +72,18 @@ export class AddDomainUseCase {
     if (await this.domains.findByHostname(hostname)) {
       throw new DomainTaken(hostname);
     }
+    // `isPrimary` is always false here (the guard above throws otherwise), so
+    // there is no primary-swap to perform — just insert the requested row.
     const requested = TenantDomain.requestCustomDomain({
       tenantId,
       hostname,
-      isPrimary: input.isPrimary,
+      isPrimary: false,
       kind: input.kind,
       randomHex: randomBytes(16).toString('hex'),
     });
-    const created = await this.tenantDb.forTenant(tenantId, async (tx) => {
-      // Insert non-primary first so the partial unique index remains valid
-      // throughout a primary swap. The repository performs clear-old/set-new
-      // in this same transaction.
-      const domain = await this.domains.create(
-        input.isPrimary ? { ...requested, isPrimary: false } : requested,
-        tx,
-      );
-      return input.isPrimary ? this.domains.setPrimary(tenantId, domain.id, tx) : domain;
-    });
+    const created = await this.tenantDb.forTenant(tenantId, (tx) =>
+      this.domains.create(requested, tx),
+    );
     await this.cache.invalidateHost(hostname);
     return created;
   }

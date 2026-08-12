@@ -22,9 +22,31 @@ import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
+/**
+ * No `isPrimary` here: a freshly added custom domain always starts unverified,
+ * and `AddDomainUseCase` now refuses `isPrimary: true` outright — offering the
+ * checkbox would just be a guaranteed-to-fail trap (see `settings-fields.ts`'s
+ * matching note on the tenant screen's own add-domain form). Making an
+ * already-verified domain primary stays a `set-primary-domain` row action.
+ *
+ * `kind` DOES belong here, unlike the tenant screen's two-cards-by-`kind`
+ * layout: this is the platform admin's one-card view of a tenant's domains, so
+ * the admin has to say which surface a new hostname is for. Without it,
+ * `addDomainInputSchema` defaulted to `storefront` and an admin trying to
+ * provision `admin.custom.vn` on a tenant's behalf got an untranslated
+ * `ADMIN_PREFIX_RESERVED` 400 with no way to succeed.
+ */
 const domainFields: FieldConfig<AddDomainInput>[] = [
   { name: 'hostname', type: 'text', label: 'Tên miền', placeholder: 'booking.tenant.com' },
-  { name: 'isPrimary', type: 'checkbox', label: 'Đặt làm tên miền chính' },
+  {
+    name: 'kind',
+    type: 'select',
+    label: 'Loại tên miền',
+    options: [
+      { label: 'Cửa hàng (storefront)', value: 'storefront' },
+      { label: 'Trang quản trị (dashboard)', value: 'dashboard' },
+    ],
+  },
 ];
 
 /** The last DNS check run from this card, scoped to the domain it was run on. */
@@ -235,7 +257,7 @@ export function TenantDomainsCard({
                 submitLabel="Thêm tên miền"
                 serverError={serverError}
                 fieldErrors={fieldErrors}
-                defaultValues={{ hostname: '', isPrimary: false }}
+                defaultValues={{ hostname: '', kind: 'storefront' }}
               />
             ) : (
               <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">

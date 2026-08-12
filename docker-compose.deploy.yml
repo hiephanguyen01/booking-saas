@@ -57,6 +57,14 @@ services:
       PLATFORM_STOREFRONT_CNAME: ${PLATFORM_STOREFRONT_CNAME:-}
       PLATFORM_STOREFRONT_IPV4: ${PLATFORM_STOREFRONT_IPV4:-}
       PUBLIC_API_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL is required}
+      # Consumed by PrismaNotificationReader.tenantOrigin() for transactional
+      # email CTAs (partner/dashboard links). Without these, a tenant with no
+      # verified primary host of the relevant kind falls back to
+      # http://localhost:5174 / :5173 — pointing a real email at the
+      # recipient's own laptop. The storefront and dashboard services already
+      # require both; the API needs them for the same reason.
+      DASHBOARD_URL: ${DASHBOARD_URL:?DASHBOARD_URL is required}
+      STOREFRONT_URL: ${STOREFRONT_URL:?STOREFRONT_URL is required}
       # Master key for tenant gateway credentials. There is no boot guard for
       # this in the API — omit it and every stored secret is encrypted with the
       # key published in the repo.

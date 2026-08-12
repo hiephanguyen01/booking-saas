@@ -857,6 +857,11 @@ model TenantDomain {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  // Matches migration 20260812000000_tenant_domain_kind's `tenant_domains_kind_idx`
+  // (kept only to resolve `migrate diff` drift between the model and the
+  // database — every query pairs `kind` with `tenant_id` or `hostname`, so the
+  // index itself is unused; dropping it needs its own migration).
+  @@index([kind])
   @@map("tenant_domains")
 }
 

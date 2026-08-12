@@ -188,6 +188,15 @@ Two consequences fall out of this:
   once at session creation — which is what makes it safe for one session token to carry every scope: the
   guard, not the session, decides whether *this* host may see *this* user's *this* membership.
 
+**This means switching consoles re-authenticates** — following an "Đổi workspace"/`/workspaces` link
+to another tenant's console host lands the browser there with no cookie at all, so it re-runs the login
+flow (the backend session token is still valid and still carries the membership; only the host-only
+cookie has to be re-set). This is by design, not a gap to "fix" later: do not widen the cookie's
+`domain` attribute to make switching consoles cookie-less. A shared `domain` would leak the session
+cookie to a **custom domain** tenant too — `admin.mycompany.vn` is a different site entirely from
+`*.bookingos.vn`, and a cookie scoped broader than exact-host-match would ship to hosts BookingOS does
+not control the DNS or TLS for, silently breaking the isolation this whole feature exists to provide.
+
 ## The primary-domain reads that must stay kind-scoped
 
 Once a tenant could have two primary domains, every existing "read the primary domain" call site had to
