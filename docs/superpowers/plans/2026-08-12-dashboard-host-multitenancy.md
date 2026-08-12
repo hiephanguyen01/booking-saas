@@ -1903,4 +1903,16 @@ git commit -m "feat(ops): route admin.* hosts to the dashboard and document the 
 
 ## Rollout Note
 
-Tasks 1-5 are backward compatible: the column defaults to `storefront`, the backfill adds hosts nobody routes to yet, and no user-visible behaviour changes. The cut-over is Task 10 Step 1 — the moment Caddy starts routing `admin.*` to the dashboard container. Deploy Tasks 1-9 first, confirm the seeded console hosts resolve through `GET /public/admin-tenant`, then ship the Caddy change.
+The cut-over is Task 10 Step 1 — the moment Caddy starts routing `admin.*` to the dashboard
+container. Deploy Tasks 1-9 first, confirm the seeded console hosts resolve through
+`GET /public/admin-tenant`, then ship the Caddy change.
+
+**Tasks 1-3 must ship as one unit.** Task 1's backfill is what gives each tenant a second
+`is_primary` row, and that is precisely what breaks the read paths Task 3 fixes — the admin
+"view storefront" link, affiliate referral links, and every transactional email hostname all go
+non-deterministic in between, silently. Task 2's `setPrimary` fix is in the same window: until it
+lands, promoting a storefront domain also clears the tenant's console primary. Deploying Task 1 alone
+is the one sequencing mistake in this plan that does real damage.
+
+Tasks 4-9 are individually safe to land: they add fields, endpoints and UI that nothing routes to
+until Task 10.
