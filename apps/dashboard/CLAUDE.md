@@ -48,8 +48,9 @@ Area features map to the four dashboard areas; **cross-area domain features** (`
 ## Data & auth
 
 BFF pattern: `app/lib/api.server.ts` re-exports `apiGet`/`apiPost`/`apiPatch`/`apiPut`/`apiDelete`
-(and `unwrapApiResult`) bound to `BACKEND_URL`. A root `middleware`
-authenticates every request into an AsyncLocalStorage context that `requireTenant`/area guards read.
+(and `unwrapApiResult`) bound to `BACKEND_URL`. A root `middleware` resolves the Host header to a
+tenant (or the platform console) and *then* authenticates every request into an AsyncLocalStorage
+context that `requireTenant`/area guards read.
 Sessions are Redis-backed; the cookie holds only a signed id. **Never fetch the backend from the
 browser** — all data goes through loaders/actions. (The one prior browser-side react-query fetch was
 removed on 2026-07-17; there is no `@tanstack/react-query` or direct `axios` dependency any more, and
@@ -73,13 +74,14 @@ growing a second copy. Full rationale in [`../../docs/conventions.md`](../../doc
 The dashboard has **no brand of its own**. Colours, radius and the Plus Jakarta Sans face are the
 platform default from `@booking/ui/globals.css` — BookingOS amber `#ffb020` on ink `#0a0e13`, the same
 one the storefront's platform landing renders. A tenant that has configured a brand overrides the
-channels inline through `tenantBrandStyle()` on the shell (`root.tsx`); one that has not simply keeps
+channels inline through `tenantBrandCss()` on the shell (`root.tsx`); one that has not simply keeps
 the default. Style with semantic tokens only; a literal hex in app code is a defect.
 
 `app.css` holds exactly two scopes, both for the sign-in screen (`.auth-brand-panel`,
-`.auth-form-panel`). That screen renders *before* a tenant is known, so it cannot inherit a brand from
-the session — those blocks only choose which side of the default each half sits on. They are not a
-second design system, and nothing else in the app should acquire one.
+`.auth-form-panel`). On a tenant console host the tenant is resolved from the Host header *before*
+authentication, so these panels do inherit the tenant brand through `tenantBrandCss()` in
+`root.tsx`; on the platform host they fall back to the BookingOS default. They are not a second
+design system, and nothing else in the app should acquire one.
 
 Geometry stays dense — `h-11` controls, no pill CTAs. The landing's `platform-*` component classes are
 landing-local on purpose: an operator console and a marketing page share a palette, not a button shape.

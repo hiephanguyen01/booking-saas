@@ -5,6 +5,8 @@ import { Share2 } from 'lucide-react';
 import type { Route } from './+types/_layout';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { fetchPendingLegalAcceptances } from '~/features/legal/server/legal.server';
+import { getOptionalUser } from '~/lib/auth.server';
+import { getCurrentDashboardHost } from '~/lib/request-auth.server';
 import { affiliateTabs } from './nav';
 import { dashboardPaths } from '~/constants/paths';
 
@@ -22,6 +24,16 @@ export function meta(): Route.MetaDescriptors {
  * bounce the user back to this exact page forever.
  */
 export async function loader({ request }: Route.LoaderArgs) {
+  // This area lives only on a tenant console host. The platform host bounces a
+  // signed-in caller to their own directory (same-origin, leaks nothing beyond
+  // their own memberships); an anonymous one 404s like any other wrong-host path,
+  // so the directory can't be used to probe which areas exist.
+  if (getCurrentDashboardHost().kind === 'platform') {
+    throw (await getOptionalUser(request))
+      ? redirect(dashboardPaths.workspaces)
+      : new Response('Không tìm thấy trang.', { status: 404 });
+  }
+
   const { memberships, active, auth } = await requireAffiliate(request);
 
   const { pathname } = new URL(request.url);

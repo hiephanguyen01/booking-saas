@@ -50,3 +50,23 @@ export async function resolveDashboardHost(request: Request): Promise<DashboardH
   if (result.status === 404) return { kind: 'unknown-host' };
   throw new Response('Không phân giải được tên miền quản trị.', { status: 503 });
 }
+
+/**
+ * A verified console `adminHostname` → absolute origin, for the cross-host
+ * workspace directory (`routes/workspaces.tsx`) linking from the platform
+ * console to a tenant's own console host. Mirrors the API's `storefrontUrl()`
+ * (`apps/api/src/modules/notification/infrastructure/prisma-notification.reader.ts`):
+ * a `.localhost` hostname is dev-only and needs the dashboard's port appended
+ * back since nothing proxies it locally; anything else is a real domain served
+ * over TLS. Kept here — the one module that already reads host-shaped env vars
+ * (`DASHBOARD_HOST` above) — so this `.localhost`/port logic exists in exactly
+ * one place rather than being re-derived at each call site (the sidebar's
+ * switch-workspace link needs no such derivation; it links to the fixed
+ * `DASHBOARD_URL` origin computed once in `root.tsx`'s loader).
+ */
+export function adminHostOrigin(hostname: string): string {
+  if (hostname.endsWith('.localhost')) {
+    return `http://${hostname}:${process.env.DASHBOARD_PORT ?? '5174'}`;
+  }
+  return `https://${hostname}`;
+}

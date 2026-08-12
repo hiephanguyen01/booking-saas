@@ -3,6 +3,8 @@ import type { Route } from './+types/_layout';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { fetchPendingLegalAcceptances } from '~/features/legal/server/legal.server';
+import { getOptionalUser } from '~/lib/auth.server';
+import { getCurrentDashboardHost } from '~/lib/request-auth.server';
 import { dashboardPaths } from '~/constants/paths';
 
 /**
@@ -15,6 +17,16 @@ import { dashboardPaths } from '~/constants/paths';
  * to this exact page forever instead of letting them land on it.
  */
 export async function loader({ request }: Route.LoaderArgs) {
+  // This area lives only on a tenant console host. The platform host bounces a
+  // signed-in caller to their own directory (same-origin, leaks nothing beyond
+  // their own memberships); an anonymous one 404s like any other wrong-host path,
+  // so the directory can't be used to probe which areas exist.
+  if (getCurrentDashboardHost().kind === 'platform') {
+    throw (await getOptionalUser(request))
+      ? redirect(dashboardPaths.workspaces)
+      : new Response('Không tìm thấy trang.', { status: 404 });
+  }
+
   const { auth, membership } = await requirePartner(request);
 
   const { pathname } = new URL(request.url);

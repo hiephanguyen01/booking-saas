@@ -15,12 +15,20 @@ import {
   SidebarRail,
 } from '@booking/ui/components/ui/sidebar';
 import { dashboardAreasFor } from '~/lib/navigation';
-import { activeTenantMembership } from '~/lib/tenant-brand';
+import type { DashboardHostResolution } from '~/lib/tenant-host.server';
 import { NavUser } from './nav-user';
 
-export function AppSidebar({ info }: { info: SessionInfoResponse }) {
+export function AppSidebar({
+  info,
+  host,
+  platformConsoleUrl,
+}: {
+  info: SessionInfoResponse;
+  host: DashboardHostResolution;
+  platformConsoleUrl: string;
+}) {
   const location = useLocation();
-  const areas = dashboardAreasFor(info, location.pathname);
+  const areas = dashboardAreasFor(info, host);
   const activeNavPath = areas
     .flatMap((area) => area.items)
     .filter(
@@ -32,13 +40,9 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
         ),
     )
     .sort((left, right) => right.to.length - left.to.length)[0]?.to;
-  const membership = activeTenantMembership(info, location.pathname);
-  const appIconUrl =
-    membership?.tenantBranding?.faviconUrl || membership?.tenantBranding?.logoUrl || null;
-  const workspaceName =
-    membership?.scope === 'partner'
-      ? membership.partnerName || membership.tenantName
-      : membership?.tenantName;
+  const hostTenant = host.kind === 'tenant' ? host.tenant : null;
+  const appIconUrl = hostTenant?.branding?.faviconUrl || hostTenant?.branding?.logoUrl || null;
+  const workspaceName = hostTenant?.name ?? 'BookingOS';
 
   return (
     <Sidebar>
@@ -52,12 +56,8 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
             )}
           </div>
           <div className="grid leading-tight">
-            <span className="truncate text-sm font-semibold">{workspaceName || 'BookingOS'}</span>
-            <span className="truncate text-xs text-muted-foreground">
-              {membership?.scope === 'partner'
-                ? membership.tenantName || 'Partner Dashboard'
-                : 'Dashboard'}
-            </span>
+            <span className="truncate text-sm font-semibold">{workspaceName}</span>
+            <span className="truncate text-xs text-muted-foreground">Dashboard</span>
           </div>
         </div>
       </SidebarHeader>
@@ -68,11 +68,14 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
           <SidebarGroup>
             <SidebarMenu>
               <SidebarMenuItem>
+                {/* An <a>, not a <Link>: /workspaces lives on the platform console,
+                    a different origin from a tenant host, which the client-side
+                    router cannot navigate to. */}
                 <SidebarMenuButton asChild tooltip="Đổi không gian làm việc">
-                  <Link to="/workspaces">
+                  <a href={`${platformConsoleUrl}/workspaces`}>
                     <PanelsTopLeft />
                     <span>Đổi workspace</span>
-                  </Link>
+                  </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
