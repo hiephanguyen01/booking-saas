@@ -252,6 +252,14 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
   const formData = await request.formData();
   const intent = String(formData.get('intent'));
+  // Row actions carry the card's own `kind` (set by `submitDomainAction`), echoed
+  // back below on every domain-row branch — success and error alike — for the
+  // same reason the domain-add branch echoes it: neither card knows a response
+  // is its own otherwise. Unlike `domainId`, `kind` still resolves after a
+  // successful delete removes the row, so it — not `domainId` — is what each
+  // card uses to decide banner ownership (`tenant-domains-card.tsx`).
+  const domainRowKind: TenantDomainKind =
+    formData.get('kind') === 'dashboard' ? 'dashboard' : 'storefront';
 
   if (intent === 'disable-gateway') {
     const gateway = String(formData.get('gateway') ?? '').trim();
@@ -366,12 +374,13 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
       return routeData(
         {
           form: 'domain-verify',
+          kind: domainRowKind,
           domainId: id,
           error: res.error ?? 'Xác minh thất bại. Kiểm tra bản ghi TXT.',
         },
         { status: 400 },
       );
-    return { form: 'domain-verify', domainId: id, ok: true };
+    return { form: 'domain-verify', kind: domainRowKind, domainId: id, ok: true };
   }
 
   if (intent === 'dns-check-domain') {
@@ -386,6 +395,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
       return routeData(
         {
           form: 'domain-dns-check',
+          kind: domainRowKind,
           domainId: id,
           error: res.error ?? 'Không kiểm tra được kết nối tên miền.',
         },
@@ -394,7 +404,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
     }
     // The domainId travels back so the card can render the result inside the row
     // that was checked, instead of as one banner for the whole list.
-    return { form: 'domain-dns-check', ok: true, domainId: id, dnsCheck: res.data };
+    return { form: 'domain-dns-check', kind: domainRowKind, ok: true, domainId: id, dnsCheck: res.data };
   }
 
   if (intent === 'set-primary-domain') {
@@ -404,13 +414,14 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
       return routeData(
         {
           form: 'domain-primary',
+          kind: domainRowKind,
           domainId: id,
           error: res.error ?? 'Không đặt được tên miền chính.',
         },
         { status: 400 },
       );
     }
-    return { form: 'domain-primary', domainId: id, ok: true };
+    return { form: 'domain-primary', kind: domainRowKind, domainId: id, ok: true };
   }
 
   if (intent === 'delete-domain') {
@@ -418,10 +429,18 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
     const res = await apiDelete(apiPaths.tenant.domain(id), auth);
     if (!res.ok)
       return routeData(
-        { form: 'domain-delete', domainId: id, error: res.error ?? 'Không xoá được tên miền.' },
+        {
+          form: 'domain-delete',
+          kind: domainRowKind,
+          domainId: id,
+          error: res.error ?? 'Không xoá được tên miền.',
+        },
         { status: 400 },
       );
-    return { form: 'domain-delete', domainId: id, ok: true };
+    // `kind` (not `domainId`) is what the card uses to claim this banner — a
+    // successful delete removes the row from `domains`, so `domainId` would no
+    // longer match anything in either card's `rows` by the time this re-renders.
+    return { form: 'domain-delete', kind: domainRowKind, domainId: id, ok: true };
   }
 
   return routeData({ error: actionMessages.invalidIntent }, { status: 400 });

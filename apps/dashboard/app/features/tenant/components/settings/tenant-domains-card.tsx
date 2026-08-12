@@ -62,18 +62,26 @@ export interface DomainDnsCheckState {
  * Raw domain-action response from `handleSettingsAction`, before either card
  * decides whether it's the one that should render it. The route passes the
  * *same* object to both the storefront and dashboard card (it has no way to
- * know which one a tenant meant), so each card carries the identifying field
- * the action echoes back — `kind` for the add-domain form, `domainId` for the
- * row actions — against its own `kind`/`rows` and only renders what's its own.
+ * know which one a tenant meant), so every branch of the action echoes `kind`
+ * back and each card compares it to its own `kind` prop to decide ownership.
+ *
+ * `kind`, not `domainId`, is what ownership is decided on: a successful delete
+ * removes the row from `domains`, so by the time this re-renders with fresh
+ * loader data, `domainId` no longer matches anything in *either* card's `rows`
+ * — deciding ownership from `domainId` made a delete's confirmation render in
+ * neither card. `kind` has no such lifetime problem, since it isn't derived
+ * from data that the action's own effect can invalidate.
  */
 export interface DomainActionResult {
   form: 'domain' | 'domain-verify' | 'domain-dns-check' | 'domain-primary' | 'domain-delete';
   ok?: boolean;
   error?: string;
   fieldErrors?: Record<string, string[]>;
-  /** Present on `form: 'domain'` responses (add-domain). */
-  kind?: TenantDomainKind;
-  /** Present on row-action responses (verify/dns-check/primary/delete). */
+  /** Present on every branch. Decides which card owns this response. */
+  kind: TenantDomainKind;
+  /** Present on row-action responses. Scopes the DNS-check inline result to
+   * one row (`DomainDnsCheckState`) — a separate concern from banner ownership,
+   * so this stays a plain identifier and is never used to decide ownership. */
   domainId?: string;
   /** Present on a successful `form: 'domain-dns-check'`. */
   dnsCheck?: DomainDnsCheckResponse;
@@ -118,21 +126,20 @@ export function TenantDomainsCard({
   const { busy, run } = useSubmissionGuard(ownSubmissionInFlight ? navigation.state : 'idle');
 
   const submitDomainAction = (intent: DomainActionIntent, domainId: string): void => {
-    run(() => submit({ intent, domainId }, { method: 'post' }));
+    // `kind` travels along so the action can echo it back — see `ownsResult`
+    // below for why banner ownership can't be decided from `domainId` alone.
+    run(() => submit({ intent, domainId, kind }, { method: 'post' }));
   };
 
   // Same root cause as the busy-state scoping above: `domainActionResult` is one
-  // shared value handed to both cards. `kind` identifies an add-domain response;
-  // `domainId` identifies a row-action response against a domain this card
-  // actually renders. A result with neither (shouldn't happen — every branch of
-  // the action sets one) is treated as not this card's.
-  const ownsResult =
-    domainActionResult != null &&
-    (domainActionResult.kind != null
-      ? domainActionResult.kind === kind
-      : domainActionResult.domainId != null
-        ? rows.some((row) => row.id === domainActionResult.domainId)
-        : false);
+  // shared value handed to both cards. Every branch of the action echoes `kind`
+  // now (not just add-domain), so ownership is a single comparison — and,
+  // importantly, one that doesn't depend on the row still being in `rows`. A
+  // successful delete triggers the route's default revalidation, so by the time
+  // this re-renders with the new `domains`, the deleted row is gone from *both*
+  // cards' `rows`; deciding ownership via `rows.some(domainId)` (the round-1
+  // approach) made a successful delete's confirmation render in neither card.
+  const ownsResult = domainActionResult?.kind === kind;
   const result = ownsResult ? domainActionResult : null;
 
   const domainError = result?.form === 'domain' && !result.ok ? (result.error ?? null) : null;
