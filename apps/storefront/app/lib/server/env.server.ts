@@ -18,6 +18,7 @@ const rawEnvironmentSchema = z
     BACKEND_URL: optional(z.string().url()),
     REDIS_URL: optional(z.string().url()),
     DASHBOARD_URL: optional(z.string().url()),
+    DASHBOARD_PORT: optional(z.string().trim().min(1)),
     PLATFORM_BASE_DOMAIN: optional(z.string().trim().min(1)),
     SESSION_SECRET_CURRENT: optional(z.string().min(32)),
     SESSION_SECRET_PREVIOUS: optional(z.string().min(32)),
@@ -177,6 +178,7 @@ export const storefrontEnv = Object.freeze({
   backendUrl: backendUrl.origin,
   redisUrl: redisUrl.toString(),
   dashboardUrl: dashboardUrl.origin,
+  dashboardPort: raw.DASHBOARD_PORT ?? '5174',
   platformHostname,
   sessionSecrets: Object.freeze(
     [currentSecret, raw.SESSION_SECRET_PREVIOUS].filter((value): value is string => Boolean(value)),

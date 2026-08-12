@@ -126,9 +126,14 @@ export const assignSubscriptionInputSchema = z.object({
 });
 export type AssignSubscriptionInput = z.infer<typeof assignSubscriptionInputSchema>;
 
+export const tenantDomainKindSchema = z.enum(['storefront', 'dashboard']);
+export type TenantDomainKind = z.infer<typeof tenantDomainKindSchema>;
+
 export const addDomainInputSchema = z.object({
   hostname: hostnameSchema,
   isPrimary: z.boolean().default(false),
+  /** Which surface the hostname serves. A dashboard host must start with `admin.`. */
+  kind: tenantDomainKindSchema.default('storefront'),
 });
 export type AddDomainInput = z.infer<typeof addDomainInputSchema>;
 
@@ -344,6 +349,7 @@ export const domainResponseSchema = z.object({
   tenantId: z.string(),
   hostname: z.string(),
   isPrimary: z.boolean(),
+  kind: tenantDomainKindSchema,
   verifiedAt: z.string().nullable(),
   /** Ownership-proof record; absent once the domain is verified. */
   verification: domainVerificationRecordSchema.optional(),
@@ -421,9 +427,12 @@ export const tenancyConfigResponseSchema = z.object({
 export type TenancyConfigResponse = z.infer<typeof tenancyConfigResponseSchema>;
 
 /**
- * Pre-flight for the create-tenant form. Mirrors exactly the two conflicts
- * `POST /admin/tenants` enforces (`TENANT_SLUG_TAKEN`, `DOMAIN_TAKEN`), so a green
- * check here means create will not 409 on the slug.
+ * Pre-flight for the create-tenant form. Mirrors exactly the four conflicts
+ * `POST /admin/tenants` enforces, in the same order: the slug itself
+ * (`TENANT_SLUG_TAKEN`), the reserved `admin` prefix (`ADMIN_PREFIX_RESERVED`),
+ * the storefront subdomain (`DOMAIN_TAKEN`), and the console subdomain
+ * (`DOMAIN_TAKEN` on `admin.<slug>.<baseDomain>`) — so a green check here means
+ * create will not 4xx on the slug.
  */
 export const slugAvailabilityResponseSchema = z.object({
   slug: z.string(),
@@ -432,7 +441,9 @@ export const slugAvailabilityResponseSchema = z.object({
   subdomain: z.string(),
   baseDomain: z.string(),
   /** Why it is unavailable; null when it is available. */
-  reason: z.enum(['slug_taken', 'domain_taken']).nullable(),
+  reason: z
+    .enum(['slug_taken', 'admin_prefix_reserved', 'domain_taken', 'admin_domain_taken'])
+    .nullable(),
 });
 export type SlugAvailabilityResponse = z.infer<typeof slugAvailabilityResponseSchema>;
 
@@ -494,5 +505,24 @@ export const publicTenantResponseSchema = z.object({
   defaultLocale: localeSchema,
   themeConfig: themeConfigSchema,
   live: z.boolean(),
+  /**
+   * The tenant's console host, so the storefront can link a partner or affiliate
+   * to the right dashboard instead of the platform one. Null when the tenant has
+   * no verified dashboard domain.
+   */
+  adminHostname: z.string().nullable(),
 });
 export type PublicTenantResponse = z.infer<typeof publicTenantResponseSchema>;
+
+/** `GET /public/admin-tenant` — the dashboard BFF resolving its Host to a tenant. */
+export const adminHostTenantResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  branding: dashboardBrandConfigSchema.nullable(),
+  /** Shows a renewal banner; the console stays usable so the tenant can pay. */
+  subscriptionExpired: z.boolean(),
+  /** Locks the console behind a 403 — unlike an expiry, this is not self-serve. */
+  suspended: z.boolean(),
+});
+export type AdminHostTenantResponse = z.infer<typeof adminHostTenantResponseSchema>;

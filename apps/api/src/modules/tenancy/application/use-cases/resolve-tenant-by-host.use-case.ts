@@ -43,16 +43,20 @@ export class ResolveTenantByHostUseCase {
     // Redis read and a query on the empty key to reach this identical 404.
     if (!hostname) throw new UnknownTenantHost(rawHost);
 
-    let tenantId = await this.cache.getHost(hostname);
-    if (tenantId === undefined) {
-      const domain = await this.domains.findByHostname(hostname);
+    const cached = await this.cache.resolveHost(hostname, async (name) => {
+      const domain = await this.domains.findByHostname(name);
       // Only a verified domain resolves — an unverified custom domain isn't live.
-      tenantId = domain && domain.verifiedAt ? domain.tenantId : null;
-      await this.cache.setHost(hostname, tenantId);
-    }
-    if (tenantId === null) {
+      return domain && domain.verifiedAt
+        ? { tenantId: domain.tenantId, kind: domain.kind }
+        : null;
+    });
+    // A dashboard hostname is not a storefront. Ten modules resolve a tenant
+    // through this use-case; without this guard an admin host would read as a
+    // valid storefront everywhere from checkout to legal documents.
+    if (cached === null || cached.kind !== 'storefront') {
       throw new UnknownTenantHost(hostname);
     }
+    const tenantId = cached.tenantId;
 
     const tenant = await this.tenants.findById(tenantId);
     if (!tenant) {
@@ -61,13 +65,16 @@ export class ResolveTenantByHostUseCase {
       throw new UnknownTenantHost(hostname);
     }
 
-    const selection = await this.currentSubscriptions.findByTenant(tenantId);
+    const [selection, adminHostname] = await Promise.all([
+      this.currentSubscriptions.findByTenant(tenantId),
+      this.domains.findPrimaryHostname(tenantId, 'dashboard'),
+    ]);
     const evaluation = evaluateSubscription(
       selection.current?.subscription ?? null,
       selection.evaluatedAt,
     );
     const live =
       tenant.status === 'active' && evaluation.storefrontLive && tenant.legalReadyAt !== null;
-    return toPublicTenantResponse(tenant, live);
+    return toPublicTenantResponse(tenant, live, adminHostname);
   }
 }

@@ -175,6 +175,8 @@ export const scopeMembershipSchema = z.object({
   partnerName: z.string().nullable(),
   /** Parent tenant branding for tenant/partner dashboard shells; null at platform scope. */
   tenantBranding: dashboardBrandConfigSchema.nullable(),
+  /** The tenant's console host, for cross-host links on the platform workspaces page. */
+  adminHostname: z.string().nullable(),
   /** Role names assigned in this scope (for display only). */
   roles: z.array(z.string()),
   /** Fully-resolved permission keys (`scope.resource.action`) held in this scope. */

@@ -48,6 +48,14 @@ enum ScopeLevel {
   @@map("scope_level")
 }
 
+/// Which surface a tenant hostname serves (§6.1). One hostname is only ever one of these.
+enum TenantDomainKind {
+  storefront
+  dashboard
+
+  @@map("tenant_domain_kind")
+}
+
 enum TenantStatus {
   active
   suspended
@@ -839,6 +847,7 @@ model TenantDomain {
   tenantId          String    @map("tenant_id") @db.Uuid
   hostname          String    @unique @db.Citext
   isPrimary         Boolean   @default(false) @map("is_primary")
+  kind              TenantDomainKind @default(storefront)
   /// TXT value the tenant publishes to prove ownership of a custom domain (§6.1). Null once verified/for subdomains.
   verificationToken String?   @map("verification_token")
   verifiedAt        DateTime? @map("verified_at") @db.Timestamptz(6)
@@ -848,6 +857,11 @@ model TenantDomain {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  // Matches migration 20260812000000_tenant_domain_kind's `tenant_domains_kind_idx`
+  // (kept only to resolve `migrate diff` drift between the model and the
+  // database — every query pairs `kind` with `tenant_id` or `hostname`, so the
+  // index itself is unused; dropping it needs its own migration).
+  @@index([kind])
   @@map("tenant_domains")
 }
 

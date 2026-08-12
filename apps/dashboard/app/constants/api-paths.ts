@@ -29,6 +29,20 @@ export const apiPaths = {
     provinces: '/public/administrative-divisions/provinces',
   },
 
+  public: {
+    /** The dashboard BFF resolving its Host to a tenant (`@Public()`, pre-session). */
+    adminTenant: '/public/admin-tenant',
+    /**
+     * The storefront's tenant-by-host resolution (`@Public()`), reused here to
+     * turn an affiliate's `tenantHostname` (storefront host) into its
+     * `adminHostname` (console host) via `x-forwarded-host` — see
+     * `routes/workspaces.tsx`. `AffiliateResponse` carries no console hostname
+     * of its own; this is the same lookup the storefront's own partner/affiliate
+     * CTA already relies on (`apps/storefront/app/lib/server/tenant.server.ts`).
+     */
+    tenant: '/public/tenant',
+  },
+
   admin: {
     plans: '/admin/plans',
     plan: (planId: string) => `/admin/plans/${segment(planId)}`,

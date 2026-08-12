@@ -6,6 +6,7 @@ import { ArrowRight, CalendarCheck2, Check, ShieldCheck } from 'lucide-react';
 import type { Route } from './+types/login';
 import { backendLogin, backendSessionInfo } from '~/lib/api.server';
 import { getOptionalUser, loadSessionInfo } from '~/lib/auth.server';
+import { getCurrentDashboardHost } from '~/lib/request-auth.server';
 import { createUserSession } from '~/lib/session.server';
 import { defaultDashboardPath } from '~/lib/workspace';
 
@@ -17,7 +18,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const user = await getOptionalUser(request);
   if (user) {
     const info = await loadSessionInfo(request);
-    if (info) throw redirect(defaultDashboardPath(info));
+    if (info) throw redirect(defaultDashboardPath(info, getCurrentDashboardHost()));
   }
   return null;
 }
@@ -40,7 +41,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const info = await backendSessionInfo(result.tokens.accessToken);
-  const area = info ? defaultDashboardPath(info) : '/';
+  const area = info ? defaultDashboardPath(info, getCurrentDashboardHost()) : '/';
   return createUserSession(request, { ...result.tokens, userId: result.user.id }, area);
 }
 

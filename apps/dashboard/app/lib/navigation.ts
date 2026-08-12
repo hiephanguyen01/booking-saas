@@ -5,7 +5,8 @@ import { partnerNavSections } from '~/routes/partner/nav';
 import { tenantNavSections } from '~/routes/tenant/nav';
 import type { DashboardArea, DashboardNavItem, DashboardNavSection } from './navigation-types';
 import { dashboardPaths } from '~/constants/paths';
-import { firstPartnerMembership, firstTenantMembership } from './workspace';
+import { partnerMembershipIn, tenantMembership } from './workspace';
+import type { DashboardHostResolution } from './tenant-host.server';
 
 export type { DashboardArea, DashboardNavItem, DashboardNavSection } from './navigation-types';
 
@@ -79,29 +80,41 @@ function scopedArea(
   };
 }
 
-export function dashboardAreasFor(info: SessionInfoResponse, _pathname: string): DashboardArea[] {
+export function dashboardAreasFor(
+  info: SessionInfoResponse,
+  host: DashboardHostResolution,
+): DashboardArea[] {
   const areas: DashboardArea[] = [];
-  const platform = info.scopes.find((membership) => membership.scope === 'platform');
-  if (platform) {
-    areas.push(
-      scopedArea(DASHBOARD_AREAS[0]!, adminNavSections, platform.permissions, {
-        title: DASHBOARD_AREAS[0]!.title,
-        basePath: dashboardPaths.admin.home,
-      }),
-    );
+
+  if (host.kind === 'platform') {
+    const platform = info.scopes.find((membership) => membership.scope === 'platform');
+    if (platform) {
+      areas.push(
+        scopedArea(DASHBOARD_AREAS[0]!, adminNavSections, platform.permissions, {
+          title: DASHBOARD_AREAS[0]!.title,
+          basePath: dashboardPaths.admin.home,
+        }),
+      );
+    }
+    return areas;
   }
 
-  const tenant = firstTenantMembership(info);
+  // `unknown-host` never reaches here — the root middleware 404s it before any
+  // loader runs — but the type still carries it, so it renders no areas rather
+  // than reading `.tenant` off a variant that doesn't have one.
+  if (host.kind !== 'tenant') return areas;
+
+  const tenant = tenantMembership(info, host.tenant.id);
   if (tenant) {
     areas.push(
       scopedArea(DASHBOARD_AREAS[1]!, tenantNavSections, tenant.permissions, {
-        title: tenant.tenantName ?? 'Tenant',
+        title: tenant.tenantName ?? host.tenant.name,
         basePath: dashboardPaths.tenant.home,
       }),
     );
   }
 
-  const partner = firstPartnerMembership(info);
+  const partner = partnerMembershipIn(info, host.tenant.id);
   if (partner) {
     areas.push(
       scopedArea(DASHBOARD_AREAS[2]!, partnerNavSections, partner.permissions, {

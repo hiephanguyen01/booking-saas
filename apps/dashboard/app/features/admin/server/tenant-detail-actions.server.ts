@@ -51,8 +51,18 @@ export async function handleTenantDetailJsonAction(request: Request, id: string)
     }
     const res = await apiPost<DomainResponse>(apiPaths.admin.tenantDomains(id), parsed.data, auth);
     if (!res.ok) {
+      // The backend's DomainError message is English; map the two prefix rules
+      // to Vietnamese so they read naturally here too — same mapping as the
+      // tenant screen's own add-domain form (settings-actions.server.ts). Any
+      // other code falls back to the raw message.
+      const message =
+        res.code === 'ADMIN_DOMAIN_PREFIX_REQUIRED'
+          ? 'Tên miền trang quản trị phải bắt đầu bằng "admin.".'
+          : res.code === 'ADMIN_PREFIX_RESERVED'
+            ? 'Tiền tố "admin." được dành riêng cho tên miền trang quản trị.'
+            : res.error;
       return data<ActionResult>(
-        { scope: 'domain', error: res.error, fieldErrors: res.errors },
+        { scope: 'domain', error: message, fieldErrors: res.errors },
         { status: 400 },
       );
     }

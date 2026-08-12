@@ -1,12 +1,4 @@
-import {
-  isRouteErrorResponse,
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-  useLocation,
-} from 'react-router';
+import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, useLocation } from 'react-router';
 import { SidebarInset, SidebarProvider } from '@booking/ui/components/ui/sidebar';
 import { Toaster } from '@booking/ui/components/ui/sonner';
 import { TooltipProvider } from '@booking/ui/components/ui/tooltip';
@@ -16,7 +8,10 @@ import { loadSessionInfo } from './lib/auth.server';
 import { dashboardAuthMiddleware } from './lib/auth-middleware.server';
 import { AppSidebar } from './components/app-sidebar';
 import { DashboardHeader } from './components/dashboard-header';
-import { activeTenantMembership, tenantBrandCss } from './lib/tenant-brand';
+import { tenantBrandCss } from './lib/tenant-brand';
+import { getCurrentDashboardHost } from './lib/request-auth.server';
+import { dashboardEnv } from './lib/env.server';
+import { dashboardPaths } from './constants/paths';
 import './app.css';
 
 export const middleware: Route.MiddlewareFunction[] = [dashboardAuthMiddleware];
@@ -43,7 +38,15 @@ export const links: Route.LinksFunction = () => [
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const info = await loadSessionInfo(request);
-  return { info };
+  return {
+    info,
+    host: getCurrentDashboardHost(),
+    // The workspaces directory lives on the platform console, which is a different
+    // origin from a tenant host — and a component may never read process.env.
+    // `dashboardEnv.dashboardUrl` is validated at boot (see lib/env.server.ts):
+    // no silent localhost fallback in production.
+    platformConsoleUrl: dashboardEnv.dashboardUrl,
+  };
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -71,27 +74,57 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const info = loaderData?.info ?? null;
+  // Fails CLOSED: `unknown-host`, not `platform`. `loaderData` is only missing
+  // here in a degraded render (e.g. a boundary re-render with no loader data),
+  // and `platform` is the one host kind that unlocks the Platform Admin nav
+  // group — defaulting to it would show that group to someone the resolved
+  // host never actually granted it to.
+  const host = loaderData?.host ?? { kind: 'unknown-host' as const };
   const location = useLocation();
+  const hostTenant = host.kind === 'tenant' ? host.tenant : null;
+  // The host is known before authentication (the Host header resolves it up
+  // front), so the brand stylesheet is emitted above the anonymous early
+  // return too — the sign-in screen on a tenant console host is branded.
+  const brandCss = tenantBrandCss(hostTenant?.branding ?? null);
 
   // Unauthenticated (login/logout) — render the page without the dashboard shell.
   if (!info) {
-    return <Outlet />;
+    return (
+      <>
+        {brandCss ? <style dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
+        <Outlet />
+      </>
+    );
   }
 
-  const membership = activeTenantMembership(info, location.pathname);
-  const brandCss = tenantBrandCss(membership?.tenantBranding ?? null);
+  // `routes/tenant/_layout.tsx` already renders a graded escalation ladder for
+  // this same `subscriptionExpired` condition ("exactly one primary
+  // subscription banner, most severe first") — showing this one too on
+  // `/tenant/*` would stack two banners on the screen aimed at the person who'd
+  // actually renew. Partner and affiliate have no ladder of their own, so they
+  // still get this one.
+  const showExpiryBanner =
+    Boolean(hostTenant?.subscriptionExpired) &&
+    !location.pathname.startsWith(dashboardPaths.tenant.home);
 
   return (
     <>
       {/* A document-level rule rather than a `style` prop on the shell: Radix
           portals every dropdown, dialog and the mobile sidebar to `document.body`,
-          where an inline style on a wrapper can never reach them. Re-rendered on
-          navigation, because which tenant's brand applies depends on the area. */}
+          where an inline style on a wrapper can never reach them. */}
       {brandCss ? <style dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
       <SidebarProvider>
-        <AppSidebar info={info} />
+        <AppSidebar info={info} host={host} platformConsoleUrl={loaderData.platformConsoleUrl} />
         <SidebarInset className="min-w-0">
           <DashboardHeader />
+          {showExpiryBanner ? (
+            <div
+              role="status"
+              className="border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-foreground lg:px-6"
+            >
+              Gói dịch vụ đã hết hạn. Một số thao tác bị khoá cho đến khi bạn gia hạn.
+            </div>
+          ) : null}
           <main className="min-w-0 flex-1 p-4 lg:p-6">
             <Outlet />
           </main>

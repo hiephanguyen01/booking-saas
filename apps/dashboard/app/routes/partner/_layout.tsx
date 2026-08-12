@@ -15,6 +15,9 @@ import { dashboardPaths } from '~/constants/paths';
  * to this exact page forever instead of letting them land on it.
  */
 export async function loader({ request }: Route.LoaderArgs) {
+  // `requirePartner` 404s/redirects off a non-tenant host before touching auth
+  // — see its comment (features/partner/server/partner.server.ts) for why the
+  // check lives there and not here.
   const { auth, membership } = await requirePartner(request);
 
   const { pathname } = new URL(request.url);

@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { SessionInfoResponse } from '@booking/contracts';
+import type { AdminHostTenantResponse, SessionInfoResponse } from '@booking/contracts';
 import type { DashboardSessionData } from './session.server';
+import type { DashboardHostResolution } from './tenant-host.server';
 
 export interface DashboardAuthContext {
   user: DashboardSessionData;
@@ -9,6 +10,7 @@ export interface DashboardAuthContext {
 
 export interface DashboardRequestAuthState {
   auth: DashboardAuthContext | null;
+  host: DashboardHostResolution;
   suppressSessionCommit: boolean;
 }
 
@@ -23,6 +25,20 @@ export function runWithDashboardRequestAuth<T>(
 
 export function getCurrentDashboardAuth(): DashboardAuthContext | null {
   return requestAuthStorage.getStore()?.auth ?? null;
+}
+
+export function getCurrentDashboardHost(): DashboardHostResolution {
+  const state = requestAuthStorage.getStore();
+  if (!state) throw new Error('No Dashboard request auth scope is active.');
+  return state.host;
+}
+
+export function getCurrentHostTenant(): AdminHostTenantResponse {
+  const host = getCurrentDashboardHost();
+  if (host.kind !== 'tenant') {
+    throw new Error('Host tenant accessed outside a tenant-host request');
+  }
+  return host.tenant;
 }
 
 export function suppressAuthSessionCommit(): void {

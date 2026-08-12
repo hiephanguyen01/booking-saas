@@ -101,14 +101,16 @@ export async function seedBookingStudio(input: {
   // Staging host is primary; the `.localhost` host rides along so ONE seed serves
   // both environments without an env switch. Bare `localhost`/`127.0.0.1` are
   // deliberately NOT mapped — the storefront serves the platform landing there.
-  for (const [hostname, isPrimary] of [
-    ['bookingstudio.stg.bookingos.vn', true],
-    ['bookingstudio.localhost', false],
+  for (const [hostname, isPrimary, kind] of [
+    ['bookingstudio.stg.bookingos.vn', true, 'storefront'],
+    ['bookingstudio.localhost', false, 'storefront'],
+    ['admin.bookingstudio.stg.bookingos.vn', true, 'dashboard'],
+    ['admin.bookingstudio.localhost', false, 'dashboard'],
   ] as const) {
     await prisma.tenantDomain.upsert({
       where: { hostname },
-      update: {},
-      create: { tenantId: tenant.id, hostname, isPrimary, verifiedAt: new Date() },
+      update: { kind },
+      create: { tenantId: tenant.id, hostname, isPrimary, kind, verifiedAt: new Date() },
     });
   }
 

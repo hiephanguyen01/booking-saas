@@ -4,6 +4,7 @@ import {
   DomainNotVerified,
   DomainPrimaryRequired,
 } from '../errors/tenancy-errors';
+import type { TenantHostKind } from '../ports/tenant-cache.port';
 
 /**
  * TenantDomain aggregate (§6.3) — one hostname mapped to one tenant, plus the
@@ -36,6 +37,7 @@ export interface TenantDomainState {
   tenantId: string;
   hostname: string;
   isPrimary: boolean;
+  kind: TenantHostKind;
   verificationToken: string | null;
   verifiedAt: Date | null;
 }
@@ -45,6 +47,7 @@ export interface NewTenantDomain {
   tenantId: string;
   hostname: string;
   isPrimary: boolean;
+  kind: TenantHostKind;
   verificationToken: string | null;
   verifiedAt: Date | null;
 }
@@ -60,12 +63,14 @@ export class TenantDomain {
   static provisionDefaultSubdomain(input: {
     tenantId: string;
     hostname: string;
+    kind: TenantHostKind;
     now: Date;
   }): NewTenantDomain {
     return {
       tenantId: input.tenantId,
       hostname: input.hostname,
       isPrimary: true,
+      kind: input.kind,
       verificationToken: null,
       verifiedAt: input.now,
     };
@@ -82,12 +87,14 @@ export class TenantDomain {
     tenantId: string;
     hostname: string;
     isPrimary: boolean;
+    kind: TenantHostKind;
     randomHex: string;
   }): NewTenantDomain {
     return {
       tenantId: input.tenantId,
       hostname: input.hostname,
       isPrimary: input.isPrimary,
+      kind: input.kind,
       verificationToken: buildVerificationToken(input.randomHex),
       verifiedAt: null,
     };
@@ -109,6 +116,10 @@ export class TenantDomain {
     return this.state.isPrimary;
   }
 
+  get kind(): TenantHostKind {
+    return this.state.kind;
+  }
+
   get belongsToTenant(): string {
     return this.state.tenantId;
   }
@@ -126,15 +137,18 @@ export class TenantDomain {
 
 /**
  * Portfolio rule: removing a verified primary domain is refused while it is the
- * tenant's only verified one — a live storefront must never be orphaned.
+ * tenant's only verified one of ITS OWN KIND — a live storefront must never be
+ * orphaned, and neither must the console.
+ *
+ * `allTenantDomains` is the tenant's verified-or-not domain list **for the target's
+ * kind**; the target is excluded internally, so callers cannot get the contract
+ * wrong. Passing every kind would let the last dashboard host be deleted merely
+ * because a storefront host still exists.
  *
  * NOTE the asymmetry, preserved from the pre-refactor code: siblings are filtered by
  * `verified`, NOT by `primary`. So deleting the primary while another verified (but
  * non-primary) domain exists succeeds and leaves the tenant with no primary at all.
  * Recorded as a known gap rather than tightened here.
- *
- * The second parameter is the tenant's FULL domain list; the target is excluded internally,
- * so callers cannot get the contract wrong.
  */
 export function assertDeletableFromPortfolio(
   target: { id: string; isPrimary: boolean; isVerified: boolean },

@@ -1,6 +1,8 @@
 import { createZodDto } from 'nestjs-zod';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   addDomainInputSchema,
+  adminHostTenantResponseSchema,
   assignSubscriptionInputSchema,
   createPlanInputSchema,
   createTenantInputSchema,
@@ -39,7 +41,14 @@ export class SetDefaultCancellationPolicyDto extends createZodDto(
   setDefaultCancellationPolicyInputSchema,
 ) {}
 export class AssignSubscriptionDto extends createZodDto(assignSubscriptionInputSchema) {}
-export class AddDomainDto extends createZodDto(addDomainInputSchema) {}
+export class AddDomainDto extends createZodDto(addDomainInputSchema) {
+  // Required on the parsed (post-`.default()`) type — `createZodDto` types the
+  // class from the schema's OUTPUT, where the default has already filled the
+  // field in. `ApiPropertyOptional` still marks it optional in the OpenAPI
+  // doc, since the caller need not send it.
+  @ApiPropertyOptional({ enum: ['storefront', 'dashboard'], default: 'storefront' })
+  declare kind: 'storefront' | 'dashboard';
+}
 export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
 export class ListTenantsQueryDto extends createZodDto(listTenantsQuerySchema) {}
 
@@ -57,11 +66,15 @@ export class SubscriptionResponseDto extends createZodDto(subscriptionResponseSc
 export class SubscriptionHistoryItemDto extends createZodDto(subscriptionHistoryItemSchema) {}
 export class TenancyConfigResponseDto extends createZodDto(tenancyConfigResponseSchema) {}
 export class SlugAvailabilityResponseDto extends createZodDto(slugAvailabilityResponseSchema) {}
-export class DomainResponseDto extends createZodDto(domainResponseSchema) {}
+export class DomainResponseDto extends createZodDto(domainResponseSchema) {
+  @ApiProperty({ enum: ['storefront', 'dashboard'], example: 'storefront' })
+  declare kind: 'storefront' | 'dashboard';
+}
 export class DomainVerificationResultDto extends createZodDto(domainVerificationResultSchema) {}
 export class DomainDnsCheckResponseDto extends createZodDto(domainDnsCheckResponseSchema) {}
 export class SubscriptionStatusResponseDto extends createZodDto(subscriptionStatusResponseSchema) {}
 export class PublicTenantResponseDto extends createZodDto(publicTenantResponseSchema) {}
+export class AdminHostTenantResponseDto extends createZodDto(adminHostTenantResponseSchema) {}
 export class PlatformHealthResponseDto extends createZodDto(platformHealthResponseSchema) {}
 
 /** Newly created tenant plus its auto-provisioned primary domain (POST /admin/tenants). */

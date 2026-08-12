@@ -1,4 +1,5 @@
 import { DomainError } from '../../../../shared/domain/domain-error';
+import { ADMIN_HOST_PREFIX } from '../hostname';
 
 /**
  * Domain errors for the Tenant / TenantDomain aggregates. Codes + statuses +
@@ -67,5 +68,25 @@ export class DomainPrimaryRequired extends DomainError {
 export class UnknownTenantHost extends DomainError {
   constructor(hostname: string) {
     super('UNKNOWN_HOST', 404, `No tenant mapped to host "${hostname}"`);
+  }
+}
+
+export class AdminDomainPrefixRequired extends DomainError {
+  constructor(hostname: string) {
+    super(
+      'ADMIN_DOMAIN_PREFIX_REQUIRED',
+      400,
+      `A dashboard hostname must start with "${ADMIN_HOST_PREFIX}" — "${hostname}" does not`,
+    );
+  }
+}
+
+export class AdminPrefixReserved extends DomainError {
+  constructor(hostname: string) {
+    super(
+      'ADMIN_PREFIX_RESERVED',
+      400,
+      `"${hostname}" starts with "${ADMIN_HOST_PREFIX}", which is reserved for dashboard hostnames`,
+    );
   }
 }

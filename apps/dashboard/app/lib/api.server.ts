@@ -35,6 +35,11 @@ export function apiGet<T>(path: string, auth: Auth, options?: ApiRequestOptions<
   return client().get<T>(path, auth, options);
 }
 
+/** Unauthenticated read, for the `@Public()` endpoints the BFF calls before login. */
+export function apiPublicGet<T>(path: string, options?: ApiRequestOptions<T>) {
+  return client().publicGet<T>(path, options);
+}
+
 export function apiPost<T>(
   path: string,
   body: unknown,

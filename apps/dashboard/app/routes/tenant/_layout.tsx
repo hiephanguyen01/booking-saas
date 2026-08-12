@@ -24,6 +24,9 @@ const EXPIRY_WARNING_DAYS = 7;
  * past-due → grace → expired lockout) rather than the old all-or-nothing lockout.
  */
 export async function loader({ request }: Route.LoaderArgs) {
+  // `requireTenant` 404s/redirects off a non-tenant host before touching auth —
+  // see its comment (features/tenant/server/tenant.server.ts) for why the check
+  // lives there and not here.
   const { auth, can } = await requireTenant(request);
 
   let sub: SubscriptionStatusResponse | null = null;

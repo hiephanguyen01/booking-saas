@@ -57,6 +57,14 @@ services:
       PLATFORM_STOREFRONT_CNAME: ${PLATFORM_STOREFRONT_CNAME:-}
       PLATFORM_STOREFRONT_IPV4: ${PLATFORM_STOREFRONT_IPV4:-}
       PUBLIC_API_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL is required}
+      # Consumed by PrismaNotificationReader.tenantOrigin() for transactional
+      # email CTAs (partner/dashboard links). Without these, a tenant with no
+      # verified primary host of the relevant kind falls back to
+      # http://localhost:5174 / :5173 — pointing a real email at the
+      # recipient's own laptop. The storefront and dashboard services already
+      # require both; the API needs them for the same reason.
+      DASHBOARD_URL: ${DASHBOARD_URL:?DASHBOARD_URL is required}
+      STOREFRONT_URL: ${STOREFRONT_URL:?STOREFRONT_URL is required}
       # Master key for tenant gateway credentials. There is no boot guard for
       # this in the API — omit it and every stored secret is encrypted with the
       # key published in the repo.
@@ -145,6 +153,18 @@ services:
       BACKEND_URL: ${INTERNAL_API_URL:-http://api:3000}
       REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
       STOREFRONT_URL: ${STOREFRONT_URL:?STOREFRONT_URL is required}
+      # This console's own public origin — cross-host links (the "Đổi workspace"
+      # switcher, the workspaces directory's per-tenant cards) resolve against
+      # it. Required, not defaulted: a missing value used to silently fall back
+      # to localhost:5174 in the app code, which linked every caller to their
+      # own laptop instead of the real console. See lib/env.server.ts.
+      DASHBOARD_URL: ${DASHBOARD_URL:?DASHBOARD_URL is required}
+      # The platform console's own hostname (admin.stg.bookingos.vn), so
+      # `isPlatformHostname` can recognise it — Caddy already receives this same
+      # variable to obtain its certificate at startup. Without it, nothing but the
+      # "no dot"/bare-IP dev branches would ever match, and the platform console
+      # 404s in every deployed environment. See lib/env.server.ts.
+      DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}
       SESSION_SECRET_CURRENT: ${SESSION_SECRET_CURRENT:?SESSION_SECRET_CURRENT is required}
       SESSION_SECRET_PREVIOUS: ${SESSION_SECRET_PREVIOUS:-}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}

@@ -118,11 +118,40 @@ React Router 8 framework mode: each route exports `loader` (server data), `actio
 and a default component. Storefront root middleware rejects cross-origin unsafe methods before it
 authenticates the request into AsyncLocalStorage; exact liveness/readiness paths bypass auth and tenant
 resolution. Storefront runtime configuration is validated once at its server boundary and production
-cannot use loopback fallbacks. The storefront resolves its tenant from the `Host` header and injects
-per-tenant theme CSS at SSR; the dashboard resolves scope from the login session and is organized
-`routes/<area>` (route modules) + `features/<name>/{components,server,lib}`. Shared UI is `@booking/ui`
+cannot use loopback fallbacks. Both frontends are organized `routes/<area>` (route modules, dashboard
+only) or `routes/` (storefront) + `features/<name>/{components,server,lib}`. Shared UI is `@booking/ui`
 (raw TSX, Tailwind v4 CSS-first); the FE↔BE contract is `@booking/contracts` (zod). See the per-app
 `CLAUDE.md` and [`conventions.md`](./conventions.md).
+
+### Host → tenant resolution (both surfaces)
+
+Both frontends resolve *what* they are serving from the `Host` header before anything else — the
+storefront has always worked this way; the dashboard gained it in 2026-08 (see
+[`features/dashboard-hosts.md`](./features/dashboard-hosts.md) for the full design). Each calls a
+distinct backend use-case over the same Redis-backed host cache
+(`ITenantCache`, key `host:v2:<hostname>` → `<tenantId>:<kind>`), guarded by a `TenantDomainKind`
+(`storefront` | `dashboard`) so one hostname can never resolve as the other surface:
+
+- **Storefront** — `GET /public/tenant` → `ResolveTenantByHostUseCase`, accepts only `kind: 'storefront'`.
+  The exact `PLATFORM_BASE_DOMAIN`, a single-label host (`localhost`), or a bare IP short-circuits to the
+  platform landing with no backend call; every other host resolves through this use-case. `live` here
+  gates the whole shop: `tenant.status === 'active' && storefrontLive && legalReadyAt !== null` —
+  any lapse (suspended, expired, an unpublished legal document) shows the suspended page.
+- **Dashboard** — `GET /public/admin-tenant` → `ResolveTenantByAdminHostUseCase`, accepts only
+  `kind: 'dashboard'`. The configured `DASHBOARD_HOST`, a single-label host, or a bare IP short-circuits
+  to the **platform console** (`/admin`) the same way; every other host resolves through this use-case
+  to a **tenant console** (`/tenant`, `/partner`, `/affiliate`). Reachability is deliberately looser than
+  the storefront's: only `tenant.status === 'suspended'` locks the console out (403) — an expired
+  subscription still resolves and renders a renewal banner instead, because the console is where a
+  lapsed tenant fixes that, and 404ing it would be unrecoverable from inside the product.
+
+Resolution happens in dashboard root middleware, ahead of session auth, and is stashed in
+`AsyncLocalStorage` for the rest of the request; each area's own guard (`/admin` vs
+`/tenant`+`/partner`+`/affiliate`) re-checks the resolved host kind rather than trusting a parent layout,
+because React Router runs a route and its ancestors' loaders in one pass. Dashboard sessions are not
+host-scoped at the data layer (one Redis session token carries every scope a user holds); what confines
+a session to one console is the session cookie having no `domain` attribute, so the browser never
+presents it to a different host.
 
 ## Build, verification & CI
 

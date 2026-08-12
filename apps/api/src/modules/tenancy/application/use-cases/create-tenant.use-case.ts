@@ -1,8 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { CreateTenantInput } from '@booking/contracts';
-import { buildDefaultSubdomain } from '../../domain/hostname';
+import {
+  buildDefaultAdminSubdomain,
+  buildDefaultSubdomain,
+  isAdminHostname,
+} from '../../domain/hostname';
 import { TenantDomain } from '../../domain/entities/tenant-domain.entity';
-import { DomainTaken, TenantSlugTaken } from '../../domain/errors/tenancy-errors';
+import {
+  AdminPrefixReserved,
+  DomainTaken,
+  TenantSlugTaken,
+} from '../../domain/errors/tenancy-errors';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -39,8 +47,18 @@ export class CreateTenantUseCase {
       throw new TenantSlugTaken(input.slug);
     }
     const subdomain = buildDefaultSubdomain(input.slug, this.config.baseDomain);
-    if (await this.domains.findByHostname(subdomain)) {
-      throw new DomainTaken(subdomain);
+    // The prefix rule has two write paths, and this is the second one.
+    // `<slug>.<baseDomain>` starts with `admin.` when the slug is literally
+    // "admin", which mints a storefront host byte-identical to the platform's
+    // own DASHBOARD_HOST — Caddy would route that tenant's shop to the console.
+    if (isAdminHostname(subdomain)) {
+      throw new AdminPrefixReserved(subdomain);
+    }
+    const adminSubdomain = buildDefaultAdminSubdomain(input.slug, this.config.baseDomain);
+    for (const hostname of [subdomain, adminSubdomain]) {
+      if (await this.domains.findByHostname(hostname)) {
+        throw new DomainTaken(hostname);
+      }
     }
 
     // Tenant + its primary domain commit in ONE admin-pool transaction: a failure
@@ -61,6 +79,19 @@ export class CreateTenantUseCase {
         TenantDomain.provisionDefaultSubdomain({
           tenantId: tenant.id,
           hostname: subdomain,
+          kind: 'storefront',
+          now: new Date(),
+        }),
+        tx,
+      );
+      // The console host is provisioned with the tenant, not sold as an add-on:
+      // /tenant and /partner exist only on a tenant host, so a tenant without one
+      // would have no way in at all.
+      await this.domains.create(
+        TenantDomain.provisionDefaultSubdomain({
+          tenantId: tenant.id,
+          hostname: adminSubdomain,
+          kind: 'dashboard',
           now: new Date(),
         }),
         tx,
@@ -73,6 +104,7 @@ export class CreateTenantUseCase {
       return { tenant, primaryDomain };
     });
     await this.cache.invalidateHost(subdomain);
+    await this.cache.invalidateHost(adminSubdomain);
     return { tenant, primaryDomain };
   }
 }

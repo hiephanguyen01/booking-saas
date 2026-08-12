@@ -29,7 +29,9 @@ const WITH_RELATIONS = {
       // The tenant's primary domain IS the storefront origin a referral link must
       // point at (§6.1). Joined here so a membership carries its own link origin
       // and no caller has to invent one from a platform-wide env var.
-      domains: { where: { isPrimary: true }, select: { hostname: true }, take: 1 },
+      // Storefront only: this hostname builds affiliate referral links, which
+      // must land a visitor on the shop, never on the admin console.
+      domains: { where: { isPrimary: true, kind: 'storefront' }, select: { hostname: true }, take: 1 },
     },
   },
 } as const;

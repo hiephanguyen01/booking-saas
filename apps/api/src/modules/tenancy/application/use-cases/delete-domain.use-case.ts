@@ -14,7 +14,8 @@ import { TENANT_CACHE, type ITenantCache } from '../../domain/ports/tenant-cache
  * Removes a tenant's custom-domain mapping (§6.1). Ownership is enforced by
  * matching the domain's `tenantId` to the caller's scope — a mismatch (or a
  * missing id) resolves to 404. A verified primary domain can't be removed while
- * it's the only verified domain, to avoid orphaning the live storefront.
+ * it's the only verified domain of its own kind, to avoid orphaning the live
+ * storefront (or, symmetrically, the console).
  */
 @Injectable()
 export class DeleteDomainUseCase {
@@ -30,10 +31,11 @@ export class DeleteDomainUseCase {
     }
     const target = TenantDomain.rehydrate(domain);
     // Gate is for the query, not the rule — the assertion re-checks it. Keeps
-    // listByTenant off the common delete path (non-primary/unverified deletes
-    // never pay for the extra round-trip).
+    // listByTenantAndKind off the common delete path (non-primary/unverified
+    // deletes never pay for the extra round-trip). Scoped to the target's own
+    // kind so a storefront sibling can never save a dashboard host from deletion.
     if (target.isPrimary && target.isVerified) {
-      const siblings = (await this.domains.listByTenant(tenantId)).map((d) => ({
+      const siblings = (await this.domains.listByTenantAndKind(tenantId, domain.kind)).map((d) => ({
         id: d.id,
         isVerified: d.verifiedAt !== null,
       }));

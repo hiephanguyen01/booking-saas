@@ -1,22 +1,5 @@
-import type {
-  DashboardBrandConfig,
-  ScopeMembership,
-  SessionInfoResponse,
-} from '@booking/contracts';
+import type { DashboardBrandConfig } from '@booking/contracts';
 import { BRAND_DEFAULTS, brandSwatch, sanitizeBrandFont } from '@booking/ui/lib/brand-theme';
-
-/** Resolve the parent tenant brand for the dashboard area currently on screen. */
-export function activeTenantMembership(
-  info: SessionInfoResponse,
-  pathname: string,
-): ScopeMembership | null {
-  const scope = pathname.startsWith('/partner')
-    ? 'partner'
-    : pathname.startsWith('/tenant')
-      ? 'tenant'
-      : null;
-  return scope ? (info.scopes.find((membership) => membership.scope === scope) ?? null) : null;
-}
 
 /**
  * Dashboard-safe brand tokens, resolved through the same

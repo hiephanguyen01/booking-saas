@@ -5,6 +5,7 @@ import {
   type DomainDnsCheckResponse,
   type DomainResponse,
   type TenancyConfigResponse,
+  type TenantDomainKind,
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import {
@@ -57,52 +58,137 @@ export interface DomainDnsCheckState {
   result: DomainDnsCheckResponse;
 }
 
+/**
+ * Raw domain-action response from `handleSettingsAction`, before either card
+ * decides whether it's the one that should render it. The route passes the
+ * *same* object to both the storefront and dashboard card (it has no way to
+ * know which one a tenant meant), so every branch of the action echoes `kind`
+ * back and each card compares it to its own `kind` prop to decide ownership.
+ *
+ * `kind`, not `domainId`, is what ownership is decided on: a successful delete
+ * removes the row from `domains`, so by the time this re-renders with fresh
+ * loader data, `domainId` no longer matches anything in *either* card's `rows`
+ * — deciding ownership from `domainId` made a delete's confirmation render in
+ * neither card. `kind` has no such lifetime problem, since it isn't derived
+ * from data that the action's own effect can invalidate.
+ */
+export interface DomainActionResult {
+  form: 'domain' | 'domain-verify' | 'domain-dns-check' | 'domain-primary' | 'domain-delete';
+  ok?: boolean;
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+  /** Present on every branch. Decides which card owns this response. */
+  kind: TenantDomainKind;
+  /** Present on row-action responses. Scopes the DNS-check inline result to
+   * one row (`DomainDnsCheckState`) — a separate concern from banner ownership,
+   * so this stays a plain identifier and is never used to decide ownership. */
+  domainId?: string;
+  /** Present on a successful `form: 'domain-dns-check'`. */
+  dnsCheck?: DomainDnsCheckResponse;
+}
+
 export function TenantDomainsCard({
+  kind,
   domains,
   tenancyConfig,
   loadError,
   readOnly,
-  actionError,
-  domainError,
-  domainFieldErrors,
-  successMessage,
+  domainActionResult,
   dnsCheck,
 }: {
+  kind: TenantDomainKind;
   domains: DomainResponse[] | null;
   tenancyConfig: TenancyConfigResponse | null;
   loadError: string | null;
   readOnly: boolean;
-  actionError: string | null;
-  domainError: string | null;
-  domainFieldErrors: Record<string, string[]> | null;
-  successMessage: string | null;
+  domainActionResult: DomainActionResult | null;
   dnsCheck: DomainDnsCheckState | null;
 }) {
   const submit = useSubmit();
   const navigation = useNavigation();
-  const { busy, run } = useSubmissionGuard(navigation.state);
+  const rows = (domains ?? []).filter((domain) => domain.kind === kind);
+
+  // Both cards read the same page-wide `useNavigation()` — without this check,
+  // submitting in one would visibly disable the other's buttons too. Row actions
+  // submit `{ intent, domainId }` as urlencoded FormData; the add-domain form
+  // submits JSON carrying `kind`. A pending navigation only belongs to this card
+  // if its domainId is one of this card's own rows, or its kind matches this
+  // card's kind.
+  const pendingDomainId = navigation.formData?.get('domainId');
+  const pendingKind =
+    navigation.json && typeof navigation.json === 'object' && !Array.isArray(navigation.json)
+      ? (navigation.json as Record<string, unknown>).kind
+      : undefined;
+  const ownSubmissionInFlight =
+    navigation.state !== 'idle' &&
+    (rows.some((row) => row.id === pendingDomainId) || pendingKind === kind);
+
+  const { busy, run } = useSubmissionGuard(ownSubmissionInFlight ? navigation.state : 'idle');
 
   const submitDomainAction = (intent: DomainActionIntent, domainId: string): void => {
-    run(() => submit({ intent, domainId }, { method: 'post' }));
+    // `kind` travels along so the action can echo it back — see `ownsResult`
+    // below for why banner ownership can't be decided from `domainId` alone.
+    run(() => submit({ intent, domainId, kind }, { method: 'post' }));
   };
+
+  // Same root cause as the busy-state scoping above: `domainActionResult` is one
+  // shared value handed to both cards. Every branch of the action echoes `kind`
+  // now (not just add-domain), so ownership is a single comparison — and,
+  // importantly, one that doesn't depend on the row still being in `rows`. A
+  // successful delete triggers the route's default revalidation, so by the time
+  // this re-renders with the new `domains`, the deleted row is gone from *both*
+  // cards' `rows`; deciding ownership via `rows.some(domainId)` (the round-1
+  // approach) made a successful delete's confirmation render in neither card.
+  const ownsResult = domainActionResult?.kind === kind;
+  const result = ownsResult ? domainActionResult : null;
+
+  const domainError = result?.form === 'domain' && !result.ok ? (result.error ?? null) : null;
+  const domainFieldErrors =
+    result?.form === 'domain' && !result.ok ? (result.fieldErrors ?? null) : null;
+  const actionError =
+    result && result.form !== 'domain' && !result.ok ? (result.error ?? null) : null;
+  const successMessage =
+    result?.ok
+      ? result.form === 'domain'
+        ? 'Đã thêm tên miền. Hãy cấu hình DNS để hoàn tất xác minh.'
+        : result.form === 'domain-verify'
+          ? 'Đã gửi yêu cầu kiểm tra DNS. Trạng thái sẽ cập nhật khi bản ghi được tìm thấy.'
+          : result.form === 'domain-primary'
+            ? 'Đã cập nhật tên miền chính.'
+            : result.form === 'domain-delete'
+              ? 'Đã xoá tên miền.'
+              : null // 'domain-dns-check' success already renders inline per-row, no banner
+      : null;
+
+  const copy =
+    kind === 'dashboard'
+      ? {
+          title: 'Tên miền trang quản trị',
+          description:
+            'Địa chỉ đội ngũ của bạn dùng để đăng nhập và vận hành. Tên miền phải bắt đầu bằng "admin.".',
+          placeholder: 'admin.tencuaban.vn',
+        }
+      : {
+          title: 'Tên miền cửa hàng',
+          description: 'Địa chỉ khách hàng truy cập để xem và đặt dịch vụ.',
+          placeholder: 'datcho.tencuaban.vn',
+        };
 
   return (
     <Card className="shadow-none" aria-busy={busy}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Globe2 className="size-4 text-primary" aria-hidden="true" /> Tên miền storefront
+          <Globe2 className="size-4 text-primary" aria-hidden="true" /> {copy.title}
         </CardTitle>
-        <CardDescription>
-          Kết nối địa chỉ riêng để khách truy cập cửa hàng bằng tên miền thương hiệu của bạn.
-        </CardDescription>
+        <CardDescription>{copy.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <ErrorBanner error={loadError ?? actionError} />
         <SuccessBanner message={successMessage} />
 
-        {!loadError && domains && domains.length > 0 ? (
+        {!loadError && domains && rows.length > 0 ? (
           <ul className="space-y-3">
-            {domains.map((domain) => (
+            {rows.map((domain) => (
               <DomainRow
                 key={domain.id}
                 domain={domain}
@@ -121,8 +207,8 @@ export function TenantDomainsCard({
             </span>
             <p className="mt-3 text-sm font-semibold">Chưa có tên miền riêng</p>
             <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-              Thêm tên miền bạn sở hữu. Storefront vẫn tiếp tục hoạt động trên địa chỉ mặc định
-              trong lúc chờ xác minh.
+              Thêm tên miền bạn sở hữu. Hệ thống vẫn tiếp tục hoạt động trên địa chỉ mặc định trong
+              lúc chờ xác minh.
             </p>
           </div>
         ) : null}
@@ -134,14 +220,14 @@ export function TenantDomainsCard({
           <div className="mb-5">
             <h3 className="text-sm font-semibold">Thêm tên miền</h3>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Chỉ nhập hostname, không nhập giao thức hoặc đường dẫn. Ví dụ: booking.cuahang.vn.
+              Chỉ nhập hostname, không nhập giao thức hoặc đường dẫn. Ví dụ: {copy.placeholder}.
             </p>
           </div>
           <GenericForm
             schema={addDomainInputSchema}
-            fields={domainFields}
+            fields={domainFields(copy.placeholder)}
             columns={2}
-            defaultValues={{ isPrimary: false }}
+            defaultValues={{ isPrimary: false, kind }}
             submitLabel="Thêm tên miền"
             submitPendingLabel="Đang thêm..."
             serverError={domainError}
@@ -233,6 +319,7 @@ function DomainRow({
           </Button>
           <DeleteDomainDialog
             hostname={domain.hostname}
+            kind={domain.kind}
             disabled={busy || readOnly}
             onConfirm={() => onAction('delete-domain', domain.id)}
           />
@@ -412,10 +499,12 @@ function DnsCheckResult({ check }: { check: DomainDnsCheckResponse }) {
 
 function DeleteDomainDialog({
   hostname,
+  kind,
   disabled,
   onConfirm,
 }: {
   hostname: string;
+  kind: TenantDomainKind;
   disabled: boolean;
   onConfirm: () => void;
 }) {
@@ -437,8 +526,10 @@ function DeleteDomainDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Xoá tên miền {hostname}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Khách sẽ không thể truy cập storefront bằng địa chỉ này sau khi xoá. Thao tác không ảnh
-            hưởng dữ liệu đặt chỗ hoặc nội dung cửa hàng.
+            {kind === 'dashboard'
+              ? 'Đội ngũ của bạn sẽ không thể đăng nhập bằng địa chỉ này sau khi xoá.'
+              : 'Khách sẽ không thể truy cập storefront bằng địa chỉ này sau khi xoá.'}{' '}
+            Thao tác không ảnh hưởng dữ liệu đặt chỗ hoặc nội dung cửa hàng.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

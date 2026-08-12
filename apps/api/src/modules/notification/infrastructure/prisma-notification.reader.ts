@@ -33,6 +33,7 @@ interface BookingRow {
   tenant_name: string;
   theme_config: unknown;
   primary_hostname: string | null;
+  admin_hostname: string | null;
   total_amount: bigint;
   discount_amount: bigint;
   deposit_amount: bigint;
@@ -59,6 +60,7 @@ interface TenantBrandRow {
   tenant_name: string;
   theme_config: unknown;
   primary_hostname: string | null;
+  admin_hostname: string | null;
 }
 
 @Injectable()
@@ -79,7 +81,12 @@ export class PrismaNotificationReader implements INotificationReader {
       SELECT t.name AS tenant_name, t.theme_config,
              (SELECT td.hostname FROM tenant_domains td
               WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
-              LIMIT 1) AS primary_hostname
+                AND td.kind = 'storefront'
+              LIMIT 1) AS primary_hostname,
+             (SELECT td.hostname FROM tenant_domains td
+              WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'dashboard'
+              LIMIT 1) AS admin_hostname
       FROM tenants t
       WHERE t.id = ${tenantId}::uuid
       LIMIT 1`);
@@ -102,7 +109,12 @@ export class PrismaNotificationReader implements INotificationReader {
              t.name AS tenant_name, t.theme_config,
              (SELECT td.hostname FROM tenant_domains td
               WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'storefront'
               LIMIT 1) AS primary_hostname,
+             (SELECT td.hostname FROM tenant_domains td
+              WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'dashboard'
+              LIMIT 1) AS admin_hostname,
              refund.refunded_amount,
              payment.gateway AS payment_gateway,
              payment.payment_method
@@ -143,6 +155,7 @@ export class PrismaNotificationReader implements INotificationReader {
       tenant_name: row.tenant_name,
       theme_config: row.theme_config,
       primary_hostname: row.primary_hostname,
+      admin_hostname: row.admin_hostname,
     });
     return {
       bookingId,
@@ -180,11 +193,16 @@ export class PrismaNotificationReader implements INotificationReader {
   }
 
   async loadListingContext(tx: PrismaTx, listingId: string): Promise<ListingNotificationContext | null> {
-    const rows = await tx.$queryRaw<Array<{ listing_title: string; tenant_name: string; partner_id: string; theme_config: unknown; primary_hostname: string | null }>>(Prisma.sql`
+    const rows = await tx.$queryRaw<Array<{ listing_title: string; tenant_name: string; partner_id: string; theme_config: unknown; primary_hostname: string | null; admin_hostname: string | null }>>(Prisma.sql`
       SELECT l.title AS listing_title, t.name AS tenant_name, l.partner_id, t.theme_config,
              (SELECT td.hostname FROM tenant_domains td
               WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
-              LIMIT 1) AS primary_hostname
+                AND td.kind = 'storefront'
+              LIMIT 1) AS primary_hostname,
+             (SELECT td.hostname FROM tenant_domains td
+              WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'dashboard'
+              LIMIT 1) AS admin_hostname
       FROM listings l JOIN tenants t ON t.id = l.tenant_id
       WHERE l.id = ${listingId}::uuid`);
     const row = rows[0];
@@ -198,11 +216,16 @@ export class PrismaNotificationReader implements INotificationReader {
   }
 
   async loadPartnerContext(tx: PrismaTx, partnerId: string): Promise<PartnerNotificationContext | null> {
-    const rows = await tx.$queryRaw<Array<{ partner_name: string; tenant_name: string; theme_config: unknown; primary_hostname: string | null }>>(Prisma.sql`
+    const rows = await tx.$queryRaw<Array<{ partner_name: string; tenant_name: string; theme_config: unknown; primary_hostname: string | null; admin_hostname: string | null }>>(Prisma.sql`
       SELECT p.name AS partner_name, t.name AS tenant_name, t.theme_config,
              (SELECT td.hostname FROM tenant_domains td
               WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
-              LIMIT 1) AS primary_hostname
+                AND td.kind = 'storefront'
+              LIMIT 1) AS primary_hostname,
+             (SELECT td.hostname FROM tenant_domains td
+              WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'dashboard'
+              LIMIT 1) AS admin_hostname
       FROM partners p JOIN tenants t ON t.id = p.tenant_id
       WHERE p.id = ${partnerId}::uuid`);
     const row = rows[0];
@@ -291,20 +314,34 @@ export class PrismaNotificationReader implements INotificationReader {
     return {
       name: row.tenant_name,
       primaryColor,
-      dashboardUrl: process.env.DASHBOARD_URL ?? 'http://localhost:5174',
       ...(theme.logoUrl ? { logoUrl: theme.logoUrl } : {}),
       ...(theme.contact?.email ? { contactEmail: theme.contact.email } : {}),
       ...(theme.contact?.phone ? { contactPhone: theme.contact.phone } : {}),
       ...(theme.contact?.address ? { contactAddress: theme.contact.address } : {}),
-      storefrontUrl: this.storefrontUrl(row.primary_hostname),
+      storefrontUrl: this.tenantOrigin(
+        row.primary_hostname,
+        process.env.STOREFRONT_PORT ?? '5173',
+        process.env.STOREFRONT_URL ?? 'http://localhost:5173',
+      ),
+      dashboardUrl: this.tenantOrigin(
+        row.admin_hostname,
+        process.env.DASHBOARD_PORT ?? '5174',
+        process.env.DASHBOARD_URL ?? 'http://localhost:5174',
+      ),
     };
   }
 
-  private storefrontUrl(hostname: string | null): string {
-    if (!hostname) return process.env.STOREFRONT_URL ?? 'http://localhost:5173';
-    if (hostname.endsWith('.localhost')) {
-      return `http://${hostname}:${process.env.STOREFRONT_PORT ?? '5173'}`;
-    }
+  /**
+   * Absolute origin for a tenant-owned hostname. ONE helper for both surfaces:
+   * they differ only in the dev port and the platform fallback, so a second copy
+   * would only be a place for the two to drift apart.
+   *
+   * The console origin matters because partner CTAs point at /partner/*, which
+   * lives on a tenant console host — the platform console does not serve it.
+   */
+  private tenantOrigin(hostname: string | null, devPort: string, fallback: string): string {
+    if (!hostname) return fallback;
+    if (hostname.endsWith('.localhost')) return `http://${hostname}:${devPort}`;
     return `https://${hostname}`;
   }
 }

@@ -22,6 +22,9 @@ export function meta(): Route.MetaDescriptors {
  * bounce the user back to this exact page forever.
  */
 export async function loader({ request }: Route.LoaderArgs) {
+  // `requireAffiliate` 404s/redirects off a non-tenant host before touching
+  // auth — see its comment (features/affiliate/server/affiliate.server.ts) for
+  // why the check lives there and not here.
   const { memberships, active, auth } = await requireAffiliate(request);
 
   const { pathname } = new URL(request.url);
