@@ -9,6 +9,7 @@ import type {
   TaxDocumentUploadRecord,
   TaxCertificateReadiness,
   TaxWithholdingEventRecord,
+  SettlementTaxPosition,
 } from '../../domain/ports/tax-compliance-repository.port';
 import { TaxCertificateConflict } from '../../domain/errors/finance-domain-errors';
 
@@ -30,6 +31,10 @@ function yearBounds(taxYear: number): { from: Date; to: Date } {
 
 function signed(event: { eventType: string }, amount: bigint): bigint {
   return event.eventType === 'reversal' ? -amount : amount;
+}
+
+function sum<T>(items: T[], pick: (item: T) => bigint): bigint {
+  return items.reduce((total, item) => total + pick(item), 0n);
 }
 
 @Injectable()
@@ -66,6 +71,42 @@ export class PrismaTaxComplianceRepository implements ITaxComplianceRepository {
       taxableRevenue: result._sum.taxableRevenue ?? 0n,
       vatAmount: result._sum.vatAmount ?? 0n,
       pitAmount: result._sum.pitAmount ?? 0n,
+    };
+  }
+
+  /**
+   * Rebuild the tax position from the event trail in one pass. Reads every event
+   * of the settlement rather than aggregating, because a settlement carries one
+   * assessment plus a handful of reversals — and the assessment's own timestamp
+   * has to come back with the totals.
+   */
+  async taxPositionForSettlement(
+    tx: PrismaTx,
+    settlementId: string,
+  ): Promise<SettlementTaxPosition | null> {
+    const events = await tx.taxWithholdingEvent.findMany({
+      where: { settlementId },
+      orderBy: { occurredAt: 'asc' },
+    });
+    const assessment = events.find((event) => event.eventType === 'withholding');
+    if (!assessment) return null;
+    const reversals = events.filter(
+      (event) => event.eventType === 'reversal' && event.originalEventId === assessment.id,
+    );
+    const reversedTaxableRevenue = sum(reversals, (event) => event.taxableRevenue);
+    const reversedVat = sum(reversals, (event) => event.vatAmount);
+    const reversedPit = sum(reversals, (event) => event.pitAmount);
+    return {
+      assessedTaxableRevenue: assessment.taxableRevenue,
+      assessedVat: assessment.vatAmount,
+      assessedPit: assessment.pitAmount,
+      assessedAt: assessment.occurredAt,
+      reversedTaxableRevenue,
+      reversedVat,
+      reversedPit,
+      reversalCount: reversals.length,
+      netVat: assessment.vatAmount - reversedVat,
+      netPit: assessment.pitAmount - reversedPit,
     };
   }
 

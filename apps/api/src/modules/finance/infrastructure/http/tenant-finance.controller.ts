@@ -277,11 +277,11 @@ export class TenantFinanceController {
   async settlement(
     @Param('bookingId', new ZodValidationPipe(uuidSchema)) bookingId: string,
   ): Promise<BookingSettlementResponse> {
-    const settlement = await this.getSettlementUseCase.execute(this.tenantId, bookingId);
-    if (!settlement) {
+    const view = await this.getSettlementUseCase.execute(this.tenantId, bookingId);
+    if (!view) {
       throw new SettlementNotFound();
     }
-    return toBookingSettlementResponse(settlement);
+    return toBookingSettlementResponse(view.settlement, view.taxPosition);
   }
 
   @RequirePermissions('tenant.finance.read')

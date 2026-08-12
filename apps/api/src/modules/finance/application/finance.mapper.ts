@@ -17,6 +17,7 @@ import type {
   TaxFilingPeriodResponse,
   TaxWithholdingCertificateResponse,
   PartnerTaxWithholdingCertificateResponse,
+  SettlementTaxPositionDto,
 } from '@booking/contracts';
 import type { CommissionRuleRecord } from '../domain/ports/commission-rule-repository.port';
 import type { LedgerEntryView, OwnerBalance } from '../domain/ports/ledger-repository.port';
@@ -33,6 +34,7 @@ import type { CustomerDisputeStateView } from './use-cases/list-customer-dispute
 import type {
   TaxCertificateRecord,
   TaxFilingPeriodRecord,
+  SettlementTaxPosition,
 } from '../domain/ports/tax-compliance-repository.port';
 
 export function toCommissionRuleResponse(r: CommissionRuleRecord): CommissionRuleResponse {
@@ -98,8 +100,13 @@ export function toPartnerFinanceResponse(f: PartnerFinance): PartnerFinanceRespo
   return { balance: f.balance.toString(), entries: f.entries.map(toLedgerEntryResponse) };
 }
 
+/**
+ * `taxPosition` is omitted by the paginated list endpoints — a per-row tax trail
+ * would be one extra query per row and noise in a table. Detail reads pass it.
+ */
 export function toBookingSettlementResponse(
   settlement: SettlementRecord,
+  taxPosition: SettlementTaxPosition | null = null,
 ): BookingSettlementResponse {
   return {
     id: settlement.id,
@@ -142,8 +149,27 @@ export function toBookingSettlementResponse(
     completedAt: settlement.completedAt?.toISOString() ?? null,
     disputeUntil: settlement.disputeUntil?.toISOString() ?? null,
     releasedAt: settlement.releasedAt?.toISOString() ?? null,
+    taxPosition: toSettlementTaxPosition(taxPosition),
     createdAt: settlement.createdAt.toISOString(),
     updatedAt: settlement.updatedAt.toISOString(),
+  };
+}
+
+function toSettlementTaxPosition(
+  position: SettlementTaxPosition | null,
+): SettlementTaxPositionDto | null {
+  if (!position || !position.assessedAt) return null;
+  return {
+    assessedTaxableRevenue: position.assessedTaxableRevenue.toString(),
+    assessedVat: position.assessedVat.toString(),
+    assessedPit: position.assessedPit.toString(),
+    assessedAt: position.assessedAt.toISOString(),
+    reversedTaxableRevenue: position.reversedTaxableRevenue.toString(),
+    reversedVat: position.reversedVat.toString(),
+    reversedPit: position.reversedPit.toString(),
+    reversalCount: position.reversalCount,
+    netVat: position.netVat.toString(),
+    netPit: position.netPit.toString(),
   };
 }
 
@@ -208,8 +234,9 @@ export function toPartnerTaxWithholdingCertificateResponse(
 
 export function toPartnerBookingSettlementResponse(
   settlement: SettlementRecord,
+  taxPosition: SettlementTaxPosition | null = null,
 ): PartnerBookingSettlementResponse {
-  const full = toBookingSettlementResponse(settlement);
+  const full = toBookingSettlementResponse(settlement, taxPosition);
   return {
     id: full.id,
     bookingId: full.bookingId,
@@ -234,6 +261,7 @@ export function toPartnerBookingSettlementResponse(
     completedAt: full.completedAt,
     disputeUntil: full.disputeUntil,
     releasedAt: full.releasedAt,
+    taxPosition: full.taxPosition,
     createdAt: full.createdAt,
     updatedAt: full.updatedAt,
   };
