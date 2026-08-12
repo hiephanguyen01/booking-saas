@@ -69,3 +69,17 @@ export async function resolveStorefront(request: Request): Promise<StorefrontRes
     throw error;
   }
 }
+
+/**
+ * Where this tenant's operators sign in. `/partner` and `/tenant` exist only on a
+ * tenant console host, so a partner sent to the platform console would land on a
+ * 404. Falls back to the platform console for a tenant with no verified dashboard
+ * domain, which is the only place left that can tell them what to do.
+ */
+export function tenantDashboardOrigin(tenant: StorefrontTenant): string {
+  if (!tenant.adminHostname) return storefrontEnv.dashboardUrl;
+  if (tenant.adminHostname.endsWith('.localhost')) {
+    return `http://${tenant.adminHostname}:${storefrontEnv.dashboardPort}`;
+  }
+  return `https://${tenant.adminHostname}`;
+}

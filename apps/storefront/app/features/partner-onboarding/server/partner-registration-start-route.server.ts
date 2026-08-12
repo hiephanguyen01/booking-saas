@@ -4,9 +4,9 @@ import { redirect } from 'react-router';
 import { publicPost } from '~/lib/server/api.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
 import { getOptionalAuth } from '~/lib/server/auth.server';
-import { storefrontEnv } from '~/lib/server/env.server';
 import { requireLocale } from '~/lib/server/i18n.server';
 import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
+import { tenantDashboardOrigin } from '~/lib/server/tenant.server';
 import {
   inferredPartnerName,
   partnerRegistrationEntry,
@@ -30,7 +30,7 @@ export async function submitPartnerRegistrationStartRoute(request: Request, loca
     const tenant = getCurrentStorefrontTenant();
     const entry = partnerRegistrationEntry(auth, tenant.id);
     if (entry === 'dashboard') {
-      return redirect(`${storefrontEnv.dashboardUrl}/partner`);
+      return redirect(`${tenantDashboardOrigin(tenant)}/partner`);
     }
     const setCookie = await authFlow.create(request, {
       phase: 'partner_registration_profile',
