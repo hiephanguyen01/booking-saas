@@ -59,7 +59,9 @@
     "seed": "pnpm --filter=@booking/contracts build && node --env-file-if-exists=../../.env ./node_modules/ts-node/dist/bin.js --transpile-only prisma/seed.ts",
     "quick:start": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate reset && node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate deploy && pnpm run seed",
     "storage:init": "node --env-file-if-exists=../../.env ./node_modules/ts-node/dist/bin.js --transpile-only scripts/bootstrap-storage.ts",
-    "check:rls": "ts-node --transpile-only scripts/check-rls.ts"
+    "check:rls": "ts-node --transpile-only scripts/check-rls.ts",
+    "audit:tax": "node --env-file-if-exists=../../.env ./node_modules/ts-node/dist/bin.js --transpile-only scripts/audit-tax-lifecycle.ts",
+    "verify:tax": "node --env-file-if-exists=../../.env ./node_modules/ts-node/dist/bin.js --transpile-only scripts/verify-tax-scenarios.ts"
   },
   "version": "0.0.1"
 }

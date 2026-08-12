@@ -8,7 +8,17 @@ import { GetPayoutPolicyUseCase } from './get-payout-policy.use-case';
 import { Settlement } from '../../domain/entities/settlement.entity';
 import { RecordWithholdingReversalUseCase } from './record-withholding-reversal.use-case';
 
-/** Apply provider/manual refund truth to custody; partial retention still waits for disputes. */
+/**
+ * Apply provider/manual refund truth to custody; partial retention still waits
+ * for disputes.
+ *
+ * A refund never edits or deletes the original tax assessment: it appends a
+ * linked, proportional reversal, so the audit trail keeps
+ * `assessment − Σ reversals = final tax position`. Because tax is assessed at
+ * transaction acceptance, this holds whether the refund lands before or after
+ * settlement release — and after a payout the clawback pushes the partner's
+ * ledger balance negative, which the next payout run recovers.
+ */
 @Injectable()
 export class FinalizeSettlementRefundUseCase {
   constructor(

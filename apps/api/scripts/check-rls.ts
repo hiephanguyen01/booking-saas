@@ -25,11 +25,13 @@ const tables: string[] = [];
 const modelRe = /^model\s+(\w+)\s+\{([\s\S]*?)^\}/gm;
 let match: RegExpExecArray | null;
 while ((match = modelRe.exec(schema)) !== null) {
-  const [, modelName, body] = match;
+  const modelName = match[1];
+  const body = match[2];
+  if (!modelName || !body) continue;
   const hasTenantId = /@map\("tenant_id"\)/.test(body) || /^\s*tenant_id\s/m.test(body);
   if (!hasTenantId) continue;
   const mapped = /@@map\("([^"]+)"\)/.exec(body);
-  tables.push(mapped ? mapped[1] : modelName);
+  tables.push(mapped?.[1] ?? modelName);
 }
 
 if (tables.length === 0) {

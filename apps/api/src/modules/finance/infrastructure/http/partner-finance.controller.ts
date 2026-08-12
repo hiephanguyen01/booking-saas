@@ -189,11 +189,11 @@ export class PartnerFinanceController {
   ): Promise<PartnerBookingSettlementResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
-    const settlement = await this.getSettlementUseCase.execute(tenantId, bookingId, partnerId);
-    if (!settlement) {
+    const view = await this.getSettlementUseCase.execute(tenantId, bookingId, partnerId);
+    if (!view) {
       throw new SettlementNotFound();
     }
-    return toPartnerBookingSettlementResponse(settlement);
+    return toPartnerBookingSettlementResponse(view.settlement, view.taxPosition);
   }
 
   /**

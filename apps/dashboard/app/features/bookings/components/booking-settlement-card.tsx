@@ -8,6 +8,7 @@ import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DateTimeValue } from '~/components/date-time-value';
 import { Money } from '~/components/money';
 import { SETTLEMENT_STATUS_LABEL } from '~/constants/finance';
+import { SettlementTaxTrail } from './settlement-tax-trail';
 
 /** Custody and split state shown beside a booking to tenant and owning partner. */
 export function BookingSettlementCard({
@@ -122,6 +123,7 @@ export function BookingSettlementCard({
             ) : null}
           </DetailGrid>
         </DetailSection>
+        <SettlementTaxTrail taxPosition={settlement.taxPosition} />
       </CardContent>
     </Card>
   );

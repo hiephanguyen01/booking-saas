@@ -121,21 +121,96 @@ of sync. `tax` is **optional**, and `snapshotToRates` reads a missing one as
 
 An invoice issued in 2027 for a 2026 booking therefore still prints 8%.
 
-## NĐ 117 withholding at source
+## Withholding at source — the applicable instruments
 
 When the platform/tenant collects payment for a household or individual partner,
-the product applies provisional withholding under NĐ 117/2025/NĐ-CP. The service
-schedule is **5% VAT + 2% PIT**, effective 2025-07-01.
+the product applies provisional withholding. Three instruments govern it, and only
+two of them are encoded anywhere:
+
+| What | Instrument | Where it lives in this repo |
+| --- | --- | --- |
+| The withholding obligation + rate | **NĐ 117/2025/NĐ-CP** | `withholding_rates`, one row: 5% VAT + 2% PIT for services from 2025-07-01 |
+| How the withheld tax is declared and paid on behalf | **NĐ 68/2026/NĐ-CP** | **nowhere in code** — a doc link only (see below) |
+| The household annual-revenue threshold | **NĐ 141/2026/NĐ-CP** | `tax_threshold_rules`: 1B ₫ from 2026-01-01, revision 2, published 2026-05-25 |
+
+**NĐ 141/2026 is the currently-applicable threshold**, not Luật 48/2024's 200M —
+it retroactively replaced the short-lived 500M wording for 2026, so the active
+schedule jumps 200M (2025) → 1B (2026 onward). `tax-threshold-rules.ts` carries
+both rows with their `publishedAt`, so a retroactive revision is auditable rather
+than an overwrite.
+
+The **rate** schedule has no 2026 row: 5% + 2% still carries `legalRef:
+'NĐ 117/2025/NĐ-CP'` and has never been superseded here. If NĐ 68/2026 or any
+later instrument changed the service rates or their effective dates, the schedule
+is stale — and it is effective-dated data, so the fix is one row, not a deploy.
+
 Companies and house inventory are not withheld from: a company declares for
 itself, while house inventory has no third-party seller.
 
-The current BookingOS operational trigger is **`booking.completed`**, not the
-later payout release. This product gate treats confirmed service completion as
-the successful service transaction. The literal wording of Article 5 is earlier:
-“ngay khi xác nhận giao dịch thành công và chấp nhận thanh toán”, so tax counsel
-must validate that mapping before production. The dispute window only keeps the
-partner payout unavailable. A confirmed refund creates a linked, proportional
-reversal instead of mutating the original event.
+### The trigger is transaction acceptance, not payout
+
+The operational trigger is **`booking.completed`** — confirmed service completion,
+which this product treats as the platform accepting the transaction. It is
+assessed in `StartSettlementWindowUseCase` (and `StartNoShowSettlementWindowUseCase`
+for a no-show), in the same transaction that opens the dispute window.
+
+**Four lifecycles, never collapsed into one:**
+
+```
+payment.succeeded  →  customer funds held        (no revenue, no tax)
+booking.completed  →  TRANSACTION ACCEPTED
+                        ├─ tax assessment            ← tax happens HERE
+                        └─ settlement = dispute window
+dispute deadline   →  settlement released, revenue journal
+                   →  payout
+refund (any time)  →  linked tax reversal + settlement/ledger adjustment
+```
+
+`money received ≠ revenue ≠ tax assessment ≠ settlement ≠ payout`. A settlement
+release creates **no tax fact**; the dispute window only keeps the partner payout
+unavailable. A confirmed refund creates a linked, proportional reversal instead of
+mutating the original event.
+
+> **Until 2026-08-12 the code did not do this.** `RecordSettlementWithholdingUseCase`
+> was called from `ReleaseSettlementUseCase`, so the real trigger was *settlement
+> release* — after the dispute window — and `occurred_at` was `released_at`, which
+> put a transaction completed on the 31st into the **following month's** filing
+> period. A refund landing before release produced no assessment/reversal pair at
+> all, only a single assessment already netted down. This section described the
+> intended design, not the shipped one. Both are now aligned on the design above.
+
+The filing period is the month the transaction was accepted (`completed_at`), never
+the month a payout cleared. A reversal enters the month it occurs, which is what
+lets `assessment − Σ reversals` reconcile across period boundaries.
+
+#### ⚠️ Tax Counsel confirmation required
+
+Two questions are legal, not engineering, and must be signed off before production.
+They are independent — a "yes" to the first does not settle the second.
+
+**Resolve both against NĐ 68/2026/NĐ-CP, not against NĐ 117/2025 alone.** NĐ 117
+creates the obligation and the rate; NĐ 68/2026 is the guidance on *declaring and
+paying withheld tax for business on an e-commerce platform*, which is precisely the
+mechanics these two questions turn on. That decree is cited at the bottom of this
+page as a link and is reflected **nowhere in the code** — nobody has reconciled its
+text against what is implemented here.
+
+1. Is `booking.completed` the moment the platform *“xác nhận giao dịch thành công
+   và chấp nhận thanh toán”*? The wording in NĐ 117/2025 Đ.5 reads earlier than
+   service completion — for a deposit-plus-onsite booking it could be
+   `payment.succeeded`. The current mapping is a product judgement, not a legal one,
+   and NĐ 68/2026's declaration timing is what should settle it.
+2. At that moment, is `taxableAmount` the **whole transaction value**, only the
+   **portion the platform collected**, or something else given the transaction
+   structure? The code assesses the whole partner service revenue including cash
+   collected on site (see below) — that choice needs confirming, not assuming.
+   Note the platform can only ever *reverse* tax on money it holds (below), so the
+   two halves of this question interact.
+
+Also unreconciled: the statutory mechanism for offsetting tax already withheld on a
+cancelled transaction (offset against a later period vs. an amended return), and
+whether the 5% + 2% service rates and their 2025-07-01 effective date are still
+current under the 2026 instruments — `withholding_rates` has never been revised.
 
 This is a deduction from the partner's existing gross share, not a customer charge
 and not new tenant revenue. For a 280,000 ₫ declaring-household booking:

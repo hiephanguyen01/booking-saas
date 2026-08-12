@@ -79,6 +79,31 @@ export interface TaxDocumentUploadRecord {
   createdAt: Date;
 }
 
+/**
+ * The auditable tax position of one settlement, derived from the append-only
+ * event trail rather than the mutable projection columns on the settlement row:
+ *
+ *   original assessment − Σ reversals = final tax position
+ *
+ * `booking_settlements.partner_vat_withheld` is recomputed when a settlement is
+ * released, so it answers "what is currently deducted" but cannot answer "what
+ * was assessed, when, and what has been reversed since". Accounting needs both.
+ */
+export interface SettlementTaxPosition {
+  /** The single original assessment, absent until the transaction was accepted. */
+  assessedTaxableRevenue: bigint;
+  assessedVat: bigint;
+  assessedPit: bigint;
+  assessedAt: Date | null;
+  reversedTaxableRevenue: bigint;
+  reversedVat: bigint;
+  reversedPit: bigint;
+  reversalCount: number;
+  /** assessed − reversed, i.e. what the tenant still owes the tax authority. */
+  netVat: bigint;
+  netPit: bigint;
+}
+
 export interface TaxCertificateReadiness {
   eventCount: number;
   unsettledEventCount: number;
@@ -114,6 +139,11 @@ export interface ITaxComplianceRepository {
     tx: PrismaTx,
     assessmentId: string,
   ): Promise<{ taxableRevenue: bigint; vatAmount: bigint; pitAmount: bigint }>;
+  /** Null when the settlement has no assessment yet (transaction not accepted). */
+  taxPositionForSettlement(
+    tx: PrismaTx,
+    settlementId: string,
+  ): Promise<SettlementTaxPosition | null>;
   createEvent(
     tx: PrismaTx,
     tenantId: string,

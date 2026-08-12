@@ -8,6 +8,7 @@ import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DateTimeValue } from '~/components/date-time-value';
 import { Money } from '~/components/money';
 import { SETTLEMENT_STATUS_LABEL } from '~/constants/finance';
+import { SettlementTaxTrail } from './settlement-tax-trail';
 
 /** Partner-safe settlement view; tenant/platform/affiliate internals never reach this component. */
 export function PartnerBookingSettlementCard({
@@ -41,6 +42,7 @@ export function PartnerBookingSettlementCard({
             <DetailField label="Ngày nhận" value={settlement.latestPayoutPaidAt ? <DateTimeValue iso={settlement.latestPayoutPaidAt} /> : undefined} />
           </DetailGrid>
         </DetailSection>
+        <SettlementTaxTrail taxPosition={settlement.taxPosition} />
       </CardContent>
     </Card>
   );

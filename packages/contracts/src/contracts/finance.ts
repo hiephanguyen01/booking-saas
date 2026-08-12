@@ -292,6 +292,29 @@ export const settlementKindSchema = z.enum([
   'cancellation_fee',
 ]);
 
+/**
+ * The auditable tax trail of one settlement: `assessed − reversed = net`.
+ *
+ * Read from the append-only `tax_withholding_events`, not from the settlement's
+ * own withheld columns — those are recomputed when a settlement is released, so
+ * they show what is currently deducted but cannot show what was assessed at the
+ * accepted transaction, nor what a refund reversed since. Null until the
+ * transaction has been accepted (i.e. no assessment exists yet).
+ */
+export const settlementTaxPositionSchema = z.object({
+  assessedTaxableRevenue: vndDigits,
+  assessedVat: vndDigits,
+  assessedPit: vndDigits,
+  assessedAt: z.string(),
+  reversedTaxableRevenue: vndDigits,
+  reversedVat: vndDigits,
+  reversedPit: vndDigits,
+  reversalCount: z.number().int().nonnegative(),
+  netVat: vndDigits,
+  netPit: vndDigits,
+});
+export type SettlementTaxPositionDto = z.infer<typeof settlementTaxPositionSchema>;
+
 export const bookingSettlementResponseSchema = z.object({
   id: uuidSchema,
   tenantId: uuidSchema,
@@ -330,6 +353,7 @@ export const bookingSettlementResponseSchema = z.object({
   completedAt: z.string().nullable(),
   disputeUntil: z.string().nullable(),
   releasedAt: z.string().nullable(),
+  taxPosition: settlementTaxPositionSchema.nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -471,6 +495,9 @@ export const partnerBookingSettlementResponseSchema = bookingSettlementResponseS
   completedAt: true,
   disputeUntil: true,
   releasedAt: true,
+  // The partner is the party the tax was withheld FROM: it explains the smaller
+  // payable, so the trail belongs on their statement too.
+  taxPosition: true,
   createdAt: true,
   updatedAt: true,
 });
