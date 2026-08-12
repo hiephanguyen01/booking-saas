@@ -195,13 +195,20 @@ export class FinanceModule implements OnModuleInit {
   ) {}
 
   /**
-   * Payment success creates the custody record. Completion opens (but does not
-   * recognize revenue during) the dispute window. A worker creates the revenue
-   * journal only after that deadline. All handlers are idempotent for at-least-once
-   * outbox delivery:
-   *   payment succeeded → held; completed/no_show → dispute window;
-   *   cancelled → refund pending or a cancellation-fee dispute window;
-   *   refunded (post-completion dispute) → clawback reversal.
+   * Four independent lifecycles, deliberately not collapsed into one:
+   *
+   *   PAYMENT     payment succeeded → custody (`held`). No revenue, no tax.
+   *   TAX         completed/no_show → tax assessment + dispute window opens.
+   *   REFUND      cancelled/refunded → refund pending, then a linked tax
+   *               reversal and a clawback of any revenue already recognized.
+   *   SETTLEMENT  dispute deadline passed → revenue journal, then payout.
+   *
+   * Money received is not revenue, revenue is not a tax assessment, and neither
+   * is a payout. In particular a settlement release creates NO tax fact — tax was
+   * assessed when the transaction was accepted, and only a refund adjusts it.
+   *
+   * All handlers are idempotent for at-least-once outbox delivery (status-guarded
+   * CAS updates plus a unique `tax_withholding_events.source_key`).
    */
   onModuleInit(): void {
     this.registry.register('tenant.created', (event) => {

@@ -129,13 +129,60 @@ schedule is **5% VAT + 2% PIT**, effective 2025-07-01.
 Companies and house inventory are not withheld from: a company declares for
 itself, while house inventory has no third-party seller.
 
-The current BookingOS operational trigger is **`booking.completed`**, not the
-later payout release. This product gate treats confirmed service completion as
-the successful service transaction. The literal wording of Article 5 is earlier:
-“ngay khi xác nhận giao dịch thành công và chấp nhận thanh toán”, so tax counsel
-must validate that mapping before production. The dispute window only keeps the
-partner payout unavailable. A confirmed refund creates a linked, proportional
-reversal instead of mutating the original event.
+### The trigger is transaction acceptance, not payout
+
+The operational trigger is **`booking.completed`** — confirmed service completion,
+which this product treats as the platform accepting the transaction. It is
+assessed in `StartSettlementWindowUseCase` (and `StartNoShowSettlementWindowUseCase`
+for a no-show), in the same transaction that opens the dispute window.
+
+**Four lifecycles, never collapsed into one:**
+
+```
+payment.succeeded  →  customer funds held        (no revenue, no tax)
+booking.completed  →  TRANSACTION ACCEPTED
+                        ├─ tax assessment            ← tax happens HERE
+                        └─ settlement = dispute window
+dispute deadline   →  settlement released, revenue journal
+                   →  payout
+refund (any time)  →  linked tax reversal + settlement/ledger adjustment
+```
+
+`money received ≠ revenue ≠ tax assessment ≠ settlement ≠ payout`. A settlement
+release creates **no tax fact**; the dispute window only keeps the partner payout
+unavailable. A confirmed refund creates a linked, proportional reversal instead of
+mutating the original event.
+
+> **Until 2026-08-12 the code did not do this.** `RecordSettlementWithholdingUseCase`
+> was called from `ReleaseSettlementUseCase`, so the real trigger was *settlement
+> release* — after the dispute window — and `occurred_at` was `released_at`, which
+> put a transaction completed on the 31st into the **following month's** filing
+> period. A refund landing before release produced no assessment/reversal pair at
+> all, only a single assessment already netted down. This section described the
+> intended design, not the shipped one. Both are now aligned on the design above.
+
+The filing period is the month the transaction was accepted (`completed_at`), never
+the month a payout cleared. A reversal enters the month it occurs, which is what
+lets `assessment − Σ reversals` reconcile across period boundaries.
+
+#### ⚠️ Tax Counsel confirmation required
+
+Two questions are legal, not engineering, and must be signed off before production.
+They are independent — a "yes" to the first does not settle the second.
+
+1. Is `booking.completed` the moment the platform *“xác nhận giao dịch thành công
+   và chấp nhận thanh toán”* (NĐ 117/2025 Đ.5)? The literal wording may be earlier
+   than service completion — for a deposit-plus-onsite booking it could be
+   `payment.succeeded`. The current mapping is a product judgement, not a legal one.
+2. At that moment, is `taxableAmount` the **whole transaction value**, only the
+   **portion the platform collected**, or something else given the transaction
+   structure? The code assesses the whole partner service revenue including cash
+   collected on site (see below) — that choice needs confirming, not assuming.
+
+Also unverified in this repo: the statutory mechanism for offsetting tax already
+withheld on a cancelled transaction (offset against a later period vs. an amended
+return), and the current text of NĐ 68/2026 and NĐ 141/2026, which are referenced
+here but were not read against the source.
 
 This is a deduction from the partner's existing gross share, not a customer charge
 and not new tenant revenue. For a 280,000 ₫ declaring-household booking:

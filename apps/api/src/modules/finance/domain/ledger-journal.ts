@@ -174,8 +174,8 @@ export function buildRevenueJournal(input: RevenueJournalInput): JournalLeg[] {
 
   if (!isHouse && split.partnerShare > 0n)
     legs.push(credit(owner('partner', partnerId), 'partner_share', split.partnerShare));
-  // Withholding is journaled beside this release journal after the dispute
-  // window. These legs recognize the gross share without duplicating tax.
+  // Withholding already has its own journal, written when the transaction was
+  // accepted. These legs recognize the gross share without duplicating tax.
   if (split.platformFee > 0n)
     legs.push(credit(owner('platform', null), 'platform_fee', split.platformFee));
   if (split.affiliateCommission > 0n && affiliateId) {
@@ -187,7 +187,7 @@ export function buildRevenueJournal(input: RevenueJournalInput): JournalLeg[] {
   return withTenantResidual(tenantId, legs);
 }
 
-/** Post-dispute release: reduce the partner balance and recognize tax payable. */
+/** Transaction accepted: reduce the partner balance and recognize tax payable. */
 export function buildWithholdingJournal(params: {
   tenantId: string;
   partnerId: string;

@@ -2037,8 +2037,10 @@ model BookingSettlement {
   @@map("booking_settlements")
 }
 
-/// Append-only assessment/reversal facts. A post-dispute settlement release
-/// creates the withholding event; a confirmed refund creates a linked reversal.
+/// Append-only assessment/reversal facts. Confirmed service completion (the
+/// accepted transaction) creates the withholding event; a confirmed refund creates
+/// a linked reversal. Settlement release and payout create no tax fact at all.
+/// `occurred_at` is the transaction month, never the month a payout cleared.
 model TaxWithholdingEvent {
   id                 String                  @id @default(uuid(7)) @db.Uuid
   tenantId           String                  @map("tenant_id") @db.Uuid
