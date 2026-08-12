@@ -1081,7 +1081,8 @@ git commit -m "feat(tenancy): expose each tenant's console hostname on public an
 - Modify: `apps/dashboard/app/features/tenant/components/settings/tenant-domains-card.tsx`
 - Modify: `apps/dashboard/app/features/tenant/components/settings/settings-fields.ts` (`domainFields`)
 - Modify: `apps/dashboard/app/features/tenant/server/settings-actions.server.ts`
-- Modify: `apps/dashboard/app/routes/tenant/settings.tsx`
+- Modify: `apps/dashboard/app/routes/tenant/settings.tsx` (including the `publicUrl` pick at `:172-173`)
+- Modify: `apps/dashboard/app/features/tenant/components/settings/settings-overview.tsx` (`:60`, `:114`)
 
 **Interfaces:**
 - Consumes: `DomainResponse.kind` and `AddDomainInput.kind` (Task 4).
@@ -1138,7 +1139,35 @@ In `settings-actions.server.ts`, the add-domain branch posts to `apiPaths.tenant
 
 In `routes/tenant/settings.tsx`, where `TenantDomainsCard` is rendered once, render it twice — storefront first, then dashboard — passing the same loader data and `kind="storefront"` / `kind="dashboard"`.
 
-- [ ] **Step 5: Verify in the running app**
+- [ ] **Step 5: Fix the two client-side primary-domain picks**
+
+Both read the **unfiltered** list from `GET /tenant/domains` and `.find` the first primary, which is
+now the console host. This is not theoretical: the list arrives ordered `isPrimary desc, hostname asc`,
+both primaries tie on the first key, and `admin.<slug>…` sorts before `<slug>…`, so the wrong row wins
+deterministically. Task 3's backend filters cannot reach a client-side `.find`.
+
+In `routes/tenant/settings.tsx:172-173`, the `publicUrl` pick behind the "Mở storefront" button:
+
+```ts
+  const primaryDomain = domains?.find(
+    // Storefront only — this opens the customer-facing shop. Without the kind
+    // check it opens the admin console, because `admin.<slug>` sorts first.
+    (domain) => domain.kind === 'storefront' && domain.isPrimary && domain.verifiedAt,
+  );
+```
+
+In `features/tenant/components/settings/settings-overview.tsx:60`, the "Tên miền chính" value:
+
+```ts
+  const primaryDomain = domains.find(
+    (domain) => domain.kind === 'storefront' && domain.isPrimary,
+  );
+```
+
+Check line `:114` in the same file — if it re-derives the primary rather than reusing the value from
+`:60`, apply the same filter there; if it consumes `:60`'s result, leave it.
+
+- [ ] **Step 6: Verify in the running app**
 
 ```bash
 pnpm dev
@@ -1146,7 +1175,9 @@ pnpm dev
 
 Sign in at `localhost:5174` as `owner@bookingstudio.vn` / `demo-password`, open tenant settings, and confirm: two domain cards; the dashboard card lists `admin.bookingstudio.*`; adding `quanly.example.vn` under the dashboard card is refused with the Vietnamese prefix message; adding `admin.example.vn` under the storefront card is refused too.
 
-- [ ] **Step 6: Verify and commit**
+Then the regression this task also closes: the **"Mở storefront"** button must open `bookingstudio.stg.bookingos.vn`, not `admin.bookingstudio.stg.bookingos.vn`, and the "Tên miền chính" value on the overview card must show the storefront host. Check both before and after your Step 5 change if you want to see the bug — it reproduces deterministically.
+
+- [ ] **Step 7: Verify and commit**
 
 ```bash
 pnpm turbo lint typecheck --filter=@booking/dashboard

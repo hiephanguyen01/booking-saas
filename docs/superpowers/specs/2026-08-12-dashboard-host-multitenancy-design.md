@@ -218,9 +218,19 @@ links from it and falls back to `DASHBOARD_URL` when null.
 landing pointing at the platform console. `DASHBOARD_URL` stays required in
 `storefront/app/lib/server/env.server.ts` for exactly that.
 
-The dashboard→storefront direction (`routes/affiliate/links.tsx`, `routes/tenant/settings.tsx`,
-`routes/admin/tenants/detail.tsx`) already builds URLs from the tenant's hostname rather than an env
-var, so it needs nothing beyond the kind filters above.
+The dashboard→storefront direction builds URLs from the tenant's hostname rather than an env var, but
+that only makes *some* of it safe. Split it two ways:
+
+- `routes/affiliate/links.tsx` and `routes/admin/tenants/detail.tsx` read a hostname the **API**
+  chose (`AffiliateResponse.tenantHostname`, `TenantDetailResponse.primaryDomain`), so the backend
+  kind filters above fix them transitively.
+- `routes/tenant/settings.tsx` and `features/tenant/components/settings/settings-overview.tsx` do
+  their own `domains.find(d => d.isPrimary)` over the **full, unfiltered** list from
+  `GET /tenant/domains`. A backend filter cannot reach a client-side `.find`. Worse than
+  non-deterministic: the list is ordered `isPrimary desc, hostname asc`, both primaries tie on the
+  first key, and `admin.<slug>…` sorts before `<slug>…` — so the "Mở storefront" button
+  *deterministically* opens the admin console. Both call sites must filter
+  `d.kind === 'storefront'`, which is why `DomainResponse` carries `kind`.
 
 ### Email CTAs
 
