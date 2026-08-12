@@ -235,6 +235,53 @@ screen's own `domains.find(...)` picks (`routes/tenant/settings.tsx`,
 hostname asc`, and `"admin.<slug>…"` sorts before `"<slug>…"` alphabetically, so an unfiltered `.find()`
 would deterministically pick the console host instead of the storefront host.
 
+## Known gaps
+
+Recorded at merge so the next person finds them here rather than rediscovering them.
+
+**An affiliate-only user still reaches a dead end, one hop later than before.** `/workspaces` now
+lists approved affiliate memberships and links each to the right console, but following that link
+lands on the console root: `defaultDashboardPath` and `dashboardAreasFor` have no affiliate branch, so
+login redirects to `/` and the shell reports "chưa được gán vào khu vực quản trị nào" with an empty
+sidebar. `/affiliate` works if typed. Affiliates are deliberately not an RBAC scope, which is why they
+fall through both functions. Closing it means teaching `routes/home.tsx` to check
+`apiPaths.affiliate.me` when no scope matches, and redirect to `dashboardPaths.affiliate.home`; note
+that pointing the workspace card straight at `/affiliate` does **not** work on its own, because the
+login action recomputes the landing area and ignores the requested path.
+
+**`/workspaces` can stall on a degraded backend.** It used to make no backend calls at all, reading
+memberships from the request context. It now awaits `/affiliate/me` and then a per-membership
+`GET /public/tenant` to resolve each console hostname. Both swallow their errors, so the page cannot
+fail — but with the client's 10s default timeout, a slow API delays the page for tenant and partner
+users too, who need none of that data. A shorter `timeoutMs` on the affiliate branch would isolate it.
+
+**Three comments describe superseded behaviour.** `TenantDomain.requestCustomDomain`'s docblock still
+describes the insert-non-primary-then-swap dance that the unverified-primary guard removed, and its
+`isPrimary` parameter is now dead (its only caller passes `false`). The admin domain card's comment
+claims making a verified domain primary "stays a set-primary-domain row action" — true on the tenant
+screen, but that control does not exist on the admin screen, so a platform admin currently has no
+primary-domain control at all.
+
+**Four storefront-facing hostname resolvers do not filter by kind** — `prisma-review-tenant.reader.ts`,
+`prisma-content-report-tenant.reader.ts`, `prisma-favorite-tenant.reader.ts` and
+`prisma-finance-tenant-host.reader.ts` accept any verified hostname. This is a consistency gap, not an
+isolation one: a console hostname resolves to the same tenant that owns it, and reaching these paths
+with one requires forging `x-forwarded-host` directly against the API — an attacker who can do that
+can already forge any tenant's storefront hostname. Caddy never routes an `admin.*` browser request to
+the storefront. Adding `kind: 'storefront'` to each `where` would make the invariant "storefront-facing
+API resolves only storefront hostnames" true everywhere. While there:
+`prisma-finance-tenant-host.reader.ts` filters on neither `verifiedAt` nor `tenant.status`, unlike its
+three siblings.
+
+**`tenant_domains_kind_idx` is unused.** Every query pairs `kind` with `tenant_id` or `hostname`, so
+the standalone index earns nothing. Dropping it needs its own migration; the schema now declares it so
+`migrate diff` stays clean in the meantime.
+
+**Compose project names collide.** `docker-compose.yml` and `docker-compose.deploy.yml` set neither
+`COMPOSE_PROJECT_NAME` nor `-p`, so both derive the same project name from the directory and share a
+namespace. This already caused one incident during this feature's verification, when an orphan cleanup
+stopped four unrelated local containers.
+
 ## See also
 
 - [`docs/architecture.md`](../architecture.md) — Host→tenant resolution in the request-flow section.
