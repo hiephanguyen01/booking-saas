@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { CreateTenantInput } from '@booking/contracts';
-import { buildDefaultSubdomain } from '../../domain/hostname';
+import { buildDefaultAdminSubdomain, buildDefaultSubdomain } from '../../domain/hostname';
 import { TenantDomain } from '../../domain/entities/tenant-domain.entity';
 import { DomainTaken, TenantSlugTaken } from '../../domain/errors/tenancy-errors';
 import {
@@ -39,8 +39,11 @@ export class CreateTenantUseCase {
       throw new TenantSlugTaken(input.slug);
     }
     const subdomain = buildDefaultSubdomain(input.slug, this.config.baseDomain);
-    if (await this.domains.findByHostname(subdomain)) {
-      throw new DomainTaken(subdomain);
+    const adminSubdomain = buildDefaultAdminSubdomain(input.slug, this.config.baseDomain);
+    for (const hostname of [subdomain, adminSubdomain]) {
+      if (await this.domains.findByHostname(hostname)) {
+        throw new DomainTaken(hostname);
+      }
     }
 
     // Tenant + its primary domain commit in ONE admin-pool transaction: a failure
@@ -61,6 +64,19 @@ export class CreateTenantUseCase {
         TenantDomain.provisionDefaultSubdomain({
           tenantId: tenant.id,
           hostname: subdomain,
+          kind: 'storefront',
+          now: new Date(),
+        }),
+        tx,
+      );
+      // The console host is provisioned with the tenant, not sold as an add-on:
+      // /tenant and /partner exist only on a tenant host, so a tenant without one
+      // would have no way in at all.
+      await this.domains.create(
+        TenantDomain.provisionDefaultSubdomain({
+          tenantId: tenant.id,
+          hostname: adminSubdomain,
+          kind: 'dashboard',
           now: new Date(),
         }),
         tx,
@@ -73,6 +89,7 @@ export class CreateTenantUseCase {
       return { tenant, primaryDomain };
     });
     await this.cache.invalidateHost(subdomain);
+    await this.cache.invalidateHost(adminSubdomain);
     return { tenant, primaryDomain };
   }
 }

@@ -37,6 +37,7 @@ export interface TenantDomainState {
   tenantId: string;
   hostname: string;
   isPrimary: boolean;
+  kind: TenantHostKind;
   verificationToken: string | null;
   verifiedAt: Date | null;
 }
@@ -58,18 +59,18 @@ export class TenantDomain {
     return new TenantDomain(state);
   }
 
-  /** The `<slug>.<baseDomain>` subdomain we own: primary and verified from birth.
-   *  Always a storefront hostname — there is no dashboard-domain provisioning flow yet. */
+  /** The `<slug>.<baseDomain>` subdomain we own: primary and verified from birth. */
   static provisionDefaultSubdomain(input: {
     tenantId: string;
     hostname: string;
+    kind: TenantHostKind;
     now: Date;
   }): NewTenantDomain {
     return {
       tenantId: input.tenantId,
       hostname: input.hostname,
       isPrimary: true,
-      kind: 'storefront',
+      kind: input.kind,
       verificationToken: null,
       verifiedAt: input.now,
     };
@@ -81,21 +82,19 @@ export class TenantDomain {
    * inserts a requested primary as non-primary first, then performs the
    * repository's clear-old/set-new swap in one transaction so the DB's
    * one-primary partial unique index is never violated.
-   *
-   * Always a storefront hostname — tenant-facing custom-domain mapping has no
-   * dashboard equivalent yet.
    */
   static requestCustomDomain(input: {
     tenantId: string;
     hostname: string;
     isPrimary: boolean;
+    kind: TenantHostKind;
     randomHex: string;
   }): NewTenantDomain {
     return {
       tenantId: input.tenantId,
       hostname: input.hostname,
       isPrimary: input.isPrimary,
-      kind: 'storefront',
+      kind: input.kind,
       verificationToken: buildVerificationToken(input.randomHex),
       verifiedAt: null,
     };
@@ -115,6 +114,10 @@ export class TenantDomain {
 
   get isPrimary(): boolean {
     return this.state.isPrimary;
+  }
+
+  get kind(): TenantHostKind {
+    return this.state.kind;
   }
 
   get belongsToTenant(): string {

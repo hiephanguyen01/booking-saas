@@ -152,6 +152,7 @@ export function toDomainResponse(d: DomainRecord): DomainResponse {
     tenantId: d.tenantId,
     hostname: d.hostname,
     isPrimary: d.isPrimary,
+    kind: d.kind,
     verifiedAt: d.verifiedAt ? d.verifiedAt.toISOString() : null,
     ...(record
       ? {

@@ -126,9 +126,14 @@ export const assignSubscriptionInputSchema = z.object({
 });
 export type AssignSubscriptionInput = z.infer<typeof assignSubscriptionInputSchema>;
 
+export const tenantDomainKindSchema = z.enum(['storefront', 'dashboard']);
+export type TenantDomainKind = z.infer<typeof tenantDomainKindSchema>;
+
 export const addDomainInputSchema = z.object({
   hostname: hostnameSchema,
   isPrimary: z.boolean().default(false),
+  /** Which surface the hostname serves. A dashboard host must start with `admin.`. */
+  kind: tenantDomainKindSchema.default('storefront'),
 });
 export type AddDomainInput = z.infer<typeof addDomainInputSchema>;
 
@@ -344,6 +349,7 @@ export const domainResponseSchema = z.object({
   tenantId: z.string(),
   hostname: z.string(),
   isPrimary: z.boolean(),
+  kind: tenantDomainKindSchema,
   verifiedAt: z.string().nullable(),
   /** Ownership-proof record; absent once the domain is verified. */
   verification: domainVerificationRecordSchema.optional(),

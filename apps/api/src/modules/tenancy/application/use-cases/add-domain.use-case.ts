@@ -2,8 +2,13 @@ import { randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { AddDomainInput } from '@booking/contracts';
 import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
-import { DomainTaken } from '../../domain/errors/tenancy-errors';
+import {
+  AdminDomainPrefixRequired,
+  AdminPrefixReserved,
+  DomainTaken,
+} from '../../domain/errors/tenancy-errors';
 import { TenantDomain } from '../../domain/entities/tenant-domain.entity';
+import { isAdminHostname } from '../../domain/hostname';
 import { normalizeHostname } from '../../../../shared/http/hostname';
 import {
   TENANT_REPOSITORY,
@@ -40,6 +45,17 @@ export class AddDomainUseCase {
     await this.assertCustomDomainAllowed.execute(tenantId);
 
     const hostname = normalizeHostname(input.hostname);
+
+    // Symmetric rules. Without the second one a storefront host could claim
+    // `admin.…` and Caddy would route real shop traffic to the console.
+    const adminHost = isAdminHostname(hostname);
+    if (input.kind === 'dashboard' && !adminHost) {
+      throw new AdminDomainPrefixRequired(hostname);
+    }
+    if (input.kind === 'storefront' && adminHost) {
+      throw new AdminPrefixReserved(hostname);
+    }
+
     if (await this.domains.findByHostname(hostname)) {
       throw new DomainTaken(hostname);
     }
@@ -47,6 +63,7 @@ export class AddDomainUseCase {
       tenantId,
       hostname,
       isPrimary: input.isPrimary,
+      kind: input.kind,
       randomHex: randomBytes(16).toString('hex'),
     });
     const created = await this.tenantDb.forTenant(tenantId, async (tx) => {
