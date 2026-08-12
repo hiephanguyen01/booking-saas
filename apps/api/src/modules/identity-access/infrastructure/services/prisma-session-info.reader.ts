@@ -25,7 +25,18 @@ export class PrismaSessionInfoReader implements ISessionInfoReader {
       where: { userId },
       include: {
         role: { include: { rolePermissions: true } },
-        tenant: { select: { id: true, name: true, themeConfig: true } },
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            themeConfig: true,
+            domains: {
+              where: { kind: 'dashboard', isPrimary: true, verifiedAt: { not: null } },
+              select: { hostname: true },
+              take: 1,
+            },
+          },
+        },
       },
     });
 
@@ -54,6 +65,7 @@ export class PrismaSessionInfoReader implements ISessionInfoReader {
           partnerId: row.partnerId ?? null,
           partnerName: row.partnerId ? (partnerName.get(row.partnerId) ?? null) : null,
           tenantBranding: branding.success ? branding.data : null,
+          adminHostname: row.tenant?.domains[0]?.hostname ?? null,
           roles: [],
           permissions: [],
         };

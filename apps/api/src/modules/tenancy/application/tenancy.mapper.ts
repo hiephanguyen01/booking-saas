@@ -111,7 +111,11 @@ export function toSubscriptionHistoryItem(s: SubscriptionHistoryRecord): Subscri
   return { ...toSubscriptionResponse(s), planName: s.planName };
 }
 
-export function toPublicTenantResponse(t: TenantRecord, live: boolean): PublicTenantResponse {
+export function toPublicTenantResponse(
+  t: TenantRecord,
+  live: boolean,
+  adminHostname: string | null,
+): PublicTenantResponse {
   return {
     id: t.id,
     name: t.name,
@@ -120,6 +124,7 @@ export function toPublicTenantResponse(t: TenantRecord, live: boolean): PublicTe
     defaultLocale: t.defaultLocale as 'vi' | 'en',
     themeConfig: toThemeConfig(t.themeConfig),
     live,
+    adminHostname,
   };
 }
 

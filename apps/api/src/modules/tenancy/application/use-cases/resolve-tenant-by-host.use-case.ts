@@ -65,13 +65,16 @@ export class ResolveTenantByHostUseCase {
       throw new UnknownTenantHost(hostname);
     }
 
-    const selection = await this.currentSubscriptions.findByTenant(tenantId);
+    const [selection, adminHostname] = await Promise.all([
+      this.currentSubscriptions.findByTenant(tenantId),
+      this.domains.findPrimaryHostname(tenantId, 'dashboard'),
+    ]);
     const evaluation = evaluateSubscription(
       selection.current?.subscription ?? null,
       selection.evaluatedAt,
     );
     const live =
       tenant.status === 'active' && evaluation.storefrontLive && tenant.legalReadyAt !== null;
-    return toPublicTenantResponse(tenant, live);
+    return toPublicTenantResponse(tenant, live, adminHostname);
   }
 }

@@ -500,5 +500,11 @@ export const publicTenantResponseSchema = z.object({
   defaultLocale: localeSchema,
   themeConfig: themeConfigSchema,
   live: z.boolean(),
+  /**
+   * The tenant's console host, so the storefront can link a partner or affiliate
+   * to the right dashboard instead of the platform one. Null when the tenant has
+   * no verified dashboard domain.
+   */
+  adminHostname: z.string().nullable(),
 });
 export type PublicTenantResponse = z.infer<typeof publicTenantResponseSchema>;

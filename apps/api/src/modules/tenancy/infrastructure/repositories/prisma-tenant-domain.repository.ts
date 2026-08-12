@@ -59,6 +59,14 @@ export class PrismaTenantDomainRepository implements ITenantDomainRepository {
     return rows.map(toRecord);
   }
 
+  async findPrimaryHostname(tenantId: string, kind: TenantHostKind): Promise<string | null> {
+    const row = await this.prisma.admin.tenantDomain.findFirst({
+      where: { tenantId, kind, isPrimary: true, verifiedAt: { not: null } },
+      select: { hostname: true },
+    });
+    return row?.hostname ?? null;
+  }
+
   async markVerified(id: string): Promise<DomainRecord> {
     return toRecord(
       await this.prisma.admin.tenantDomain.update({

@@ -28,6 +28,8 @@ export interface ITenantDomainRepository {
   findById(id: string, tx?: PrismaTx): Promise<DomainRecord | null>;
   listByTenant(tenantId: string): Promise<DomainRecord[]>;
   listByTenantAndKind(tenantId: string, kind: TenantHostKind): Promise<DomainRecord[]>;
+  /** The tenant's primary verified hostname for one surface, or null. */
+  findPrimaryHostname(tenantId: string, kind: TenantHostKind): Promise<string | null>;
   markVerified(id: string): Promise<DomainRecord>;
   /** Atomically make one domain primary and clear the previous primary. */
   setPrimary(tenantId: string, id: string, tx: PrismaTx): Promise<DomainRecord>;
