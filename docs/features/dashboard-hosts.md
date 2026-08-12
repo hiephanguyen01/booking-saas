@@ -166,6 +166,28 @@ one step further and check the signed-in user actually holds a membership in *th
 as one tenant's owner at another tenant's console host a hard failure rather than a quiet cross-tenant
 peek.
 
+### Landing an affiliate
+
+`defaultDashboardPath` picks the landing area from `info.scopes`, and **affiliates are not in it** —
+the affiliate portal is membership-gated rather than RBAC-scoped, so an affiliate holds no role
+assignment and appears in no scope. That function is also synchronous, while affiliate memberships
+live behind `GET /affiliate/me`, so it cannot learn about them even in principle.
+
+`routes/home.tsx` closes that: when no scope matches on a tenant console host, it looks up the
+caller's approved affiliate memberships and redirects to `/affiliate` if one belongs to this host's
+tenant, failing open to the no-access notice on a read error. It has to happen there rather than in a
+link, because the login action recomputes the landing area from scratch and discards whatever path was
+requested.
+
+Switching between two tenants' portals is a **cross-origin** move, not a query parameter. An earlier
+`?tenant=` selector on the affiliate layout stopped working the moment the host became the selector —
+the links rendered and did nothing — and was replaced by a link out to `/workspaces` on the platform
+console, which is the only page that can enumerate every membership with a working link.
+
+The affiliate area's sidebar being empty is not a gap: it carries its own in-page tab nav
+(`routes/affiliate/nav.ts`), because a membership-gated area has no permission-filtered sections to
+build a sidebar from.
+
 ## Sessions are per-host by cookie scope, not by a host field on the session
 
 The Redis-backed session record (`apps/dashboard/app/lib/session-store.server.ts`) holds only
@@ -238,16 +260,6 @@ would deterministically pick the console host instead of the storefront host.
 ## Known gaps
 
 Recorded at merge so the next person finds them here rather than rediscovering them.
-
-**An affiliate-only user still reaches a dead end, one hop later than before.** `/workspaces` now
-lists approved affiliate memberships and links each to the right console, but following that link
-lands on the console root: `defaultDashboardPath` and `dashboardAreasFor` have no affiliate branch, so
-login redirects to `/` and the shell reports "chưa được gán vào khu vực quản trị nào" with an empty
-sidebar. `/affiliate` works if typed. Affiliates are deliberately not an RBAC scope, which is why they
-fall through both functions. Closing it means teaching `routes/home.tsx` to check
-`apiPaths.affiliate.me` when no scope matches, and redirect to `dashboardPaths.affiliate.home`; note
-that pointing the workspace card straight at `/affiliate` does **not** work on its own, because the
-login action recomputes the landing area and ignores the requested path.
 
 **`/workspaces` can stall on a degraded backend.** It used to make no backend calls at all, reading
 memberships from the request context. It now awaits `/affiliate/me` and then a per-membership
