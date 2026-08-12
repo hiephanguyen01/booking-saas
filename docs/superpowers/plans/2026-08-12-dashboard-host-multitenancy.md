@@ -513,7 +513,7 @@ pnpm --filter=@booking/api typecheck && pnpm --filter=@booking/api lint
 
 Expected: pass. Type errors here are the point — they enumerate every call site of the old cache shape.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
 git add apps/api/src/modules/tenancy
@@ -1684,7 +1684,41 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 Each card's link becomes an absolute `href` built from the membership's `adminHostname` — `https://<adminHostname>` in production, `http://<adminHostname>:<DASHBOARD_PORT>` when the hostname ends in `.localhost`, mirroring the API's `storefrontUrl()` helper. A membership with a null `adminHostname` renders disabled with the copy "Chưa cấu hình tên miền quản trị".
 
-- [ ] **Step 6: Send stray area paths to the directory**
+- [ ] **Step 6: Make the post-login landing host-aware**
+
+`defaultDashboardPath` (`app/lib/workspace.ts`) is host-blind and still returns `/tenant` for a
+tenant-only user. `routes/auth/login.tsx:20,43` and `routes/home.tsx:12` both redirect to it, so
+signing in on the **platform** host currently lands on `/tenant`, where `getCurrentHostTenant()`
+throws a raw `Error` — a 500, not a 404. Step 7's layout guards catch it, but only after a bounce
+through an error-prone path; fix the source too.
+
+Give it the host:
+
+```ts
+export function defaultDashboardPath(
+  info: SessionInfoResponse,
+  host: DashboardHostResolution,
+): string {
+  // On the platform host only `/admin` exists. Everyone else belongs on a tenant
+  // console host, so the directory is the honest landing — it is the only page
+  // here that can tell them where to go.
+  if (host.kind === 'platform') {
+    return info.scopes.some((membership) => membership.scope === 'platform')
+      ? dashboardPaths.admin.home
+      : dashboardPaths.workspaces;
+  }
+  const tenant = tenantMembership(info, host.tenant.id);
+  if (tenant) return dashboardPaths.tenant.home;
+  const partner = partnerMembershipIn(info, host.tenant.id);
+  if (partner) return dashboardPaths.partner.home;
+  return dashboardPaths.home;
+}
+```
+
+Update both callers to pass `getCurrentDashboardHost()`. `packages/auth`'s `defaultAreaFor` is a
+different function used elsewhere — leave it alone.
+
+- [ ] **Step 7: Send stray area paths to the directory**
 
 `routes/home.tsx` is the index route. On the platform host it should send an authenticated caller to `/admin` if they hold platform scope and to `/workspaces` otherwise; on a tenant host it keeps sending them to their default area. Add the same guard to the top of the `_layout.tsx` loaders for `tenant`, `partner` and `affiliate`:
 
@@ -1698,7 +1732,7 @@ Each card's link becomes an absolute `href` built from the membership's `adminHo
 
 The anonymous branch 404s rather than redirecting, so the directory can never be used to probe which areas exist.
 
-- [ ] **Step 7: Correct the CLAUDE.md note about the sign-in screen**
+- [ ] **Step 8: Correct the CLAUDE.md note about the sign-in screen**
 
 `apps/dashboard/CLAUDE.md:80-82` states the sign-in screen "renders *before* a tenant is known, so it cannot inherit a brand from the session". That is no longer true. Replace those sentences with:
 
@@ -1712,13 +1746,14 @@ design system, and nothing else in the app should acquire one.
 
 Also update the "Data & auth" paragraph to say the root middleware resolves the Host to a tenant before authenticating.
 
-- [ ] **Step 8: Verify in the running app**
+- [ ] **Step 9: Verify in the running app**
 
 ```bash
 pnpm dev
 ```
 
 Confirm each of these:
+- Signing in as `owner@bookingstudio.vn` on the **platform** host (`localhost:5174`) lands on `/workspaces`, **not** a 500. That path is broken on this branch until Step 6 lands — check it before and after.
 - `admin.bookingstudio.localhost:5174` shows the BookingStudio brand on the **login** screen.
 - After signing in as `owner@bookingstudio.vn`, the sidebar shows only Tenant (and Partner if applicable) — no Platform Admin group.
 - `admin.bookingstudio.localhost:5174/admin` returns 404.
@@ -1730,7 +1765,7 @@ Confirm each of these:
   across. The `__dashboard_session` cookie sets no `domain`, so this needs no code — but it is the
   behaviour the design chose deliberately, and a regression here would be silent.
 
-- [ ] **Step 9: Verify and commit**
+- [ ] **Step 10: Verify and commit**
 
 ```bash
 pnpm check:frontend-structure && pnpm turbo lint typecheck --filter=@booking/dashboard
@@ -1952,7 +1987,22 @@ In `docker-compose.deploy.yml`, the `dashboard` service needs `DASHBOARD_HOST` s
       DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}
 ```
 
-- [ ] **Step 4: Document the local variables**
+- [ ] **Step 4: Fail fast when `DASHBOARD_HOST` is missing or malformed**
+
+`tenant-host.server.ts` reads `process.env.DASHBOARD_HOST` with a silent fallback: absent means "no
+host is the platform host". In staging that is a quiet catastrophe — `admin.stg.bookingos.vn` has a
+dot, is not an IP, and is not a verified `kind='dashboard'` tenant domain, so **the entire platform
+console 404s** with nothing in the logs naming the cause.
+
+The storefront already solves this: `apps/storefront/app/lib/server/env.server.ts` validates
+`PLATFORM_BASE_DOMAIN` at boot through `requiredHostname`, refusing to start on a bad value and
+requiring it outright in production. Give the dashboard the same treatment — a small
+`app/lib/env.server.ts` following that file's shape, exporting a frozen object with a validated
+`dashboardHost`, and have `tenant-host.server.ts` read from it instead of `process.env`.
+
+Refusing to boot beats serving a console that 404s for everyone.
+
+- [ ] **Step 5: Document the local variables**
 
 In `.env.example`, add `DASHBOARD_HOST` with the local value and a comment:
 
@@ -1962,19 +2012,19 @@ In `.env.example`, add `DASHBOARD_HOST` with the local value and a comment:
 DASHBOARD_HOST=localhost
 ```
 
-- [ ] **Step 5: Write the feature doc**
+- [ ] **Step 6: Write the feature doc**
 
 Create `docs/features/dashboard-hosts.md` covering: the `kind` discriminator and the widened primary index; the reserved `admin.` prefix and why it is a routing contract rather than a preference; the two resolution use-cases and why the storefront one must filter; the deliberate difference in `live` semantics (an expired subscription reaches the console, a suspended tenant does not); which areas live on which host; the per-host session model; and the five primary-domain reads that must stay kind-scoped. Link it from the `docs/features/` list in `AGENTS.md`.
 
-- [ ] **Step 6: Update the run recipe and layout notes**
+- [ ] **Step 7: Update the run recipe and layout notes**
 
 In `AGENTS.md`, the Layout table describes the dashboard as `/admin /tenant /partner /affiliate` on port 5174. Change it to note that `/admin` is served on the platform host and the other three on a tenant console host. In "Local run recipe", add the console hosts beside the existing storefront hosts, and extend the two-demo-tenants table with an `admin.` column.
 
-- [ ] **Step 7: Update architecture and deployment docs**
+- [ ] **Step 8: Update architecture and deployment docs**
 
 In `docs/architecture.md`, extend the request-flow section covering Host→tenant resolution to describe both surfaces. In `docs/deployment.md`, document the Caddy matcher and the fact that a tenant console custom domain follows the same TXT + on-demand-TLS path as a storefront one, with the added prefix rule.
 
-- [ ] **Step 8: Run the full static check**
+- [ ] **Step 9: Run the full static check**
 
 ```bash
 pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure \
@@ -1985,14 +2035,14 @@ pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure
 
 Expected: every gate passes.
 
-- [ ] **Step 9: End-to-end walk-through**
+- [ ] **Step 10: End-to-end walk-through**
 
 With `docker compose up -d` and `pnpm dev`, confirm the full list from the spec's Verification section: branded login at `admin.bookingstudio.localhost:5174`; `/admin` 404 there and `/tenant` 404 on `localhost:5174`; the 403 for a user with no role in the host's tenant (sign in as `owner@bookingstad.vn` at `admin.bookingstudio.localhost:5174`); a non-`admin.` dashboard domain refused in tenant settings; a partner email CTA in Mailpit pointing at the tenant console; and an affiliate referral link in `/affiliate/links` still pointing at the storefront host.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add docker/caddy/Caddyfile docker-compose.deploy.yml .env.example AGENTS.md docs
+git add docker/caddy/Caddyfile docker-compose.deploy.yml .env.example AGENTS.md docs apps/dashboard
 git commit -m "feat(ops): route admin.* hosts to the dashboard and document the split"
 ```
 
