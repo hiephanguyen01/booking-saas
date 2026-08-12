@@ -47,6 +47,7 @@ import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { SetPrimaryDomainUseCase } from '../../application/use-cases/set-primary-domain.use-case';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
+import { ResolveTenantByAdminHostUseCase } from '../../application/use-cases/resolve-tenant-by-admin-host.use-case';
 import { GetPlatformHealthUseCase } from '../../application/use-cases/get-platform-health.use-case';
 import { GetPlanLimitsUseCase } from '../../application/use-cases/get-plan-limits.use-case';
 import { AssertCanAddPartnerUseCase } from '../../application/use-cases/assert-can-add-partner.use-case';
@@ -129,6 +130,7 @@ const LEGAL_READINESS_PAYLOAD = z.object({
     DeleteDomainUseCase,
     SetPrimaryDomainUseCase,
     ResolveTenantByHostUseCase,
+    ResolveTenantByAdminHostUseCase,
     GetPlatformHealthUseCase,
     GetPlanLimitsUseCase,
     AssertCanAddPartnerUseCase,
@@ -155,6 +157,8 @@ const LEGAL_READINESS_PAYLOAD = z.object({
     CURRENT_SUBSCRIPTION_READER,
     // The catalog's public endpoints resolve the tenant from the Host with this.
     ResolveTenantByHostUseCase,
+    // The dashboard BFF resolves a console Host to its tenant with this.
+    ResolveTenantByAdminHostUseCase,
   ],
 })
 export class TenancyModule implements OnModuleInit {

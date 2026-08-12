@@ -43,16 +43,22 @@ export class ResolveTenantByHostUseCase {
     // Redis read and a query on the empty key to reach this identical 404.
     if (!hostname) throw new UnknownTenantHost(rawHost);
 
-    let tenantId = await this.cache.getHost(hostname);
-    if (tenantId === undefined) {
+    let cached = await this.cache.getHost(hostname);
+    if (cached === undefined) {
       const domain = await this.domains.findByHostname(hostname);
       // Only a verified domain resolves — an unverified custom domain isn't live.
-      tenantId = domain && domain.verifiedAt ? domain.tenantId : null;
-      await this.cache.setHost(hostname, tenantId);
+      cached = domain && domain.verifiedAt
+        ? { tenantId: domain.tenantId, kind: domain.kind }
+        : null;
+      await this.cache.setHost(hostname, cached);
     }
-    if (tenantId === null) {
+    // A dashboard hostname is not a storefront. Ten modules resolve a tenant
+    // through this use-case; without this guard an admin host would read as a
+    // valid storefront everywhere from checkout to legal documents.
+    if (cached === null || cached.kind !== 'storefront') {
       throw new UnknownTenantHost(hostname);
     }
+    const tenantId = cached.tenantId;
 
     const tenant = await this.tenants.findById(tenantId);
     if (!tenant) {
