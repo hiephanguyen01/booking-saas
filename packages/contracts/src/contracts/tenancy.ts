@@ -508,3 +508,16 @@ export const publicTenantResponseSchema = z.object({
   adminHostname: z.string().nullable(),
 });
 export type PublicTenantResponse = z.infer<typeof publicTenantResponseSchema>;
+
+/** `GET /public/admin-tenant` — the dashboard BFF resolving its Host to a tenant. */
+export const adminHostTenantResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  branding: dashboardBrandConfigSchema.nullable(),
+  /** Shows a renewal banner; the console stays usable so the tenant can pay. */
+  subscriptionExpired: z.boolean(),
+  /** Locks the console behind a 403 — unlike an expiry, this is not self-serve. */
+  suspended: z.boolean(),
+});
+export type AdminHostTenantResponse = z.infer<typeof adminHostTenantResponseSchema>;

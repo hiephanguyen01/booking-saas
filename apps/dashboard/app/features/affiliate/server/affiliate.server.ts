@@ -1,14 +1,15 @@
 import type { AffiliateResponse } from '@booking/contracts';
 import { apiGet, type ApiAuth } from '~/lib/api.server';
 import { requireSessionInfo, type AuthContext } from '~/lib/auth.server';
+import { getCurrentHostTenant } from '~/lib/request-auth.server';
 import { apiPaths } from '~/constants/api-paths';
 
 /**
  * Membership-gated context for the affiliate self-service portal (§15.3).
  * Affiliates are NOT an RBAC scope — any logged-in user may hold an `affiliates`
  * row. We resolve the user's memberships from the backend (apiPaths.affiliate.me) and
- * select the active one from `?tenant=` or the first approved membership. The
- * `x-affiliate-tenant` header on `auth` tells the backend which one to act in.
+ * select the approved membership for the host's tenant. The `x-affiliate-tenant`
+ * header on `auth` tells the backend which one to act in.
  */
 export interface AffiliateAreaContext {
   ctx: AuthContext;
@@ -27,8 +28,8 @@ export async function requireAffiliate(request: Request): Promise<AffiliateAreaC
   const memberships = res.ok ? (res.data ?? []) : [];
   const approved = memberships.filter((m) => m.status === 'approved');
 
-  const requested = new URL(request.url).searchParams.get('tenant');
-  const active = (requested ? approved.find((m) => m.tenantId === requested) : approved[0]) ?? null;
+  const hostTenant = getCurrentHostTenant();
+  const active = approved.find((membership) => membership.tenantId === hostTenant.id) ?? null;
 
   return {
     ctx,

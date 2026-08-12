@@ -7,13 +7,14 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import type { PublicTenantResponse } from '@booking/contracts';
+import type { AdminHostTenantResponse, PublicTenantResponse } from '@booking/contracts';
 import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { UnknownTenantHost } from '../../domain/errors/tenancy-errors';
 import { CheckDomainTlsAllowedUseCase } from '../../application/use-cases/check-domain-tls-allowed.use-case';
+import { ResolveTenantByAdminHostUseCase } from '../../application/use-cases/resolve-tenant-by-admin-host.use-case';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
-import { PublicTenantResponseDto } from './dto/tenancy.dto';
+import { AdminHostTenantResponseDto, PublicTenantResponseDto } from './dto/tenancy.dto';
 
 /**
  * Storefront tenant resolution (§6.1). The RR7 BFF calls this server-side with
@@ -24,6 +25,7 @@ import { PublicTenantResponseDto } from './dto/tenancy.dto';
 export class PublicTenantController {
   constructor(
     private readonly resolve: ResolveTenantByHostUseCase,
+    private readonly resolveAdmin: ResolveTenantByAdminHostUseCase,
     private readonly checkTlsAllowed: CheckDomainTlsAllowedUseCase,
   ) {}
 
@@ -43,6 +45,21 @@ export class PublicTenantController {
       throw new MissingTenantHost();
     }
     return this.resolve.execute(resolvedHost);
+  }
+
+  @Public()
+  @Get('admin-tenant')
+  @ApiOperation({ summary: 'Resolve the tenant for a dashboard Host' })
+  @ApiOkResponse({ type: AdminHostTenantResponseDto })
+  async adminTenant(
+    @Headers('x-forwarded-host') forwardedHost?: string,
+    @Headers('host') host?: string,
+  ): Promise<AdminHostTenantResponse> {
+    const resolvedHost = forwardedHost?.split(',')[0]?.trim() || host;
+    if (!resolvedHost) {
+      throw new MissingTenantHost();
+    }
+    return this.resolveAdmin.execute(resolvedHost);
   }
 
   /**

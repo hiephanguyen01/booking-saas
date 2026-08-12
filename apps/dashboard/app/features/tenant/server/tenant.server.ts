@@ -1,7 +1,8 @@
 import type { ScopeMembership } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
 import { requireScope, type AuthContext } from '~/lib/auth.server';
-import { firstTenantMembership } from '~/lib/workspace';
+import { getCurrentHostTenant } from '~/lib/request-auth.server';
+import { tenantMembership } from '~/lib/workspace';
 
 /**
  * Resolved tenant request context for a loader/action. The access token has just
@@ -19,19 +20,20 @@ export interface TenantContext {
   can: (permission: string) => boolean;
 }
 
-function tenantNotFound(): Response {
-  return new Response('Không tìm thấy tenant.', { status: 404 });
-}
-
 /**
  * Guards a tenant route. Pass a `permission` key to require it (deny-by-default,
  * mirrors the backend guard); omit it to only require tenant-scope membership.
  */
 export async function requireTenant(request: Request, permission?: string): Promise<TenantContext> {
   const ctx = await requireScope(request, 'tenant');
-  const membership = firstTenantMembership(ctx.info);
-  if (!membership) throw tenantNotFound();
-  const tenantId = membership.tenantId;
+  // The host names the tenant; the session proves the caller may act in it. Never
+  // the first membership — that is what limited a multi-tenant operator to one.
+  const hostTenant = getCurrentHostTenant();
+  const membership = tenantMembership(ctx.info, hostTenant.id);
+  if (!membership) {
+    throw new Response(`Tài khoản này không có quyền tại ${hostTenant.name}.`, { status: 403 });
+  }
+  const tenantId = hostTenant.id;
   if (permission && !membership.permissions.includes(permission)) {
     throw new Response(`Bạn không có quyền truy cập (${permission}).`, { status: 403 });
   }

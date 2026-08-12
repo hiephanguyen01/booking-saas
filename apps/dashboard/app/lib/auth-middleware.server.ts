@@ -10,6 +10,7 @@ import {
   runWithDashboardRequestAuth,
   type DashboardRequestAuthState,
 } from './request-auth.server';
+import { resolveDashboardHost } from './tenant-host.server';
 import { apiPaths } from '~/constants/api-paths';
 import { dashboardPaths } from '~/constants/paths';
 
@@ -58,11 +59,24 @@ export function createDashboardAuthMiddleware({
   authenticate,
 }: DashboardAuthMiddlewareDependencies): DashboardMiddleware {
   return async ({ request, url = new URL(request.url) }, next) => {
+    const host = await resolveDashboardHost(request);
+    if (host.kind === 'unknown-host') {
+      throw new Response('Không tìm thấy không gian quản trị cho tên miền này.', {
+        status: 404,
+        statusText: 'Unknown dashboard host',
+      });
+    }
+    // A suspension is answered explicitly rather than as a 404: the caller typed
+    // this hostname, so hiding the reason only makes it look like a broken domain.
+    if (host.kind === 'tenant' && host.tenant.suspended) {
+      throw new Response(`${host.tenant.name} đang bị tạm ngưng. Vui lòng liên hệ BookingOS.`, {
+        status: 403,
+        statusText: 'Tenant suspended',
+      });
+    }
+
     if (isLoginMutation(request, url)) {
-      return runWithDashboardRequestAuth(
-        { auth: null, suppressSessionCommit: false },
-        next,
-      );
+      return runWithDashboardRequestAuth({ auth: null, host, suppressSessionCommit: false }, next);
     }
 
     let stored: Awaited<ReturnType<DashboardSessionService['read']>>;
@@ -72,10 +86,7 @@ export function createDashboardAuthMiddleware({
       throw sessionServiceUnavailable();
     }
     if (!stored) {
-      return runWithDashboardRequestAuth(
-        { auth: null, suppressSessionCommit: false },
-        next,
-      );
+      return runWithDashboardRequestAuth({ auth: null, host, suppressSessionCommit: false }, next);
     }
 
     const result = await authenticate(stored.data, request.signal);
@@ -88,7 +99,7 @@ export function createDashboardAuthMiddleware({
 
     if (result.kind === 'invalid') {
       const response = await runWithDashboardRequestAuth(
-        { auth: null, suppressSessionCommit: false },
+        { auth: null, host, suppressSessionCommit: false },
         next,
       );
       response.headers.append('Set-Cookie', await sessionService.destroy(request));
@@ -97,6 +108,7 @@ export function createDashboardAuthMiddleware({
 
     const state: DashboardRequestAuthState = {
       auth: { user: result.sessionData, info: result.info },
+      host,
       suppressSessionCommit: false,
     };
     const response = await runWithDashboardRequestAuth(state, next);

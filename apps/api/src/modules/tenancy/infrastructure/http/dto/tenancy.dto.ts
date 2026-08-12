@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   addDomainInputSchema,
+  adminHostTenantResponseSchema,
   assignSubscriptionInputSchema,
   createPlanInputSchema,
   createTenantInputSchema,
@@ -73,6 +74,7 @@ export class DomainVerificationResultDto extends createZodDto(domainVerification
 export class DomainDnsCheckResponseDto extends createZodDto(domainDnsCheckResponseSchema) {}
 export class SubscriptionStatusResponseDto extends createZodDto(subscriptionStatusResponseSchema) {}
 export class PublicTenantResponseDto extends createZodDto(publicTenantResponseSchema) {}
+export class AdminHostTenantResponseDto extends createZodDto(adminHostTenantResponseSchema) {}
 export class PlatformHealthResponseDto extends createZodDto(platformHealthResponseSchema) {}
 
 /** Newly created tenant plus its auto-provisioned primary domain (POST /admin/tenants). */

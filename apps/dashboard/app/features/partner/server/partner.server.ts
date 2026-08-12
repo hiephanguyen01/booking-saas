@@ -1,7 +1,8 @@
 import type { ScopeMembership } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
 import { requireScope, type AuthContext } from '~/lib/auth.server';
-import { firstPartnerMembership } from '~/lib/workspace';
+import { getCurrentHostTenant } from '~/lib/request-auth.server';
+import { partnerMembershipIn } from '~/lib/workspace';
 
 /**
  * Resolved partner request context for a loader/action. Mirrors the tenant
@@ -29,8 +30,13 @@ export async function requirePartner(
   permission?: string,
 ): Promise<PartnerContext> {
   const ctx = await requireScope(request, 'partner');
-  const membership = firstPartnerMembership(ctx.info);
-  if (!membership) throw new Response('Không tìm thấy partner.', { status: 404 });
+  const hostTenant = getCurrentHostTenant();
+  const membership = partnerMembershipIn(ctx.info, hostTenant.id);
+  if (!membership) {
+    throw new Response(`Tài khoản này không có đối tác nào tại ${hostTenant.name}.`, {
+      status: 404,
+    });
+  }
   if (permission && !membership.permissions.includes(permission)) {
     throw new Response(`Bạn không có quyền truy cập (${permission}).`, { status: 403 });
   }

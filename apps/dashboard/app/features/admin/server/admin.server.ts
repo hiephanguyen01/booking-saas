@@ -1,6 +1,7 @@
 import type { ScopeMembership } from '@booking/contracts';
 import { requirePermission, requireScope, type AuthContext } from '~/lib/auth.server';
 import type { ApiAuth } from '~/lib/api.server';
+import { getCurrentDashboardHost } from '~/lib/request-auth.server';
 
 /**
  * Resolved platform-admin request context for a loader/action. Mirrors the
@@ -26,6 +27,9 @@ export async function requirePlatform(
   request: Request,
   permission?: string,
 ): Promise<PlatformContext> {
+  if (getCurrentDashboardHost().kind !== 'platform') {
+    throw new Response('Không tìm thấy trang.', { status: 404 });
+  }
   const ctx = permission
     ? await requirePermission(request, permission)
     : await requireScope(request, 'platform');

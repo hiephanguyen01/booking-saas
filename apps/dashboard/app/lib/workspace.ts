@@ -23,6 +23,40 @@ export function firstPartnerMembership(info: SessionInfoResponse): PartnerMember
   return partner ?? null;
 }
 
+export function tenantMembership(
+  info: SessionInfoResponse,
+  tenantId: string,
+): TenantMembership | null {
+  const tenant = info.scopes.find(
+    (item): item is TenantMembership => item.scope === 'tenant' && item.tenantId === tenantId,
+  );
+  return tenant ?? null;
+}
+
+export function partnerMembershipIn(
+  info: SessionInfoResponse,
+  tenantId: string,
+): PartnerMembership | null {
+  const partner = info.scopes.find(
+    (item): item is PartnerMembership =>
+      item.scope === 'partner' && item.tenantId === tenantId && Boolean(item.partnerId),
+  );
+  return partner ?? null;
+}
+
+export function tenantMemberships(info: SessionInfoResponse): TenantMembership[] {
+  return info.scopes.filter(
+    (item): item is TenantMembership => item.scope === 'tenant' && Boolean(item.tenantId),
+  );
+}
+
+export function partnerMemberships(info: SessionInfoResponse): PartnerMembership[] {
+  return info.scopes.filter(
+    (item): item is PartnerMembership =>
+      item.scope === 'partner' && Boolean(item.tenantId) && Boolean(item.partnerId),
+  );
+}
+
 export function defaultDashboardPath(info: SessionInfoResponse): string {
   if (info.scopes.some((membership) => membership.scope === 'platform')) {
     return dashboardPaths.admin.home;

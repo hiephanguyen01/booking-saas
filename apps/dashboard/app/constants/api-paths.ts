@@ -29,6 +29,11 @@ export const apiPaths = {
     provinces: '/public/administrative-divisions/provinces',
   },
 
+  public: {
+    /** The dashboard BFF resolving its Host to a tenant (`@Public()`, pre-session). */
+    adminTenant: '/public/admin-tenant',
+  },
+
   admin: {
     plans: '/admin/plans',
     plan: (planId: string) => `/admin/plans/${segment(planId)}`,
