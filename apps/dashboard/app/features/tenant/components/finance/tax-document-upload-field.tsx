@@ -117,7 +117,7 @@ export function TaxDocumentUploadField({
           <LoaderCircle className="size-3.5 animate-spin" /> Đang tải và kiểm tra tệp…
         </p>
       ) : uploaded ? (
-        <p className="flex items-center gap-1.5 text-xs text-emerald-700" role="status">
+        <p className="flex items-center gap-1.5 text-xs text-success" role="status">
           <FileCheck2 className="size-3.5" /> {uploaded.fileName} · Đã tải lên an toàn
         </p>
       ) : (

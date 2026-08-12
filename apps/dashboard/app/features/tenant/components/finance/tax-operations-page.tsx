@@ -416,7 +416,7 @@ function CertificateRegister({
             </Button>
           </fetcher.Form>
         ) : canManage ? (
-          <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground dark:bg-warning/15 dark:text-warning">
             Chưa có năm thuế đã đóng. Chứng từ năm 2026 chỉ có thể phát hành từ ngày 01/01/2027, sau
             khi toàn bộ sự kiện đã nằm trong kỳ kê khai đã nộp thuế.
           </p>
