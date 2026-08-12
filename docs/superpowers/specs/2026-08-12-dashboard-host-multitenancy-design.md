@@ -103,8 +103,13 @@ written by the old shape cannot be misread by a freshly deployed process while t
 
 **The admin host does not use the storefront's `live` flag.** A tenant whose subscription has expired
 must still reach its console to renew; locking them out of the page where they pay is the wrong
-failure. The admin host refuses only when `tenant.status != 'active'`; an expired subscription
-renders with a banner.
+failure. The admin host refuses **only** when `tenant.status === 'suspended'`.
+
+Note the trap: `TenantStatus` has three values — `active`, `suspended`, `expired` — so a
+`status != 'active'` test would lock out exactly the lapsed tenant this rule exists to protect.
+`expired` is a lapsed tenant, not a disciplinary state; it renders the console with a renewal banner
+like any other expiry. Only `suspended` is a platform decision the tenant cannot undo themselves, and
+only it is worth a closed door.
 
 ## Domain Lifecycle API
 
@@ -243,8 +248,8 @@ storefront already serves `.localhost` hosts under the same configuration.
 | --- | --- |
 | Host not in `tenant_domains` with `kind='dashboard'` | 404 unknown-host page, the storefront's `unknown-host` shape — never the BookingOS console |
 | Signed-in user holds no membership in the host's tenant | 403 naming the tenant, with a sign-out link. No redirect and no tenant list |
-| Tenant `status != 'active'` | 403 suspended page |
-| Subscription expired | Renders normally with a renewal banner |
+| Tenant `status === 'suspended'` | 403 suspended page |
+| Tenant `status === 'expired'`, or subscription lapsed | Renders normally with a renewal banner — never a closed door |
 | Path belongs to the other host class | 404 |
 | API resolution unavailable (5xx) | 503, matching `resolveStorefront`'s existing behaviour |
 

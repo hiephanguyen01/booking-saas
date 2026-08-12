@@ -183,6 +183,9 @@ export interface CachedHost {
   kind: TenantHostKind;
 }
 
+/** Answers a cache miss. Supplied by the adapter's caller, so the port stays I/O-free. */
+export type HostLookup = (hostname: string) => Promise<CachedHost | null>;
+
 /**
  * Host → tenant resolution cache (§6.1), Redis-backed with a 60s TTL. Unknown
  * hosts are negatively cached (null) so a flood of requests for a bogus Host
@@ -197,7 +200,43 @@ export interface ITenantCache {
   getHost(hostname: string): Promise<CachedHost | null | undefined>;
   setHost(hostname: string, value: CachedHost | null): Promise<void>;
   invalidateHost(hostname: string): Promise<void>;
+  /**
+   * Read-through: return the cached entry, or call `lookup` and store its answer
+   * (including a negative one).
+   *
+   * THE single place the get→miss→lookup→store sequence lives. Three use-cases
+   * resolve hosts against this one key — the two resolvers and the TLS gate — and
+   * three hand-written copies of the sequence would let an edit to one silently
+   * change what the other two see. That is a tenant-isolation bug waiting to
+   * happen, not a style preference.
+   */
+  resolveHost(hostname: string, lookup: HostLookup): Promise<CachedHost | null>;
 }
+```
+
+The adapter implements it over its own `getHost`/`setHost`, so the port stays free of I/O policy:
+
+```ts
+  async resolveHost(hostname: string, lookup: HostLookup): Promise<CachedHost | null> {
+    const cached = await this.getHost(hostname);
+    if (cached !== undefined) return cached;
+    const resolved = await lookup(hostname);
+    await this.setHost(hostname, resolved);
+    return resolved;
+  }
+```
+
+Each of the three call sites then reduces to one expression — the lookup body is the only part that
+was ever theirs:
+
+```ts
+    const cached = await this.cache.resolveHost(hostname, async (name) => {
+      const domain = await this.domains.findByHostname(name);
+      // Only a verified domain resolves — an unverified custom domain isn't live.
+      return domain && domain.verifiedAt
+        ? { tenantId: domain.tenantId, kind: domain.kind }
+        : null;
+    });
 ```
 
 - [ ] **Step 2: Update the Redis adapter, bumping the key prefix**
@@ -451,7 +490,12 @@ export class ResolveTenantByAdminHostUseCase {
       slug: tenant.slug,
       branding: branding.success ? branding.data : null,
       subscriptionExpired: !evaluation.dashboardWritable,
-      suspended: tenant.status !== 'active',
+      // `=== 'suspended'`, NOT `!== 'active'`. TenantStatus is active | suspended
+      // | expired, so the negative test would lock out the `expired` tenant this
+      // whole rule exists to keep in — the one who most needs to reach the
+      // renewal screen. Only a suspension is a platform decision the tenant
+      // cannot undo, and only it earns a closed door.
+      suspended: tenant.status === 'suspended',
     };
   }
 }
