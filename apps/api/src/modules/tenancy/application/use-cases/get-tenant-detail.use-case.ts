@@ -71,7 +71,7 @@ export class GetTenantDetailUseCase {
             expiresAt: current.subscription.expiresAt,
           }
         : null,
-      primaryDomain: domains.find((d) => d.isPrimary) ?? null,
+      primaryDomain: domains.find((d) => d.isPrimary && d.kind === 'storefront') ?? null,
       counts: { partners, listings, bookings30d },
     };
   }

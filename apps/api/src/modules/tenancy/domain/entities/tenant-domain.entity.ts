@@ -134,15 +134,18 @@ export class TenantDomain {
 
 /**
  * Portfolio rule: removing a verified primary domain is refused while it is the
- * tenant's only verified one — a live storefront must never be orphaned.
+ * tenant's only verified one of ITS OWN KIND — a live storefront must never be
+ * orphaned, and neither must the console.
+ *
+ * `allTenantDomains` is the tenant's verified-or-not domain list **for the target's
+ * kind**; the target is excluded internally, so callers cannot get the contract
+ * wrong. Passing every kind would let the last dashboard host be deleted merely
+ * because a storefront host still exists.
  *
  * NOTE the asymmetry, preserved from the pre-refactor code: siblings are filtered by
  * `verified`, NOT by `primary`. So deleting the primary while another verified (but
  * non-primary) domain exists succeeds and leaves the tenant with no primary at all.
  * Recorded as a known gap rather than tightened here.
- *
- * The second parameter is the tenant's FULL domain list; the target is excluded internally,
- * so callers cannot get the contract wrong.
  */
 export function assertDeletableFromPortfolio(
   target: { id: string; isPrimary: boolean; isVerified: boolean },

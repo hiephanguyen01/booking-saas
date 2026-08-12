@@ -79,6 +79,7 @@ export class PrismaNotificationReader implements INotificationReader {
       SELECT t.name AS tenant_name, t.theme_config,
              (SELECT td.hostname FROM tenant_domains td
               WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'storefront'
               LIMIT 1) AS primary_hostname
       FROM tenants t
       WHERE t.id = ${tenantId}::uuid
@@ -102,6 +103,7 @@ export class PrismaNotificationReader implements INotificationReader {
              t.name AS tenant_name, t.theme_config,
              (SELECT td.hostname FROM tenant_domains td
               WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'storefront'
               LIMIT 1) AS primary_hostname,
              refund.refunded_amount,
              payment.gateway AS payment_gateway,
@@ -184,6 +186,7 @@ export class PrismaNotificationReader implements INotificationReader {
       SELECT l.title AS listing_title, t.name AS tenant_name, l.partner_id, t.theme_config,
              (SELECT td.hostname FROM tenant_domains td
               WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'storefront'
               LIMIT 1) AS primary_hostname
       FROM listings l JOIN tenants t ON t.id = l.tenant_id
       WHERE l.id = ${listingId}::uuid`);
@@ -202,6 +205,7 @@ export class PrismaNotificationReader implements INotificationReader {
       SELECT p.name AS partner_name, t.name AS tenant_name, t.theme_config,
              (SELECT td.hostname FROM tenant_domains td
               WHERE td.tenant_id = t.id AND td.is_primary = true AND td.verified_at IS NOT NULL
+                AND td.kind = 'storefront'
               LIMIT 1) AS primary_hostname
       FROM partners p JOIN tenants t ON t.id = p.tenant_id
       WHERE p.id = ${partnerId}::uuid`);
