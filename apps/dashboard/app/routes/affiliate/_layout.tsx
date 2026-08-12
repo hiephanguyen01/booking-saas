@@ -1,11 +1,11 @@
-import { NavLink, Outlet, redirect, useSearchParams } from 'react-router';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
+import { NavLink, Outlet, redirect } from 'react-router';
 import { cn } from '@booking/ui/lib/utils';
-import { Share2 } from 'lucide-react';
+import { ExternalLink, Share2 } from 'lucide-react';
 import type { Route } from './+types/_layout';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { fetchPendingLegalAcceptances } from '~/features/legal/server/legal.server';
 import { affiliateTabs } from './nav';
+import { dashboardEnv } from '~/lib/env.server';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
@@ -39,12 +39,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     memberships: memberships.map((m) => ({ tenantId: m.tenantId, tenantName: m.tenantName, status: m.status })),
     active: active ? { tenantId: active.tenantId, tenantName: active.tenantName } : null,
+    // Switching tenants now means switching hosts, so the only place that can
+    // list them all is the directory on the platform console.
+    platformConsoleUrl: dashboardEnv.dashboardUrl,
   };
 }
 
 export default function AffiliateLayout({ loaderData }: Route.ComponentProps) {
-  const { memberships, active } = loaderData;
-  const [sp] = useSearchParams();
+  const { memberships, active, platformConsoleUrl } = loaderData;
   const approved = memberships.filter((m) => m.status === 'approved');
 
   if (!active) {
@@ -61,9 +63,6 @@ export default function AffiliateLayout({ loaderData }: Route.ComponentProps) {
     );
   }
 
-  const tenantQuery = sp.get('tenant');
-  const withTenant = (to: string) => (tenantQuery ? `${to}?tenant=${tenantQuery}` : to);
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -71,24 +70,19 @@ export default function AffiliateLayout({ loaderData }: Route.ComponentProps) {
           <h1 className="text-2xl font-semibold tracking-tight">Cộng tác viên</h1>
           <p className="text-sm text-muted-foreground">{active.tenantName}</p>
         </div>
+        {/* Each tenant's portal lives on that tenant's own console host, so
+            switching is a cross-origin move — a plain <a>, and the directory on
+            the platform console is the only page that can list them all. This
+            replaced a `?tenant=` selector that stopped working when the affiliate
+            area became host-scoped: the param was still rendered but ignored. */}
         {approved.length > 1 ? (
-          <Card className="w-fit">
-            <CardContent className="flex items-center gap-2 p-2">
-              <span className="text-xs text-muted-foreground">Tenant:</span>
-              {approved.map((m) => (
-                <NavLink
-                  key={m.tenantId}
-                  to={`/affiliate?tenant=${m.tenantId}`}
-                  className={cn(
-                    'rounded px-2 py-1 text-xs',
-                    m.tenantId === active.tenantId ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
-                  )}
-                >
-                  {m.tenantName}
-                </NavLink>
-              ))}
-            </CardContent>
-          </Card>
+          <a
+            href={`${platformConsoleUrl}${dashboardPaths.workspaces}`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ExternalLink className="size-3.5" aria-hidden="true" />
+            Đổi tenant ({approved.length})
+          </a>
         ) : null}
       </div>
 
@@ -96,7 +90,7 @@ export default function AffiliateLayout({ loaderData }: Route.ComponentProps) {
         {affiliateTabs.map((tab) => (
           <NavLink
             key={tab.to}
-            to={withTenant(tab.to)}
+            to={tab.to}
             end={tab.end}
             className={({ isActive }) =>
               cn(
