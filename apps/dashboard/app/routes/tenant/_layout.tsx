@@ -1,18 +1,15 @@
 import type { ReactNode } from 'react';
-import { Outlet, redirect } from 'react-router';
+import { Outlet } from 'react-router';
 import type { SubscriptionStatusResponse } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { CalendarClock, CreditCard, Lock, TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_layout';
 import { apiGet } from '~/lib/api.server';
-import { getOptionalUser } from '~/lib/auth.server';
-import { getCurrentDashboardHost } from '~/lib/request-auth.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import type { TenantAreaContext } from '~/features/tenant/lib/area-context';
 import { formatDate } from '~/lib/format';
 import { apiPaths } from '~/constants/api-paths';
-import { dashboardPaths } from '~/constants/paths';
 
 /** Show the pre-expiry nudge once the subscription is this close to lapsing. */
 const EXPIRY_WARNING_DAYS = 7;
@@ -27,16 +24,9 @@ const EXPIRY_WARNING_DAYS = 7;
  * past-due → grace → expired lockout) rather than the old all-or-nothing lockout.
  */
 export async function loader({ request }: Route.LoaderArgs) {
-  // This area lives only on a tenant console host. The platform host bounces a
-  // signed-in caller to their own directory (same-origin, leaks nothing beyond
-  // their own memberships); an anonymous one 404s like any other wrong-host path,
-  // so the directory can't be used to probe which areas exist.
-  if (getCurrentDashboardHost().kind === 'platform') {
-    throw (await getOptionalUser(request))
-      ? redirect(dashboardPaths.workspaces)
-      : new Response('Không tìm thấy trang.', { status: 404 });
-  }
-
+  // `requireTenant` 404s/redirects off a non-tenant host before touching auth —
+  // see its comment (features/tenant/server/tenant.server.ts) for why the check
+  // lives there and not here.
   const { auth, can } = await requireTenant(request);
 
   let sub: SubscriptionStatusResponse | null = null;

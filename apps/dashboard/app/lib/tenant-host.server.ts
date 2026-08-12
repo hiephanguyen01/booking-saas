@@ -1,5 +1,6 @@
 import { adminHostTenantResponseSchema, type AdminHostTenantResponse } from '@booking/contracts';
 import { apiPublicGet } from './api.server';
+import { dashboardEnv } from './env.server';
 import { apiPaths } from '~/constants/api-paths';
 
 export type DashboardHostResolution =
@@ -29,7 +30,7 @@ export function requestHostname(request: Request): string {
  * without asking the API, exactly as the storefront short-circuits its landing.
  */
 function isPlatformHostname(hostname: string): boolean {
-  const configured = process.env.DASHBOARD_HOST?.trim().toLowerCase();
+  const configured = dashboardEnv.dashboardHost;
   return (
     (configured ? hostname === configured : false) ||
     !hostname.includes('.') ||

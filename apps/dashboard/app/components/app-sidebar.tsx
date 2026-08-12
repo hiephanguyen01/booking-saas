@@ -16,6 +16,7 @@ import {
 } from '@booking/ui/components/ui/sidebar';
 import { dashboardAreasFor } from '~/lib/navigation';
 import type { DashboardHostResolution } from '~/lib/tenant-host.server';
+import { dashboardPaths } from '~/constants/paths';
 import { NavUser } from './nav-user';
 
 export function AppSidebar({
@@ -72,7 +73,7 @@ export function AppSidebar({
                     a different origin from a tenant host, which the client-side
                     router cannot navigate to. */}
                 <SidebarMenuButton asChild tooltip="Đổi không gian làm việc">
-                  <a href={`${platformConsoleUrl}/workspaces`}>
+                  <a href={`${platformConsoleUrl}${dashboardPaths.workspaces}`}>
                     <PanelsTopLeft />
                     <span>Đổi workspace</span>
                   </a>

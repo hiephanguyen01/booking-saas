@@ -145,6 +145,12 @@ services:
       BACKEND_URL: ${INTERNAL_API_URL:-http://api:3000}
       REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
       STOREFRONT_URL: ${STOREFRONT_URL:?STOREFRONT_URL is required}
+      # This console's own public origin — cross-host links (the "Đổi workspace"
+      # switcher, the workspaces directory's per-tenant cards) resolve against
+      # it. Required, not defaulted: a missing value used to silently fall back
+      # to localhost:5174 in the app code, which linked every caller to their
+      # own laptop instead of the real console. See lib/env.server.ts.
+      DASHBOARD_URL: ${DASHBOARD_URL:?DASHBOARD_URL is required}
       SESSION_SECRET_CURRENT: ${SESSION_SECRET_CURRENT:?SESSION_SECRET_CURRENT is required}
       SESSION_SECRET_PREVIOUS: ${SESSION_SECRET_PREVIOUS:-}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}

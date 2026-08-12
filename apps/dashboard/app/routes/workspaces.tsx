@@ -44,12 +44,7 @@ function WorkspaceCard({
   href: string | null;
 }) {
   const card = (
-    <Card
-      className={cn(
-        'h-full transition-colors',
-        href ? 'hover:border-primary/50' : 'opacity-60',
-      )}
-    >
+    <Card className={cn('h-full transition-colors', href && 'hover:border-primary/50')}>
       <CardHeader className="flex-row items-center gap-3">
         {icon}
         <CardTitle>{title}</CardTitle>

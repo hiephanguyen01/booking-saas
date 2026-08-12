@@ -9,21 +9,6 @@ export type PartnerMembership = ScopeMembership & {
   partnerId: string;
 };
 
-export function firstTenantMembership(info: SessionInfoResponse): TenantMembership | null {
-  const tenant = info.scopes.find(
-    (item): item is TenantMembership => item.scope === 'tenant' && Boolean(item.tenantId),
-  );
-  return tenant ?? null;
-}
-
-export function firstPartnerMembership(info: SessionInfoResponse): PartnerMembership | null {
-  const partner = info.scopes.find(
-    (item): item is PartnerMembership =>
-      item.scope === 'partner' && Boolean(item.tenantId) && Boolean(item.partnerId),
-  );
-  return partner ?? null;
-}
-
 export function tenantMembership(
   info: SessionInfoResponse,
   tenantId: string,

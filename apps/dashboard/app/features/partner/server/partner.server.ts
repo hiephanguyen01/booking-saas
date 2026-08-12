@@ -1,8 +1,10 @@
+import { redirect } from 'react-router';
 import type { ScopeMembership } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
-import { requireScope, type AuthContext } from '~/lib/auth.server';
-import { getCurrentHostTenant } from '~/lib/request-auth.server';
+import { getOptionalUser, requireScope, type AuthContext } from '~/lib/auth.server';
+import { getCurrentDashboardHost, getCurrentHostTenant } from '~/lib/request-auth.server';
 import { partnerMembershipIn } from '~/lib/workspace';
+import { dashboardPaths } from '~/constants/paths';
 
 /**
  * Resolved partner request context for a loader/action. Mirrors the tenant
@@ -24,11 +26,23 @@ export interface PartnerContext {
  * mirrors `requireTenant`); omit it to only require partner-scope membership.
  * Use the returned `can` for soft checks (hiding buttons, action-level form
  * errors) — those must NOT throw.
+ *
+ * Host-checked first, before the auth check below — see the matching comment
+ * on `requireTenant` (`features/tenant/server/tenant.server.ts`) for why: every
+ * child route calls this guard too, and a redirect thrown by any matched
+ * loader wins over a plain 404 thrown by another, so the check has to happen
+ * here rather than only in `_layout.tsx` for the anonymous branch to actually
+ * 404 instead of racing a child route's own login redirect.
  */
 export async function requirePartner(
   request: Request,
   permission?: string,
 ): Promise<PartnerContext> {
+  if (getCurrentDashboardHost().kind === 'platform') {
+    throw (await getOptionalUser(request))
+      ? redirect(dashboardPaths.workspaces)
+      : new Response('Không tìm thấy trang.', { status: 404 });
+  }
   const ctx = await requireScope(request, 'partner');
   const hostTenant = getCurrentHostTenant();
   const membership = partnerMembershipIn(ctx.info, hostTenant.id);
