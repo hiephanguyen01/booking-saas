@@ -127,6 +127,38 @@ needed a published port — with Caddy inside, there is nothing to publish and n
 is also a verified `tenant_domains` row, so it takes the same on-demand HTTP-01 path as a custom
 domain — no DNS-01, no `xcaddy` build with the Cloudflare plugin, no Cloudflare API token on the box.
 
+### The `admin.*` split inside the catch-all
+
+The catch-all `https://` block is not a single route to the storefront any more — it splits on a Caddy
+`header_regexp` matcher before choosing an upstream:
+
+```
+@dashboard header_regexp Host (?i)^admin\.
+handle @dashboard { reverse_proxy dashboard:3000 }
+handle             { reverse_proxy storefront:3000 }
+```
+
+The `(?i)` is required, not stylistic: `Host` is case-insensitive per RFC 9110 and the API lowercases
+every hostname it stores (`tenant_domains.hostname` is `citext`), but Go's RE2 `header_regexp` is
+case-sensitive by default — without the flag, `Host: ADMIN.tenant.vn` would route to the storefront
+while the database is certain that hostname is a console host. `AddDomainUseCase` is what makes the
+prefix trustworthy: it rejects a `kind: 'dashboard'` domain that doesn't start with `admin.` and a
+`kind: 'storefront'` domain that does, so this static prefix match and the database's own idea of what
+each hostname is can never disagree. Full reasoning:
+[`features/dashboard-hosts.md`](./features/dashboard-hosts.md).
+
+A **tenant console custom domain** (a tenant pointing, say, `admin.booking.giangstudio.vn` at the
+platform instead of using its `admin.<slug>.<base domain>` default) is added and verified exactly like a
+storefront custom domain — same `AddDomainUseCase`, same TXT-record ownership proof, same
+`domain-verification.worker.ts` background check, same `tenant_domains` row (just `kind: 'dashboard'`
+instead of `storefront`) — and so it takes the same on-demand HTTP-01 path through the `tls-allowed` gate
+above. The only thing that differs for a console domain is the `admin.` prefix requirement enforced at
+creation time; nothing about DNS, TLS or verification is special-cased for it.
+
+The two explicit, at-startup site blocks — `{$DASHBOARD_HOST}` (the **platform's own** console,
+`admin.stg.bookingos.vn`) and `{$API_HOST}` — are unrelated to this split and unaffected by it: they are
+named hosts Caddy already knows about before Caddy starts, not resolved through the catch-all at all.
+
 Config: [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile) — one file, TLS and routes together.
 Install steps: [`deployment-runbook.md`](./deployment-runbook.md) Phase 6–7.
 

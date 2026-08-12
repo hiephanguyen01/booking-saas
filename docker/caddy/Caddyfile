@@ -77,21 +77,27 @@
 }
 
 # THE DEFAULT ROUTE — deliberately last and catch-all, for EVERY other hostname:
-# tenant subdomains (bookingstudio.stg…) and tenant custom domains alike.
+# tenant storefront subdomains, tenant custom domains, and tenant CONSOLE hosts.
 #
-# Two things ride on this block. The storefront resolves its tenant from the Host
-# header against `tenant_domains`, so a brand-new custom domain must reach it with
-# NO config change here — naming hostnames instead would make every tenant
-# onboarding a deploy. And both kinds of hostname are verified rows in that same
-# table, so both pass the same `ask` check and take the same HTTP-01 path, which
-# is why the wildcard certificate (and the DNS-01 plugin build it required) is
-# gone.
+# The console split rides on a reserved first label rather than a per-tenant site
+# block, because naming hostnames here would make every tenant onboarding a deploy —
+# the same reason the storefront route is a catch-all. Caddy cannot ask the API which
+# upstream a hostname wants (the on-demand `ask` hook only answers whether a
+# certificate may be issued), so the prefix is what makes the decision static.
+# `AddDomainUseCase` enforces both halves of the rule: a dashboard domain must start
+# with `admin.`, and a storefront domain must not.
 https:// {
 	import common
 	tls {
 		on_demand
 	}
-	reverse_proxy storefront:3000
+	@dashboard header_regexp Host (?i)^admin\.
+	handle @dashboard {
+		reverse_proxy dashboard:3000
+	}
+	handle {
+		reverse_proxy storefront:3000
+	}
 }
 
 # Plain HTTP for a host Caddy has no explicit site for. Caddy answers ACME

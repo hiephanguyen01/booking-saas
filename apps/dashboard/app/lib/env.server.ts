@@ -37,6 +37,46 @@ const dashboardUrl = requiredUrl('DASHBOARD_URL', process.env.DASHBOARD_URL, 'ht
   'https:',
 ]);
 
+/**
+ * Mirrors the storefront's `requiredHostname`
+ * (`apps/storefront/app/lib/server/env.server.ts`, validating
+ * `PLATFORM_BASE_DOMAIN`): missing fails loudly in production instead of the
+ * `isPlatformHostname` silent fallback this replaces ("absent means no host is
+ * the platform host"), and a malformed value — a URL, a host:port, a stray
+ * path — is rejected outright rather than being compared verbatim against
+ * every incoming Host header and simply never matching. Refusing to boot beats
+ * serving a console that 404s for everyone with nothing in the logs naming
+ * the cause.
+ */
+function requiredHostname(
+  name: 'DASHBOARD_HOST',
+  value: string | undefined,
+  developmentFallback: string,
+): string {
+  if (!value && production) invalidEnvironment(`${name} is required in production`);
+  const hostname = (value ?? developmentFallback).trim().toLowerCase().replace(/\.$/, '');
+
+  let parsedHostname: URL;
+  try {
+    parsedHostname = new URL(`http://${hostname}`);
+  } catch {
+    invalidEnvironment(`${name} must be a valid hostname`);
+  }
+  if (
+    parsedHostname.hostname !== hostname ||
+    parsedHostname.port ||
+    parsedHostname.username ||
+    parsedHostname.password ||
+    parsedHostname.pathname !== '/'
+  ) {
+    invalidEnvironment(`${name} must be a bare hostname`);
+  }
+
+  return hostname;
+}
+
+const dashboardHost = requiredHostname('DASHBOARD_HOST', process.env.DASHBOARD_HOST, 'localhost');
+
 export const dashboardEnv = Object.freeze({
   production,
   /**
@@ -47,12 +87,15 @@ export const dashboardEnv = Object.freeze({
    */
   dashboardUrl: dashboardUrl.origin,
   /**
-   * The platform console's own configured hostname. Still read here without a
-   * production requirement — `tenant-host.server.ts`'s `isPlatformHostname`
-   * only *adds* this as one more way to recognize the platform host (on top of
-   * "no dot" / "bare IP", which cover local dev); Task 10 is what makes this
-   * required and wires it into the deploy compose file. Centralized here now so
-   * that task finds one place to add it rather than a second `process.env` read.
+   * The platform console's own configured hostname
+   * (`admin.stg.bookingos.vn`). `tenant-host.server.ts`'s
+   * `isPlatformHostname` uses this as the primary way to recognize the
+   * platform host — the "no dot" / bare-IP branches exist only to cover local
+   * dev (`localhost`, a bare container IP) and never match a real deployed
+   * hostname. `docker-compose.deploy.yml` sets this on the `dashboard`
+   * service with the same value Caddy already reads to route `admin.*`
+   * there, so the routing contract and the app's own idea of its host can
+   * never disagree.
    */
-  dashboardHost: process.env.DASHBOARD_HOST?.trim().toLowerCase() || undefined,
+  dashboardHost,
 });

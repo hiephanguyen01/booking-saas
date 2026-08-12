@@ -34,7 +34,9 @@ Phases 2–3 are spec + tickets only. See [`docs/glossary.md`](./docs/glossary.m
 ```
 apps/api          @booking/api        NestJS 11, hexagonal, RLS-aware       PORT (default 3000)
 apps/storefront   @booking/storefront React Router 8 SSR, tenant by Host    5173
-apps/dashboard    @booking/dashboard React Router 8 SSR, /admin /tenant /partner /affiliate   5174
+apps/dashboard    @booking/dashboard React Router 8 SSR, tenant by Host   5174
+                    /admin on the platform host; /tenant /partner /affiliate on a tenant console host
+                    (admin.<slug>.<domain>) — see docs/features/dashboard-hosts.md
 packages/contracts @booking/contracts zod schemas + inferred types (FE↔BE contract) → dist
 packages/ui       @booking/ui         shadcn + GenericForm + theme, raw TSX (no build)
 packages/api-client @booking/api-client typed server-side HTTP client (loaders/actions)
@@ -128,16 +130,19 @@ pnpm dev                                               # api :3000, storefront :
   (`localhost`) or a bare IP can never be a tenant domain, so it skips tenant resolution entirely.
   A tenant storefront is reached on its own host: `bookingstudio.localhost:5173`,
   `bookingstad.localhost:5173`.
-- **Dashboard** (`localhost:5174`) — log in with a seeded user below.
+- **Dashboard** (`localhost:5174`) is the **platform console** — `/admin`, log in as the platform admin
+  below. A tenant's own console is a different host, same port: `admin.bookingstudio.localhost:5174`,
+  `admin.bookingstad.localhost:5174` serve that tenant's `/tenant` `/partner` `/affiliate`. See
+  [`docs/features/dashboard-hosts.md`](./docs/features/dashboard-hosts.md).
 - **OTP emails** (registration / password reset) land in **Mailpit** at `localhost:8025`.
 
 **Two demo tenants**, one seed for both environments — every tenant registers its staging host
 *and* its `.localhost` host, so no `SEED_ENV` switch is needed:
 
-| Tenant | Vertical | Staging | Local | Catalog |
-| --- | --- | --- | --- | --- |
-| **BookingStudio** | studio | `bookingstudio.stg.bookingos.vn` | `bookingstudio.localhost` | 6 types, 121 listings |
-| **BookingStad** | sport | `bookingstad.stg.bookingos.vn` | `bookingstad.localhost` | 5 court types (bóng đá, bóng rổ, tennis, cầu lông, pickleball), 40 courts |
+| Tenant | Vertical | Staging | Local | Console (local) | Catalog |
+| --- | --- | --- | --- | --- | --- |
+| **BookingStudio** | studio | `bookingstudio.stg.bookingos.vn` | `bookingstudio.localhost` | `admin.bookingstudio.localhost` | 6 types, 121 listings |
+| **BookingStad** | sport | `bookingstad.stg.bookingos.vn` | `bookingstad.localhost` | `admin.bookingstad.localhost` | 5 court types (bóng đá, bóng rổ, tennis, cầu lông, pickleball), 40 courts |
 
 BookingStad's subscription is a **trial expiring in 5 days** on purpose — it is what fills the admin
 board's "expiring soon" queue. `trial` is a billable status, so every partner/booking flow still works.
@@ -192,6 +197,6 @@ never drift between what production configures and what the demo fills in.
 - [`docs/deployment.md`](./docs/deployment.md) — staging & production containers, migrations, releases, scaling
 - [`docs/deployment-runbook.md`](./docs/deployment-runbook.md) — step-by-step first deploy (AWS + Cloudflare R2 + Resend)
 - [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services, listing edit revisions, legal documents)
-- [`docs/features/`](./docs/features/) — per-feature deep dives ([favorites](./docs/features/favorites.md), [legal documents & consent](./docs/features/legal-documents.md), [storefront PWA](./docs/features/storefront-pwa.md), [VAT](./docs/features/vat.md))
+- [`docs/features/`](./docs/features/) — per-feature deep dives ([favorites](./docs/features/favorites.md), [legal documents & consent](./docs/features/legal-documents.md), [storefront PWA](./docs/features/storefront-pwa.md), [VAT](./docs/features/vat.md), [dashboard host multi-tenancy](./docs/features/dashboard-hosts.md))
 - [`docs/deprecated-artifacts.md`](./docs/deprecated-artifacts.md) — dead code slated for deletion (don't extend it)
 - Per-subtree `CLAUDE.md`: [`apps/api`](./apps/api/CLAUDE.md) · [`apps/storefront`](./apps/storefront/CLAUDE.md) · [`apps/dashboard`](./apps/dashboard/CLAUDE.md) · [`packages/ui`](./packages/ui/CLAUDE.md) · [`packages/contracts`](./packages/contracts/CLAUDE.md)

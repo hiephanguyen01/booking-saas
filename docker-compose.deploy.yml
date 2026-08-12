@@ -151,6 +151,12 @@ services:
       # to localhost:5174 in the app code, which linked every caller to their
       # own laptop instead of the real console. See lib/env.server.ts.
       DASHBOARD_URL: ${DASHBOARD_URL:?DASHBOARD_URL is required}
+      # The platform console's own hostname (admin.stg.bookingos.vn), so
+      # `isPlatformHostname` can recognise it — Caddy already receives this same
+      # variable to obtain its certificate at startup. Without it, nothing but the
+      # "no dot"/bare-IP dev branches would ever match, and the platform console
+      # 404s in every deployed environment. See lib/env.server.ts.
+      DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}
       SESSION_SECRET_CURRENT: ${SESSION_SECRET_CURRENT:?SESSION_SECRET_CURRENT is required}
       SESSION_SECRET_PREVIOUS: ${SESSION_SECRET_PREVIOUS:-}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
