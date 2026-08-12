@@ -55,14 +55,13 @@ export class ResolveTenantByAdminHostUseCase {
     const hostname = normalizeHostname(rawHost);
     if (!hostname) throw new UnknownTenantHost(rawHost);
 
-    let cached = await this.cache.getHost(hostname);
-    if (cached === undefined) {
-      const domain = await this.domains.findByHostname(hostname);
-      cached = domain && domain.verifiedAt
+    const cached = await this.cache.resolveHost(hostname, async (name) => {
+      const domain = await this.domains.findByHostname(name);
+      // Only a verified domain resolves — an unverified custom domain isn't live.
+      return domain && domain.verifiedAt
         ? { tenantId: domain.tenantId, kind: domain.kind }
         : null;
-      await this.cache.setHost(hostname, cached);
-    }
+    });
     if (cached === null || cached.kind !== 'dashboard') {
       throw new UnknownTenantHost(hostname);
     }
@@ -86,7 +85,12 @@ export class ResolveTenantByAdminHostUseCase {
       slug: tenant.slug,
       branding: branding.success ? branding.data : null,
       subscriptionExpired: !evaluation.dashboardWritable,
-      suspended: tenant.status !== 'active',
+      // `=== 'suspended'`, NOT `!== 'active'`. TenantStatus is active | suspended
+      // | expired, so the negative test would lock out the `expired` tenant this
+      // whole rule exists to keep in — the one who most needs to reach the
+      // renewal screen. Only a suspension is a platform decision the tenant
+      // cannot undo, and only it earns a closed door.
+      suspended: tenant.status === 'suspended',
     };
   }
 }

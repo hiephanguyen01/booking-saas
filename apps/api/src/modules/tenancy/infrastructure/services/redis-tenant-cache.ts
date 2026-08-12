@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { REDIS } from '../../../../shared/redis/redis.module';
-import type { CachedHost, ITenantCache, TenantHostKind } from '../../domain/ports/tenant-cache.port';
+import type { CachedHost, HostLookup, ITenantCache } from '../../domain/ports/tenant-cache.port';
 
 const TTL_SECONDS = 60;
 /** Sentinel stored for a negatively-cached (unknown) host. */
@@ -29,7 +29,7 @@ export class RedisTenantCache implements ITenantCache {
     const tenantId = value.slice(0, separator);
     const kind = value.slice(separator + 1);
     if (kind !== 'storefront' && kind !== 'dashboard') return undefined;
-    return { tenantId, kind: kind as TenantHostKind };
+    return { tenantId, kind };
   }
 
   async setHost(hostname: string, value: CachedHost | null): Promise<void> {
@@ -39,5 +39,13 @@ export class RedisTenantCache implements ITenantCache {
 
   async invalidateHost(hostname: string): Promise<void> {
     await this.redis.del(this.key(hostname));
+  }
+
+  async resolveHost(hostname: string, lookup: HostLookup): Promise<CachedHost | null> {
+    const cached = await this.getHost(hostname);
+    if (cached !== undefined) return cached;
+    const resolved = await lookup(hostname);
+    await this.setHost(hostname, resolved);
+    return resolved;
   }
 }

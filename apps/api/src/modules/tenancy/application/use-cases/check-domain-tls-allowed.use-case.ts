@@ -30,14 +30,12 @@ export class CheckDomainTlsAllowedUseCase {
     // An unparseable Host is never a tenant — fail closed without a lookup.
     if (!hostname) return false;
 
-    let cached = await this.cache.getHost(hostname);
-    if (cached === undefined) {
-      const domain = await this.domains.findByHostname(hostname);
-      cached = domain && domain.verifiedAt
+    const cached = await this.cache.resolveHost(hostname, async (name) => {
+      const domain = await this.domains.findByHostname(name);
+      return domain && domain.verifiedAt
         ? { tenantId: domain.tenantId, kind: domain.kind }
         : null;
-      await this.cache.setHost(hostname, cached);
-    }
+    });
     // Kind-agnostic on purpose: a verified dashboard host needs a certificate
     // exactly as much as a storefront one.
     return cached !== null;
