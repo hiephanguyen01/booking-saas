@@ -10,5 +10,5 @@
     "outDir": "dist",
     "baseUrl": "."
   },
-  "include": ["src", "prisma/seed.ts"]
+  "include": ["src", "prisma/seed.ts", "scripts"]
 }
