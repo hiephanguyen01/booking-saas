@@ -1129,11 +1129,20 @@ Update the single call site inside `tenant-domains-card.tsx` to `domainFields(co
 
 - [ ] **Step 3: Send `kind` from the action**
 
-In `settings-actions.server.ts`, the add-domain branch posts to `apiPaths.tenant.domains`. The form now submits a `kind` field; parse it with `addDomainInputSchema` as the rest of the payload already is, so an absent value defaults to `'storefront'` and a bad one is rejected by the same schema the backend uses. Add a hidden input carrying `kind` to the card's `GenericForm`:
+In `settings-actions.server.ts`, the add-domain branch posts to `apiPaths.tenant.domains`. Parse the
+body with `addDomainInputSchema` as it already does — an absent `kind` then defaults to `'storefront'`
+and a bad one is rejected by the same schema the backend uses, so the client is never trusted.
+
+Carry `kind` on the form through **`defaultValues`**, not a hidden input:
 
 ```tsx
-<input type="hidden" name="kind" value={kind} />
+<GenericForm schema={addDomainInputSchema} defaultValues={{ isPrimary: false, kind }} … >
 ```
+
+A `<input type="hidden" name="kind">` looks like the obvious answer and silently does nothing here:
+`GenericForm` submits react-hook-form's JS payload with `encType: 'application/json'` and never reads
+native `FormData`, so a raw DOM input is invisible to it. `handleSubmit` does include unregistered
+`defaultValues` keys, which is why this route works.
 
 - [ ] **Step 4: Render both cards**
 
