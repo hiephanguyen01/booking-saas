@@ -1903,7 +1903,7 @@ https:// {
 	tls {
 		on_demand
 	}
-	@dashboard header_regexp Host ^admin\.
+	@dashboard header_regexp Host (?i)^admin\.
 	handle @dashboard {
 		reverse_proxy dashboard:3000
 	}
@@ -1912,6 +1912,19 @@ https:// {
 	}
 }
 ```
+
+**The `(?i)` is load-bearing, not defensive.** Host headers are case-insensitive per RFC 9110 and the
+API stores every hostname lowercased (`hostnameSchema` lowercases before validating; the column is
+`citext`). Caddy's `header_regexp` is a case-sensitive Go RE2 match, so without the flag a request
+carrying `Host: ADMIN.tenant.vn` routes to the **storefront** while the database says that hostname is
+a dashboard host — the two halves of the routing contract would disagree on the same string. Verify it
+after `caddy validate`:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' -H 'Host: ADMIN.bookingstudio.stg.bookingos.vn' https://<ingress>/
+```
+
+Expected: the console's response, identical to the all-lowercase spelling — not the storefront's.
 
 - [ ] **Step 2: Validate the Caddy config**
 
