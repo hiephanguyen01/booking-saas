@@ -7,16 +7,23 @@ import type {
 } from '@booking/contracts';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 
-export const domainFields: FieldConfig<AddDomainInput>[] = [
-  {
-    name: 'hostname',
-    type: 'text',
-    label: 'Tên miền',
-    placeholder: 'booking.cuahang.vn',
-    colSpan: 2,
-  },
-  { name: 'isPrimary', type: 'switch', label: 'Đặt làm tên miền chính' },
-];
+/**
+ * `kind` deliberately stays out of this array — it isn't a field the tenant picks,
+ * it's fixed by which card (storefront vs dashboard) the form was submitted from.
+ * The card supplies it via `GenericForm`'s `defaultValues`/hidden input instead.
+ */
+export function domainFields(placeholder: string): FieldConfig<AddDomainInput>[] {
+  return [
+    {
+      name: 'hostname',
+      type: 'text',
+      label: 'Tên miền',
+      placeholder,
+      colSpan: 2,
+    },
+    { name: 'isPrimary', type: 'switch', label: 'Đặt làm tên miền chính' },
+  ];
+}
 
 export const sepayGatewayFields: FieldConfig<SepayGatewaySettingsForm>[] = [
   {

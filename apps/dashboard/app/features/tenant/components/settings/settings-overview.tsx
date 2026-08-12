@@ -57,7 +57,8 @@ export function SettingsOverview({
   canSettings,
   canFinance,
 }: SettingsOverviewProps) {
-  const primaryDomain = domains?.find((domain) => domain.isPrimary) ?? null;
+  const primaryDomain =
+    domains?.find((domain) => domain.kind === 'storefront' && domain.isPrimary) ?? null;
   const defaultPolicy = cancellationPolicies?.find((policy) => policy.isDefault) ?? null;
   const brandReady = Boolean(theme?.themeConfig.logoUrl && theme.themeConfig.hero?.title);
 

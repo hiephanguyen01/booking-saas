@@ -169,8 +169,30 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     settingsTabs.find((tab) => tab.value === requestedTab)?.value ??
     settingsTabs.find((tab) => tab.value === feedbackTab)?.value ??
     'overview';
-  const primaryDomain = domains?.find((domain) => domain.isPrimary && domain.verifiedAt) ?? null;
+  const primaryDomain = domains?.find(
+    // Storefront only — this opens the customer-facing shop. Without the kind
+    // check it opens the admin console, because `admin.<slug>` sorts first.
+    (domain) => domain.kind === 'storefront' && domain.isPrimary && domain.verifiedAt,
+  );
   const publicUrl = primaryDomain ? storefrontUrl(primaryDomain.hostname) : null;
+
+  const domainActionError =
+    errFor('domain-verify') ??
+    errFor('domain-dns-check') ??
+    errFor('domain-primary') ??
+    errFor('domain-delete');
+  // Neither card knows which one the action actually touched (the action response
+  // doesn't carry `kind`), so both storefront and dashboard domain cards show this
+  // same banner and it stays worded generically rather than naming a surface.
+  const domainSuccessMessage = okFor('domain')
+    ? 'Đã thêm tên miền. Hãy cấu hình DNS để hoàn tất xác minh.'
+    : okFor('domain-verify')
+      ? 'Đã gửi yêu cầu kiểm tra DNS. Trạng thái sẽ cập nhật khi bản ghi được tìm thấy.'
+      : okFor('domain-primary')
+        ? 'Đã cập nhật tên miền chính.'
+        : okFor('domain-delete')
+          ? 'Đã xoá tên miền.'
+          : null;
 
   const selectTab = (value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -243,32 +265,34 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
           ) : null}
 
           {canSettings ? (
-            <TabsContent value="domains" forceMount className="w-full data-[state=inactive]:hidden">
+            <TabsContent
+              value="domains"
+              forceMount
+              className="w-full space-y-5 data-[state=inactive]:hidden"
+            >
               <TenantDomainsCard
+                kind="storefront"
                 domains={domains}
                 tenancyConfig={tenancyConfig}
                 loadError={domainsError}
                 readOnly={readOnly}
-                actionError={
-                  errFor('domain-verify') ??
-                  errFor('domain-dns-check') ??
-                  errFor('domain-primary') ??
-                  errFor('domain-delete')
-                }
+                actionError={domainActionError}
                 domainError={errFor('domain')}
                 domainFieldErrors={fieldErrorsFor('domain')}
                 dnsCheck={dnsCheckResult}
-                successMessage={
-                  okFor('domain')
-                    ? 'Đã thêm tên miền. Hãy cấu hình DNS để hoàn tất xác minh.'
-                    : okFor('domain-verify')
-                      ? 'Đã gửi yêu cầu kiểm tra DNS. Trạng thái sẽ cập nhật khi bản ghi được tìm thấy.'
-                      : okFor('domain-primary')
-                        ? 'Đã cập nhật tên miền chính của storefront.'
-                        : okFor('domain-delete')
-                          ? 'Đã xoá tên miền khỏi storefront.'
-                          : null
-                }
+                successMessage={domainSuccessMessage}
+              />
+              <TenantDomainsCard
+                kind="dashboard"
+                domains={domains}
+                tenancyConfig={tenancyConfig}
+                loadError={domainsError}
+                readOnly={readOnly}
+                actionError={domainActionError}
+                domainError={errFor('domain')}
+                domainFieldErrors={fieldErrorsFor('domain')}
+                dnsCheck={dnsCheckResult}
+                successMessage={domainSuccessMessage}
               />
             </TabsContent>
           ) : null}

@@ -5,6 +5,7 @@ import {
   type DomainDnsCheckResponse,
   type DomainResponse,
   type TenancyConfigResponse,
+  type TenantDomainKind,
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import {
@@ -58,6 +59,7 @@ export interface DomainDnsCheckState {
 }
 
 export function TenantDomainsCard({
+  kind,
   domains,
   tenancyConfig,
   loadError,
@@ -68,6 +70,7 @@ export function TenantDomainsCard({
   successMessage,
   dnsCheck,
 }: {
+  kind: TenantDomainKind;
   domains: DomainResponse[] | null;
   tenancyConfig: TenancyConfigResponse | null;
   loadError: string | null;
@@ -86,23 +89,36 @@ export function TenantDomainsCard({
     run(() => submit({ intent, domainId }, { method: 'post' }));
   };
 
+  const rows = (domains ?? []).filter((domain) => domain.kind === kind);
+  const copy =
+    kind === 'dashboard'
+      ? {
+          title: 'Tên miền trang quản trị',
+          description:
+            'Địa chỉ đội ngũ của bạn dùng để đăng nhập và vận hành. Tên miền phải bắt đầu bằng "admin.".',
+          placeholder: 'admin.tencuaban.vn',
+        }
+      : {
+          title: 'Tên miền cửa hàng',
+          description: 'Địa chỉ khách hàng truy cập để xem và đặt dịch vụ.',
+          placeholder: 'datcho.tencuaban.vn',
+        };
+
   return (
     <Card className="shadow-none" aria-busy={busy}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Globe2 className="size-4 text-primary" aria-hidden="true" /> Tên miền storefront
+          <Globe2 className="size-4 text-primary" aria-hidden="true" /> {copy.title}
         </CardTitle>
-        <CardDescription>
-          Kết nối địa chỉ riêng để khách truy cập cửa hàng bằng tên miền thương hiệu của bạn.
-        </CardDescription>
+        <CardDescription>{copy.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <ErrorBanner error={loadError ?? actionError} />
         <SuccessBanner message={successMessage} />
 
-        {!loadError && domains && domains.length > 0 ? (
+        {!loadError && domains && rows.length > 0 ? (
           <ul className="space-y-3">
-            {domains.map((domain) => (
+            {rows.map((domain) => (
               <DomainRow
                 key={domain.id}
                 domain={domain}
@@ -121,8 +137,8 @@ export function TenantDomainsCard({
             </span>
             <p className="mt-3 text-sm font-semibold">Chưa có tên miền riêng</p>
             <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-              Thêm tên miền bạn sở hữu. Storefront vẫn tiếp tục hoạt động trên địa chỉ mặc định
-              trong lúc chờ xác minh.
+              Thêm tên miền bạn sở hữu. Hệ thống vẫn tiếp tục hoạt động trên địa chỉ mặc định trong
+              lúc chờ xác minh.
             </p>
           </div>
         ) : null}
@@ -134,19 +150,28 @@ export function TenantDomainsCard({
           <div className="mb-5">
             <h3 className="text-sm font-semibold">Thêm tên miền</h3>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Chỉ nhập hostname, không nhập giao thức hoặc đường dẫn. Ví dụ: booking.cuahang.vn.
+              Chỉ nhập hostname, không nhập giao thức hoặc đường dẫn. Ví dụ: {copy.placeholder}.
             </p>
           </div>
           <GenericForm
             schema={addDomainInputSchema}
-            fields={domainFields}
+            fields={domainFields(copy.placeholder)}
             columns={2}
-            defaultValues={{ isPrimary: false }}
+            defaultValues={{ isPrimary: false, kind }}
             submitLabel="Thêm tên miền"
             submitPendingLabel="Đang thêm..."
             serverError={domainError}
             fieldErrors={domainFieldErrors}
-          />
+          >
+            {/*
+              Belt-and-suspenders for the pre-hydration native-POST fallback
+              (see the comment on GenericForm's <form>): `kind` isn't a
+              rendered/registered field, so `defaultValues` is what actually
+              carries it through the normal JS submit path — this hidden input
+              only matters if a submit fires before react-hook-form mounts.
+            */}
+            <input type="hidden" name="kind" value={kind} />
+          </GenericForm>
         </fieldset>
       </CardContent>
     </Card>
@@ -233,6 +258,7 @@ function DomainRow({
           </Button>
           <DeleteDomainDialog
             hostname={domain.hostname}
+            kind={domain.kind}
             disabled={busy || readOnly}
             onConfirm={() => onAction('delete-domain', domain.id)}
           />
@@ -412,10 +438,12 @@ function DnsCheckResult({ check }: { check: DomainDnsCheckResponse }) {
 
 function DeleteDomainDialog({
   hostname,
+  kind,
   disabled,
   onConfirm,
 }: {
   hostname: string;
+  kind: TenantDomainKind;
   disabled: boolean;
   onConfirm: () => void;
 }) {
@@ -437,8 +465,10 @@ function DeleteDomainDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Xoá tên miền {hostname}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Khách sẽ không thể truy cập storefront bằng địa chỉ này sau khi xoá. Thao tác không ảnh
-            hưởng dữ liệu đặt chỗ hoặc nội dung cửa hàng.
+            {kind === 'dashboard'
+              ? 'Đội ngũ của bạn sẽ không thể đăng nhập bằng địa chỉ này sau khi xoá.'
+              : 'Khách sẽ không thể truy cập storefront bằng địa chỉ này sau khi xoá.'}{' '}
+            Thao tác không ảnh hưởng dữ liệu đặt chỗ hoặc nội dung cửa hàng.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
