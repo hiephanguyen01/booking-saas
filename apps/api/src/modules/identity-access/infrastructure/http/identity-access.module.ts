@@ -30,6 +30,9 @@ import { ListAssignableTenantRolesUseCase } from '../../application/use-cases/li
 import { CreateTenantRoleUseCase } from '../../application/use-cases/create-tenant-role.use-case';
 import { UpdateTenantRoleUseCase } from '../../application/use-cases/update-tenant-role.use-case';
 import { DeleteTenantRoleUseCase } from '../../application/use-cases/delete-tenant-role.use-case';
+import { ListTenantMembersUseCase } from '../../application/use-cases/list-tenant-members.use-case';
+import { SetTenantMemberRolesUseCase } from '../../application/use-cases/set-tenant-member-roles.use-case';
+import { RemoveTenantMemberUseCase } from '../../application/use-cases/remove-tenant-member.use-case';
 import { AUTH_CHALLENGE_STORE } from '../../domain/ports/auth-challenge-store.port';
 import { AUTH_EMAIL_SENDER } from '../../domain/ports/auth-email-sender.port';
 import { PrismaUserRepository } from '../repositories/prisma-user.repository';
@@ -45,12 +48,13 @@ import { SmtpAuthEmailSender } from '../services/smtp-auth-email.sender';
 import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
 import { PublicAuthController } from './public-auth.controller';
 import { TenantRoleController } from './tenant-role.controller';
+import { TenantMemberController } from './tenant-member.controller';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { SessionAuthGuard } from './guards/session-auth.guard';
 
 @Module({
   imports: [NotificationModule],
-  controllers: [PublicAuthController, TenantRoleController],
+  controllers: [PublicAuthController, TenantRoleController, TenantMemberController],
   providers: [
     { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
@@ -59,8 +63,8 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     { provide: SESSION_INFO_READER, useClass: PrismaSessionInfoReader },
     { provide: AUTH_CHALLENGE_STORE, useClass: RedisAuthChallengeStore },
     { provide: AUTH_EMAIL_SENDER, useClass: SmtpAuthEmailSender },
-    // All three bound here even though Task 5 only wires the role endpoints —
-    // Tasks 6-8 (members, invitations, accept) rely on this wiring existing.
+    // All three bound here even though Task 6 only wires the role + member
+    // endpoints — Tasks 7-8 (invitations, accept) rely on this wiring existing.
     { provide: TENANT_ROLE_REPOSITORY, useClass: PrismaTenantRoleRepository },
     { provide: TENANT_MEMBER_REPOSITORY, useClass: PrismaTenantMemberRepository },
     { provide: TENANT_INVITATION_REPOSITORY, useClass: PrismaTenantInvitationRepository },
@@ -86,6 +90,9 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     CreateTenantRoleUseCase,
     UpdateTenantRoleUseCase,
     DeleteTenantRoleUseCase,
+    ListTenantMembersUseCase,
+    SetTenantMemberRolesUseCase,
+    RemoveTenantMemberUseCase,
     // guard order matters: authentication first, then deny-by-default authorization
     { provide: APP_GUARD, useClass: SessionAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
