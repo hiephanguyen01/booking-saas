@@ -17,7 +17,11 @@ export interface ITenantRoleRepository {
   /** Filters `roleIds` down to the ones assignable in this tenant. */
   filterAssignable(tx: PrismaTx, tenantId: string, roleIds: readonly string[]): Promise<RoleRow[]>;
   create(tx: PrismaTx, tenantId: string, name: string, permissions: readonly string[]): Promise<string>;
-  /** Replaces name + the whole permission set. Custom roles only. */
-  update(tx: PrismaTx, tenantId: string, roleId: string, name: string, permissions: readonly string[]): Promise<void>;
+  /**
+   * Replaces name + the whole permission set. Custom roles only. Returns false
+   * when no role with that id belongs to this tenant, in which case nothing —
+   * name or permissions — was written.
+   */
+  update(tx: PrismaTx, tenantId: string, roleId: string, name: string, permissions: readonly string[]): Promise<boolean>;
   delete(tx: PrismaTx, tenantId: string, roleId: string): Promise<void>;
 }

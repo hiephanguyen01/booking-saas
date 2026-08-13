@@ -99,6 +99,13 @@ export class PrismaTenantRoleRepository implements ITenantRoleRepository {
   /**
    * Replaces name + the whole permission set. Custom roles only — the
    * use-case checks `!isSystem` (via `findById`) before ever calling this.
+   *
+   * The scoped role write runs FIRST and gates everything else: `role_permissions`
+   * has no `tenant_id` column and no RLS policy at all (confirmed absent from every
+   * migration), so this `{ id: roleId, tenantId }` match is the ONLY thing standing
+   * between a caller and a shared system role's permission set. The permission rows
+   * must never be touched before it has matched — returning false here means the
+   * delete+recreate below never runs.
    */
   async update(
     tx: PrismaTx,
@@ -106,16 +113,15 @@ export class PrismaTenantRoleRepository implements ITenantRoleRepository {
     roleId: string,
     name: string,
     permissions: readonly string[],
-  ): Promise<void> {
+  ): Promise<boolean> {
+    const claimed = await tx.role.updateMany({ where: { id: roleId, tenantId }, data: { name } });
+    if (claimed.count !== 1) return false;
+
     await tx.rolePermission.deleteMany({ where: { roleId } });
     await tx.rolePermission.createMany({
       data: permissions.map((permissionKey) => ({ roleId, permissionKey })),
     });
-    // `roles`' RLS policy has no separate WITH CHECK, so Postgres reuses its
-    // USING clause (tenant_id = current tenant OR tenant_id IS NULL) as the
-    // write check too — an unscoped update() could rename a shared system
-    // role. The tenantId filter is the only thing stopping that.
-    await tx.role.updateMany({ where: { id: roleId, tenantId }, data: { name } });
+    return true;
   }
 
   /**

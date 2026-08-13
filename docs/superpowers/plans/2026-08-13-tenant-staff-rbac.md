@@ -602,8 +602,12 @@ export interface ITenantRoleRepository {
   /** Filters `roleIds` down to the ones assignable in this tenant. */
   filterAssignable(tx: PrismaTx, tenantId: string, roleIds: readonly string[]): Promise<RoleRow[]>;
   create(tx: PrismaTx, tenantId: string, name: string, permissions: readonly string[]): Promise<string>;
-  /** Replaces name + the whole permission set. Custom roles only. */
-  update(tx: PrismaTx, tenantId: string, roleId: string, name: string, permissions: readonly string[]): Promise<void>;
+  /**
+   * Replaces name + the whole permission set. Custom roles only. Returns false
+   * when no role with that id belongs to this tenant, in which case nothing —
+   * name or permissions — was written.
+   */
+  update(tx: PrismaTx, tenantId: string, roleId: string, name: string, permissions: readonly string[]): Promise<boolean>;
   delete(tx: PrismaTx, tenantId: string, roleId: string): Promise<void>;
 }
 ```
@@ -690,17 +694,27 @@ const roles = await tx.role.findMany({
 
 ```ts
 // prisma-tenant-role.repository.ts — update()
-// Replace the permission set wholesale inside the caller's tx.
+// The scoped role write runs FIRST and gates everything else.
+const claimed = await tx.role.updateMany({ where: { id: roleId, tenantId }, data: { name } });
+if (claimed.count !== 1) return false;
+
 await tx.rolePermission.deleteMany({ where: { roleId } });
 await tx.rolePermission.createMany({
   data: permissions.map((permissionKey) => ({ roleId, permissionKey })),
 });
-await tx.role.updateMany({ where: { id: roleId, tenantId }, data: { name } });
+return true;
 ```
-The `tenantId` filter is load-bearing, not decorative: the `roles` RLS policy has no separate
-`WITH CHECK`, so Postgres reuses its `USING` clause (`tenant_id = current tenant OR tenant_id IS
-NULL`) as the write check too — an unscoped update would let any tenant rename or reassign the
-permissions of a shared system role.
+The `{ id: roleId, tenantId }` match is load-bearing, not decorative, for two independent
+reasons — and it must run *before* the permission writes, not after. First, the `roles` RLS
+policy has no separate `WITH CHECK`, so Postgres reuses its `USING` clause (`tenant_id =
+current tenant OR tenant_id IS NULL`) as the write check too, meaning an unscoped `role.update`
+would let any tenant rename a shared system role. Second, and more importantly,
+`role_permissions` has **no `tenant_id` column and no RLS policy at all** — there is no
+database-level protection on it whatsoever. If the permission delete+recreate ran before (or
+regardless of) the scoped match, a caller could rewrite a shared system role's permission set
+platform-wide even if the cosmetic name write silently no-opped. The role write's row count is
+therefore the *only* ownership check in this method, and it must gate, not just accompany, the
+permission writes.
 
 ```ts
 // prisma-tenant-invitation.repository.ts — findByTokenHash()
@@ -816,6 +830,19 @@ const role = await this.roles.findById(tx, tenantId, roleId);
 if (!role) throw new RoleNotFound();          // add to tenant-access-errors.ts: 404 ROLE_NOT_FOUND
 if (role.isSystem) throw new SystemRoleImmutable();
 ```
+
+Then perform the write itself and check its result:
+
+```ts
+const updated = await this.roles.update(tx, tenantId, roleId, input.name, input.permissions);
+if (!updated) throw new RoleNotFound();
+```
+
+`update()` returns `false` when its own tenant-scoped match didn't hit — a role deleted between
+the `findById` guard above and this call, for instance. That match is `role_permissions`' only
+protection (it has no `tenant_id` column and no RLS policy of its own — see Task 4), so this
+use-case must trust `update()`'s return value and never assume the earlier `findById` read is
+still true by the time the write runs.
 
 After the write, **every holder's cached permissions are now stale**:
 
