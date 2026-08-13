@@ -1802,8 +1802,16 @@ docker compose up -d && pnpm dev
 1. Sign in at `admin.bookingstudio.localhost:5174` as `owner@bookingstudio.vn` / `demo-password`.
 2. Nhân sự → Vai trò → create "Lễ tân" with only `tenant.bookings.read`.
 3. Nhân sự → "Mời nhân sự" → invite an address with no account, role "Lễ tân".
-4. Open Mailpit (`localhost:8025`); confirm the CTA host is `admin.bookingstudio.localhost`.
-5. Register that address through the storefront OTP flow, then open the invitation link.
+4. Open Mailpit (`localhost:8025`); confirm the CTA host-selection logic is correct — i.e. it matches
+   the tenant's **primary verified dashboard domain** — not that it equals any particular literal. For
+   the seeded BookingStudio that domain is `admin.bookingstudio.stg.bookingos.vn`, a staging host, even
+   when the invite was sent from local dev: the seed registers both `admin.bookingstudio.stg.bookingos.vn`
+   and `admin.bookingstudio.localhost` for the tenant but marks the staging one `is_primary` (see
+   `apps/api/prisma/seed/tenants/booking-studio.ts:101-108`), and the CTA always resolves to the primary
+   verified domain, so seeing the staging host here is correct, not a resolver bug to "fix".
+5. Register that address through the storefront OTP flow. The mailed link itself does not resolve on a
+   developer machine (it points at the staging host), so copy the token from the Mailpit link and open
+   `http://admin.bookingstudio.localhost:5174/invitations/<token>` directly instead of clicking it.
 6. Accept. Confirm the sidebar shows **only** "Đặt chỗ", and that visiting `/tenant/finance` returns 403.
 7. As the owner, edit that member to hold **two** roles; confirm both chips render and the effective-permission preview shows the union.
 8. Try to remove your own roles → expect `CANNOT_EDIT_SELF`.
@@ -1824,6 +1832,15 @@ gh pr create --title "feat: tenant staff management and role builder" --body "�
 ```
 
 ---
+
+## Risks
+
+**The invitation-email CTA is only clickable end to end in an environment where the tenant's primary
+dashboard domain actually resolves.** It resolves to whichever `tenant_domains` row is `is_primary AND
+verified` (Task 9), and the seed marks the staging host primary for every tenant — so locally, and in
+any environment where the primary domain isn't the one you're browsing from, the mailed link itself
+will not load; that's a genuine property of the feature (a tenant's canonical host is its production
+domain, not a dev convenience), not a local-setup quirk to route around.
 
 ## Notes for the implementer
 
