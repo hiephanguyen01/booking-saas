@@ -28,17 +28,23 @@ import { CreateTenantRoleDto, UpdateTenantRoleDto } from './dto/tenant-access.dt
  * roles can be created, edited or deleted; the use-cases enforce that, not
  * this controller.
  *
- * NOTE: other tenant-settings mutation controllers additionally guard writes
- * with `@UseGuards(RequireActiveSubscriptionGuard)` (tenancy module). That
- * guard is deliberately NOT applied here: every tenancy controller already
- * imports identity-access's `RequirePermissions`/`Public` decorators, so
- * identity-access importing anything from `modules/tenancy/*` closes
- * `identity-access → tenancy → identity-access` — caught by
- * `pnpm check:module-cycles` (ADR 0003, CI-enforced). See task-5-report.md
- * for the verified before/after and the recommended follow-up (moving the
- * subscription-gate capability somewhere both modules can depend on, e.g.
- * `shared/`, before Tasks 6-8 add more identity-access write routes that
- * will hit the same wall).
+ * Unlike every other tenant-settings mutation, these write routes carry no
+ * `@UseGuards(RequireActiveSubscriptionGuard)`. Two independent reasons:
+ *
+ *  - Product decision: staff and role management deliberately stay available
+ *    when a subscription lapses. When an employee leaves, the tenant owner
+ *    must be able to revoke their access immediately — that need is MORE
+ *    urgent while billing is broken, not less. Gating it behind an active
+ *    subscription would strand a tenant with a departed employee still
+ *    holding live permissions.
+ *  - Even setting that aside, the guard lives in `tenancy`, and every
+ *    tenancy controller already imports identity-access's
+ *    `RequirePermissions`/`Public` decorators — so identity-access importing
+ *    anything back from `modules/tenancy/*` would close
+ *    `identity-access → tenancy → identity-access`, which
+ *    `pnpm check:module-cycles` (ADR 0003, CI-enforced) rejects.
+ *
+ * Do not "fix" this by re-adding the guard.
  */
 @ApiTags('tenant: roles')
 @Controller('tenant/roles')

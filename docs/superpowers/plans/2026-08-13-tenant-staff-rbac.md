@@ -966,7 +966,6 @@ export class TenantRoleController {
   }
 
   @RequirePermissions('tenant.roles.manage')
-  @UseGuards(RequireActiveSubscriptionGuard)
   @Post()
   create(
     @Body() input: CreateTenantRoleDto,
@@ -978,7 +977,6 @@ export class TenantRoleController {
   }
 
   @RequirePermissions('tenant.roles.manage')
-  @UseGuards(RequireActiveSubscriptionGuard)
   @Patch(':roleId')
   @HttpCode(204)
   async update(
@@ -992,7 +990,6 @@ export class TenantRoleController {
   }
 
   @RequirePermissions('tenant.roles.manage')
-  @UseGuards(RequireActiveSubscriptionGuard)
   @Delete(':roleId')
   @HttpCode(204)
   async remove(
@@ -1005,6 +1002,13 @@ export class TenantRoleController {
   }
 }
 ```
+
+These writes deliberately carry no `@UseGuards(RequireActiveSubscriptionGuard)`, unlike every
+other tenant-settings mutation: staff/role management must stay available when a subscription
+lapses so an owner can revoke a departed employee's access, and separately, the guard lives in
+`tenancy`, which already imports `identity-access`'s decorators in five controllers — importing
+it back would close `identity-access → tenancy → identity-access`, which
+`pnpm check:module-cycles` rejects. Do not add it back in Task 6/7 either.
 
 Note the `assignable` route is declared **before** any `:roleId` route so the literal segment wins.
 
@@ -1127,7 +1131,12 @@ Removal deletes assignments only. It does **not** revoke `sessions` rows — the
 
 - [ ] **Step 3: Write `list-tenant-members.use-case.ts` and the controller**
 
-All three routes declare `@RequirePermissions('tenant.members.manage')`; the two writes add `@UseGuards(RequireActiveSubscriptionGuard)`, matching every other tenant mutation.
+All three routes declare `@RequirePermissions('tenant.members.manage')`. None of them additionally
+carry `@UseGuards(RequireActiveSubscriptionGuard)` — unlike every other tenant-settings mutation,
+staff management deliberately stays available when a subscription lapses (an owner must still be
+able to revoke a departed employee's access), and the guard lives in `tenancy`, which already
+imports `identity-access`'s decorators, so importing it back would close a module cycle
+`check:module-cycles` rejects. See Task 5's controller for the full reasoning.
 
 - [ ] **Step 4: Verify**
 
@@ -1213,6 +1222,11 @@ The partial unique index from Task 2 turns a duplicate pending invite into a Pri
 - [ ] **Step 3: Write list + revoke, and add the routes**
 
 `ListTenantInvitationsUseCase` maps each row through `invitationStateOf(row, new Date())` so an expired row reports `expired` without a stored state. `RevokeTenantInvitationUseCase` throws `InvitationNotPending` when `revoke()` returns false.
+
+Like Task 6, the two writes added to `tenant-member.controller.ts` here (`POST .../invitations`,
+`DELETE .../invitations/:id`) carry no `@UseGuards(RequireActiveSubscriptionGuard)` — same ruling:
+staff/role management stays available when billing lapses, and the guard lives in `tenancy`, whose
+import back into `identity-access` would close a module cycle `check:module-cycles` rejects.
 
 - [ ] **Step 4: Verify**
 

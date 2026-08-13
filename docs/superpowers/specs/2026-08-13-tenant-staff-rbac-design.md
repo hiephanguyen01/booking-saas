@@ -40,6 +40,7 @@ seed run is required.
 | How someone joins | A **stateful invitation** with a token and an expiry, so a person who has no account yet can still be invited, and a pending invite can be revoked. |
 | Where the code lives | `identity-access`. Roles, permissions and assignments are its domain; `tenancy` does not own them. |
 | Escalation rule | A caller may only grant permissions they themselves hold. |
+| Subscription gating on staff/role writes | **Not gated.** An owner must be able to revoke a departed employee's access exactly when billing has lapsed, not lose the ability to. |
 
 ### Why roles, not per-user permission ticks
 
@@ -181,6 +182,16 @@ Two edge cases the above leaves open, resolved here:
   permission cache; it does not revoke `sessions` rows. Within a minute the user keeps a signed-in
   session but loses the tenant workspace entirely — `listMemberships` no longer returns it. Session
   revocation on removal is deliberately out of scope.
+
+Every other tenant-settings mutation (`tenant-legal`, `tenant-settings`, theme, domains, …) locks to
+read-only once `evaluateSubscription(...).dashboardWritable` is false, via
+`RequireActiveSubscriptionGuard`. The `/tenant/members` and `/tenant/roles` writes in this design are
+not gated that way, deliberately: staff and role management must stay available when a subscription
+lapses, because that is exactly when a tenant most needs to revoke a departed employee's access, not
+when it can afford to lose the ability to. (`RequireActiveSubscriptionGuard` also lives in `tenancy`,
+which already imports `identity-access`'s decorators in five controllers, so importing it back into
+`identity-access` would close a module cycle `check:module-cycles` rejects — the product decision and
+the import-graph constraint happen to point the same way.)
 
 ## Email
 
