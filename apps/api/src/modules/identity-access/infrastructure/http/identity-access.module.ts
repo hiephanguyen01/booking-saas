@@ -8,6 +8,7 @@ import { USER_REPOSITORY } from '../../domain/ports/user-repository.port';
 import { TENANT_ROLE_REPOSITORY } from '../../domain/ports/tenant-role-repository.port';
 import { TENANT_MEMBER_REPOSITORY } from '../../domain/ports/tenant-member-repository.port';
 import { TENANT_INVITATION_REPOSITORY } from '../../domain/ports/tenant-invitation-repository.port';
+import { INVITATION_TOKEN } from '../../domain/ports/invitation-token.port';
 import { ChangeMyPasswordUseCase } from '../../application/use-cases/change-my-password.use-case';
 import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
 import { UpdateMyProfileUseCase } from '../../application/use-cases/update-my-profile.use-case';
@@ -33,6 +34,9 @@ import { DeleteTenantRoleUseCase } from '../../application/use-cases/delete-tena
 import { ListTenantMembersUseCase } from '../../application/use-cases/list-tenant-members.use-case';
 import { SetTenantMemberRolesUseCase } from '../../application/use-cases/set-tenant-member-roles.use-case';
 import { RemoveTenantMemberUseCase } from '../../application/use-cases/remove-tenant-member.use-case';
+import { InviteTenantMemberUseCase } from '../../application/use-cases/invite-tenant-member.use-case';
+import { ListTenantInvitationsUseCase } from '../../application/use-cases/list-tenant-invitations.use-case';
+import { RevokeTenantInvitationUseCase } from '../../application/use-cases/revoke-tenant-invitation.use-case';
 import { AUTH_CHALLENGE_STORE } from '../../domain/ports/auth-challenge-store.port';
 import { AUTH_EMAIL_SENDER } from '../../domain/ports/auth-email-sender.port';
 import { PrismaUserRepository } from '../repositories/prisma-user.repository';
@@ -45,6 +49,7 @@ import { PrismaSessionInfoReader } from '../services/prisma-session-info.reader'
 import { PrismaSessionStore } from '../services/prisma-session.store';
 import { RedisAuthChallengeStore } from '../services/redis-auth-challenge.store';
 import { SmtpAuthEmailSender } from '../services/smtp-auth-email.sender';
+import { Sha256InvitationTokenService } from '../services/sha256-invitation-token.service';
 import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
 import { PublicAuthController } from './public-auth.controller';
 import { TenantRoleController } from './tenant-role.controller';
@@ -68,6 +73,7 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     { provide: TENANT_ROLE_REPOSITORY, useClass: PrismaTenantRoleRepository },
     { provide: TENANT_MEMBER_REPOSITORY, useClass: PrismaTenantMemberRepository },
     { provide: TENANT_INVITATION_REPOSITORY, useClass: PrismaTenantInvitationRepository },
+    { provide: INVITATION_TOKEN, useClass: Sha256InvitationTokenService },
     RegisterUseCase,
     LoginUseCase,
     RefreshSessionUseCase,
@@ -93,6 +99,9 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     ListTenantMembersUseCase,
     SetTenantMemberRolesUseCase,
     RemoveTenantMemberUseCase,
+    InviteTenantMemberUseCase,
+    ListTenantInvitationsUseCase,
+    RevokeTenantInvitationUseCase,
     // guard order matters: authentication first, then deny-by-default authorization
     { provide: APP_GUARD, useClass: SessionAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

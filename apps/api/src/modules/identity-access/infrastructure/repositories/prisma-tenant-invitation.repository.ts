@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { PrismaClient, TenantInvitation } from '@prisma/client';
+import { Prisma, type PrismaClient, type TenantInvitation } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
@@ -7,6 +7,7 @@ import type {
   ITenantInvitationRepository,
   InvitationRow,
 } from '../../domain/ports/tenant-invitation-repository.port';
+import { InvitationAlreadyPending } from '../../domain/errors/tenant-access-errors';
 
 type UserLookupClient = Pick<PrismaClient, 'user'>;
 
@@ -63,17 +64,28 @@ export class PrismaTenantInvitationRepository implements ITenantInvitationReposi
   }
 
   async create(tx: PrismaTx, data: CreateInvitationData): Promise<string> {
-    const invitation = await tx.tenantInvitation.create({
-      data: {
-        tenantId: data.tenantId,
-        email: data.email,
-        roleIds: [...data.roleIds],
-        tokenHash: data.tokenHash,
-        invitedByUserId: data.invitedByUserId,
-        expiresAt: data.expiresAt,
-      },
-    });
-    return invitation.id;
+    try {
+      const invitation = await tx.tenantInvitation.create({
+        data: {
+          tenantId: data.tenantId,
+          email: data.email,
+          roleIds: [...data.roleIds],
+          tokenHash: data.tokenHash,
+          invitedByUserId: data.invitedByUserId,
+          expiresAt: data.expiresAt,
+        },
+      });
+      return invitation.id;
+    } catch (error) {
+      // `tenant_invitations_pending_email_key` (partial unique on
+      // (tenant_id, email) WHERE status='pending') — a live invite already
+      // exists for this address. Never let the raw Prisma error reach the
+      // client.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new InvitationAlreadyPending();
+      }
+      throw error;
+    }
   }
 
   async revoke(tx: PrismaTx, tenantId: string, invitationId: string): Promise<boolean> {
