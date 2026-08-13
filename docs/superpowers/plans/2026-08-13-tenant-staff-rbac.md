@@ -823,13 +823,43 @@ export class CreateTenantRoleUseCase {
 
 - [ ] **Step 2: Write `update-tenant-role.use-case.ts`**
 
-Same shape, plus two guards before writing:
+Same shape, plus three guards before writing:
 
 ```ts
 const role = await this.roles.findById(tx, tenantId, roleId);
 if (!role) throw new RoleNotFound();          // add to tenant-access-errors.ts: 404 ROLE_NOT_FOUND
 if (role.isSystem) throw new SystemRoleImmutable();
 ```
+
+**Lockout, not just escalation.** `assertGrantable(input.permissions, callerHolds)` bounds what the
+edit can *add* — it says nothing about what the edit *removes*. A role edit changes what every
+holder of that role may do, exactly as a member removal does (Task 6's invariant #1), so it needs
+the same `assertKeepsAManager` check — on the membership as it would be with THIS role's permissions
+replaced, not the membership before the edit. There is deliberately no `assertNotSelf` here: editing
+a role you hold yourself is a normal thing an owner does, and the lockout check (not a self-edit ban)
+is the correct guard for it.
+
+```ts
+// A role edit changes what its holders may do, so it can strand a tenant just as
+// a member removal can — and unlike removal there is no assertNotSelf here, because
+// editing a role you hold is legitimate. Recompute every member's effective set with
+// THIS role's new permissions substituted in, then assert someone can still manage members.
+const allRoles = await this.roles.list(tx, tenantId);
+const permsByRole = new Map(
+  allRoles.map((r) => [r.id, r.id === roleId ? input.permissions : r.permissions]),
+);
+const members = await this.members.list(tx, tenantId);
+assertKeepsAManager(
+  members.map((m) => ({
+    userId: m.userId,
+    permissions: [...new Set(m.roles.flatMap((r) => permsByRole.get(r.id) ?? []))],
+  })),
+);
+```
+
+`UpdateTenantRoleUseCase` already injects `TENANT_MEMBER_REPOSITORY` for the post-write
+`holdersOfRole` call below, so this needs no new constructor dependency. Uses only existing port
+methods (`ITenantRoleRepository.list`, `ITenantMemberRepository.list`) — no new repository method.
 
 Then perform the write itself and check its result:
 
@@ -863,6 +893,9 @@ if (!role) throw new RoleNotFound();
 if (role.isSystem) throw new SystemRoleImmutable();
 // MANDATORY. RoleAssignment.role declares onDelete: Cascade (schema.prisma:719),
 // so deleting a role that people hold would silently strip them of it.
+// This is also why delete needs no assertKeepsAManager: memberCount > 0 already
+// refuses to delete a role anyone holds, so a successful delete cannot change
+// anyone's permissions — unlike update, there is nothing here for it to guard.
 if (role.memberCount > 0) throw new RoleInUse(role.memberCount);
 await this.roles.delete(tx, tenantId, roleId);
 ```

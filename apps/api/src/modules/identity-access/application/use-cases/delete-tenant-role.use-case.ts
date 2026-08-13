@@ -26,6 +26,8 @@ export class DeleteTenantRoleUseCase {
       const role = await this.roles.findById(tx, tenantId, roleId);
       if (!role) throw new RoleNotFound();
       if (role.isSystem) throw new SystemRoleImmutable();
+      // No assertKeepsAManager needed here: memberCount > 0 already refuses to delete
+      // a role anyone holds, so a successful delete cannot change anyone's permissions.
       if (role.memberCount > 0) throw new RoleInUse(role.memberCount);
 
       await this.roles.delete(tx, tenantId, roleId);

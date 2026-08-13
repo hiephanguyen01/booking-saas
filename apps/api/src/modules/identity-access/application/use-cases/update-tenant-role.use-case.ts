@@ -14,7 +14,7 @@ import {
   TENANT_MEMBER_REPOSITORY,
   type ITenantMemberRepository,
 } from '../../domain/ports/tenant-member-repository.port';
-import { assertGrantable } from '../../domain/tenant-access-policy';
+import { assertGrantable, assertKeepsAManager } from '../../domain/tenant-access-policy';
 import { RoleNotFound, SystemRoleImmutable } from '../../domain/errors/tenant-access-errors';
 
 /**
@@ -22,6 +22,13 @@ import { RoleNotFound, SystemRoleImmutable } from '../../domain/errors/tenant-ac
  * as create — the caller cannot use an edit to hand a role permissions they do
  * not themselves hold, since an edit here is otherwise indistinguishable from
  * minting a new, stronger role under an existing name.
+ *
+ * Also carries the lockout guard: a role edit changes what every holder of
+ * that role may do, so stripping `tenant.members.manage` from a role here
+ * strands the tenant exactly as effectively as removing a member does. There
+ * is deliberately no `assertNotSelf` — editing a role you hold yourself is a
+ * normal thing an owner does; the lockout check (on the post-edit membership
+ * projection) is the correct guard, not a self-edit ban.
  */
 @Injectable()
 export class UpdateTenantRoleUseCase {
@@ -46,6 +53,22 @@ export class UpdateTenantRoleUseCase {
       const role = await this.roles.findById(tx, tenantId, roleId);
       if (!role) throw new RoleNotFound();
       if (role.isSystem) throw new SystemRoleImmutable();
+
+      // A role edit changes what its holders may do, so it can strand a tenant just as
+      // a member removal can — and unlike removal there is no assertNotSelf here, because
+      // editing a role you hold is legitimate. Recompute every member's effective set with
+      // THIS role's new permissions substituted in, then assert someone can still manage members.
+      const allRoles = await this.roles.list(tx, tenantId);
+      const permsByRole = new Map(
+        allRoles.map((r) => [r.id, r.id === roleId ? input.permissions : r.permissions]),
+      );
+      const members = await this.members.list(tx, tenantId);
+      assertKeepsAManager(
+        members.map((m) => ({
+          userId: m.userId,
+          permissions: [...new Set(m.roles.flatMap((r) => permsByRole.get(r.id) ?? []))],
+        })),
+      );
 
       // `role_permissions` has no tenant_id column / RLS policy of its own (Task
       // 4) — the tenant-scoped match inside `update()` is the only thing gating
