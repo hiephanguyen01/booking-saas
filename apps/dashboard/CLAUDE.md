@@ -88,9 +88,11 @@ landing-local on purpose: an operator console and a marketing page share a palet
 
 ## Constants
 
-`constants/` holds display maps keyed by a `@booking/contracts` enum (one file per domain), the two
-path modules, and `messages.ts` for repeated situation-generic failure copy. A map whose values are
-CSS classes, or whose key is a UI-only union (`StatTone`, `ClosureState`), stays beside its component.
+`constants/` holds display maps keyed by a `@booking/contracts` enum (one file per domain — e.g.
+`permissions.ts`, keyed by `TenantPermissionKey`, carries the Vietnamese label per permission key and
+the tick-grid/effective-permission-preview display grouping), the two path modules, and `messages.ts`
+for repeated situation-generic failure copy. A map whose values are CSS classes, or whose key is a
+UI-only union (`StatTone`, `ClosureState`), stays beside its component.
 `status-badge.tsx` is the one place a domain status becomes a colour — a status' pill, calendar dot
 and event chip all read the same tone from it.
 
