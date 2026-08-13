@@ -6,7 +6,7 @@ CREATE TABLE "tenant_invitations" (
   "email" CITEXT NOT NULL,
   "role_ids" UUID[] NOT NULL,
   "token_hash" TEXT NOT NULL,
-  "invited_by_user_id" UUID NOT NULL,
+  "invited_by_user_id" UUID,
   "status" "tenant_invitation_status" NOT NULL DEFAULT 'pending',
   "expires_at" TIMESTAMPTZ(6) NOT NULL,
   "accepted_at" TIMESTAMPTZ(6),
@@ -15,7 +15,7 @@ CREATE TABLE "tenant_invitations" (
   "updated_at" TIMESTAMPTZ(6) NOT NULL,
   CONSTRAINT "tenant_invitations_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "tenant_invitations_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT "tenant_invitations_invited_by_user_id_fkey" FOREIGN KEY ("invited_by_user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "tenant_invitations_invited_by_user_id_fkey" FOREIGN KEY ("invited_by_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "tenant_invitations_accepted_user_id_fkey" FOREIGN KEY ("accepted_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 

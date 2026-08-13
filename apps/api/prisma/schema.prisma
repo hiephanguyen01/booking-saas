@@ -884,7 +884,7 @@ model TenantInvitation {
   email           String                 @db.Citext
   roleIds         String[]               @map("role_ids") @db.Uuid
   tokenHash       String                 @unique @map("token_hash")
-  invitedByUserId String                 @map("invited_by_user_id") @db.Uuid
+  invitedByUserId String?                @map("invited_by_user_id") @db.Uuid
   status          TenantInvitationStatus @default(pending)
   expiresAt       DateTime               @map("expires_at") @db.Timestamptz(6)
   acceptedAt      DateTime?              @map("accepted_at") @db.Timestamptz(6)

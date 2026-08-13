@@ -229,7 +229,7 @@ CREATE TABLE "tenant_invitations" (
   "email" CITEXT NOT NULL,
   "role_ids" UUID[] NOT NULL,
   "token_hash" TEXT NOT NULL,
-  "invited_by_user_id" UUID NOT NULL,
+  "invited_by_user_id" UUID,
   "status" "tenant_invitation_status" NOT NULL DEFAULT 'pending',
   "expires_at" TIMESTAMPTZ(6) NOT NULL,
   "accepted_at" TIMESTAMPTZ(6),
@@ -238,7 +238,7 @@ CREATE TABLE "tenant_invitations" (
   "updated_at" TIMESTAMPTZ(6) NOT NULL,
   CONSTRAINT "tenant_invitations_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "tenant_invitations_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT "tenant_invitations_invited_by_user_id_fkey" FOREIGN KEY ("invited_by_user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "tenant_invitations_invited_by_user_id_fkey" FOREIGN KEY ("invited_by_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "tenant_invitations_accepted_user_id_fkey" FOREIGN KEY ("accepted_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
@@ -259,6 +259,13 @@ CREATE POLICY tenant_isolation ON "tenant_invitations"
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON "tenant_invitations" TO app_user, app_admin;
 ```
+
+`invited_by_user_id` is nullable with `ON DELETE SET NULL`, not `ON DELETE CASCADE`: an accepted
+invitation is a historical record of a role grant and must survive the inviter's account being
+deleted — matching this schema's convention for other NOT-NULL "actor" audit columns
+(`content_reports_handled_by_user_id_fkey`, `listing_revisions_submitted_by_user_id_fkey`,
+`legal_document_versions_published_by_user_id_fkey`), all of which preserve the row via `SET NULL`
+rather than destroying it via `CASCADE`.
 
 Note for the implementer: the accept flow reads a row **before** any tenant context exists, so that read must run on `prisma.admin` (BYPASSRLS), exactly like `PermissionResolverService` does. RLS here protects the tenant-scoped list/revoke paths.
 
@@ -285,7 +292,7 @@ model TenantInvitation {
   email           String                 @db.Citext
   roleIds         String[]               @map("role_ids") @db.Uuid
   tokenHash       String                 @unique @map("token_hash")
-  invitedByUserId String                 @map("invited_by_user_id") @db.Uuid
+  invitedByUserId String?                @map("invited_by_user_id") @db.Uuid
   status          TenantInvitationStatus @default(pending)
   expiresAt       DateTime               @map("expires_at") @db.Timestamptz(6)
   acceptedAt      DateTime?              @map("accepted_at") @db.Timestamptz(6)
