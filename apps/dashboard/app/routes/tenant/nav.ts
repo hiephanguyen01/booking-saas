@@ -10,6 +10,7 @@ import {
   Tags,
   Ticket,
   Users,
+  UsersRound,
   Wallet,
   Star,
   Heart,
@@ -147,6 +148,12 @@ export const tenantNavSections: DashboardNavSection[] = [
   {
     label: 'Hệ thống',
     items: [
+      {
+        title: 'Nhân sự',
+        to: dashboardPaths.tenant.members,
+        icon: UsersRound,
+        anyPermissions: ['tenant.members.manage', 'tenant.roles.manage'],
+      },
       {
         title: 'Cài đặt',
         to: dashboardPaths.tenant.settings,
