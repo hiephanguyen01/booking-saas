@@ -24,26 +24,39 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 /**
- * Members/invitations tabs need only `tenant.members.manage` — `loadTenantMembers`
- * already requires it to reach this loader at all (a caller lacking it never gets
- * a successful response to render), so they need no further runtime gate. Only the
- * "Vai trò" tab is conditional, on `canManageRoles` (`can('tenant.roles.manage')`,
- * resolved server-side by the loader — `can` itself is a function and would decode
- * to `undefined` once loader data crosses the client hydration boundary, so the
- * loader hands over the already-evaluated boolean instead of the function).
+ * Every tab is conditional — `loadTenantMembers` no longer requires either
+ * permission to reach the loader (a caller holding only `tenant.roles.manage`
+ * must still land here and see the "Vai trò" tab, not a 403), so "Nhân sự"/
+ * "Lời mời" are gated on `canManageMembers` and "Vai trò" on `canManageRoles`,
+ * both already evaluated server-side by the loader. Neither is ever read as a
+ * live `can(...)` call here — `can` itself is a function and would decode to
+ * `undefined` once loader data crosses the client hydration boundary (React
+ * Router 8's single-fetch wire format has no encoding for a function value),
+ * so the loader hands over precomputed booleans instead.
  */
 export default function TenantMembers({ loaderData }: Route.ComponentProps) {
-  const { members, membersError, invitations, invitationsError, roles, rolesError, canManageRoles } =
-    loaderData;
+  const {
+    members,
+    membersError,
+    invitations,
+    invitationsError,
+    roles,
+    rolesError,
+    canManageMembers,
+    canManageRoles,
+  } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tabs = [
-    { value: 'members', label: 'Nhân sự', icon: UsersRound },
-    { value: 'invitations', label: 'Lời mời', icon: Mail },
+    canManageMembers ? { value: 'members', label: 'Nhân sự', icon: UsersRound } : null,
+    canManageMembers ? { value: 'invitations', label: 'Lời mời', icon: Mail } : null,
     canManageRoles ? { value: 'roles', label: 'Vai trò', icon: ShieldCheck } : null,
   ].filter((tab) => tab !== null);
   const requestedTab = searchParams.get('section');
-  const activeTab = tabs.find((tab) => tab.value === requestedTab)?.value ?? 'members';
+  // `tabs` is never empty here — the loader 403s outright when the caller
+  // holds neither permission, so there is always at least one tab to fall
+  // back to.
+  const activeTab = tabs.find((tab) => tab.value === requestedTab)?.value ?? tabs[0]!.value;
 
   const selectTab = (value: string): void => {
     const next = new URLSearchParams(searchParams);
@@ -58,11 +71,13 @@ export default function TenantMembers({ loaderData }: Route.ComponentProps) {
         description="Quản lý thành viên, lời mời và vai trò truy cập bảng điều khiển của tenant."
         actions={
           <>
-            <Button asChild variant="outline">
-              <Link to={dashboardPaths.tenant.memberInvite}>
-                <UserPlus className="size-4" /> Mời nhân sự
-              </Link>
-            </Button>
+            {canManageMembers ? (
+              <Button asChild variant="outline">
+                <Link to={dashboardPaths.tenant.memberInvite}>
+                  <UserPlus className="size-4" /> Mời nhân sự
+                </Link>
+              </Button>
+            ) : null}
             {canManageRoles ? (
               <Button asChild>
                 <Link to={dashboardPaths.tenant.roleNew}>
@@ -83,13 +98,17 @@ export default function TenantMembers({ loaderData }: Route.ComponentProps) {
           ))}
         </TabsList>
 
-        <TabsContent value="members" forceMount className="space-y-4 data-[state=inactive]:hidden">
-          <MembersTable members={members} error={membersError} />
-        </TabsContent>
+        {canManageMembers ? (
+          <TabsContent value="members" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            <MembersTable members={members ?? []} error={membersError} />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="invitations" forceMount className="space-y-4 data-[state=inactive]:hidden">
-          <InvitationsTable invitations={invitations} error={invitationsError} />
-        </TabsContent>
+        {canManageMembers ? (
+          <TabsContent value="invitations" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            <InvitationsTable invitations={invitations ?? []} error={invitationsError} />
+          </TabsContent>
+        ) : null}
 
         {canManageRoles ? (
           <TabsContent value="roles" forceMount className="space-y-4 data-[state=inactive]:hidden">

@@ -1540,7 +1540,7 @@ export const TENANT_PERMISSION_GROUPS: { label: string; keys: TenantPermissionKe
 
 - [ ] **Step 3: Write the loader and action modules**
 
-`loadTenantMembers(request)` calls `requireTenant(request, 'tenant.members.manage')`, then fetches members, invitations and — only when `can('tenant.roles.manage')` — roles, returning `{ members, invitations, roles, can }`. `handleMembersAction` switches on an `intent` field (`invite`, `revoke-invitation`, `set-roles`, `remove-member`, `create-role`, `update-role`, `delete-role`), parses with the Task 1 zod schema, calls the API, and returns `routeData({ error, fieldErrors }, { status: 400 })` on failure — the shape `listing-types/new.tsx:23-35` uses.
+`loadTenantMembers(request)` calls `requireTenant(request)` with **no** permission argument — `tenant.members.manage` and `tenant.roles.manage` gate two independent halves of the screen, so requiring the former up front would 403 a caller who holds only the latter before they ever reach the "Vai trò" tab. It evaluates both `can('tenant.members.manage')`/`can('tenant.roles.manage')` itself, 403s only when NEITHER is held, fetches members/invitations only under the first and roles only under the second, and returns `{ members, invitations, roles, canManageMembers, canManageRoles }` — precomputed booleans, never the raw `can` function (React Router 8's single-fetch/turbo-stream wire format cannot encode a function; it silently decodes to `undefined` on the client, so `loaderData.can(...)` would throw post-hydration — matches `settings-loader.server.ts`'s `canTheme`/`canSettings`/… convention). `handleMembersAction` switches on an `intent` field (`invite`, `revoke-invitation`, `set-roles`, `remove-member`, `create-role`, `update-role`, `delete-role`), parses with the Task 1 zod schema, calls the API, and returns `routeData({ error, fieldErrors }, { status: 400 })` on failure — the shape `listing-types/new.tsx:23-35` uses.
 
 - [ ] **Step 4: Verify**
 
@@ -1592,7 +1592,7 @@ Import `UsersRound` from `lucide-react`. `Users` is already taken by "Đối tá
 
 - [ ] **Step 2: Write the screen**
 
-Three `Tabs` driven by `useSearchParams()`, exactly as `routes/tenant/settings.tsx` drives its sections. A tab is rendered **only** when its permission is held — `can('tenant.members.manage')` for the first two, `can('tenant.roles.manage')` for the third. Header actions: "Mời nhân sự" (links to `dashboardPaths.tenant.memberInvite`) and "Tạo vai trò" (`dashboardPaths.tenant.roleNew`), each gated the same way.
+Three `Tabs` driven by `useSearchParams()`, exactly as `routes/tenant/settings.tsx` drives its sections. A tab is rendered **only** when its permission is held — the loader's precomputed `canManageMembers` for the first two, `canManageRoles` for the third (never a live `can(...)` call in the component — see Task 10's note on why the loader hands back booleans, not the function). Header actions: "Mời nhân sự" (links to `dashboardPaths.tenant.memberInvite`) and "Tạo vai trò" (`dashboardPaths.tenant.roleNew`), each gated the same way.
 
 - [ ] **Step 3: Write the three tables**
 
