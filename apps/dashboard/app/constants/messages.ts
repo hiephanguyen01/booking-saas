@@ -21,4 +21,5 @@ export const actionMessages = {
 export const notFoundMessages = {
   listing: 'Không tìm thấy tin đăng.',
   listingType: 'Không tìm thấy loại dịch vụ.',
+  member: 'Không tìm thấy thành viên.',
 } as const;
