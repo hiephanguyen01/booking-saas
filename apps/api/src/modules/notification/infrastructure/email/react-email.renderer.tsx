@@ -167,6 +167,10 @@ const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
     vi: { subject: 'Đã huỷ chứng từ khấu trừ thuế {certificateNumber}', title: 'Chứng từ khấu trừ thuế đã bị huỷ', intro: '{tenantName} đã huỷ chứng từ {certificateNumber} của năm {taxYear}. Lý do: {reason}', cta: 'Xem lịch sử chứng từ' },
     en: { subject: 'Tax withholding certificate {certificateNumber} voided', title: 'A tax withholding certificate was voided', intro: '{tenantName} voided certificate {certificateNumber} for tax year {taxYear}. Reason: {reason}', cta: 'View certificate history' },
   },
+  tenant_member_invited: {
+    vi: { subject: '{tenantName} mời bạn tham gia quản trị', title: 'Bạn được mời tham gia quản trị', intro: '{tenantName} mời bạn tham gia với vai trò {roleNames}. Nhấn nút bên dưới để chấp nhận lời mời.', cta: 'Chấp nhận lời mời' },
+    en: { subject: '{tenantName} invited you to help manage their workspace', title: "You're invited to join {tenantName}", intro: '{tenantName} invited you to join as {roleNames}. Click below to accept the invitation.', cta: 'Accept invitation' },
+  },
   auth_registration_otp: {
     vi: { subject: 'Mã xác thực để xác minh đăng ký', title: 'Xác thực email', intro: 'Dùng mã bên dưới để xác minh địa chỉ email {recipientEmail}.', cta: 'Xác thực email' },
     en: { subject: 'Your registration verification code', title: 'Verify your email', intro: 'Use the code below to verify {recipientEmail}.', cta: 'Verify email' },

@@ -32,7 +32,10 @@ export type NotificationTemplateId =
   | 'partner_agreement_recorded'
   | 'payout_paid_partner'
   | 'tax_certificate_issued_partner'
-  | 'tax_certificate_voided_partner';
+  | 'tax_certificate_voided_partner'
+  // Task 9 — routed directly in NotificationModule.onModuleInit (single audience:
+  // the invitee), not through planForEvent, exactly like legal_document_published_*.
+  | 'tenant_member_invited';
 
 export interface NotificationPlanItem {
   audience: Audience;
