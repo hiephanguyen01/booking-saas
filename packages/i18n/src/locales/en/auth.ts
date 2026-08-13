@@ -2,7 +2,7 @@ import type { TranslationShape } from '../translation-shape';
 import type { viAuth } from '../vi/auth';
 
 export const enAuth = {
-  header: { login: 'Log in', register: 'Create account', reset: 'Reset password' },
+  header: { login: 'Log in', register: 'Create account', reset: 'Reset password', back: 'Back' },
   meta: {
     login: 'Log in',
     register: 'Create account',
@@ -55,6 +55,20 @@ export const enAuth = {
     hide: 'Hide password',
     submitRegistration: 'Complete registration',
     submitReset: 'Change password',
+    guidance: {
+      strengthLabel: 'Password strength',
+      notStarted: 'Not entered',
+      weak: 'Weak',
+      medium: 'Medium',
+      strong: 'Strong',
+      rules: {
+        length: '8–128 characters',
+        letter: 'At least one letter',
+        digit: 'At least one number',
+      },
+      met: 'Requirement met',
+      unmet: 'Requirement not met',
+    },
   },
   success: {
     registrationTitle: 'Account created!',

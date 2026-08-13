@@ -16,7 +16,12 @@ export default function RouteComponent() {
   const actionData = useActionData<AuthActionData>();
   const { t } = useTranslation(NsI18n.Auth);
   return (
-    <AuthFrame tenant={tenant} title={t('forgot.title')} description={t('forgot.description')}>
+    <AuthFrame
+      tenant={tenant}
+      title={t('forgot.title')}
+      description={t('forgot.description')}
+      backTo={storefrontPaths.login(locale)}
+    >
       <StartForm mode="reset" locale={locale} actionData={actionData} />
       <p className="mt-7 text-center">
         <Link

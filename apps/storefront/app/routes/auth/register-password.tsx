@@ -10,6 +10,7 @@ import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/register-password';
+import { storefrontPaths } from '~/constants/paths';
 export const meta = ({ params }: Route.MetaArgs) => authMeta(params.locale, 'registerPassword');
 export const loader = ({ request, params }: Route.LoaderArgs) =>
   requireFlowPhaseOnly(request, 'registration', 'password', params.locale);
@@ -17,7 +18,7 @@ export const action = ({ request, params }: Route.ActionArgs) =>
   completePasswordAction(request, params.locale, 'registration');
 
 export default function RouteComponent() {
-  const { tenant } = useOutletContext<StorefrontContext>();
+  const { tenant, locale } = useOutletContext<StorefrontContext>();
   const actionData = useActionData<AuthActionData>();
   const { t } = useTranslation(NsI18n.Auth);
   return (
@@ -25,6 +26,7 @@ export default function RouteComponent() {
       tenant={tenant}
       title={t('password.registrationTitle')}
       description={t('password.description')}
+      backTo={storefrontPaths.register(locale)}
     >
       <NewPasswordForm mode="registration" actionData={actionData} />
     </AuthFrame>

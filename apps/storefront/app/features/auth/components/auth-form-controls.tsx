@@ -7,7 +7,7 @@ import {
   InputGroupInput,
 } from '@booking/ui/components/ui/input-group';
 import { Spinner } from '@booking/ui/components/ui/spinner';
-import { Eye, EyeOff, LockKeyhole } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, LockKeyhole } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useNavigation } from 'react-router';
@@ -58,9 +58,17 @@ export function AuthSubmitButton({
   const pending = disabled || (navigation.state !== 'idle' && navigation.formMethod != null);
 
   return (
-    <Button type="submit" size="control" className="w-full text-base" disabled={pending}>
+    <Button
+      type="submit"
+      size="control"
+      className="w-full text-base max-md:h-13 max-md:rounded-(--sf-surface-radius) max-md:shadow-lg max-md:shadow-primary/20"
+      disabled={pending}
+    >
       {pending ? <Spinner data-icon="inline-start" /> : null}
       {children}
+      {pending ? null : (
+        <ArrowRight data-icon="inline-end" className="md:hidden" aria-hidden="true" />
+      )}
     </Button>
   );
 }
@@ -71,18 +79,20 @@ export function AuthPasswordInput({
   registration,
   invalid,
   disabled = false,
+  describedBy,
 }: {
   id: string;
   autoComplete: string;
   registration: UseFormRegisterReturn;
   invalid?: boolean;
   disabled?: boolean;
+  describedBy?: string;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
   const { inputType, toggle, visible } = usePasswordVisibility();
 
   return (
-    <InputGroup>
+    <InputGroup className="max-md:h-12 max-md:rounded-(--sf-surface-radius) max-md:bg-muted/45 max-md:shadow-none">
       <InputGroupAddon>
         <LockKeyhole />
       </InputGroupAddon>
@@ -91,6 +101,7 @@ export function AuthPasswordInput({
         type={inputType}
         autoComplete={autoComplete}
         aria-invalid={invalid}
+        aria-describedby={describedBy}
         disabled={disabled}
         {...registration}
       />

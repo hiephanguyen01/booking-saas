@@ -10,6 +10,7 @@ import {
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
+import { storefrontPaths } from '~/constants/paths';
 export const meta = ({ params }: Route.MetaArgs) =>
   authMeta(params.locale, 'forgotPasswordNewPassword');
 export const loader = ({ request, params }: Route.LoaderArgs) =>
@@ -17,7 +18,7 @@ export const loader = ({ request, params }: Route.LoaderArgs) =>
 export const action = ({ request, params }: Route.ActionArgs) =>
   completePasswordAction(request, params.locale, 'password_reset');
 export default function RouteComponent() {
-  const { tenant } = useOutletContext<StorefrontContext>();
+  const { tenant, locale } = useOutletContext<StorefrontContext>();
   const actionData = useActionData<AuthActionData>();
   const { t } = useTranslation(NsI18n.Auth);
   return (
@@ -25,6 +26,7 @@ export default function RouteComponent() {
       tenant={tenant}
       title={t('password.resetTitle')}
       description={t('password.description')}
+      backTo={storefrontPaths.forgotPassword(locale)}
     >
       <NewPasswordForm mode="reset" actionData={actionData} />
     </AuthFrame>

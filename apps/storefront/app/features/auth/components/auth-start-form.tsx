@@ -1,7 +1,8 @@
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@booking/ui/components/ui/field';
 import { Input } from '@booking/ui/components/ui/input';
-import { Mail, UserRound } from 'lucide-react';
+import { cn } from '@booking/ui/lib/utils';
+import { CircleAlert, Mail, UserRound } from 'lucide-react';
 import { Controller } from 'react-hook-form';
 import { Link } from 'react-router';
 import type { AuthActionData } from '~/lib/auth-types';
@@ -14,6 +15,12 @@ import {
   useAuthStartFormController,
   type AuthStartMode,
 } from '~/features/auth/hooks/use-auth-start-form-controller';
+
+const MOBILE_FIELD_LABEL =
+  'max-md:text-xs max-md:font-bold max-md:uppercase max-md:tracking-[0.06em] max-md:text-muted-foreground';
+
+const MOBILE_TEXT_INPUT =
+  'pl-11 max-md:h-12 max-md:rounded-(--sf-surface-radius) max-md:bg-muted/45 max-md:shadow-none';
 
 export function StartForm({
   mode,
@@ -32,21 +39,25 @@ export function StartForm({
     mode,
     legalConsent,
   );
+  const emailTaken = mode === 'register' && actionData?.error === 'EMAIL_TAKEN';
+  const emailInvalid = Boolean(errors.email || actionData?.fieldErrors?.email || emailTaken);
 
   return (
     <form method="post" onSubmit={submitForm} noValidate aria-busy={submitting}>
-      <FieldGroup className="gap-5">
-        <AuthFormError actionData={actionData} />
+      <FieldGroup className="gap-4 md:gap-5">
+        <AuthFormError actionData={emailTaken ? undefined : actionData} />
         {mode === 'register' ? (
           <Field data-invalid={Boolean(errors.fullName || actionData?.fieldErrors?.fullName)}>
-            <FieldLabel htmlFor="fullName">{t('fields.fullName')}</FieldLabel>
+            <FieldLabel htmlFor="fullName" className={MOBILE_FIELD_LABEL}>
+              {t('fields.fullName')}
+            </FieldLabel>
             <div className="relative">
               <UserRound className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="fullName"
                 autoComplete="name"
-                className="pl-11"
-                aria-invalid={Boolean(errors.fullName)}
+                className={MOBILE_TEXT_INPUT}
+                aria-invalid={Boolean(errors.fullName || actionData?.fieldErrors?.fullName)}
                 disabled={submitting}
                 {...register('fullName')}
               />
@@ -56,26 +67,38 @@ export function StartForm({
             </FieldError>
           </Field>
         ) : null}
-        <Field data-invalid={Boolean(errors.email || actionData?.fieldErrors?.email)}>
-          <FieldLabel htmlFor="email">{t('fields.email')}</FieldLabel>
+        <Field data-invalid={emailInvalid}>
+          <FieldLabel htmlFor="email" className={MOBILE_FIELD_LABEL}>
+            {t('fields.email')}
+          </FieldLabel>
           <div className="relative">
             <Mail className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="email"
               type="email"
               autoComplete="email"
-              className="pl-11"
-              aria-invalid={Boolean(errors.email)}
+              className={cn(MOBILE_TEXT_INPUT, emailInvalid && 'max-md:pr-11')}
+              aria-invalid={emailInvalid}
               disabled={submitting}
               {...register('email')}
             />
+            {emailInvalid ? (
+              <CircleAlert
+                className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-destructive md:hidden"
+                aria-hidden="true"
+              />
+            ) : null}
           </div>
-          <FieldError errors={[errors.email]}>{actionData?.fieldErrors?.email?.[0]}</FieldError>
+          <FieldError errors={[errors.email]}>
+            {actionData?.fieldErrors?.email?.[0] ?? (emailTaken ? t('errors.emailTaken') : null)}
+          </FieldError>
         </Field>
         {mode === 'login' ? (
           <Field data-invalid={Boolean(errors.password || actionData?.fieldErrors?.password)}>
             <div className="flex items-center justify-between">
-              <FieldLabel htmlFor="password">{t('fields.password')}</FieldLabel>
+              <FieldLabel htmlFor="password" className={MOBILE_FIELD_LABEL}>
+                {t('fields.password')}
+              </FieldLabel>
               <Link
                 to={storefrontPaths.forgotPassword(locale)}
                 className="text-sm font-medium text-primary hover:underline"
@@ -87,7 +110,7 @@ export function StartForm({
               id="password"
               autoComplete="current-password"
               registration={register('password')}
-              invalid={Boolean(errors.password)}
+              invalid={Boolean(errors.password || actionData?.fieldErrors?.password)}
               disabled={submitting}
             />
             <FieldError errors={[errors.password]}>

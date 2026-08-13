@@ -15,6 +15,7 @@ type AccountFlowLayoutProps = {
   contentClassName?: string;
   contentAs?: 'div' | 'main';
   showCategories?: boolean;
+  hideHeaderBelowMd?: boolean;
 };
 
 export function AccountFlowLayout({
@@ -24,6 +25,7 @@ export function AccountFlowLayout({
   contentClassName,
   contentAs = 'main',
   showCategories = false,
+  hideHeaderBelowMd = false,
 }: AccountFlowLayoutProps) {
   const Content = contentAs;
 
@@ -33,6 +35,7 @@ export function AccountFlowLayout({
         tenant={context.tenant}
         locale={context.locale}
         currentUser={context.currentUser}
+        hideBelowMd={hideHeaderBelowMd}
       />
       {showCategories && context.listingTypes.length ? <CategoryNav context={context} /> : null}
       {/* When the flow renders its own <main>, there is no landmark here to name. */}

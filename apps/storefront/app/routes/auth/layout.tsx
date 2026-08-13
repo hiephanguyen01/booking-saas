@@ -18,7 +18,8 @@ export default function AuthLayout() {
     <AccountFlowLayout
       context={context}
       section={section}
-      contentClassName="flex flex-1 items-center px-4 py-10 sm:px-6 sm:py-16"
+      contentClassName="flex flex-1 items-start px-0 py-0 md:items-center md:px-4 md:py-10 lg:px-6 lg:py-16"
+      hideHeaderBelowMd
     >
       <Outlet context={context} />
     </AccountFlowLayout>

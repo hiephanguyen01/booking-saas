@@ -18,8 +18,14 @@ export default function RouteComponent() {
       tenant={tenant}
       title={t('success.resetTitle')}
       description={t('success.resetDescription')}
+      hideHeadingBelowMd
     >
-      <SuccessState mode="reset" locale={locale} />
+      <SuccessState
+        mode="reset"
+        locale={locale}
+        title={t('success.resetTitle')}
+        description={t('success.resetDescription')}
+      />
     </AuthFrame>
   );
 }

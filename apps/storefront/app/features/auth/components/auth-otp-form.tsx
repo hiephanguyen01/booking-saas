@@ -28,12 +28,15 @@ export function OtpForm({
     });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5 md:gap-6">
       <AuthFormError actionData={actionData} />
-      <form method="post" onSubmit={handleSubmit}>
-        <FieldGroup className="gap-6">
+      <form method="post" onSubmit={handleSubmit} aria-busy={verifying}>
+        <FieldGroup className="gap-5 md:gap-6">
           <Field data-invalid={Boolean(actionData?.fieldErrors?.code)}>
-            <FieldLabel htmlFor="otp-code" className="justify-center">
+            <FieldLabel
+              htmlFor="otp-code"
+              className="max-md:text-xs max-md:font-bold max-md:uppercase max-md:tracking-[0.06em] max-md:text-muted-foreground md:justify-center"
+            >
               {t('verify.code')}
             </FieldLabel>
             <InputOTP
@@ -44,26 +47,26 @@ export function OtpForm({
               inputMode="numeric"
               autoFocus
               disabled={verifying}
-              containerClassName="justify-center"
+              containerClassName="justify-center gap-1.5 md:gap-2"
               aria-label={t('verify.code')}
               aria-invalid={Boolean(actionData?.fieldErrors?.code)}
             >
-              <InputOTPGroup>
+              <InputOTPGroup className="gap-2 md:gap-0">
                 {[0, 1, 2].map((index) => (
                   <InputOTPSlot
                     key={index}
                     index={index}
-                    className="h-11 w-11 sm:h-16 sm:w-16 sm:text-xl"
+                    className="h-14 w-11 text-lg max-md:rounded-(--sf-surface-radius) max-md:border-l max-md:bg-muted/45 max-md:shadow-none md:h-16 md:w-16 md:text-xl"
                   />
                 ))}
               </InputOTPGroup>
               <InputOTPSeparator />
-              <InputOTPGroup>
+              <InputOTPGroup className="gap-2 md:gap-0">
                 {[3, 4, 5].map((index) => (
                   <InputOTPSlot
                     key={index}
                     index={index}
-                    className="h-11 w-11 sm:h-16 sm:w-16 sm:text-xl"
+                    className="h-14 w-11 text-lg max-md:rounded-(--sf-surface-radius) max-md:border-l max-md:bg-muted/45 max-md:shadow-none md:h-16 md:w-16 md:text-xl"
                   />
                 ))}
               </InputOTPGroup>
@@ -76,7 +79,7 @@ export function OtpForm({
       <Button
         type="button"
         variant="ghost"
-        className="mx-auto"
+        className="mx-auto max-md:h-12 max-md:rounded-(--sf-surface-radius) max-md:px-4"
         disabled={seconds > 0 || resending || verifying}
         onClick={resendCode}
       >
