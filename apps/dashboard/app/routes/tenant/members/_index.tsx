@@ -42,6 +42,7 @@ export default function TenantMembers({ loaderData }: Route.ComponentProps) {
     invitationsError,
     roles,
     rolesError,
+    currentUserId,
     canManageMembers,
     canManageRoles,
   } = loaderData;
@@ -100,7 +101,7 @@ export default function TenantMembers({ loaderData }: Route.ComponentProps) {
 
         {canManageMembers ? (
           <TabsContent value="members" forceMount className="space-y-4 data-[state=inactive]:hidden">
-            <MembersTable members={members ?? []} error={membersError} />
+            <MembersTable members={members ?? []} error={membersError} currentUserId={currentUserId} />
           </TabsContent>
         ) : null}
 

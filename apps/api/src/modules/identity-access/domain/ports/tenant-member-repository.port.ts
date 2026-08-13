@@ -20,7 +20,6 @@ export interface ITenantMemberRepository {
   removeRoles(tx: PrismaTx, tenantId: string, userId: string, roleIds: readonly string[]): Promise<void>;
   /** Deletes every tenant-scoped assignment of that user. */
   removeAll(tx: PrismaTx, tenantId: string, userId: string): Promise<void>;
-  findUserIdByEmail(tx: PrismaTx, email: string): Promise<string | null>;
   /**
    * User ids holding this role IN THIS TENANT. Editing a role changes what its
    * holders may do, so each of them needs their permission cache invalidated.

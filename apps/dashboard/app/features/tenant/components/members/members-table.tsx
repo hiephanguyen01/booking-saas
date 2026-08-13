@@ -31,8 +31,23 @@ function initials(name: string): string {
  * `ConfirmButton` (never `window.confirm`, which would block the extension
  * driven browser check later in the plan) and each row owns its own fetcher so
  * one row's in-flight request never disables the rest of the table.
+ *
+ * The backend refuses to let a member edit or remove themselves
+ * (`CANNOT_EDIT_SELF`), so the signed-in user's own row disables "Sửa vai
+ * trò"/"Gỡ khỏi tenant" instead of offering an action that can only ever
+ * fail — `currentUserId` comes from `members-loader.server.ts` as a plain
+ * string (never a live session object) for the same turbo-stream reason
+ * documented there.
  */
-export function MembersTable({ members, error }: { members: TenantMember[]; error: string | null }) {
+export function MembersTable({
+  members,
+  error,
+  currentUserId,
+}: {
+  members: TenantMember[];
+  error: string | null;
+  currentUserId: string;
+}) {
   const columns: DataTableColumn<TenantMember>[] = [
     {
       header: 'Thành viên',
@@ -71,7 +86,9 @@ export function MembersTable({ members, error }: { members: TenantMember[]; erro
       header: '',
       headClassName: 'text-right',
       className: 'text-right',
-      cell: (member) => <MemberRowActions member={member} />,
+      cell: (member) => (
+        <MemberRowActions member={member} isSelf={member.userId === currentUserId} />
+      ),
     },
   ];
 
@@ -86,7 +103,7 @@ export function MembersTable({ members, error }: { members: TenantMember[]; erro
   );
 }
 
-function MemberRowActions({ member }: { member: TenantMember }) {
+function MemberRowActions({ member, isSelf }: { member: TenantMember; isSelf: boolean }) {
   const fetcher = useFetcher<RemoveMemberActionData>();
   const { busy, run } = useSubmissionGuard(fetcher.state);
   const removeError = fetcher.data?.error ?? null;
@@ -94,11 +111,17 @@ function MemberRowActions({ member }: { member: TenantMember }) {
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex justify-end gap-1.5">
-        <Button asChild size="sm" variant="ghost">
-          <Link to={dashboardPaths.tenant.member(member.userId)}>
+        {isSelf ? (
+          <Button type="button" size="sm" variant="ghost" disabled>
             <Pencil className="size-3.5" /> Sửa vai trò
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button asChild size="sm" variant="ghost">
+            <Link to={dashboardPaths.tenant.member(member.userId)}>
+              <Pencil className="size-3.5" /> Sửa vai trò
+            </Link>
+          </Button>
+        )}
         <ConfirmButton
           trigger={
             <Button
@@ -106,7 +129,7 @@ function MemberRowActions({ member }: { member: TenantMember }) {
               size="sm"
               variant="ghost"
               className="text-muted-foreground hover:text-destructive"
-              disabled={busy}
+              disabled={busy || isSelf}
             >
               <UserMinus className="size-3.5" /> Gỡ khỏi tenant
             </Button>
@@ -123,6 +146,11 @@ function MemberRowActions({ member }: { member: TenantMember }) {
           }
         />
       </div>
+      {isSelf ? (
+        <p className="text-xs text-muted-foreground">
+          Đây là tài khoản của bạn — không thể tự sửa vai trò hoặc tự gỡ khỏi tenant.
+        </p>
+      ) : null}
       {removeError ? <p className="text-xs text-destructive">{removeError}</p> : null}
     </div>
   );

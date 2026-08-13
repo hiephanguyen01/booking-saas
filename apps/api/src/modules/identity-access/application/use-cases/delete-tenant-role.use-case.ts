@@ -26,8 +26,18 @@ export class DeleteTenantRoleUseCase {
       const role = await this.roles.findById(tx, tenantId, roleId);
       if (!role) throw new RoleNotFound();
       if (role.isSystem) throw new SystemRoleImmutable();
-      // No assertKeepsAManager needed here: memberCount > 0 already refuses to delete
-      // a role anyone holds, so a successful delete cannot change anyone's permissions.
+      // memberCount only proves nobody held this role at the moment of that
+      // SELECT — `forTenant` sets no isolation level (plain READ COMMITTED),
+      // so a concurrent set-roles/accept-invitation that assigns this role
+      // can still commit between this read and the `delete` below. The FK
+      // cascade (`RoleAssignment.role` is `onDelete: Cascade`) then silently
+      // strips it from that new holder, and this use-case never calls
+      // `resolver.invalidate()`, so the victim's permission cache keeps
+      // reporting they hold it for up to 60s
+      // (`PermissionResolverService`'s TTL) after the assignment row is
+      // gone. Known race, left open: closing it (re-checking memberCount
+      // inside the delete statement, or a stronger isolation level) is a
+      // design change and out of scope for this fix.
       if (role.memberCount > 0) throw new RoleInUse(role.memberCount);
 
       await this.roles.delete(tx, tenantId, roleId);

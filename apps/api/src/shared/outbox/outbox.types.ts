@@ -14,3 +14,15 @@ export interface OutboxEventRecord {
 }
 
 export type OutboxHandler = (event: OutboxEventRecord) => Promise<void>;
+
+/**
+ * Event types whose payload embeds a bearer secret (a token, password, or
+ * client secret — something that alone grants access, not merely PII). The
+ * relay (`outbox-relay.worker.ts`) redacts the payload of these event types
+ * once delivery succeeds, so `outbox_events` — which is never pruned — does
+ * not keep the secret readable for the lifetime of the row. Register a new
+ * event type here the moment its payload starts carrying one.
+ */
+export const SECRET_PAYLOAD_EVENT_TYPES: ReadonlySet<string> = new Set<string>([
+  'tenant.member_invited', // carries the clear invitation token (ADR 0001 hashes only the DB copy)
+]);

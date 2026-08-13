@@ -23,9 +23,14 @@ const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Invites someone who may not have an account yet. The clear token is minted
- * up front and carried only in the outbox payload for Task 9's mailer — the
- * repository stores just its hash (ADR 0001), so a rolled-back invite cannot
- * leave a usable token anywhere.
+ * up front and carried in the outbox payload for Task 9's mailer — the
+ * repository stores only its hash (ADR 0001), so a rolled-back invite leaves
+ * no usable token anywhere. The durable outbox row is a different story: it
+ * is never pruned, so `tenant.member_invited` is registered in
+ * `SECRET_PAYLOAD_EVENT_TYPES` (`shared/outbox/outbox.types.ts`) and the
+ * relay overwrites its payload once the mail has actually been delivered —
+ * until then the clear token stays readable in `outbox_events` so a failed
+ * delivery can still retry.
  */
 @Injectable()
 export class InviteTenantMemberUseCase {

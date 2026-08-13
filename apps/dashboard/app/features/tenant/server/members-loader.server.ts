@@ -26,7 +26,7 @@ import { requireTenant } from '~/features/tenant/server/tenant.server';
  * `*Error` field is what distinguishes the two).
  */
 export async function loadTenantMembers(request: Request) {
-  const { auth, can } = await requireTenant(request);
+  const { auth, can, ctx } = await requireTenant(request);
   const canManageMembers = can('tenant.members.manage');
   const canManageRoles = can('tenant.roles.manage');
   if (!canManageMembers && !canManageRoles) {
@@ -61,6 +61,13 @@ export async function loadTenantMembers(request: Request) {
     // here, server-side, and returned as a plain boolean — matching
     // `settings-loader.server.ts`'s `canTheme`/`canSettings`/`canFinance`/
     // `canLegal` convention. Do not reintroduce a raw `can` on this object.
+    // Same reasoning applies to `currentUserId` below: it stays a plain
+    // string (never a function, `Date`, `Map`, `Set` or class instance) for
+    // the same turbo-stream reason. The backend enforces no-self-edit on its
+    // own (`CANNOT_EDIT_SELF`), but the UI must not offer "Sửa vai trò"/"Gỡ
+    // khỏi tenant" on the signed-in user's own row in the first place —
+    // `MembersTable` compares this id against each row's `userId`.
+    currentUserId: ctx.user.userId,
     canManageMembers,
     canManageRoles,
   };

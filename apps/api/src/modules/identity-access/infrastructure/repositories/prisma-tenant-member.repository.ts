@@ -101,11 +101,6 @@ export class PrismaTenantMemberRepository implements ITenantMemberRepository {
     await tx.roleAssignment.deleteMany({ where: { tenantId, partnerId: null, userId } });
   }
 
-  async findUserIdByEmail(tx: PrismaTx, email: string): Promise<string | null> {
-    const user = await tx.user.findUnique({ where: { email }, select: { id: true } });
-    return user?.id ?? null;
-  }
-
   async holdersOfRole(tx: PrismaTx, tenantId: string, roleId: string): Promise<string[]> {
     const rows = await tx.roleAssignment.findMany({
       where: { tenantId, partnerId: null, roleId },

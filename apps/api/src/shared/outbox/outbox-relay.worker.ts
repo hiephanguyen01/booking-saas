@@ -5,6 +5,7 @@ import { QUEUE_OPTIONS } from '../redis/queue-options';
 import { PrismaService } from '../prisma/prisma.service';
 import { TenantContextService } from '../tenant-context/tenant-context.service';
 import { OutboxHandlerRegistry } from './outbox-handler.registry';
+import { SECRET_PAYLOAD_EVENT_TYPES } from './outbox.types';
 
 export const OUTBOX_QUEUE = 'outbox-relay';
 const POLL_EVERY_MS = 2_000;
@@ -12,6 +13,13 @@ const BATCH_SIZE = 20;
 const MAX_ATTEMPTS = 20;
 /** exponential backoff in seconds, capped at 5 minutes */
 const backoffSeconds = (attempts: number) => Math.min(2 ** attempts, 300);
+/**
+ * Written over a `SECRET_PAYLOAD_EVENT_TYPES` payload once it has been
+ * delivered. A marker object (rather than bare `{}`) so an operator reading
+ * the row can tell "redacted on purpose" apart from an event that always had
+ * an empty payload.
+ */
+const REDACTED_PAYLOAD = { redacted: true } as const;
 
 /**
  * Polls due outbox_events (cross-tenant → admin pool), claims a batch with
@@ -121,9 +129,15 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
           await handler(event);
         }
       });
+      // Redact only on this successful branch: a failed delivery must keep
+      // its payload so the retry can still build the mail.
+      const redact = SECRET_PAYLOAD_EVENT_TYPES.has(event.eventType);
       await this.prisma.admin.outboxEvent.update({
         where: { id: event.id },
-        data: { processedAt: new Date() },
+        data: {
+          processedAt: new Date(),
+          ...(redact ? { payload: REDACTED_PAYLOAD } : {}),
+        },
       });
     } catch (error) {
       const attempts = event.attempts + 1;
