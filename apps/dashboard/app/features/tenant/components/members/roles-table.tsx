@@ -14,9 +14,13 @@ interface DeleteRoleActionData {
 }
 
 /**
- * Tenant roles, system + custom. A system role (`isSystem`) is shared across
- * every tenant on the platform and immutable here — its row shows "Nhân bản"
- * instead of "Sửa"/"Xóa", never a disabled edit/delete pair.
+ * Tenant roles, system + custom. The name links to `roles/:roleId/edit`
+ * (Task 13) for every row — a system role (`isSystem`) opens that screen
+ * read-only (`RoleForm mode="view"`) since it is shared across every tenant
+ * on the platform and immutable here, so its row shows "Nhân bản" instead of
+ * "Sửa"/"Xóa", never a disabled edit/delete pair. "Nhân bản" carries the row's
+ * id (`roleNewFrom`) so the create screen opens with this role's permissions
+ * preselected, never mutating the source role itself.
  */
 export function RolesTable({ roles, error }: { roles: TenantRoleDetail[]; error: string | null }) {
   const columns: DataTableColumn<TenantRoleDetail>[] = [
@@ -24,7 +28,12 @@ export function RolesTable({ roles, error }: { roles: TenantRoleDetail[]; error:
       header: 'Vai trò',
       cell: (role) => (
         <div className="min-w-0">
-          <p className="truncate font-medium">{role.name}</p>
+          <Link
+            to={dashboardPaths.tenant.roleEdit(role.id)}
+            className="truncate font-medium hover:underline"
+          >
+            {role.name}
+          </Link>
           <p className="text-xs text-muted-foreground">{role.permissions.length} quyền</p>
         </div>
       ),
@@ -73,7 +82,7 @@ function RoleRowActions({ role }: { role: TenantRoleDetail }) {
   if (role.isSystem) {
     return (
       <Button asChild size="sm" variant="ghost">
-        <Link to={dashboardPaths.tenant.roleNew}>
+        <Link to={dashboardPaths.tenant.roleNewFrom(role.id)}>
           <Copy className="size-3.5" /> Nhân bản
         </Link>
       </Button>

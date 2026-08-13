@@ -41,4 +41,6 @@ export const tenantChildren: RouteConfigEntry[] = [
   route('members', 'routes/tenant/members/_index.tsx'),
   route('members/invite', 'routes/tenant/members/invite.tsx'),
   route('members/:userId', 'routes/tenant/members/detail.tsx'),
+  route('roles/new', 'routes/tenant/roles/new.tsx'),
+  route('roles/:roleId/edit', 'routes/tenant/roles/edit.tsx'),
 ];

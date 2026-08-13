@@ -6,7 +6,7 @@ type BackendErrorBody = {
   message?: string;
   error?: string;
   code?: string;
-  details?: { fieldErrors?: Record<string, string[]> };
+  details?: { fieldErrors?: Record<string, string[]> } & Record<string, unknown>;
   fieldErrors?: Record<string, string[]>;
 };
 
@@ -66,6 +66,7 @@ export function toResult<T>(
     code: body.code,
     errors: fieldErrors,
     fieldErrors,
+    ...(body.details ? { details: body.details } : {}),
     ...(requestId ? { requestId } : {}),
   };
 }

@@ -74,6 +74,8 @@ export const dashboardPaths = {
     member: (userId: string) => tenantPath(`/members/${segment(userId)}`),
     roles: tenantPath('/roles'),
     roleNew: tenantPath('/roles/new'),
+    /** "Nhân bản": create screen pre-filled from an existing (typically system) role's permissions. */
+    roleNewFrom: (roleId: string) => `${tenantPath('/roles/new')}?from=${segment(roleId)}`,
     roleEdit: (roleId: string) => tenantPath(`/roles/${segment(roleId)}/edit`),
   },
   partner: {

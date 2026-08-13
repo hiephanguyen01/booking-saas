@@ -13,15 +13,22 @@ import { TENANT_PERMISSION_GROUPS, TENANT_PERMISSION_LABELS } from '~/constants/
  * Kept a plain controlled `value`/`onChange` component (not bound to a specific
  * react-hook-form schema) so both call sites can wire it to their own form
  * instance via `Controller`.
+ *
+ * `readOnly` (added in Task 13) renders every checkbox disabled and hides the
+ * per-group "chọn tất cả" toggle — the standalone role-edit screen's view of a
+ * system role, which the backend refuses to modify (`SYSTEM_ROLE_IMMUTABLE`).
+ * `InlineRoleCreator` never passes it, so its always-editable grid is unchanged.
  */
 export function PermissionGrid({
   value,
   onChange,
   error,
+  readOnly = false,
 }: {
   value: TenantPermissionKey[];
   onChange: (next: TenantPermissionKey[]) => void;
   error?: string[];
+  readOnly?: boolean;
 }) {
   const toggle = (key: TenantPermissionKey, checked: boolean): void => {
     onChange(checked ? [...value.filter((item) => item !== key), key] : value.filter((item) => item !== key));
@@ -45,14 +52,16 @@ export function PermissionGrid({
                   ({checkedCount}/{group.keys.length})
                 </span>
               </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleGroup(group.keys, !allChecked)}
-              >
-                {allChecked ? 'Bỏ chọn' : 'Chọn tất cả'}
-              </Button>
+              {readOnly ? null : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleGroup(group.keys, !allChecked)}
+                >
+                  {allChecked ? 'Bỏ chọn' : 'Chọn tất cả'}
+                </Button>
+              )}
             </div>
             <div className="grid gap-0.5 p-2 sm:grid-cols-2">
               {group.keys.map((key) => {
@@ -61,11 +70,16 @@ export function PermissionGrid({
                   <label
                     key={key}
                     htmlFor={id}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted/40"
+                    className={
+                      readOnly
+                        ? 'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground'
+                        : 'flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted/40'
+                    }
                   >
                     <Checkbox
                       id={id}
                       checked={value.includes(key)}
+                      disabled={readOnly}
                       onCheckedChange={(checked) => toggle(key, checked === true)}
                     />
                     {TENANT_PERMISSION_LABELS[key]}
