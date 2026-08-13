@@ -619,6 +619,7 @@ export const TENANT_INVITATION_REPOSITORY = Symbol('TENANT_INVITATION_REPOSITORY
 export interface InvitationRow {
   id: string;
   tenantId: string;
+  tenantName: string;
   email: string;
   roleIds: string[];
   status: 'pending' | 'accepted' | 'revoked';
@@ -694,8 +695,12 @@ await tx.rolePermission.deleteMany({ where: { roleId } });
 await tx.rolePermission.createMany({
   data: permissions.map((permissionKey) => ({ roleId, permissionKey })),
 });
-await tx.role.update({ where: { id: roleId }, data: { name } });
+await tx.role.updateMany({ where: { id: roleId, tenantId }, data: { name } });
 ```
+The `tenantId` filter is load-bearing, not decorative: the `roles` RLS policy has no separate
+`WITH CHECK`, so Postgres reuses its `USING` clause (`tenant_id = current tenant OR tenant_id IS
+NULL`) as the write check too — an unscoped update would let any tenant rename or reassign the
+permissions of a shared system role.
 
 ```ts
 // prisma-tenant-invitation.repository.ts — findByTokenHash()

@@ -10,10 +10,14 @@ import type {
 
 type UserLookupClient = Pick<PrismaClient, 'user'>;
 
-function toInvitationRow(row: TenantInvitation, invitedByName: string | null): InvitationRow {
+/** Every query producing an `InvitationRow` joins `tenant: { select: { name: true } } }`. */
+type InvitationWithTenant = TenantInvitation & { tenant: { name: string } };
+
+function toInvitationRow(row: InvitationWithTenant, invitedByName: string | null): InvitationRow {
   return {
     id: row.id,
     tenantId: row.tenantId,
+    tenantName: row.tenant.name,
     email: row.email,
     roleIds: row.roleIds,
     status: row.status,
@@ -31,7 +35,7 @@ function toInvitationRow(row: TenantInvitation, invitedByName: string | null): I
  */
 async function attachInvitedByNames(
   client: UserLookupClient,
-  rows: readonly TenantInvitation[],
+  rows: readonly InvitationWithTenant[],
 ): Promise<InvitationRow[]> {
   const userIds = [
     ...new Set(rows.map((r) => r.invitedByUserId).filter((id): id is string => id !== null)),
@@ -52,6 +56,7 @@ export class PrismaTenantInvitationRepository implements ITenantInvitationReposi
   async list(tx: PrismaTx, tenantId: string): Promise<InvitationRow[]> {
     const rows = await tx.tenantInvitation.findMany({
       where: { tenantId },
+      include: { tenant: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
     });
     return attachInvitedByNames(tx, rows);

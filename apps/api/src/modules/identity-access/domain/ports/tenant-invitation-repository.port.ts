@@ -5,6 +5,7 @@ export const TENANT_INVITATION_REPOSITORY = Symbol('TENANT_INVITATION_REPOSITORY
 export interface InvitationRow {
   id: string;
   tenantId: string;
+  tenantName: string;
   email: string;
   roleIds: string[];
   status: 'pending' | 'accepted' | 'revoked';

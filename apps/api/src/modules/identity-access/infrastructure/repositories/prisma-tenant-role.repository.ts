@@ -111,7 +111,11 @@ export class PrismaTenantRoleRepository implements ITenantRoleRepository {
     await tx.rolePermission.createMany({
       data: permissions.map((permissionKey) => ({ roleId, permissionKey })),
     });
-    await tx.role.update({ where: { id: roleId }, data: { name } });
+    // `roles`' RLS policy has no separate WITH CHECK, so Postgres reuses its
+    // USING clause (tenant_id = current tenant OR tenant_id IS NULL) as the
+    // write check too — an unscoped update() could rename a shared system
+    // role. The tenantId filter is the only thing stopping that.
+    await tx.role.updateMany({ where: { id: roleId, tenantId }, data: { name } });
   }
 
   /**
