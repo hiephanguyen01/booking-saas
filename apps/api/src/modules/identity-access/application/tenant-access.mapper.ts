@@ -1,6 +1,7 @@
 import type {
   RoleRef,
   TenantInvitation,
+  TenantInvitationPreview,
   TenantMember,
   TenantPermissionKey,
   TenantRoleDetail,
@@ -59,5 +60,26 @@ export function toTenantInvitation(
     expiresAt: row.expiresAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
     invitedByName: row.invitedByName,
+  };
+}
+
+/**
+ * The recipient's preview, keyed by token rather than tenant scope. `roles`
+ * is already the assignable subset (a role deleted since the invite was
+ * sent has already been filtered out by the caller) — mapped straight to
+ * `RoleRef`, no lookup-by-id needed.
+ */
+export function toTenantInvitationPreview(
+  row: InvitationRow,
+  roles: RoleRow[],
+  matchesCurrentUser: boolean,
+  now: Date,
+): TenantInvitationPreview {
+  return {
+    tenantName: row.tenantName,
+    invitedEmail: row.email,
+    roles: roles.map(toRoleRef),
+    status: invitationStateOf(row, now),
+    matchesCurrentUser,
   };
 }

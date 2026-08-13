@@ -37,6 +37,8 @@ import { RemoveTenantMemberUseCase } from '../../application/use-cases/remove-te
 import { InviteTenantMemberUseCase } from '../../application/use-cases/invite-tenant-member.use-case';
 import { ListTenantInvitationsUseCase } from '../../application/use-cases/list-tenant-invitations.use-case';
 import { RevokeTenantInvitationUseCase } from '../../application/use-cases/revoke-tenant-invitation.use-case';
+import { GetInvitationPreviewUseCase } from '../../application/use-cases/get-invitation-preview.use-case';
+import { AcceptTenantInvitationUseCase } from '../../application/use-cases/accept-tenant-invitation.use-case';
 import { AUTH_CHALLENGE_STORE } from '../../domain/ports/auth-challenge-store.port';
 import { AUTH_EMAIL_SENDER } from '../../domain/ports/auth-email-sender.port';
 import { PrismaUserRepository } from '../repositories/prisma-user.repository';
@@ -54,12 +56,18 @@ import { NotificationModule } from '../../../notification/infrastructure/http/no
 import { PublicAuthController } from './public-auth.controller';
 import { TenantRoleController } from './tenant-role.controller';
 import { TenantMemberController } from './tenant-member.controller';
+import { MeInvitationController } from './me-invitation.controller';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { SessionAuthGuard } from './guards/session-auth.guard';
 
 @Module({
   imports: [NotificationModule],
-  controllers: [PublicAuthController, TenantRoleController, TenantMemberController],
+  controllers: [
+    PublicAuthController,
+    TenantRoleController,
+    TenantMemberController,
+    MeInvitationController,
+  ],
   providers: [
     { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
@@ -102,6 +110,8 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     InviteTenantMemberUseCase,
     ListTenantInvitationsUseCase,
     RevokeTenantInvitationUseCase,
+    GetInvitationPreviewUseCase,
+    AcceptTenantInvitationUseCase,
     // guard order matters: authentication first, then deny-by-default authorization
     { provide: APP_GUARD, useClass: SessionAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
