@@ -17,7 +17,13 @@ function partnerPath(suffix = ''): string {
 }
 
 export const apiPaths = {
-  auth: { session: '/auth/session' },
+  auth: {
+    session: '/auth/session',
+    /** The recipient's read-only preview of a mailed invitation (`@AuthenticatedOnly`, not tenant-scoped). */
+    invitation: (token: string) => `/auth/invitations/${segment(token)}`,
+    /** Accept it — 204 on success. */
+    invitationAccept: (token: string) => `/auth/invitations/${segment(token)}/accept`,
+  },
   me: {
     legalPending: '/me/legal/pending',
     legalAccept: '/me/legal/accept',
