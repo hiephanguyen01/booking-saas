@@ -7,13 +7,14 @@ import { requireFlowView, verifyAction } from '~/features/auth/server/auth-route
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
+import { storefrontPaths } from '~/constants/paths';
 export const meta = ({ params }: Route.MetaArgs) => authMeta(params.locale, 'forgotPasswordVerify');
 export const loader = ({ request, params }: Route.LoaderArgs) =>
   requireFlowView(request, 'password_reset', 'verify', params.locale);
 export const action = ({ request, params }: Route.ActionArgs) =>
   verifyAction(request, params.locale, 'password_reset');
 export default function RouteComponent() {
-  const { tenant } = useOutletContext<StorefrontContext>();
+  const { tenant, locale } = useOutletContext<StorefrontContext>();
   const loaderData = useLoaderData<typeof loader>();
   const actionData = useActionData<AuthActionData & { resendAfterSec?: number }>();
   const { t } = useTranslation(NsI18n.Auth);
@@ -22,6 +23,7 @@ export default function RouteComponent() {
       tenant={tenant}
       title={t('verify.resetTitle')}
       description={t('verify.description', { email: loaderData.maskedDestination ?? '' })}
+      backTo={storefrontPaths.forgotPassword(locale)}
     >
       <OtpForm initialSeconds={loaderData.resendAfterSec} actionData={actionData} />
     </AuthFrame>

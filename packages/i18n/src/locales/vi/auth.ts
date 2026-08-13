@@ -1,5 +1,10 @@
 export const viAuth = {
-  header: { login: 'Đăng nhập', register: 'Đăng ký tài khoản', reset: 'Khôi phục mật khẩu' },
+  header: {
+    login: 'Đăng nhập',
+    register: 'Đăng ký tài khoản',
+    reset: 'Khôi phục mật khẩu',
+    back: 'Quay lại',
+  },
   /** Browser titles for the customer auth steps; every one of these pages is noindex. */
   meta: {
     login: 'Đăng nhập',
@@ -55,6 +60,20 @@ export const viAuth = {
     hide: 'Ẩn mật khẩu',
     submitRegistration: 'Hoàn tất đăng ký',
     submitReset: 'Đổi mật khẩu',
+    guidance: {
+      strengthLabel: 'Độ mạnh mật khẩu',
+      notStarted: 'Chưa nhập',
+      weak: 'Yếu',
+      medium: 'Trung bình',
+      strong: 'Mạnh',
+      rules: {
+        length: 'Từ 8–128 ký tự',
+        letter: 'Có ít nhất một chữ cái',
+        digit: 'Có ít nhất một chữ số',
+      },
+      met: 'Đã đạt',
+      unmet: 'Chưa đạt',
+    },
   },
   success: {
     registrationTitle: 'Đăng ký thành công!',
