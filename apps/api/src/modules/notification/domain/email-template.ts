@@ -111,6 +111,8 @@ export interface TemplateData {
   legalVersionNo?: number;
   taxYear?: number;
   certificateNumber?: string;
+  /** Comma-joined role names granted by the invite — `tenant.member_invited` only (Task 9). */
+  roleNames?: string;
 }
 
 /** The recipient's locale, normalized to a supported one (`vi` is the fallback). */

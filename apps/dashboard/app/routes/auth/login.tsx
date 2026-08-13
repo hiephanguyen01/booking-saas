@@ -1,5 +1,5 @@
 import { data, redirect } from 'react-router';
-import { loginInputSchema, type LoginInput } from '@booking/contracts';
+import { loginInputSchema, type LoginInput, type SessionInfoResponse } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { ArrowRight, CalendarCheck2, Check, ShieldCheck } from 'lucide-react';
@@ -7,18 +7,39 @@ import type { Route } from './+types/login';
 import { backendLogin, backendSessionInfo } from '~/lib/api.server';
 import { getOptionalUser, loadSessionInfo } from '~/lib/auth.server';
 import { getCurrentDashboardHost } from '~/lib/request-auth.server';
+import { safeRedirectPath } from '~/lib/safe-redirect';
 import { createUserSession } from '~/lib/session.server';
 import { defaultDashboardPath } from '~/lib/workspace';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đăng nhập · BookingOS Dashboard' }];
+}
+
+/**
+ * `?redirectTo=` is how a guard elsewhere (e.g. `requireInvitationRecipient`
+ * on `/invitations/:token`) sends an anonymous visitor here and gets them
+ * back afterwards, instead of stranding them on their default area — which
+ * for that screen's whole audience (someone with no membership yet) is the
+ * "chưa được gán vào khu vực nào" notice on `/`. `safeRedirectPath` rejects
+ * anything but a same-origin path; a value that resolves to an auth route
+ * itself is also rejected, so a stale/crafted link can't loop `/auth/login`
+ * back into itself.
+ */
+function loginRedirectTarget(
+  request: Request,
+  info: SessionInfoResponse,
+  host: ReturnType<typeof getCurrentDashboardHost>,
+): string {
+  const requested = safeRedirectPath(new URL(request.url).searchParams.get('redirectTo'), '');
+  return requested && !requested.startsWith('/auth/') ? requested : defaultDashboardPath(info, host);
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await getOptionalUser(request);
   if (user) {
     const info = await loadSessionInfo(request);
-    if (info) throw redirect(defaultDashboardPath(info, getCurrentDashboardHost()));
+    if (info) throw redirect(loginRedirectTarget(request, info, getCurrentDashboardHost()));
   }
   return null;
 }
@@ -41,7 +62,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const info = await backendSessionInfo(result.tokens.accessToken);
-  const area = info ? defaultDashboardPath(info, getCurrentDashboardHost()) : '/';
+  const area = info ? loginRedirectTarget(request, info, getCurrentDashboardHost()) : dashboardPaths.home;
   return createUserSession(request, { ...result.tokens, userId: result.user.id }, area);
 }
 

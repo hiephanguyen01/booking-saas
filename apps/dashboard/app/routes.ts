@@ -20,6 +20,12 @@ export default [
   route('auth/logout', 'routes/auth/logout.tsx'),
   route('workspaces', 'routes/workspaces.tsx'),
 
+  // A sibling of the area layouts, NOT a child of the tenant layout: its
+  // recipient may hold no membership anywhere yet — exactly what `requireTenant`
+  // (features/tenant/server/tenant.server.ts) 403s on — so nesting this under
+  // `/tenant` would make the invitation unusable for everyone it's meant for.
+  route('invitations/:token', 'routes/invitations/accept.tsx'),
+
   // Presign proxy for direct-to-storage image uploads (§4.2) — any logged-in user.
   route('uploads/presign', 'routes/uploads.presign.tsx'),
   route('administrative-divisions/provinces', 'routes/administrative-provinces.tsx'),

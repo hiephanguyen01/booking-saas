@@ -7,6 +7,7 @@ import type {
   PromotionStatusDto,
   PublishStatus,
   SubscriptionStatus,
+  TenantInvitationStatus,
   TenantStatus,
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
@@ -194,6 +195,20 @@ const PAYOUT: Record<PayoutStatusDto, { label: string; tone: StatusTone }> = {
 
 export function PayoutStatusBadge({ status }: { status: PayoutStatusDto }) {
   const s = PAYOUT[status] ?? { label: 'Không xác định', tone: 'neutral' as const };
+  return <Pill tone={s.tone}>{s.label}</Pill>;
+}
+
+// ── Tenant staff invitation ──────────────────────────────────────────────────
+
+const TENANT_INVITATION: Record<TenantInvitationStatus, { label: string; tone: StatusTone }> = {
+  pending: { label: 'Đang chờ', tone: 'warning' },
+  accepted: { label: 'Đã chấp nhận', tone: 'success' },
+  revoked: { label: 'Đã thu hồi', tone: 'danger' },
+  expired: { label: 'Hết hạn', tone: 'neutral' },
+};
+
+export function TenantInvitationStatusBadge({ status }: { status: TenantInvitationStatus }) {
+  const s = TENANT_INVITATION[status] ?? { label: 'Không xác định', tone: 'neutral' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 

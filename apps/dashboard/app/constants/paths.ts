@@ -17,6 +17,8 @@ function partnerPath(suffix = ''): string {
 export const dashboardPaths = {
   home: '/',
   workspaces: '/workspaces',
+  /** The recipient may hold no membership yet, so this sits outside every area group. */
+  invitationAccept: (token: string) => `/invitations/${segment(token)}`,
   auth: { login: '/auth/login', logout: '/auth/logout' },
   admin: {
     home: '/admin',
@@ -65,6 +67,16 @@ export const dashboardPaths = {
     settings: tenantPath('/settings'),
     /** Deep-link into a settings tab, e.g. `dashboardPaths.tenant.settingsSection('legal')`. */
     settingsSection: (section: string) => `${tenantPath('/settings')}?section=${segment(section)}`,
+    members: tenantPath('/members'),
+    /** Deep-link into a members tab, e.g. `dashboardPaths.tenant.membersSection('invitations')`. */
+    membersSection: (section: string) => `${tenantPath('/members')}?section=${segment(section)}`,
+    memberInvite: tenantPath('/members/invite'),
+    member: (userId: string) => tenantPath(`/members/${segment(userId)}`),
+    roles: tenantPath('/roles'),
+    roleNew: tenantPath('/roles/new'),
+    /** "Nhân bản": create screen pre-filled from an existing (typically system) role's permissions. */
+    roleNewFrom: (roleId: string) => `${tenantPath('/roles/new')}?from=${segment(roleId)}`,
+    roleEdit: (roleId: string) => tenantPath(`/roles/${segment(roleId)}/edit`),
   },
   partner: {
     home: partnerPath(),

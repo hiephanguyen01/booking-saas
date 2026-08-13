@@ -1,9 +1,13 @@
-import type { ScopeLevel } from '@booking/contracts';
+import { tenantPermissionKeySchema, type ScopeLevel } from '@booking/contracts';
 
 /**
  * Fixed permission catalog (TONG-QUAN.md §14.2) — seeded from code, never
  * creatable via UI. Keys follow `scope.resource.action`.
  */
+const TENANT_KEYS = tenantPermissionKeySchema.options.map(
+  (key): { key: string; scopeLevel: ScopeLevel } => ({ key, scopeLevel: 'tenant' }),
+);
+
 export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeLevel }> = [
   // Platform
   { key: 'platform.tenants.read', scopeLevel: 'platform' },
@@ -19,30 +23,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'platform.reviews.read', scopeLevel: 'platform' },
   { key: 'platform.disputes.read', scopeLevel: 'platform' },
   // Tenant
-  { key: 'tenant.settings.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.legal.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.theme.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.partners.read', scopeLevel: 'tenant' },
-  { key: 'tenant.partners.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.partners.approve', scopeLevel: 'tenant' },
-  { key: 'tenant.listings.read', scopeLevel: 'tenant' },
-  { key: 'tenant.listings.write', scopeLevel: 'tenant' },
-  { key: 'tenant.listings.publish', scopeLevel: 'tenant' },
-  { key: 'tenant.bookings.read', scopeLevel: 'tenant' },
-  { key: 'tenant.bookings.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.bookings.cancel', scopeLevel: 'tenant' },
-  { key: 'tenant.commissions.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.promotions.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.finance.read', scopeLevel: 'tenant' },
-  { key: 'tenant.payouts.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.affiliates.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.members.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.roles.manage', scopeLevel: 'tenant' },
-  { key: 'tenant.reports.read', scopeLevel: 'tenant' },
-  { key: 'tenant.reviews.read', scopeLevel: 'tenant' },
-  { key: 'tenant.favorites.read', scopeLevel: 'tenant' },
-  { key: 'tenant.disputes.read', scopeLevel: 'tenant' },
-  { key: 'tenant.disputes.resolve', scopeLevel: 'tenant' },
+  ...TENANT_KEYS,
   // Partner
   { key: 'partner.profile.manage', scopeLevel: 'partner' },
   { key: 'partner.listings.read', scopeLevel: 'partner' },

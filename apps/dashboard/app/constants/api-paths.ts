@@ -17,7 +17,13 @@ function partnerPath(suffix = ''): string {
 }
 
 export const apiPaths = {
-  auth: { session: '/auth/session' },
+  auth: {
+    session: '/auth/session',
+    /** The recipient's read-only preview of a mailed invitation (`@AuthenticatedOnly`, not tenant-scoped). */
+    invitation: (token: string) => `/auth/invitations/${segment(token)}`,
+    /** Accept it — 204 on success. */
+    invitationAccept: (token: string) => `/auth/invitations/${segment(token)}/accept`,
+  },
   me: {
     legalPending: '/me/legal/pending',
     legalAccept: '/me/legal/accept',
@@ -163,6 +169,12 @@ export const apiPaths = {
     listingReview: (listingId: string) => tenantPath(`/listings/${segment(listingId)}/review`),
     listingRevision: (listingId: string) => tenantPath(`/listings/${segment(listingId)}/revision`),
 
+    members: tenantPath('/members'),
+    member: (userId: string) => tenantPath(`/members/${segment(userId)}`),
+    memberRoles: (userId: string) => tenantPath(`/members/${segment(userId)}/roles`),
+    invitations: tenantPath('/members/invitations'),
+    invitation: (invitationId: string) => tenantPath(`/members/invitations/${segment(invitationId)}`),
+
     partners: tenantPath('/partners'),
     partner: (partnerId: string) => tenantPath(`/partners/${segment(partnerId)}`),
     partnerApprove: (partnerId: string) => tenantPath(`/partners/${segment(partnerId)}/approve`),
@@ -186,6 +198,9 @@ export const apiPaths = {
     promotionCategories: tenantPath('/promotions/categories'),
 
     reviews: tenantPath('/reviews'),
+    roles: tenantPath('/roles'),
+    rolesAssignable: tenantPath('/roles/assignable'),
+    role: (roleId: string) => tenantPath(`/roles/${segment(roleId)}`),
     subscriptionStatus: tenantPath('/subscription/status'),
     theme: tenantPath('/theme'),
   },

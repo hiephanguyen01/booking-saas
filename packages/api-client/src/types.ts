@@ -12,6 +12,14 @@ export interface ApiResult<T> {
   errors?: Record<string, string[]>;
   code?: string;
   fieldErrors?: Record<string, string[]>;
+  /**
+   * Raw `details` from the backend's `DomainError` envelope
+   * (`{ statusCode, code, message, details? }`), when the failure carries
+   * structured context beyond field errors — e.g. tenant role deletion's
+   * `ROLE_IN_USE` carries `{ memberCount }`. Narrow by `code` before reading a
+   * specific key; most failures carry no `details` at all.
+   */
+  details?: Record<string, unknown>;
   requestId?: string;
 }
 

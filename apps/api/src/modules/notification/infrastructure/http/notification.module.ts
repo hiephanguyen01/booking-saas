@@ -26,6 +26,10 @@ import {
   DispatchLegalDocumentEventUseCase,
   type LegalDocumentPublishedPayload,
 } from '../../application/use-cases/dispatch-legal-document-event.use-case';
+import {
+  DispatchMemberInvitationEventUseCase,
+  type MemberInvitationPayload,
+} from '../../application/use-cases/dispatch-member-invitation-event.use-case';
 import { DispatchReminderUseCase } from '../../application/use-cases/dispatch-reminder.use-case';
 import { SendBookingOtpUseCase } from '../../application/use-cases/send-booking-otp.use-case';
 import {
@@ -53,6 +57,7 @@ import {
     DispatchPartnerEventUseCase,
     DispatchPayoutEventUseCase,
     DispatchLegalDocumentEventUseCase,
+    DispatchMemberInvitationEventUseCase,
     DispatchReminderUseCase,
     SendBookingOtpUseCase,
     DispatchTaxCertificateEventUseCase,
@@ -71,6 +76,7 @@ export class NotificationModule implements OnModuleInit {
     private readonly dispatchPartnerEvent: DispatchPartnerEventUseCase,
     private readonly dispatchPayoutEvent: DispatchPayoutEventUseCase,
     private readonly dispatchLegalDocumentEvent: DispatchLegalDocumentEventUseCase,
+    private readonly dispatchMemberInvitationEvent: DispatchMemberInvitationEventUseCase,
     private readonly dispatchTaxCertificateEvent: DispatchTaxCertificateEventUseCase,
   ) {}
 
@@ -82,6 +88,12 @@ export class NotificationModule implements OnModuleInit {
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);
       if (!tenantId) return Promise.resolve();
       return this.dispatchLegalDocumentEvent.execute(tenantId, legalDocumentPayloadOf(event.payload));
+    });
+    // Task 9 — single event, single audience (the invitee), same shape as above.
+    this.registry.register('tenant.member_invited', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.dispatchMemberInvitationEvent.execute(tenantId, invitationPayloadOf(event.payload));
     });
     for (const eventType of BOOKING_NOTIFICATION_EVENTS) {
       this.registry.register(eventType, (event) => {
@@ -144,6 +156,10 @@ function taxCertificatePayloadOf(payload: unknown): TaxCertificateNotificationPa
 
 function legalDocumentPayloadOf(payload: unknown): LegalDocumentPublishedPayload {
   return (payload ?? {}) as LegalDocumentPublishedPayload;
+}
+
+function invitationPayloadOf(payload: unknown): MemberInvitationPayload {
+  return (payload ?? {}) as MemberInvitationPayload;
 }
 
 function payoutPayloadOf(payload: unknown): {

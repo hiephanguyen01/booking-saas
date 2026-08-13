@@ -1,10 +1,12 @@
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Queue, Worker } from 'bullmq';
 import { QUEUE_OPTIONS } from '../redis/queue-options';
 import { PrismaService } from '../prisma/prisma.service';
 import { TenantContextService } from '../tenant-context/tenant-context.service';
 import { OutboxHandlerRegistry } from './outbox-handler.registry';
+import { SECRET_PAYLOAD_EVENT_TYPES } from './outbox.types';
 
 export const OUTBOX_QUEUE = 'outbox-relay';
 const POLL_EVERY_MS = 2_000;
@@ -12,6 +14,13 @@ const BATCH_SIZE = 20;
 const MAX_ATTEMPTS = 20;
 /** exponential backoff in seconds, capped at 5 minutes */
 const backoffSeconds = (attempts: number) => Math.min(2 ** attempts, 300);
+/**
+ * Written over a `SECRET_PAYLOAD_EVENT_TYPES` payload once it has been
+ * delivered. A marker object (rather than bare `{}`) so an operator reading
+ * the row can tell "redacted on purpose" apart from an event that always had
+ * an empty payload.
+ */
+const REDACTED_PAYLOAD = { redacted: true } as const;
 
 /**
  * Polls due outbox_events (cross-tenant → admin pool), claims a batch with
@@ -121,9 +130,15 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
           await handler(event);
         }
       });
+      // Redact only on this successful branch: a failed delivery must keep
+      // its payload so the retry can still build the mail.
+      const redact = SECRET_PAYLOAD_EVENT_TYPES.has(event.eventType);
       await this.prisma.admin.outboxEvent.update({
         where: { id: event.id },
-        data: { processedAt: new Date() },
+        data: {
+          processedAt: new Date(),
+          ...(redact ? { payload: REDACTED_PAYLOAD } : {}),
+        },
       });
     } catch (error) {
       const attempts = event.attempts + 1;
@@ -132,13 +147,29 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
         this.logger.error(
           `outbox event ${event.id} (${event.eventType}) dead-lettered after ${attempts} attempts`,
         );
-        await this.prisma.admin.$executeRaw`
+        // A dead-lettered row is terminal — nothing will ever claim or retry
+        // it again — so a listed event's payload is redacted here too, the
+        // same as the success path in the `try` block above. This is the
+        // ONLY place besides that success update allowed to redact: the
+        // ordinary-retry branch below (attempts < MAX_ATTEMPTS) must keep the
+        // real payload, or a transient failure would permanently blank an
+        // email that was always going to be retried. Unlisted event types
+        // are left alone here too, same as on success — a dead-lettered
+        // booking/payout/tax event needs its payload intact for an operator
+        // to diagnose why it kept failing.
+        const sets = [
+          Prisma.sql`attempts = ${attempts}`,
+          Prisma.sql`last_error = ${lastError}`,
+          Prisma.sql`dead_lettered_at = now()`,
+        ];
+        if (SECRET_PAYLOAD_EVENT_TYPES.has(event.eventType)) {
+          sets.push(Prisma.sql`payload = ${JSON.stringify(REDACTED_PAYLOAD)}::jsonb`);
+        }
+        await this.prisma.admin.$executeRaw(Prisma.sql`
           UPDATE outbox_events
-          SET attempts = ${attempts},
-              last_error = ${lastError},
-              dead_lettered_at = now()
+          SET ${Prisma.join(sets)}
           WHERE id = ${event.id}::uuid
-        `;
+        `);
         return;
       }
       this.logger.warn(`outbox event ${event.id} (${event.eventType}) failed attempt ${attempts}`);
