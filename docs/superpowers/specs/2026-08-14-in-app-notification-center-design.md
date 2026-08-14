@@ -259,22 +259,48 @@ The notification module has no controller today; this adds its first,
 reading your own inbox introduces no permission key.
 
 ```
-GET  /notifications?area=&cursor=&limit=    feed page
+GET  /notifications?area=&page=&pageSize=   Paginated<NotificationResponse>
 GET  /notifications/unread-count?area=      { count }        ← the 60s poll
 POST /notifications/:id/read                204
 POST /notifications/read-all                204   body { area }
 ```
+
+Pagination is **offset** (`page`/`pageSize` → `Paginated<T>`), not cursor: that is what
+`paginationQuerySchema` and `shared/pagination` provide and what every other list endpoint in the API
+uses (`common.ts:132-143`). A bell reads the newest page and stops; there is no reason to be the one
+endpoint with a different pagination style.
 
 The count is a separate endpoint from the feed on purpose: the query that runs every minute for every
 open dashboard must hit the partial index alone, not page a feed.
 
 Four use-cases, one file each with a single public `execute()` (hard rule #3): `ListNotifications`,
 `CountUnreadNotifications`, `MarkNotificationRead`, `MarkAllNotificationsRead`. Plus
-`domain/ports/notification-inbox-repository.port.ts` and its Prisma adapter. Pagination uses
-`shared/pagination`.
+`domain/ports/notification-inbox-repository.port.ts` and its Prisma adapter, returning a `RepoPage`
+that the controller wraps with `toPaginated()`.
 
-`packages/contracts` gains `notificationAreaSchema`, `notificationSchema`,
-`notificationListResponseSchema`, `unreadCountResponseSchema`.
+The recipient comes from `@CurrentPrincipal()` — never from a request parameter.
+
+**The tenant does not arrive for free, and this is the one trap in the API layer.**
+`PermissionsGuard` returns at line 35 for an `@AuthenticatedOnly()` route and never reaches the
+`setTenantId` on line 52, so `TenantContextService` is empty and `tenantIdOrThrow()` throws a 500. The
+affiliate module hit exactly this and documents it at length
+(`resolve-affiliate-tenant-context.guard.ts:12-16`).
+
+So the module gets `ResolveNotificationTenantContextGuard`, modelled on that precedent: read
+`x-tenant-id`, verify the principal actually holds a membership in that tenant, then seed the context.
+Verification is one indexed `EXISTS` over `role_assignments` / `partner_members` / `affiliates` —
+covering all three areas that get a bell.
+
+The check is defence in depth rather than the only thing standing between tenants: every statement is
+*also* bounded by `user_id = $me`, so a spoofed header would return an empty set rather than another
+tenant's rows. Both hold, and neither may be dropped on the grounds that the other exists — the
+`user_id` bound is what protects users inside one tenant, and the guard is what keeps a forged header
+from ever reaching RLS.
+
+`packages/contracts` gains `packages/contracts/src/contracts/notification.ts` (exported from
+`index.ts`) with `notificationAreaSchema`, `notificationTargetTypeSchema`, `notificationSchema`,
+`notificationsQuerySchema` (`paginationQuerySchema.extend({ area })`), and
+`unreadCountResponseSchema`.
 
 ## Frontend
 
@@ -303,8 +329,8 @@ Area is derived from `useLocation().pathname`. Clicking an item navigates via `<
 with a dot, plus "Đánh dấu tất cả đã đọc" and an empty state.
 
 Full list screens at `/tenant/notifications` and `/partner/notifications`, paginated by URL +
-loader re-run (no client cache — `@booking/query` was deleted). Cheap, because the API already
-supports cursors, and a bell that remembers only 10 rows cannot be used to look anything up.
+loader re-run (no client cache — `@booking/query` was deleted). Cheap, because the API already pages,
+and a bell that remembers only 10 rows cannot be used to look anything up.
 
 Affiliate gets the bell but **no list screen**: its entire in-app surface is one template
 (`legal_document_published_affiliate`), so an archive would be a page that is almost always empty.
