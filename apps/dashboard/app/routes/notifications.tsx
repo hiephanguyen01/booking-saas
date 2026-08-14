@@ -46,12 +46,17 @@ export async function action({ request }: Route.ActionArgs) {
   const auth = { token: user.accessToken, tenantId: host.tenant.id };
   const form = await request.formData();
   const intent = form.get('intent');
+  // Reflects whether the mutation actually landed — a stale-membership 403 or a
+  // backend 500 must not be reported as success just because the request was
+  // well-formed. Stays false for an unrecognised/malformed intent too, since no
+  // mutation ran.
+  let ok = false;
   if (intent === 'read-all') {
     const area = notificationAreaSchema.safeParse(form.get('area'));
-    if (area.success) await markAllNotificationsRead(auth, area.data);
+    if (area.success) ok = await markAllNotificationsRead(auth, area.data);
   } else if (intent === 'read') {
     const id = form.get('id');
-    if (typeof id === 'string' && id) await markNotificationRead(auth, id);
+    if (typeof id === 'string' && id) ok = await markNotificationRead(auth, id);
   }
-  return Response.json({ ok: true });
+  return Response.json({ ok });
 }

@@ -11,8 +11,9 @@ export async function loadUnreadCount(
     query: { area },
     signal,
   });
-  // The bell must never break the shell: a failed poll shows the last known
-  // state rather than an error page.
+  // The bell must never break the shell: a failed poll degrades to zero rather
+  // than throwing an error page. This hides the failure rather than showing
+  // stale data — the next 60s tick re-polls and self-corrects.
   return result.ok && result.data ? result.data.count : 0;
 }
 
@@ -27,16 +28,19 @@ export async function loadNotifications(
     query: { area, page, pageSize },
     signal,
   });
+  // Same degrade-to-empty as loadUnreadCount above, for the same reason.
   return result.ok && result.data ? result.data : { items: [], page, pageSize, total: 0 };
 }
 
-export async function markNotificationRead(auth: ApiAuth, id: string): Promise<void> {
-  await apiPost(apiPaths.notifications.read(id), {}, auth);
+export async function markNotificationRead(auth: ApiAuth, id: string): Promise<boolean> {
+  const result = await apiPost(apiPaths.notifications.read(id), {}, auth);
+  return result.ok;
 }
 
 export async function markAllNotificationsRead(
   auth: ApiAuth,
   area: NotificationArea,
-): Promise<void> {
-  await apiPost(apiPaths.notifications.readAll, { area }, auth);
+): Promise<boolean> {
+  const result = await apiPost(apiPaths.notifications.readAll, { area }, auth);
+  return result.ok;
 }
