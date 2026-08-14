@@ -1,6 +1,6 @@
 import type { AttributeField, HourlySlot } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { Check, Clock3, MapPin } from 'lucide-react';
+import { Check, Clock3, Info, MapPin } from 'lucide-react';
 import { PendingLink } from '~/components/pending-link';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
@@ -11,36 +11,50 @@ import {
   checkoutHref,
   type RoomAvailabilityState,
 } from '~/features/booking-widget/lib/slot-selection';
-import { specCards } from '~/lib/listing-attributes';
+import { specCards, type SpecCard } from '~/lib/listing-attributes';
 import { SlotPicker } from '~/features/booking-widget/components/slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { OfferingDetailsDisclosure } from '~/components/offering-details-disclosure';
+import { cn } from '@booking/ui/lib/utils';
+import { LucideByName } from '~/components/lucide-by-name';
+
+export function RoomHeading({ option }: { option: RoomOption }) {
+  const location = formatListingLocation(option.detail);
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm leading-5 font-semibold md:text-lg md:leading-6">
+        {option.child.title}
+      </h3>
+      {location ? (
+        <span className="flex items-start gap-2 text-xs text-muted-foreground md:text-sm">
+          <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {location}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export function RoomDetails({
   option,
   attributeSchema,
   hidePhotos = false,
+  hideHeading = false,
   onOpenPhoto,
 }: {
   option: RoomOption;
   attributeSchema: AttributeField[];
   hidePhotos?: boolean;
+  hideHeading?: boolean;
   onOpenPhoto?: (index: number, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const cards = specCards(option.child.attributes, attributeSchema);
   const description = option.detail.description || option.child.description;
-  const location = formatListingLocation(option.detail);
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-lg font-semibold leading-6">{option.child.title}</h3>
-      {location ? (
-        <span className="flex items-start gap-2 text-sm text-muted-foreground">
-          <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {location}
-        </span>
-      ) : null}
+      {!hideHeading ? <RoomHeading option={option} /> : null}
       {!hidePhotos ? (
         <RoomPhotoStrip
           photos={option.child.photos}
@@ -52,7 +66,34 @@ export function RoomDetails({
         cards={cards}
         description={description}
         emptyLabel={t('group.roomInfoPending')}
+        collapsedSummary={cards.length ? <RoomCompactSpecs cards={cards} /> : undefined}
       />
+    </div>
+  );
+}
+
+function RoomCompactSpecs({ cards }: { cards: SpecCard[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+      {cards.slice(0, 4).map((card) => (
+        <div key={card.key} className="flex min-w-0 items-start gap-2">
+          <LucideByName
+            name={card.icon}
+            fallback={Info}
+            className="mt-0.5 size-4 shrink-0 text-foreground"
+          />
+          {card.kind === 'area' ? (
+            <p className="truncate text-xs text-muted-foreground">{card.value} m²</p>
+          ) : (
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium">{card.label}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {card.kind === 'list' ? card.lines[0] : card.line}
+              </p>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -61,17 +102,21 @@ export function RoomPrice({
   option,
   mode,
   state,
+  compact = false,
 }: {
   option: RoomOption;
   mode: BookingMode;
   state: RoomAvailabilityState;
+  compact?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   if (state === 'browse')
     return option.price ? (
-      <div className="flex flex-col gap-1">
+      <div className={cn('flex flex-col gap-1', compact && 'items-end text-right text-xs')}>
         <span className="text-sm text-muted-foreground">{t('group.fromRoomPrice')}</span>
-        <strong className="text-xl text-primary">{formatVnd(option.price)}</strong>
+        <strong className={cn('text-xl text-primary', compact && 'text-base')}>
+          {formatVnd(option.price)}
+        </strong>
         <span className="text-muted-foreground">{t('group.hourOrDay')}</span>
       </div>
     ) : (
@@ -83,8 +128,10 @@ export function RoomPrice({
     return <p className="font-medium text-muted-foreground">{t('group.noPrice')}</p>;
   const selectedHours = option.start && option.end ? hoursBetween(option.start, option.end) : null;
   return (
-    <div className="flex flex-col gap-1">
-      <strong className="text-xl text-primary">{formatVnd(option.price)}</strong>
+    <div className={cn('flex flex-col gap-1', compact && 'items-end text-right text-xs')}>
+      <strong className={cn('text-xl text-primary', compact && 'text-base')}>
+        {formatVnd(option.price)}
+      </strong>
       <span className="text-muted-foreground">
         {mode === 'hourly'
           ? selectedHours
@@ -162,7 +209,13 @@ export function RoomAction({
   );
 }
 
-export function PolicyList({ depositPercent }: { depositPercent: number }) {
+export function PolicyList({
+  depositPercent,
+  compact = false,
+}: {
+  depositPercent: number;
+  compact?: boolean;
+}) {
   const { t } = useTranslation(NsI18n.Listing);
   const policies = [
     depositPercent > 0
@@ -172,12 +225,15 @@ export function PolicyList({ depositPercent }: { depositPercent: number }) {
     t('group.policyPrivacy'),
   ];
   return (
-    <div className="mt-5 flex flex-col gap-2.5">
-      <p className="font-medium">{t('group.policiesTitle')}</p>
+    <div className={cn('mt-5 flex flex-col gap-2.5', compact && 'mt-0 gap-1')}>
+      <p className={cn('font-medium', compact && 'text-xs')}>{t('group.policiesTitle')}</p>
       {policies.map((policy) => (
         <span
           key={policy}
-          className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
+          className={cn(
+            'flex items-start gap-2 text-xs leading-5 text-muted-foreground',
+            compact && 'gap-1.5 leading-4',
+          )}
         >
           <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
           {policy}

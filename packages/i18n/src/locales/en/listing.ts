@@ -195,6 +195,8 @@ export const enListing = {
     policyPrivacy: 'Your contact details stay private until the booking is confirmed',
     pickHours: 'Pick hours',
     chooseSchedule: 'Choose date/time',
+    searchDrawerTitle: 'Change schedule and guests',
+    searchDrawerDescription: 'Choose your schedule and guest count to refresh the matching rooms.',
     bookNow: 'Book now',
     closeSchedule: 'Close schedule picker',
     changeDay: 'Change day',

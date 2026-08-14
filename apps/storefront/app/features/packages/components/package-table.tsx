@@ -247,14 +247,14 @@ function PackageChoice({
       </Button>
       <div className="mt-4 space-y-2 text-xs text-muted-foreground">
         <p className="flex items-start gap-2">
-          <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+          <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
           {listing.depositPercent > 0
             ? t('group.policyDepositPercent', { percent: listing.depositPercent })
             : t('group.policyDeposit')}
         </p>
         {listing.effectiveCancellationPolicy ? (
           <p className="flex items-start gap-2">
-            <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+            <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
             {listing.effectiveCancellationPolicy.name}
           </p>
         ) : null}
