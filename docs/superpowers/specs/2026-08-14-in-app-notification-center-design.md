@@ -150,8 +150,8 @@ Presence in the map is the gate. Customer templates and both OTP templates are s
 can never produce a bell row. `tenant_member_invited` is absent too — its recipient may not have an
 account yet.
 
-`deliverNotification` gains an `inbox` collector in `DeliveryPorts` and three getters on
-`NotificationDelivery` (`tenantId`, `userId`, `eventType`). No other signature changes.
+`deliverNotification` gains an `inbox` collector in `DeliveryPorts` and four getters on
+`NotificationDelivery` (`tenantId`, `userId`, `eventType`, `bookingId`). No other signature changes.
 
 Note `DeliveryAttempt` carries exactly one id — `bookingId` — so booking templates target a booking
 detail screen and the rest target a list screen with `targetId: null`. That is not a compromise: the
