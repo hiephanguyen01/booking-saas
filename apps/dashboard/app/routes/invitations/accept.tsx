@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components
 import type { TenantInvitationPreview } from '@booking/contracts';
 import type { Route } from './+types/accept';
 import { ErrorBanner } from '~/components/action-feedback';
-import { unwrapApiResult, type ApiResult } from '~/lib/api.server';
+import { backendSessionInfo, unwrapApiResult, type ApiResult } from '~/lib/api.server';
+import { getCurrentDashboardHost } from '~/lib/request-auth.server';
+import { defaultDashboardPath } from '~/lib/workspace';
 import {
   acceptInvitation,
   fetchInvitationPreview,
@@ -46,8 +48,16 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!res.ok) {
     return { error: acceptInvitationErrorMessage(res) };
   }
-  // The user now holds a membership in the tenant, so its area will admit them.
-  return redirect(dashboardPaths.tenant.home);
+  // The accept call just created a membership (tenant- or partner-scoped),
+  // but the request's `SessionInfoResponse` was loaded by the auth
+  // middleware before that write happened, so it still can't see it. Re-fetch
+  // it fresh — straight from the backend, like login.tsx does after its own
+  // mutation — so `defaultDashboardPath` can resolve against the membership
+  // that now actually exists instead of stranding a partner-only invitee on
+  // `/tenant`, which their still-stale scopes would 403 them out of.
+  const info = await backendSessionInfo(auth.token);
+  const host = getCurrentDashboardHost();
+  return redirect(info ? defaultDashboardPath(info, host) : dashboardPaths.home);
 }
 
 function acceptInvitationErrorMessage(res: ApiResult<unknown>): string {
@@ -98,11 +108,15 @@ function InvitationState({
   busy: boolean;
 }) {
   if (preview.status === 'expired') {
+    // A partner-scoped invitation is sent by the partner (`partner.members.manage`,
+    // not a tenant permission — see `InvitePartnerMemberUseCase`), so the invitee
+    // should be pointed back at the partner, not the tenant that merely hosts it.
+    const resendContact = preview.partnerName ?? preview.tenantName;
     return (
       <div className="space-y-3">
         <Clock className="mx-auto size-8 text-muted-foreground" aria-hidden />
         <p className="text-sm text-muted-foreground">
-          Lời mời đã hết hạn. Hãy đề nghị <strong className="text-foreground">{preview.tenantName}</strong>{' '}
+          Lời mời đã hết hạn. Hãy đề nghị <strong className="text-foreground">{resendContact}</strong>{' '}
           gửi lại.
         </p>
       </div>
