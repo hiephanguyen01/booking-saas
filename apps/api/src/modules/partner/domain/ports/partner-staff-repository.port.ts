@@ -10,6 +10,18 @@ export interface PartnerStaffRow {
   roles: { id: string; name: string }[];
   permissions: string[];
   joinedAt: Date;
+  /**
+   * True when this user has a partner-scope `role_assignments` row but no
+   * matching `partner_members` row — exactly the failure the lockstep
+   * invariant in `addStaff`/`removeStaff` exists to prevent. `addStaff` and
+   * `removeStaff` never produce this by themselves; seeing `true` means
+   * something outside this repository wrote one table without the other.
+   * `joinedAt` still carries a usable fallback date in that case (the
+   * assignment's own `createdAt`) so callers are never forced to handle a
+   * null date, but this flag is what makes the gap visible rather than
+   * silently indistinguishable from a normal member.
+   */
+  membershipMissing: boolean;
 }
 
 export interface PartnerRoleRow {

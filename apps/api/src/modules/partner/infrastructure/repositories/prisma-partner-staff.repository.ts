@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
@@ -6,6 +6,8 @@ import type {
   PartnerRoleRow,
   PartnerStaffRow,
 } from '../../domain/ports/partner-staff-repository.port';
+
+const logger = new Logger('PrismaPartnerStaffRepository');
 
 const roleInclude = { rolePermissions: true } as const;
 type RoleQueryRow = Prisma.RoleGetPayload<{ include: typeof roleInclude }>;
@@ -45,11 +47,20 @@ type StaffAssignmentRow = Prisma.RoleAssignmentGetPayload<{ include: typeof staf
  *
  * `joinedAt` is read from `joinedAtByUser` (the partner_members row), never
  * from the assignment — membership is what "joined" means here, and the two
- * can differ once roles are edited. A user missing from `joinedAtByUser`
- * falls back to their earliest assignment's `createdAt`; that should be
- * unreachable given addStaff/removeStaff keep the two tables in lockstep, but
- * list()/findOne() still need something sane to return rather than throw on
- * legacy or corrupted rows.
+ * can differ once roles are edited.
+ *
+ * A user missing from `joinedAtByUser` has an assignment but no member row —
+ * exactly the failure addStaff/removeStaff's lockstep write exists to prevent.
+ * DO NOT silently backfill a plausible-looking date and move on: a missing
+ * partner_members row has no other symptom until booking notification mail
+ * quietly stops arriving, so the one thing this repository must never do on
+ * that path is make the row look ordinary. `joinedAt` still gets a usable
+ * fallback (the assignment's own `createdAt`) so the field stays a plain
+ * `Date` for every caller, but `membershipMissing: true` and a warn log are
+ * what keep the anomaly visible instead of smoothing it away. If you're
+ * tempted to delete this branch as dead code because addStaff/removeStaff are
+ * airtight: it is dead in the write path by construction, but this is the
+ * read path's only chance to catch a violation from anywhere else — leave it.
  */
 function toStaffRows(
   rows: StaffAssignmentRow[],
@@ -59,6 +70,16 @@ function toStaffRows(
   for (const row of rows) {
     let member = byUser.get(row.userId);
     if (!member) {
+      const joinedAt = joinedAtByUser.get(row.userId);
+      const membershipMissing = joinedAt === undefined;
+      if (membershipMissing) {
+        logger.warn(
+          `partner_members row missing for partner=${row.partnerId} user=${row.userId} ` +
+            '— a role_assignments row exists without it, so this person is not on the ' +
+            'booking-notification recipient list. Investigate: this should be unreachable ' +
+            'via addStaff/removeStaff.',
+        );
+      }
       member = {
         userId: row.user.id,
         fullName: row.user.fullName,
@@ -66,7 +87,8 @@ function toStaffRows(
         avatarUrl: row.user.avatarUrl,
         roles: [],
         permissions: [],
-        joinedAt: joinedAtByUser.get(row.userId) ?? row.createdAt,
+        joinedAt: joinedAt ?? row.createdAt,
+        membershipMissing,
       };
       byUser.set(row.userId, member);
     }
