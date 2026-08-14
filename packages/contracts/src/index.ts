@@ -22,3 +22,4 @@ export * from './contracts/storage';
 export * from './contracts/review';
 export * from './contracts/favorite';
 export * from './contracts/content-report';
+export * from './contracts/notification';
