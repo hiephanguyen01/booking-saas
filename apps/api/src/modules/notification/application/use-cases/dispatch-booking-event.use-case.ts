@@ -9,6 +9,10 @@ import { planForEvent } from '../../domain/notification-plan';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
 import { EMAIL_RENDERER, type IEmailRenderer } from '../../domain/ports/email-renderer.port';
 import {
+  NOTIFICATION_INBOX_REPOSITORY,
+  type INotificationInboxRepository,
+} from '../../domain/ports/notification-inbox-repository.port';
+import {
   NOTIFICATION_LOG_REPOSITORY,
   type INotificationLogRepository,
 } from '../../domain/ports/notification-log-repository.port';
@@ -18,6 +22,7 @@ import {
 } from '../../domain/ports/notification-reader.port';
 import { DedupeKey } from '../../domain/value-objects/dedupe-key.value-object';
 import { deliverNotification } from '../deliver-notification';
+import { InboxCollector } from '../inbox-collector';
 
 export interface BookingEventPayload {
   bookingId: string;
@@ -42,6 +47,7 @@ export class DispatchBookingEventUseCase {
     @Inject(EMAIL_SENDER) private readonly email: IEmailSender,
     @Inject(EMAIL_RENDERER) private readonly renderer: IEmailRenderer,
     @Inject(NOTIFICATION_LOG_REPOSITORY) private readonly logs: INotificationLogRepository,
+    @Inject(NOTIFICATION_INBOX_REPOSITORY) private readonly inbox: INotificationInboxRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -53,6 +59,7 @@ export class DispatchBookingEventUseCase {
     );
     if (!ctx) return;
 
+    const collector = new InboxCollector();
     for (const item of plan) {
       for (const recipient of audienceRecipients(item, ctx)) {
         const delivery = NotificationDelivery.start({
@@ -70,12 +77,19 @@ export class DispatchBookingEventUseCase {
           bookingId: ctx.bookingId,
           policy: OUTBOX_DELIVERY_POLICY,
         });
-        await deliverNotification({ email: this.email, logs: this.logs, renderer: this.renderer }, delivery, {
-          locale: recipient.locale,
-          brand: ctx.brand,
-          data: bookingTemplateData(ctx, recipient, payload, item.templateId),
-        });
+        await deliverNotification(
+          { email: this.email, logs: this.logs, renderer: this.renderer, inbox: collector },
+          delivery,
+          {
+            locale: recipient.locale,
+            brand: ctx.brand,
+            data: bookingTemplateData(ctx, recipient, payload, item.templateId),
+          },
+        );
       }
+    }
+    if (!collector.isEmpty()) {
+      await this.tenantDb.forTenant(tenantId, (tx) => this.inbox.insertMany(tx, collector.rows()));
     }
   }
 }

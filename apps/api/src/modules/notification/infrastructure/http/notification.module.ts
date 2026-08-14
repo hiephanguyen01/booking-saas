@@ -4,6 +4,7 @@ import { TenantContextModule } from '../../../../shared/tenant-context/tenant-co
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { EMAIL_SENDER } from '../../domain/ports/email-sender.port';
 import { EMAIL_RENDERER } from '../../domain/ports/email-renderer.port';
+import { NOTIFICATION_INBOX_REPOSITORY } from '../../domain/ports/notification-inbox-repository.port';
 import { NOTIFICATION_LOG_REPOSITORY } from '../../domain/ports/notification-log-repository.port';
 import { NOTIFICATION_READER } from '../../domain/ports/notification-reader.port';
 import {
@@ -15,6 +16,7 @@ import {
 } from '../../domain/notification-plan';
 import { SmtpEmailSender } from '../smtp-email-sender';
 import { ReactEmailRenderer } from '../email/react-email.renderer';
+import { PrismaNotificationInboxRepository } from '../repositories/prisma-notification-inbox.repository';
 import { PrismaNotificationLogRepository } from '../repositories/prisma-notification-log.repository';
 import { PrismaNotificationReader } from '../prisma-notification.reader';
 import { ReminderWorker } from '../reminder.worker';
@@ -51,6 +53,7 @@ import {
     { provide: EMAIL_SENDER, useClass: SmtpEmailSender },
     { provide: EMAIL_RENDERER, useClass: ReactEmailRenderer },
     { provide: NOTIFICATION_LOG_REPOSITORY, useClass: PrismaNotificationLogRepository },
+    { provide: NOTIFICATION_INBOX_REPOSITORY, useClass: PrismaNotificationInboxRepository },
     { provide: NOTIFICATION_READER, useClass: PrismaNotificationReader },
     DispatchBookingEventUseCase,
     DispatchListingEventUseCase,
