@@ -30,6 +30,14 @@ export const apiPaths = {
   },
   uploads: { presign: '/uploads/presign' },
 
+  /** The caller own in-app inbox (`@AuthenticatedOnly`, tenant scope from the header). */
+  notifications: {
+    list: '/notifications',
+    unreadCount: '/notifications/unread-count',
+    read: (id: string) => `/notifications/${segment(id)}/read`,
+    readAll: '/notifications/read-all',
+  },
+
   /** Public reference data — no tenant scope, no auth. */
   publicData: {
     provinces: '/public/administrative-divisions/provinces',

@@ -33,6 +33,7 @@ export const dashboardPaths = {
   },
   tenant: {
     home: tenantPath(),
+    notifications: tenantPath('/notifications'),
     listings: tenantPath('/listings'),
     /** Moderation screen for one listing awaiting review. */
     listingReview: (listingId: string) => tenantPath(`/listings/${segment(listingId)}/review`),
@@ -80,6 +81,7 @@ export const dashboardPaths = {
   },
   partner: {
     home: partnerPath(),
+    notifications: partnerPath('/notifications'),
     geocode: partnerPath('/geocode'),
     calendar: partnerPath('/calendar'),
     bookings: partnerPath('/bookings'),
