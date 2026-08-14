@@ -1,9 +1,4 @@
-import type {
-  NotificationListResponse,
-  NotificationResponse,
-  NotificationTargetType,
-  UnreadCountResponse,
-} from '@booking/contracts';
+import type { NotificationListResponse, UnreadCountResponse } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UuidParam } from '../../../../shared/openapi/decorators';
@@ -12,11 +7,11 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import type { SessionPrincipal } from '../../../../shared/http/session-principal';
 import { AuthenticatedOnly } from '../../../../shared/http/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../../shared/http/current-principal.decorator';
+import { toNotificationResponse } from '../../application/notification.mapper';
 import { CountUnreadNotificationsUseCase } from '../../application/use-cases/count-unread-notifications.use-case';
 import { ListNotificationsUseCase } from '../../application/use-cases/list-notifications.use-case';
 import { MarkAllNotificationsReadUseCase } from '../../application/use-cases/mark-all-notifications-read.use-case';
 import { MarkNotificationReadUseCase } from '../../application/use-cases/mark-notification-read.use-case';
-import type { InboxRowRecord } from '../../domain/ports/notification-inbox-repository.port';
 import { ResolveNotificationTenantContextGuard } from './guards/resolve-notification-tenant-context.guard';
 import {
   MarkAllNotificationsReadDto,
@@ -104,18 +99,4 @@ export class NotificationController {
       input.area,
     );
   }
-}
-
-function toNotificationResponse(row: InboxRowRecord): NotificationResponse {
-  return {
-    id: row.id,
-    area: row.area,
-    eventType: row.eventType,
-    title: row.title,
-    body: row.body,
-    targetType: row.targetType as NotificationTargetType,
-    targetId: row.targetId,
-    readAt: row.readAt ? row.readAt.toISOString() : null,
-    createdAt: row.createdAt.toISOString(),
-  };
 }
