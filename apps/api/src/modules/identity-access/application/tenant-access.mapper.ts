@@ -67,7 +67,9 @@ export function toTenantInvitation(
  * The recipient's preview, keyed by token rather than tenant scope. `roles`
  * is already the assignable subset (a role deleted since the invite was
  * sent has already been filtered out by the caller) — mapped straight to
- * `RoleRef`, no lookup-by-id needed.
+ * `RoleRef`, no lookup-by-id needed. `partnerName` is null for a tenant-scope
+ * invitation and set for a partner-scope one, so the acceptance screen can
+ * tell the recipient which they are joining.
  */
 export function toTenantInvitationPreview(
   row: InvitationRow,
@@ -81,8 +83,6 @@ export function toTenantInvitationPreview(
     roles: roles.map(toRoleRef),
     status: invitationStateOf(row, now),
     matchesCurrentUser,
-    // This mapper only ever handles a tenant-scoped invitation; the partner
-    // invite flow (later task) builds its own preview with this set.
-    partnerName: null,
+    partnerName: row.partnerName,
   };
 }

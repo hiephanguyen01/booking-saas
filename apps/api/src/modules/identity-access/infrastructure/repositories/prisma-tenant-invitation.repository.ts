@@ -11,14 +11,22 @@ import { InvitationAlreadyPending } from '../../domain/errors/tenant-access-erro
 
 type UserLookupClient = Pick<PrismaClient, 'user'>;
 
-/** Every query producing an `InvitationRow` joins `tenant: { select: { name: true } } }`. */
-type InvitationWithTenant = TenantInvitation & { tenant: { name: string } };
+/**
+ * Every query producing an `InvitationRow` joins `tenant: { select: { name: true } } }`
+ * and `partner: { select: { name: true } } }` — the latter is null for a tenant-scope row.
+ */
+type InvitationWithTenant = TenantInvitation & {
+  tenant: { name: string };
+  partner: { name: string } | null;
+};
 
 function toInvitationRow(row: InvitationWithTenant, invitedByName: string | null): InvitationRow {
   return {
     id: row.id,
     tenantId: row.tenantId,
     tenantName: row.tenant.name,
+    partnerId: row.partnerId,
+    partnerName: row.partner?.name ?? null,
     email: row.email,
     roleIds: row.roleIds,
     status: row.status,
@@ -57,7 +65,7 @@ export class PrismaTenantInvitationRepository implements ITenantInvitationReposi
   async list(tx: PrismaTx, tenantId: string): Promise<InvitationRow[]> {
     const rows = await tx.tenantInvitation.findMany({
       where: { tenantId },
-      include: { tenant: { select: { name: true } } },
+      include: { tenant: { select: { name: true } }, partner: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
     });
     return attachInvitedByNames(tx, rows);
@@ -68,6 +76,7 @@ export class PrismaTenantInvitationRepository implements ITenantInvitationReposi
       const invitation = await tx.tenantInvitation.create({
         data: {
           tenantId: data.tenantId,
+          partnerId: data.partnerId,
           email: data.email,
           roleIds: [...data.roleIds],
           tokenHash: data.tokenHash,
@@ -100,7 +109,7 @@ export class PrismaTenantInvitationRepository implements ITenantInvitationReposi
   async findByTokenHash(tokenHash: string): Promise<InvitationRow | null> {
     const row = await this.prisma.admin.tenantInvitation.findUnique({
       where: { tokenHash },
-      include: { tenant: { select: { name: true } } },
+      include: { tenant: { select: { name: true } }, partner: { select: { name: true } } },
     });
     if (!row) return null;
     const [mapped] = await attachInvitedByNames(this.prisma.admin, [row]);

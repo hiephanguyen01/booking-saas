@@ -18,6 +18,10 @@ import {
   type ITenantRoleRepository,
 } from '../../domain/ports/tenant-role-repository.port';
 import { INVITATION_TOKEN, type IInvitationToken } from '../../domain/ports/invitation-token.port';
+import {
+  PARTNER_MEMBERSHIP_WRITER,
+  type IPartnerMembershipWriter,
+} from '../../domain/ports/partner-membership-writer.port';
 import { invitationStateOf } from '../../domain/tenant-access-policy';
 import {
   InvitationEmailMismatch,
@@ -35,9 +39,20 @@ import {
  * the `x-tenant-id` header, which the caller (having no membership yet)
  * cannot legitimately set.
  *
- * Acceptance ADDS the invitation's roles to whatever the caller already
- * holds in this tenant; it never replaces. Re-inviting an existing member
- * must never quietly strip a role they already have.
+ * `row.partnerId` branches what accepting materialises. Null (tenant scope):
+ * acceptance ADDS the invitation's roles to whatever the caller already
+ * holds in this tenant; it never replaces — re-inviting an existing member
+ * must never quietly strip a role they already have. Set (partner scope):
+ * `partnerMembership.materialize` owns the whole write — it creates
+ * `partner_members` and the role assignments together, so identity-access
+ * never reaches into that table itself.
+ *
+ * The two scopes disagree about what an empty role result means, so each
+ * branch throws `InvitationRolesGone` on its own, un-shared condition:
+ * tenant scope means it when `filterAssignable` itself comes back empty
+ * (checked BEFORE deduplicating against roles the member already holds —
+ * an empty result only after dedup is a legitimate no-op, not this error);
+ * partner scope means it whenever `materialize` returns `[]`, full stop.
  */
 @Injectable()
 export class AcceptTenantInvitationUseCase {
@@ -46,6 +61,8 @@ export class AcceptTenantInvitationUseCase {
     private readonly invitations: ITenantInvitationRepository,
     @Inject(TENANT_MEMBER_REPOSITORY) private readonly members: ITenantMemberRepository,
     @Inject(TENANT_ROLE_REPOSITORY) private readonly roles: ITenantRoleRepository,
+    @Inject(PARTNER_MEMBERSHIP_WRITER)
+    private readonly partnerMembership: IPartnerMembershipWriter,
     @Inject(PERMISSION_RESOLVER) private readonly resolver: IPermissionResolver,
     @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
     @Inject(INVITATION_TOKEN) private readonly tokens: IInvitationToken,
@@ -60,20 +77,44 @@ export class AcceptTenantInvitationUseCase {
     if (row.email.toLowerCase() !== ctx.email.toLowerCase()) throw new InvitationEmailMismatch();
 
     await this.tenantDb.forTenant(row.tenantId, async (tx) => {
-      // A role deleted since the invite was sent is dropped here rather than
-      // failing the whole accept — unless every one of them is gone.
-      const roles = await this.roles.filterAssignable(tx, row.tenantId, row.roleIds);
-      if (roles.length === 0) throw new InvitationRolesGone();
+      let assigned: string[];
 
-      const won = await this.invitations.markAccepted(tx, row.id, ctx.userId);
-      if (!won) throw new InvitationNotPending(); // lost the CAS race
+      if (row.partnerId) {
+        // Partner scope: the partner module owns partner_members and writes
+        // it together with the role assignments; identity-access must never
+        // reach into that table itself.
+        assigned = await this.partnerMembership.materialize(tx, {
+          tenantId: row.tenantId,
+          partnerId: row.partnerId,
+          userId: ctx.userId,
+          roleIds: row.roleIds,
+        });
+        // materialize() returns [] only when no invited role survived — that
+        // IS InvitationRolesGone for this scope, unconditionally.
+        if (assigned.length === 0) throw new InvitationRolesGone();
 
-      // ADD to any existing roles, never replace: re-inviting an existing
-      // member grants extra roles and must never quietly remove one.
-      const existing = await this.members.findOne(tx, row.tenantId, ctx.userId);
-      const held = new Set(existing?.roles.map((r) => r.id) ?? []);
-      const toAdd = roles.map((r) => r.id).filter((id) => !held.has(id));
-      if (toAdd.length) await this.members.addRoles(tx, row.tenantId, ctx.userId, toAdd);
+        const won = await this.invitations.markAccepted(tx, row.id, ctx.userId);
+        if (!won) throw new InvitationNotPending(); // lost the CAS race
+      } else {
+        // Tenant scope: a role deleted since the invite was sent is dropped
+        // here rather than failing the whole accept — unless every one of
+        // them is gone. This must be checked BEFORE deduplicating against
+        // what the member already holds: a non-empty `roles` followed by an
+        // empty add-list below is a legitimate no-op (the member already
+        // holds every invited role), never InvitationRolesGone.
+        const roles = await this.roles.filterAssignable(tx, row.tenantId, row.roleIds);
+        if (roles.length === 0) throw new InvitationRolesGone();
+
+        const won = await this.invitations.markAccepted(tx, row.id, ctx.userId);
+        if (!won) throw new InvitationNotPending(); // lost the CAS race
+
+        // ADD to any existing roles, never replace: re-inviting an existing
+        // member grants extra roles and must never quietly remove one.
+        const existing = await this.members.findOne(tx, row.tenantId, ctx.userId);
+        const held = new Set(existing?.roles.map((r) => r.id) ?? []);
+        assigned = roles.map((r) => r.id).filter((id) => !held.has(id));
+        if (assigned.length) await this.members.addRoles(tx, row.tenantId, ctx.userId, assigned);
+      }
 
       await this.audit.write(tx, {
         tenantId: row.tenantId,
@@ -81,7 +122,7 @@ export class AcceptTenantInvitationUseCase {
         action: 'member.invitation_accepted',
         entityType: 'tenant_invitation',
         entityId: row.id,
-        data: { roleIds: toAdd },
+        data: { roleIds: assigned },
       });
     });
 

@@ -91,9 +91,12 @@ import { PublicPartnerController } from './public-partner.controller';
   // verification status. The identity-verification gate itself is a plain function
   // (application/assert-can-serve-listing-type.ts), imported directly.
   // PARTNER_MEMBERSHIP_WRITER exported so identity-access's shared accept-invitation
-  // flow (Task 4) can materialise a PARTNER membership through this module without
-  // reaching into `partner_members` itself. Not injected anywhere yet in this task —
-  // Task 4 wires the consumer side, so an unused-export lint warning here is expected.
+  // flow can materialise a PARTNER membership through this module without reaching
+  // into `partner_members` itself. AcceptTenantInvitationUseCase (Task 4) injects
+  // this token, but IdentityAccessModule cannot import PartnerModule to receive it
+  // without reintroducing the cycle `check:module-cycles` blocks (identity-access is
+  // a transitive dependency of partner via administrative-division/legal/tenancy, not
+  // just directly) — see Task 4's report. Left exported for when that is resolved.
   exports: [PARTNER_REPOSITORY, PARTNER_MEMBERSHIP_WRITER],
 })
 export class PartnerModule implements OnModuleInit {
