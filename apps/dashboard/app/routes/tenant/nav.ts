@@ -1,4 +1,5 @@
 import {
+  Bell,
   BookText,
   CalendarCheck,
   CreditCard,
@@ -32,6 +33,11 @@ export const tenantNavSections: DashboardNavSection[] = [
         title: 'Tổng quan',
         to: dashboardPaths.tenant.home,
         icon: LayoutDashboard,
+      },
+      {
+        title: 'Thông báo',
+        to: dashboardPaths.tenant.notifications,
+        icon: Bell,
       },
     ],
   },

@@ -5,6 +5,7 @@ import { index, route, type RouteConfigEntry } from '@react-router/dev/routes';
 // (requireScope('tenant')) is wired in app/routes.ts.
 export const tenantChildren: RouteConfigEntry[] = [
   index('routes/tenant/_index.tsx'),
+  route('notifications', 'routes/tenant/notifications/_index.tsx'),
   route('listings', 'routes/tenant/listings/_index.tsx'),
   route('listings/:listingId/review', 'routes/tenant/listings/review.tsx'),
   route('listing-groups', 'routes/tenant/listing-groups/_index.tsx'),
