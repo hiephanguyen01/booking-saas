@@ -65,21 +65,27 @@ export function toTenantInvitation(
 
 /**
  * The recipient's preview, keyed by token rather than tenant scope. `roles`
- * is already the assignable subset (a role deleted since the invite was
- * sent has already been filtered out by the caller) — mapped straight to
- * `RoleRef`, no lookup-by-id needed.
+ * is already the assignable subset, already shaped as `RoleRef` — the caller
+ * resolves it through one of two ports depending on `row.partnerId` (tenant
+ * roles via `ITenantRoleRepository`, mapped through `toRoleRef`; partner
+ * roles via `IPartnerRoleReader`, already `{id, name}`), so this mapper takes
+ * the final shape directly rather than assuming one repository row type.
+ * `partnerName` is null for a tenant-scope invitation and set for a
+ * partner-scope one, so the acceptance screen can tell the recipient which
+ * they are joining.
  */
 export function toTenantInvitationPreview(
   row: InvitationRow,
-  roles: RoleRow[],
+  roles: readonly RoleRef[],
   matchesCurrentUser: boolean,
   now: Date,
 ): TenantInvitationPreview {
   return {
     tenantName: row.tenantName,
     invitedEmail: row.email,
-    roles: roles.map(toRoleRef),
+    roles: [...roles],
     status: invitationStateOf(row, now),
     matchesCurrentUser,
+    partnerName: row.partnerName,
   };
 }

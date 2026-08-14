@@ -135,6 +135,12 @@ There is no
 (`now()`), never `Date.now()`. The `outbox_events.aggregate_type`/`aggregate_id` columns exist but are
 currently unpopulated.
 
+When one module must write another module's table **inside the same transaction** (too tightly coupled
+to the caller's own invariant for an outbox event — e.g. the shared invitation-accept flow writing
+`partner_members`), the *caller's* module declares the port and the *owner* module provides it from a
+`@Global()` module, not the other way round — that keeps the existing import direction intact and
+`check:module-cycles` green (see `PARTNER_MEMBERSHIP_WRITER` / `PartnerMembershipWriterModule`).
+
 ## Bootstrap, errors, config
 
 `src/main.ts` sets Helmet (CSP relaxed only when docs are enabled), `cookie-parser`, `rawBody: true`

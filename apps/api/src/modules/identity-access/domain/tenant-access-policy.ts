@@ -6,7 +6,9 @@ import {
 } from './errors/tenant-access-errors';
 
 /** The key whose disappearance locks a tenant out of its own staff management. */
-export const MEMBER_MANAGE_KEY = 'tenant.members.manage';
+export const TENANT_MEMBER_MANAGE_KEY = 'tenant.members.manage';
+/** The partner-tier equivalent. */
+export const PARTNER_MEMBER_MANAGE_KEY = 'partner.members.manage';
 
 /**
  * A caller may only hand out permissions they hold. Rejects with the offending
@@ -27,14 +29,18 @@ export function assertNotSelf(callerUserId: string, targetUserId: string): void 
 }
 
 /**
- * `remaining` is the tenant's membership AS IT WOULD BE after the operation.
- * Checked on effective permissions, not role names: a custom role can carry
- * `tenant.members.manage` too, and the `Tenant Owner` name means nothing to the guard.
+ * `remaining` is the membership AS IT WOULD BE after the operation, and
+ * `manageKey` is the permission whose disappearance strands that scope. The key
+ * is a parameter rather than a constant because the same rule protects a tenant
+ * from losing `tenant.members.manage` and a partner from losing
+ * `partner.members.manage` — checked on effective permissions, never on role
+ * names, since a custom role can carry either key and `Tenant Owner` is a name.
  */
 export function assertKeepsAManager(
   remaining: ReadonlyArray<{ userId: string; permissions: readonly string[] }>,
+  manageKey: string,
 ): void {
-  const stillManaged = remaining.some((m) => m.permissions.includes(MEMBER_MANAGE_KEY));
+  const stillManaged = remaining.some((m) => m.permissions.includes(manageKey));
   if (!stillManaged) throw new LastManagerRemoved();
 }
 

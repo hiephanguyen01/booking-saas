@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
+import type { PartnerPermissionKey, TenantPermissionKey } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { TENANT_PERMISSION_GROUPS, TENANT_PERMISSION_LABELS } from '~/constants/permissions';
 import type { AssignableRole } from './role-multi-select';
 
 /**
@@ -8,20 +8,35 @@ import type { AssignableRole } from './role-multi-select';
  * tick grid is. Nobody can add two role permission sets up in their head, so
  * this is what actually tells the operator what they are about to grant —
  * treated as a requirement of the form, not decoration.
+ *
+ * Generic over the permission key `K` so the same component serves both
+ * tiers — the caller passes its own catalog (`TENANT_PERMISSION_GROUPS`/
+ * `_LABELS` or `PARTNER_PERMISSION_GROUPS`/`_LABELS` from
+ * `~/constants/permissions`) rather than this component assuming tenant
+ * scope, which is what left it permanently showing the tenant-only fallback
+ * message on partner screens.
  */
-export function PermissionPreview({
+export function PermissionPreview<K extends TenantPermissionKey | PartnerPermissionKey>({
   roles,
   selectedRoleIds,
   permissionsAvailable,
+  groups,
+  labels,
+  unavailableMessage,
 }: {
   roles: AssignableRole[];
   selectedRoleIds: string[];
   /**
-   * False when the signed-in caller lacks `tenant.roles.manage` — `roles` then
-   * carries no permission arrays (see `AssignableRole`) and this preview has
-   * nothing to union, so it says so instead of silently claiming "no quyền".
+   * False when the caller has no permission data for these roles at all
+   * (tenant tier only, when the signed-in caller lacks `tenant.roles.manage`
+   * — `roles` then carries no permission arrays, see `AssignableRole`) and
+   * this preview has nothing to union, so it shows `unavailableMessage`
+   * instead of silently claiming "no quyền".
    */
   permissionsAvailable: boolean;
+  groups: { label: string; keys: K[] }[];
+  labels: Record<K, string>;
+  unavailableMessage: string;
 }) {
   const permissionSet = useMemo(() => {
     const selected = roles.filter((role) => selectedRoleIds.includes(role.id));
@@ -39,32 +54,34 @@ export function PermissionPreview({
   if (!permissionsAvailable) {
     return (
       <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-        Bạn cần quyền Quản lý vai trò để xem chi tiết quyền của các vai trò đã chọn.
+        {unavailableMessage}
       </p>
     );
   }
 
-  const groups = TENANT_PERMISSION_GROUPS.map((group) => ({
-    label: group.label,
-    keys: group.keys.filter((key) => permissionSet.has(key)),
-  })).filter((group) => group.keys.length > 0);
+  const visibleGroups = groups
+    .map((group) => ({
+      label: group.label,
+      keys: group.keys.filter((key) => permissionSet.has(key)),
+    }))
+    .filter((group) => group.keys.length > 0);
 
   return (
     <div className="space-y-3 rounded-lg border bg-muted/15 p-4">
       <p className="text-xs font-semibold text-muted-foreground">
         {permissionSet.size} quyền hiệu lực từ {selectedRoleIds.length} vai trò đã chọn
       </p>
-      {groups.length === 0 ? (
+      {visibleGroups.length === 0 ? (
         <p className="text-sm text-muted-foreground">Không có quyền nào.</p>
       ) : (
         <div className="space-y-3">
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.label}>
               <p className="mb-1.5 text-xs font-medium text-muted-foreground">{group.label}</p>
               <div className="flex flex-wrap gap-1.5">
                 {group.keys.map((key) => (
                   <Badge key={key} variant="secondary" className="font-normal">
-                    {TENANT_PERMISSION_LABELS[key]}
+                    {labels[key]}
                   </Badge>
                 ))}
               </div>

@@ -73,6 +73,7 @@ export default function EditMember({ loaderData, actionData }: Route.ComponentPr
     >
       <MemberForm
         mode="edit"
+        tier="tenant"
         member={loaderData.member}
         roles={loaderData.roles}
         canCreateRole={loaderData.canManageRoles}

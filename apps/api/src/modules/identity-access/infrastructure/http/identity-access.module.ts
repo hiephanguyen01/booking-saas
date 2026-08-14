@@ -116,6 +116,17 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     { provide: APP_GUARD, useClass: SessionAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
-  exports: [SESSION_STORE, PERMISSION_RESOLVER, FindOrCreateGuestUseCase],
+  // TENANT_INVITATION_REPOSITORY + INVITATION_TOKEN exported so Task 5's partner
+  // member endpoints (invite/list/revoke) can inject the same shared invitation
+  // ports the tenant tier uses — `tenant_invitations` is one shared table across
+  // both tiers (Task 2), so there is deliberately no partner-specific invitation
+  // repository to duplicate this against.
+  exports: [
+    SESSION_STORE,
+    PERMISSION_RESOLVER,
+    FindOrCreateGuestUseCase,
+    TENANT_INVITATION_REPOSITORY,
+    INVITATION_TOKEN,
+  ],
 })
 export class IdentityAccessModule {}

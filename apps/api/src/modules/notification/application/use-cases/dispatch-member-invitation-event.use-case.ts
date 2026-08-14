@@ -24,6 +24,8 @@ export interface MemberInvitationPayload {
   email: string;
   token: string;
   roleNames: string[];
+  /** Set by `InvitePartnerMemberUseCase` (Task 5) for a partner-scoped invite; omitted for a tenant one. */
+  partnerId?: string;
 }
 
 /**
@@ -34,6 +36,12 @@ export interface MemberInvitationPayload {
  * `reader.loadBrand(tenantId)` — the same precedent `DispatchLegalDocumentEventUseCase`
  * uses to reach a tenant name without this module importing `identity-access`'s
  * `tenancy`-shaped concerns and closing a module cycle.
+ *
+ * When the payload carries a `partnerId` (Task 6), the partner's name is resolved the
+ * same way `DispatchPartnerEventUseCase` does — `reader.loadPartnerContext(tx, partnerId)`
+ * — again without importing `partner`. That name feeds `TemplateData.partnerName`, which
+ * `ReactEmailRenderer` uses to pick the partner-flavoured subject line; a tenant invite
+ * leaves it undefined and the mail is byte-identical to before.
  *
  * The CTA must land on the tenant's OWN console host: since the dashboard became host
  * multi-tenant, `/invitations/:token` (Task 14) resolves only on
@@ -59,12 +67,16 @@ export class DispatchMemberInvitationEventUseCase {
   async execute(tenantId: string, payload: MemberInvitationPayload): Promise<void> {
     const brand = await this.reader.loadBrand(tenantId);
 
-    const domain = await this.tenantDb.forTenant(tenantId, (tx) =>
-      tx.tenantDomain.findFirst({
+    const { domain, partnerName } = await this.tenantDb.forTenant(tenantId, async (tx) => {
+      const domain = await tx.tenantDomain.findFirst({
         where: { tenantId, kind: 'dashboard', isPrimary: true, verifiedAt: { not: null } },
         select: { hostname: true },
-      }),
-    );
+      });
+      const partnerContext = payload.partnerId
+        ? await this.reader.loadPartnerContext(tx, payload.partnerId)
+        : null;
+      return { domain, partnerName: partnerContext?.partnerName };
+    });
     if (!domain) {
       this.logger.warn(
         `skipping tenant.member_invited for invitation ${payload.invitationId}: ` +
@@ -79,6 +91,7 @@ export class DispatchMemberInvitationEventUseCase {
       recipientEmail: payload.email,
       roleNames: payload.roleNames.join(', '),
       ctaUrl: `${dashboardOrigin(domain.hostname)}/invitations/${payload.token}`,
+      ...(partnerName ? { partnerName } : {}),
     };
     const delivery = NotificationDelivery.start({
       tenantId,

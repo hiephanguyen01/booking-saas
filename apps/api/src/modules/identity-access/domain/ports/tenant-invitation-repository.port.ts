@@ -6,6 +6,9 @@ export interface InvitationRow {
   id: string;
   tenantId: string;
   tenantName: string;
+  /** Set only for a partner-scope invitation; null means tenant scope. */
+  partnerId: string | null;
+  partnerName: string | null;
   email: string;
   roleIds: string[];
   status: 'pending' | 'accepted' | 'revoked';
@@ -16,6 +19,8 @@ export interface InvitationRow {
 
 export interface CreateInvitationData {
   tenantId: string;
+  /** Set to invite into a partner's staff instead of the tenant itself. */
+  partnerId?: string;
   email: string;
   roleIds: readonly string[];
   tokenHash: string;

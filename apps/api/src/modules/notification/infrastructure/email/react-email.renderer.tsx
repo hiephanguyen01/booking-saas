@@ -48,6 +48,12 @@ type Copy = {
   cta?: string;
   status?: string;
   statusIcon?: keyof typeof STATUS_ASSETS;
+  /**
+   * Alternate `subject` used when `TemplateData.partnerName` is set — `tenant_member_invited`
+   * only (Task 6: a partner-scoped invite names the partner). Falls back to `subject` for
+   * every other template and for a tenant-scoped invite, which never sets `partnerName`.
+   */
+  partnerSubject?: string;
 };
 
 const STATUS_ASSETS = {
@@ -168,8 +174,8 @@ const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
     en: { subject: 'Tax withholding certificate {certificateNumber} voided', title: 'A tax withholding certificate was voided', intro: '{tenantName} voided certificate {certificateNumber} for tax year {taxYear}. Reason: {reason}', cta: 'View certificate history' },
   },
   tenant_member_invited: {
-    vi: { subject: '{tenantName} mời bạn tham gia quản trị', title: 'Bạn được mời tham gia quản trị', intro: '{tenantName} mời bạn tham gia với vai trò {roleNames}. Nhấn nút bên dưới để chấp nhận lời mời.', cta: 'Chấp nhận lời mời' },
-    en: { subject: '{tenantName} invited you to help manage their workspace', title: "You're invited to join {tenantName}", intro: '{tenantName} invited you to join as {roleNames}. Click below to accept the invitation.', cta: 'Accept invitation' },
+    vi: { subject: '{tenantName} mời bạn tham gia quản trị', partnerSubject: '{tenantName} mời bạn tham gia quản trị đối tác {partnerName}', title: 'Bạn được mời tham gia quản trị', intro: '{tenantName} mời bạn tham gia với vai trò {roleNames}. Nhấn nút bên dưới để chấp nhận lời mời.', cta: 'Chấp nhận lời mời' },
+    en: { subject: '{tenantName} invited you to help manage their workspace', partnerSubject: '{tenantName} invited you to help manage partner {partnerName}', title: "You're invited to join {tenantName}", intro: '{tenantName} invited you to join as {roleNames}. Click below to accept the invitation.', cta: 'Accept invitation' },
   },
   auth_registration_otp: {
     vi: { subject: 'Mã xác thực để xác minh đăng ký', title: 'Xác thực email', intro: 'Dùng mã bên dưới để xác minh địa chỉ email {recipientEmail}.', cta: 'Xác thực email' },
@@ -294,6 +300,7 @@ export class ReactEmailRenderer implements IEmailRenderer {
   async render(templateId: EmailTemplateId, rawLocale: string | null | undefined, brand: EmailBrand, data: TemplateData): Promise<EmailContent> {
     const locale = normalizeLocale(rawLocale);
     const copy = COPY[templateId][locale];
+    const subjectTemplate = data.partnerName && copy.partnerSubject ? copy.partnerSubject : copy.subject;
     const preview = interpolate(copy.intro, data);
     const isAuthOtp = templateId === 'auth_registration_otp'
       || templateId === 'auth_password_reset_otp';
@@ -338,7 +345,7 @@ export class ReactEmailRenderer implements IEmailRenderer {
       path: path.join(assetRoot, asset.filename),
     }));
     return {
-      subject: interpolate(copy.subject, data),
+      subject: interpolate(subjectTemplate, data),
       html,
       text: toPlainText(html),
       ...(attachments.length ? { attachments } : {}),

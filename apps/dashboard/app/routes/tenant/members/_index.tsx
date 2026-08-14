@@ -101,7 +101,13 @@ export default function TenantMembers({ loaderData }: Route.ComponentProps) {
 
         {canManageMembers ? (
           <TabsContent value="members" forceMount className="space-y-4 data-[state=inactive]:hidden">
-            <MembersTable members={members ?? []} error={membersError} currentUserId={currentUserId} />
+            <MembersTable
+              members={members ?? []}
+              error={membersError}
+              currentUserId={currentUserId}
+              editHref={dashboardPaths.tenant.member}
+              scopeLabel="tenant"
+            />
           </TabsContent>
         ) : null}
 

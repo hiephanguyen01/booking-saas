@@ -14,7 +14,11 @@ import {
   TENANT_MEMBER_REPOSITORY,
   type ITenantMemberRepository,
 } from '../../domain/ports/tenant-member-repository.port';
-import { assertGrantable, assertKeepsAManager } from '../../domain/tenant-access-policy';
+import {
+  assertGrantable,
+  assertKeepsAManager,
+  TENANT_MEMBER_MANAGE_KEY,
+} from '../../domain/tenant-access-policy';
 import { RoleNotFound, SystemRoleImmutable } from '../../domain/errors/tenant-access-errors';
 
 /**
@@ -68,6 +72,7 @@ export class UpdateTenantRoleUseCase {
           userId: m.userId,
           permissions: [...new Set(m.roles.flatMap((r) => permsByRole.get(r.id) ?? []))],
         })),
+        TENANT_MEMBER_MANAGE_KEY,
       );
 
       // `role_permissions` has no tenant_id column / RLS policy of its own (Task

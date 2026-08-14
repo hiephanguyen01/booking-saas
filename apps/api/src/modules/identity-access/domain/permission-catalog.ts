@@ -1,4 +1,4 @@
-import { tenantPermissionKeySchema, type ScopeLevel } from '@booking/contracts';
+import { partnerPermissionKeySchema, tenantPermissionKeySchema, type ScopeLevel } from '@booking/contracts';
 
 /**
  * Fixed permission catalog (TONG-QUAN.md §14.2) — seeded from code, never
@@ -6,6 +6,10 @@ import { tenantPermissionKeySchema, type ScopeLevel } from '@booking/contracts';
  */
 const TENANT_KEYS = tenantPermissionKeySchema.options.map(
   (key): { key: string; scopeLevel: ScopeLevel } => ({ key, scopeLevel: 'tenant' }),
+);
+
+const PARTNER_KEYS = partnerPermissionKeySchema.options.map(
+  (key): { key: string; scopeLevel: ScopeLevel } => ({ key, scopeLevel: 'partner' }),
 );
 
 export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeLevel }> = [
@@ -25,24 +29,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   // Tenant
   ...TENANT_KEYS,
   // Partner
-  { key: 'partner.profile.manage', scopeLevel: 'partner' },
-  { key: 'partner.listings.read', scopeLevel: 'partner' },
-  { key: 'partner.listings.write', scopeLevel: 'partner' },
-  { key: 'partner.listings.publish', scopeLevel: 'partner' },
-  { key: 'partner.bookings.read', scopeLevel: 'partner' },
-  { key: 'partner.bookings.write', scopeLevel: 'partner' },
-  { key: 'partner.bookings.approve', scopeLevel: 'partner' },
-  { key: 'partner.bookings.cancel', scopeLevel: 'partner' },
-  { key: 'partner.availability.manage', scopeLevel: 'partner' },
-  { key: 'partner.promotions.manage', scopeLevel: 'partner' }, // enforced from Phase 2
-  { key: 'partner.finance.read', scopeLevel: 'partner' },
-  { key: 'partner.members.manage', scopeLevel: 'partner' },
-  { key: 'partner.roles.manage', scopeLevel: 'partner' },
-  { key: 'partner.reviews.read', scopeLevel: 'partner' },
-  { key: 'partner.reviews.reply', scopeLevel: 'partner' },
-  { key: 'partner.favorites.read', scopeLevel: 'partner' },
-  { key: 'partner.disputes.read', scopeLevel: 'partner' },
-  { key: 'partner.disputes.respond', scopeLevel: 'partner' },
+  ...PARTNER_KEYS,
 ];
 
 const keysOf = (scope: ScopeLevel) =>

@@ -10,9 +10,12 @@ import { PARTNER_REPOSITORY } from '../../domain/ports/partner-repository.port';
 import { PARTNER_TAX_REPOSITORY } from '../../domain/ports/partner-tax-repository.port';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PARTNER_ROLES } from '../../domain/ports/partner-roles.port';
+import { PARTNER_STAFF_REPOSITORY } from '../../domain/ports/partner-staff-repository.port';
 import { PrismaPartnerRepository } from '../repositories/prisma-partner.repository';
 import { PrismaPartnerTaxRepository } from '../repositories/prisma-partner-tax.repository';
+import { PrismaPartnerStaffRepository } from '../repositories/prisma-partner-staff.repository';
 import { PrismaPartnerRoles } from '../services/prisma-partner-roles';
+import { PartnerMembershipWriterModule } from './partner-membership-writer.module';
 import { ApplyAsPartnerUseCase } from '../../application/use-cases/apply-as-partner.use-case';
 import { CreateHousePartnerUseCase } from '../../application/use-cases/create-house-partner.use-case';
 import { ApprovePartnerUseCase } from '../../application/use-cases/approve-partner.use-case';
@@ -38,6 +41,15 @@ import { PUBLIC_PARTNER_REPOSITORY } from '../../domain/ports/public-partner-rep
 import { PrismaPublicPartnerRepository } from '../repositories/prisma-public-partner.repository';
 import { GetPublicPartnerProfileUseCase } from '../../application/use-cases/get-public-partner-profile.use-case';
 import { PublicPartnerController } from './public-partner.controller';
+import { ListPartnerMembersUseCase } from '../../application/use-cases/list-partner-members.use-case';
+import { ListPartnerInvitationsUseCase } from '../../application/use-cases/list-partner-invitations.use-case';
+import { InvitePartnerMemberUseCase } from '../../application/use-cases/invite-partner-member.use-case';
+import { RevokePartnerInvitationUseCase } from '../../application/use-cases/revoke-partner-invitation.use-case';
+import { SetPartnerMemberRolesUseCase } from '../../application/use-cases/set-partner-member-roles.use-case';
+import { RemovePartnerMemberUseCase } from '../../application/use-cases/remove-partner-member.use-case';
+import { ListAssignablePartnerRolesUseCase } from '../../application/use-cases/list-assignable-partner-roles.use-case';
+import { PartnerMemberController } from './partner-member.controller';
+import { PartnerRoleController } from './partner-role.controller';
 
 @Module({
   imports: [
@@ -47,12 +59,18 @@ import { PublicPartnerController } from './public-partner.controller';
     TenancyModule,
     AdministrativeDivisionModule,
     LegalModule,
+    // @Global() — registers PARTNER_MEMBERSHIP_WRITER + PARTNER_ROLE_READER
+    // app-wide (see that file's doc comment for why identity-access needs
+    // them without importing partner).
+    PartnerMembershipWriterModule,
   ],
   controllers: [
     PartnerApplicationController,
     TenantPartnerController,
     PartnerProfileController,
     PublicPartnerController,
+    PartnerMemberController,
+    PartnerRoleController,
   ],
   providers: [
     PrismaPartnerRepository,
@@ -60,6 +78,7 @@ import { PublicPartnerController } from './public-partner.controller';
     { provide: PARTNER_READER, useExisting: PrismaPartnerRepository },
     { provide: PARTNER_TAX_REPOSITORY, useClass: PrismaPartnerTaxRepository },
     { provide: PARTNER_ROLES, useClass: PrismaPartnerRoles },
+    { provide: PARTNER_STAFF_REPOSITORY, useClass: PrismaPartnerStaffRepository },
     { provide: PUBLIC_PARTNER_REPOSITORY, useClass: PrismaPublicPartnerRepository },
     ApplyAsPartnerUseCase,
     CreateHousePartnerUseCase,
@@ -80,10 +99,23 @@ import { PublicPartnerController } from './public-partner.controller';
     GetPartnerProfileUseCase,
     SetPartnerDefaultCancellationPolicyUseCase,
     GetPublicPartnerProfileUseCase,
+    ListPartnerMembersUseCase,
+    ListPartnerInvitationsUseCase,
+    InvitePartnerMemberUseCase,
+    RevokePartnerInvitationUseCase,
+    SetPartnerMemberRolesUseCase,
+    RemovePartnerMemberUseCase,
+    ListAssignablePartnerRolesUseCase,
   ],
-  // Exported so Task 1.4 (listing creation) reads the partner's verification status.
-  // The identity-verification gate itself is a plain function
+  // PARTNER_REPOSITORY exported so Task 1.4 (listing creation) reads the partner's
+  // verification status. The identity-verification gate itself is a plain function
   // (application/assert-can-serve-listing-type.ts), imported directly.
+  // PARTNER_MEMBERSHIP_WRITER / PARTNER_ROLE_READER are NOT exported here — they
+  // are provided and exported app-wide by PartnerMembershipWriterModule
+  // (@Global(), imported above), which exists precisely so identity-access's
+  // shared invitation flow (accept + preview) can inject them without
+  // IdentityAccessModule importing PartnerModule and closing the cycle that
+  // edge would create. See that module's doc comment for the full reasoning.
   exports: [PARTNER_REPOSITORY],
 })
 export class PartnerModule implements OnModuleInit {
