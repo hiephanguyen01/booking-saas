@@ -75,6 +75,7 @@ export default function InviteMember({ loaderData, actionData }: Route.Component
         mode="invite"
         roles={loaderData.roles}
         canCreateRole={loaderData.canManageRoles}
+        scopeLabel="tenant"
         serverError={serverError}
         fieldErrors={fieldErrors}
       />

@@ -149,6 +149,12 @@ function InvitationState({
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">
         <strong className="text-foreground">{preview.tenantName}</strong> mời bạn tham gia
+        {preview.partnerName ? (
+          <>
+            {' '}
+            đội ngũ <strong className="text-foreground">{preview.partnerName}</strong>
+          </>
+        ) : null}
         {roleNames ? (
           <>
             {' '}

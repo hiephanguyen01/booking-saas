@@ -4,7 +4,6 @@ import {
   inviteTenantMemberInputSchema,
   setTenantMemberRolesInputSchema,
   type InviteTenantMemberInput,
-  type TenantMember,
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { Controller } from '@booking/ui/components/form/rhf';
@@ -15,6 +14,7 @@ import { fieldNode, FORM_ACTIONS_ROW, FormSurface, Section } from '~/components/
 import { InlineRoleCreator } from './inline-role-creator';
 import { PermissionPreview } from './permission-preview';
 import { RoleMultiSelect, type AssignableRole } from './role-multi-select';
+import type { StaffMember } from './members-table';
 
 const inviteFields: FieldConfig<InviteTenantMemberInput>[] = [
   {
@@ -31,6 +31,8 @@ type MemberFormProps =
       mode: 'invite';
       roles: AssignableRole[];
       canCreateRole: boolean;
+      /** Vietnamese noun the invite copy names — "tenant" or "đối tác". */
+      scopeLabel: string;
       serverError?: string | null;
       fieldErrors?: Record<string, string[]> | null;
     }
@@ -39,7 +41,7 @@ type MemberFormProps =
       roles: AssignableRole[];
       canCreateRole: boolean;
       /** The member whose roles this screen re-assigns. Not editable here. */
-      member: TenantMember;
+      member: StaffMember;
       serverError?: string | null;
       fieldErrors?: Record<string, string[]> | null;
     };
@@ -51,6 +53,21 @@ type MemberFormProps =
  * "Full-page forms"). `roles` seeds local state so a role created inline via
  * `InlineRoleCreator` shows up in the picker and the preview immediately,
  * with no refetch.
+ *
+ * Reused unchanged by the partner tier (Task 7 — `routes/partner/members/
+ * invite.tsx` / `detail.tsx`), which always passes `canCreateRole={false}`
+ * (no partner role-management screen exists), so `InlineRoleCreator` never
+ * mounts there. Client-side validation still runs against
+ * `inviteTenantMemberInputSchema`/`setTenantMemberRolesInputSchema` even on
+ * the partner path — that is deliberate, not an oversight: those two schemas
+ * and their partner counterparts (`invitePartnerMemberInputSchema`/
+ * `setPartnerMemberRolesInputSchema`) validate byte-identical shapes
+ * (`{email, roleIds}` / `{roleIds}`), and the backend independently
+ * re-validates every write against the correct partner schema regardless of
+ * what the client used, so this form's pre-submit validation behaves
+ * identically either way. `member`'s type is the shared `StaffMember` (not
+ * `TenantMember`) for the same reason — see that type's doc comment in
+ * `members-table.tsx`.
  */
 export function MemberForm(props: MemberFormProps) {
   const { mode, roles: initialRoles, canCreateRole, serverError, fieldErrors } = props;
@@ -99,6 +116,7 @@ export function MemberForm(props: MemberFormProps) {
     );
   }
 
+  const { scopeLabel } = props;
   return (
     <GenericForm
       schema={inviteTenantMemberInputSchema}
@@ -117,6 +135,7 @@ export function MemberForm(props: MemberFormProps) {
           render={({ field, fieldState }) => (
             <MemberFormSections
               mode="invite"
+              scopeLabel={scopeLabel}
               emailNode={fieldNode(renderedFields, 'email')}
               roles={roles}
               roleIds={field.value ?? []}
@@ -144,6 +163,7 @@ export function MemberForm(props: MemberFormProps) {
 function MemberFormSections({
   mode,
   member,
+  scopeLabel,
   emailNode,
   roles,
   roleIds,
@@ -153,7 +173,9 @@ function MemberFormSections({
   onRoleCreated,
 }: {
   mode: 'invite' | 'edit';
-  member?: TenantMember;
+  member?: StaffMember;
+  /** Vietnamese noun the invite copy names — "tenant" or "đối tác". Only used in invite mode. */
+  scopeLabel?: string;
   emailNode?: ReactNode;
   roles: AssignableRole[];
   roleIds: string[];
@@ -168,7 +190,7 @@ function MemberFormSections({
         title="Thông tin thành viên"
         description={
           mode === 'invite'
-            ? 'Email nhận lời mời tham gia bảng điều khiển của tenant.'
+            ? `Email nhận lời mời tham gia bảng điều khiển của ${scopeLabel}.`
             : 'Thông tin liên hệ của thành viên — không thể chỉnh sửa tại đây.'
         }
         icon={<Mail aria-hidden />}

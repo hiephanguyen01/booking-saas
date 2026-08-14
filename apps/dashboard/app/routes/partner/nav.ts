@@ -10,6 +10,7 @@ import {
   Star,
   Heart,
   Scale,
+  UsersRound,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
 import { dashboardPaths } from '~/constants/paths';
@@ -99,6 +100,12 @@ export const partnerNavSections: DashboardNavSection[] = [
         to: dashboardPaths.partner.profile,
         icon: ContactRound,
         permission: 'partner.profile.manage',
+      },
+      {
+        title: 'Nhân sự',
+        to: dashboardPaths.partner.members,
+        icon: UsersRound,
+        permission: 'partner.members.manage',
       },
     ],
   },

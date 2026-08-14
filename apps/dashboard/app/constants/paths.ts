@@ -117,6 +117,11 @@ export const dashboardPaths = {
     reviews: partnerPath('/reviews'),
     favorites: partnerPath('/favorites'),
     disputes: partnerPath('/disputes'),
+    members: partnerPath('/members'),
+    /** Deep-link into a members tab, e.g. `dashboardPaths.partner.membersSection('invitations')`. */
+    membersSection: (section: string) => `${partnerPath('/members')}?section=${segment(section)}`,
+    memberInvite: partnerPath('/members/invite'),
+    member: (userId: string) => partnerPath(`/members/${segment(userId)}`),
     profile: partnerPath('/profile'),
     /** Re-acceptance interstitial (Task 16) — reached only via the layout's redirect. */
     legalUpdate: partnerPath('/legal-update'),

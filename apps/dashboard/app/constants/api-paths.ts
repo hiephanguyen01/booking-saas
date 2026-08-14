@@ -249,6 +249,13 @@ export const apiPaths = {
     listingDepositRequirement: partnerPath('/listings/deposit-requirement'),
     listingFeed: partnerPath('/listings/feed'),
 
+    members: partnerPath('/members'),
+    member: (userId: string) => partnerPath(`/members/${segment(userId)}`),
+    memberRoles: (userId: string) => partnerPath(`/members/${segment(userId)}/roles`),
+    invitations: partnerPath('/members/invitations'),
+    invitation: (invitationId: string) => partnerPath(`/members/invitations/${segment(invitationId)}`),
+    rolesAssignable: partnerPath('/roles/assignable'),
+
     profile: partnerPath('/profile'),
     profileAgreements: partnerPath('/profile/agreements'),
     profileDefaultCancellationPolicy: partnerPath('/profile/default-cancellation-policy'),
