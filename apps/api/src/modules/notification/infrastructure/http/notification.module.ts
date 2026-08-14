@@ -21,6 +21,12 @@ import { PrismaNotificationInboxRepository } from '../repositories/prisma-notifi
 import { PrismaNotificationLogRepository } from '../repositories/prisma-notification-log.repository';
 import { PrismaNotificationReader } from '../prisma-notification.reader';
 import { ReminderWorker } from '../reminder.worker';
+import { ResolveNotificationTenantContextGuard } from './guards/resolve-notification-tenant-context.guard';
+import { NotificationController } from './notification.controller';
+import { ListNotificationsUseCase } from '../../application/use-cases/list-notifications.use-case';
+import { CountUnreadNotificationsUseCase } from '../../application/use-cases/count-unread-notifications.use-case';
+import { MarkNotificationReadUseCase } from '../../application/use-cases/mark-notification-read.use-case';
+import { MarkAllNotificationsReadUseCase } from '../../application/use-cases/mark-all-notifications-read.use-case';
 import { DispatchBookingEventUseCase } from '../../application/use-cases/dispatch-booking-event.use-case';
 import { DispatchListingEventUseCase } from '../../application/use-cases/dispatch-listing-event.use-case';
 import { DispatchPartnerEventUseCase } from '../../application/use-cases/dispatch-partner-event.use-case';
@@ -51,12 +57,18 @@ import {
  */
 @Module({
   imports: [PrismaModule, TenantContextModule],
+  controllers: [NotificationController],
   providers: [
     { provide: EMAIL_SENDER, useClass: SmtpEmailSender },
     { provide: EMAIL_RENDERER, useClass: ReactEmailRenderer },
     { provide: NOTIFICATION_LOG_REPOSITORY, useClass: PrismaNotificationLogRepository },
     { provide: NOTIFICATION_INBOX_REPOSITORY, useClass: PrismaNotificationInboxRepository },
     { provide: NOTIFICATION_READER, useClass: PrismaNotificationReader },
+    ResolveNotificationTenantContextGuard,
+    ListNotificationsUseCase,
+    CountUnreadNotificationsUseCase,
+    MarkNotificationReadUseCase,
+    MarkAllNotificationsReadUseCase,
     DispatchBookingEventUseCase,
     DispatchListingEventUseCase,
     DispatchPartnerEventUseCase,
