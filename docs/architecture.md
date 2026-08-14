@@ -112,6 +112,28 @@ emails retain per-template dedupe keys and retry/dead-letter behavior; synchrono
 its existing non-throwing policy. Partner agreement mail links to the protected
 `/partner/profile/agreements` projection rather than attaching generated legal documents.
 
+The in-app bell has two producer paths, both writing the same `notifications` table:
+
+- **Email mirror.** A partner/affiliate-facing outbox delivery also becomes a bell row when its
+  template is listed in `IN_APP_TEMPLATES` (`notification/domain/in-app-templates.ts`) — absence is a
+  decision, not an oversight: every `*_customer` template is deliberately excluded (customers never
+  open the dashboard), as are both OTP templates (an OTP is not news) and `tenant_member_invited`
+  (the recipient may not have an account yet). `deliverNotification` collects the row before the
+  email dedupe gate (`if (dedupe && alreadySent) return`), not after, because outbox delivery is
+  at-least-once: if a process dies after the email sends but before the row flushes, redelivery would
+  hit the dedupe gate and return early, and the bell row would never exist even though the email did.
+  Collecting first and letting the unique `(user_id, dedupe_key)` index absorb the redelivery as a
+  no-op is what keeps "email arrived, bell didn't" from happening. `InboxCollector` itself does no
+  I/O — the dispatcher flushes the whole batch once, inside its one `forTenant` transaction, after its
+  recipient loop finishes.
+- **Tenant plan.** Nine tenant-facing events (`listing.submitted`, `partner.applied`,
+  `settlement.dispute_opened`, `review.created`, … — `TENANT_NOTIFICATION_PLAN` in
+  `notification/domain/tenant-notification-plan.ts`) are in-app only, no email, so routine moderation
+  traffic doesn't get a new email template designed for it. Fan-out is filtered by permission:
+  `DispatchTenantEventUseCase` loads only the tenant staff holding the plan's `permission` key
+  (`loadTenantStaffWithPermission`, a raw-SQL join over `role_assignments`/`role_permissions`), so the
+  bell never titles a task whose screen would 403 for that recipient.
+
 ## Frontend internals
 
 React Router 8 framework mode: each route exports `loader` (server data), `action` (server mutation),

@@ -813,11 +813,10 @@ Add to `PrismaNotificationReader`, and add `SubjectKind` to its type imports:
       SELECT DISTINCT u.id, u.email, u.full_name, u.locale, u.phone
       FROM role_assignments ra
       JOIN role_permissions rp ON rp.role_id = ra.role_id
-      JOIN permissions p ON p.id = rp.permission_id
       JOIN users u ON u.id = ra.user_id
       WHERE ra.tenant_id = ${tenantId}::uuid
         AND ra.partner_id IS NULL
-        AND p.key = ${permissionKey}
+        AND rp.permission_key = ${permissionKey}
         AND u.status = 'active'`);
     return rows.map((u) => this.toRecipient(u));
   }
@@ -852,10 +851,23 @@ Add to `PrismaNotificationReader`, and add `SubjectKind` to its type imports:
   }
 ```
 
+> **Corrected 2026-08-14 (Task 4): reality differed from this sketch.** The
+> original version of Step 3 above joined `permissions p ON p.id = rp.permission_id`.
+> Neither column exists: `permissions.key` is the model's `@id` (there is no
+> `permissions.id`), and `role_permissions` FKs to it directly via
+> `permission_key` (there is no `role_permissions.permission_id`). So the join
+> to `permissions` is unnecessary and has been removed above — the query
+> filters `rp.permission_key = ${permissionKey}` directly. The shipped code is
+> `PrismaNotificationReader.loadTenantStaffWithPermission` in
+> `apps/api/src/modules/notification/infrastructure/prisma-notification.reader.ts`.
+
 - [ ] **Step 4: Confirm the permission table column names**
 
 Run: `rg -n -A 12 "^model Permission |^model RolePermission " apps/api/prisma/schema.prisma`
-Expected: confirms `permissions.key`, `role_permissions.role_id`, `role_permissions.permission_id`. **If the real column names differ, fix the SQL in Step 3 to match the schema — the schema wins.**
+Expected: confirms `permissions.key` (the model's `@id`, not `permissions.id`) and
+`role_permissions.role_id` / `role_permissions.permission_key` (not
+`role_permissions.permission_id`) — see the correction above. **If the real column
+names differ, fix the SQL in Step 3 to match the schema — the schema wins.**
 
 - [ ] **Step 5: Typecheck, run the static gate, commit**
 
