@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { TenantInvitationPreview } from '@booking/contracts';
+import type { RoleRef, TenantInvitationPreview } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   TENANT_INVITATION_REPOSITORY,
@@ -9,9 +9,13 @@ import {
   TENANT_ROLE_REPOSITORY,
   type ITenantRoleRepository,
 } from '../../domain/ports/tenant-role-repository.port';
+import {
+  PARTNER_ROLE_READER,
+  type IPartnerRoleReader,
+} from '../../domain/ports/partner-role-reader.port';
 import { INVITATION_TOKEN, type IInvitationToken } from '../../domain/ports/invitation-token.port';
 import { InvitationNotFound } from '../../domain/errors/tenant-access-errors';
-import { toTenantInvitationPreview } from '../tenant-access.mapper';
+import { toRoleRef, toTenantInvitationPreview } from '../tenant-access.mapper';
 
 /**
  * The recipient's read-only look at an invitation before deciding to accept.
@@ -24,6 +28,14 @@ import { toTenantInvitationPreview } from '../tenant-access.mapper';
  * membership yet, so PermissionsGuard never seeds one) is used directly to
  * open the tenant transaction; that is safe because it comes from the
  * invitation row itself, not from client input.
+ *
+ * `row.partnerId` decides which port resolves `roleIds` into names, mirroring
+ * `AcceptTenantInvitationUseCase`'s own tenant/partner branch:
+ * `TENANT_ROLE_REPOSITORY.filterAssignable` filters `scopeLevel: 'tenant'` and
+ * would silently return `[]` for a partner invitation's `scopeLevel: 'partner'`
+ * role ids, so a partner-scope invitation must go through `PARTNER_ROLE_READER`
+ * instead — never fall back to the tenant port "just in case", that is exactly
+ * how this bug shipped in the first place.
  */
 @Injectable()
 export class GetInvitationPreviewUseCase {
@@ -31,6 +43,7 @@ export class GetInvitationPreviewUseCase {
     @Inject(TENANT_INVITATION_REPOSITORY)
     private readonly invitations: ITenantInvitationRepository,
     @Inject(TENANT_ROLE_REPOSITORY) private readonly roles: ITenantRoleRepository,
+    @Inject(PARTNER_ROLE_READER) private readonly partnerRoles: IPartnerRoleReader,
     @Inject(INVITATION_TOKEN) private readonly tokens: IInvitationToken,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -44,9 +57,16 @@ export class GetInvitationPreviewUseCase {
 
     // Same drop-silently behaviour as the tenant-facing invitation list: a
     // role deleted since the invite was sent just disappears from the preview.
-    const roles = await this.tenantDb.forTenant(row.tenantId, (tx) =>
-      this.roles.filterAssignable(tx, row.tenantId, row.roleIds),
-    );
+    const { partnerId } = row;
+    const roles: RoleRef[] = partnerId
+      ? await this.tenantDb.forTenant(row.tenantId, (tx) =>
+          this.partnerRoles.filterAssignable(tx, partnerId, row.roleIds),
+        )
+      : (
+          await this.tenantDb.forTenant(row.tenantId, (tx) =>
+            this.roles.filterAssignable(tx, row.tenantId, row.roleIds),
+          )
+        ).map(toRoleRef);
 
     // citext in the DB, but this comparison is in JS — normalise both sides.
     const matchesCurrentUser = row.email.toLowerCase() === ctx.email.toLowerCase();
