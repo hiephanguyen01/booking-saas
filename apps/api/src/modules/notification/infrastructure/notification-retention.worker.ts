@@ -17,8 +17,11 @@ const RETENTION_DAYS = 90;
  * natural ceiling — a tenant with 30 staff turns one `listing.submitted` into
  * 30 rows — so without this sweep the table grows forever.
  *
- * Same shape as `reminder.worker.ts`, including its env switches, so a
- * deployment that disables background work disables this too.
+ * Gates on `OUTBOX_RELAY_DISABLED` only, like every other non-reminder
+ * background worker — NOT `NOTIFICATION_REMINDER_DISABLED` (that flag is
+ * `reminder.worker.ts`'s booking-reminder-email switch; reusing it here would
+ * let an operator silencing reminder emails silently stop this prune too,
+ * with no alarm as the table grows unbounded).
  */
 @Injectable()
 export class NotificationRetentionWorker implements OnModuleInit, OnApplicationShutdown {
@@ -31,7 +34,7 @@ export class NotificationRetentionWorker implements OnModuleInit, OnApplicationS
   ) {}
 
   async onModuleInit(): Promise<void> {
-    if (process.env.NOTIFICATION_REMINDER_DISABLED === 'true' || process.env.OUTBOX_RELAY_DISABLED === 'true') return;
+    if (process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
     this.queue = new Queue(NOTIFICATION_RETENTION_QUEUE, { connection, ...QUEUE_OPTIONS });
     await this.queue.upsertJobScheduler(

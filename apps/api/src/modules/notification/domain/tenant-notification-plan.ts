@@ -32,6 +32,8 @@ export interface TenantNotificationPlanItem {
  *     Only submission for review is the tenant's business.
  */
 export const TENANT_NOTIFICATION_PLAN: Record<string, TenantNotificationPlanItem> = {
+  // Also dispatched by the pre-existing DispatchPartnerEventUseCase (email mirror to the
+  // applicant partner) — the two coexist deliberately, targeting disjoint recipients.
   'partner.applied': {
     permission: 'tenant.partners.approve',
     title: 'Đơn đăng ký đối tác mới',

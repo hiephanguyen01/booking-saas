@@ -55,7 +55,13 @@ export class PrismaNotificationInboxRepository implements INotificationInboxRepo
       SELECT id, area, event_type, title, body, target_type, target_id, read_at, created_at
       FROM notifications
       WHERE user_id = ${userId}::uuid AND area = ${area}::notification_area
-      ORDER BY created_at DESC
+      -- id DESC breaks ties on created_at: insertMany writes a batch inside one
+      -- transaction, and Postgres fixes CURRENT_TIMESTAMP for the whole transaction,
+      -- so a single flush (e.g. partner.approved's two templates) can produce rows
+      -- with identical created_at. Without a tie-break, LIMIT/OFFSET paging over a
+      -- non-unique sort key can duplicate or skip a row across a page boundary. ids
+      -- are uuid v7 (time-ordered), so this is a meaningful tie-break, not arbitrary.
+      ORDER BY created_at DESC, id DESC
       LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`);
     const totals = await tx.$queryRaw<{ n: bigint }[]>(Prisma.sql`
       SELECT count(*)::bigint AS n FROM notifications
