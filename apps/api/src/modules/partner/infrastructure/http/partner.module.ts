@@ -11,12 +11,11 @@ import { PARTNER_TAX_REPOSITORY } from '../../domain/ports/partner-tax-repositor
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PARTNER_ROLES } from '../../domain/ports/partner-roles.port';
 import { PARTNER_STAFF_REPOSITORY } from '../../domain/ports/partner-staff-repository.port';
-import { PARTNER_MEMBERSHIP_WRITER } from '../../../identity-access/domain/ports/partner-membership-writer.port';
 import { PrismaPartnerRepository } from '../repositories/prisma-partner.repository';
 import { PrismaPartnerTaxRepository } from '../repositories/prisma-partner-tax.repository';
 import { PrismaPartnerStaffRepository } from '../repositories/prisma-partner-staff.repository';
 import { PrismaPartnerRoles } from '../services/prisma-partner-roles';
-import { PartnerMembershipWriterAdapter } from '../services/partner-membership-writer.adapter';
+import { PartnerMembershipWriterModule } from './partner-membership-writer.module';
 import { ApplyAsPartnerUseCase } from '../../application/use-cases/apply-as-partner.use-case';
 import { CreateHousePartnerUseCase } from '../../application/use-cases/create-house-partner.use-case';
 import { ApprovePartnerUseCase } from '../../application/use-cases/approve-partner.use-case';
@@ -51,6 +50,9 @@ import { PublicPartnerController } from './public-partner.controller';
     TenancyModule,
     AdministrativeDivisionModule,
     LegalModule,
+    // @Global() — registers PARTNER_MEMBERSHIP_WRITER app-wide (see that file's
+    // doc comment for why identity-access needs it without importing partner).
+    PartnerMembershipWriterModule,
   ],
   controllers: [
     PartnerApplicationController,
@@ -65,7 +67,6 @@ import { PublicPartnerController } from './public-partner.controller';
     { provide: PARTNER_TAX_REPOSITORY, useClass: PrismaPartnerTaxRepository },
     { provide: PARTNER_ROLES, useClass: PrismaPartnerRoles },
     { provide: PARTNER_STAFF_REPOSITORY, useClass: PrismaPartnerStaffRepository },
-    { provide: PARTNER_MEMBERSHIP_WRITER, useClass: PartnerMembershipWriterAdapter },
     { provide: PUBLIC_PARTNER_REPOSITORY, useClass: PrismaPublicPartnerRepository },
     ApplyAsPartnerUseCase,
     CreateHousePartnerUseCase,
@@ -90,14 +91,12 @@ import { PublicPartnerController } from './public-partner.controller';
   // PARTNER_REPOSITORY exported so Task 1.4 (listing creation) reads the partner's
   // verification status. The identity-verification gate itself is a plain function
   // (application/assert-can-serve-listing-type.ts), imported directly.
-  // PARTNER_MEMBERSHIP_WRITER exported so identity-access's shared accept-invitation
-  // flow can materialise a PARTNER membership through this module without reaching
-  // into `partner_members` itself. AcceptTenantInvitationUseCase (Task 4) injects
-  // this token, but IdentityAccessModule cannot import PartnerModule to receive it
-  // without reintroducing the cycle `check:module-cycles` blocks (identity-access is
-  // a transitive dependency of partner via administrative-division/legal/tenancy, not
-  // just directly) — see Task 4's report. Left exported for when that is resolved.
-  exports: [PARTNER_REPOSITORY, PARTNER_MEMBERSHIP_WRITER],
+  // PARTNER_MEMBERSHIP_WRITER is NOT exported here — it is provided and exported
+  // app-wide by PartnerMembershipWriterModule (@Global(), imported above), which
+  // exists precisely so identity-access's shared accept-invitation flow can inject
+  // it without IdentityAccessModule importing PartnerModule and closing the cycle
+  // that edge would create. See that module's doc comment for the full reasoning.
+  exports: [PARTNER_REPOSITORY],
 })
 export class PartnerModule implements OnModuleInit {
   constructor(
