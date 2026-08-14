@@ -1,21 +1,30 @@
-import type { TenantPermissionKey } from '@booking/contracts';
+import type { PartnerPermissionKey, TenantPermissionKey } from '@booking/contracts';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 
 /**
  * A role this member/invite form can offer, trimmed to what the picker and the
- * permission preview need. Sourced from `GET /tenant/roles/assignable`
- * (`{id, name}`, gated on `tenant.members.manage` — everyone who can invite
- * staff), enriched with `permissions` from `GET /tenant/roles` only when the
- * caller also holds `tenant.roles.manage` (that endpoint's own gate). A caller
- * with members-only access still sees every role name to pick from; they just
+ * permission preview need. Shared by both tiers, so `permissions` is typed as
+ * the union of both key spaces rather than pretending every role is a tenant
+ * role — `PermissionPreview` picks the matching label/group catalog by tier.
+ *
+ * Tenant tier: sourced from `GET /tenant/roles/assignable` (`{id, name}`,
+ * gated on `tenant.members.manage` — everyone who can invite staff), enriched
+ * with `permissions` from `GET /tenant/roles` only when the caller also holds
+ * `tenant.roles.manage` (that endpoint's own gate). A caller with
+ * members-only access still sees every role name to pick from; they just
  * can't see the permission breakdown, so `permissions` comes back empty for
  * them — see `PermissionPreview`'s `permissionsAvailable` flag, which is the
  * signal for "empty because unauthorized" vs. "empty because none selected".
+ *
+ * Partner tier: sourced from `GET /partner/roles/assignable` alone —
+ * `permissions` is always populated (no second, more-privileged endpoint
+ * exists on this tier to fall back on), so `permissionsAvailable` is always
+ * true there.
  */
 export interface AssignableRole {
   id: string;
   name: string;
-  permissions: TenantPermissionKey[];
+  permissions: (TenantPermissionKey | PartnerPermissionKey)[];
 }
 
 /**

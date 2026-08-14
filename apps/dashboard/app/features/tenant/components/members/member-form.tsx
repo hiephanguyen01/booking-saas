@@ -11,6 +11,12 @@ import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Eye, Mail, ShieldCheck } from 'lucide-react';
 import { DateTimeValue } from '~/components/date-time-value';
 import { fieldNode, FORM_ACTIONS_ROW, FormSurface, Section } from '~/components/form-layout';
+import {
+  PARTNER_PERMISSION_GROUPS,
+  PARTNER_PERMISSION_LABELS,
+  TENANT_PERMISSION_GROUPS,
+  TENANT_PERMISSION_LABELS,
+} from '~/constants/permissions';
 import { InlineRoleCreator } from './inline-role-creator';
 import { PermissionPreview } from './permission-preview';
 import { RoleMultiSelect, type AssignableRole } from './role-multi-select';
@@ -29,6 +35,8 @@ const inviteFields: FieldConfig<InviteTenantMemberInput>[] = [
 type MemberFormProps =
   | {
       mode: 'invite';
+      /** Which permission catalog `PermissionPreview` renders against. */
+      tier: 'tenant' | 'partner';
       roles: AssignableRole[];
       canCreateRole: boolean;
       /** Vietnamese noun the invite copy names — "tenant" or "đối tác". */
@@ -38,6 +46,8 @@ type MemberFormProps =
     }
   | {
       mode: 'edit';
+      /** Which permission catalog `PermissionPreview` renders against. */
+      tier: 'tenant' | 'partner';
       roles: AssignableRole[];
       canCreateRole: boolean;
       /** The member whose roles this screen re-assigns. Not editable here. */
@@ -54,10 +64,12 @@ type MemberFormProps =
  * `InlineRoleCreator` shows up in the picker and the preview immediately,
  * with no refetch.
  *
- * Reused unchanged by the partner tier (Task 7 — `routes/partner/members/
- * invite.tsx` / `detail.tsx`), which always passes `canCreateRole={false}`
- * (no partner role-management screen exists), so `InlineRoleCreator` never
- * mounts there. Client-side validation still runs against
+ * Reused by the partner tier (Task 7 — `routes/partner/members/invite.tsx` /
+ * `detail.tsx`), which always passes `canCreateRole={false}` (no partner
+ * role-management screen exists), so `InlineRoleCreator` never mounts there —
+ * but does pass `tier="partner"`, so `PermissionPreview` still renders the
+ * real partner permission catalog rather than the tenant one. Client-side
+ * validation still runs against
  * `inviteTenantMemberInputSchema`/`setTenantMemberRolesInputSchema` even on
  * the partner path — that is deliberate, not an oversight: those two schemas
  * and their partner counterparts (`invitePartnerMemberInputSchema`/
@@ -70,7 +82,7 @@ type MemberFormProps =
  * `members-table.tsx`.
  */
 export function MemberForm(props: MemberFormProps) {
-  const { mode, roles: initialRoles, canCreateRole, serverError, fieldErrors } = props;
+  const { mode, tier, roles: initialRoles, canCreateRole, serverError, fieldErrors } = props;
   const [roles, setRoles] = useState(initialRoles);
 
   if (mode === 'edit') {
@@ -93,6 +105,7 @@ export function MemberForm(props: MemberFormProps) {
             render={({ field, fieldState }) => (
               <MemberFormSections
                 mode="edit"
+                tier={tier}
                 member={member}
                 roles={roles}
                 roleIds={field.value ?? []}
@@ -135,6 +148,7 @@ export function MemberForm(props: MemberFormProps) {
           render={({ field, fieldState }) => (
             <MemberFormSections
               mode="invite"
+              tier={tier}
               scopeLabel={scopeLabel}
               emailNode={fieldNode(renderedFields, 'email')}
               roles={roles}
@@ -162,6 +176,7 @@ export function MemberForm(props: MemberFormProps) {
  */
 function MemberFormSections({
   mode,
+  tier,
   member,
   scopeLabel,
   emailNode,
@@ -173,6 +188,8 @@ function MemberFormSections({
   onRoleCreated,
 }: {
   mode: 'invite' | 'edit';
+  /** Which permission catalog the "Quyền hiệu lực" section renders against. */
+  tier: 'tenant' | 'partner';
   member?: StaffMember;
   /** Vietnamese noun the invite copy names — "tenant" or "đối tác". Only used in invite mode. */
   scopeLabel?: string;
@@ -224,7 +241,29 @@ function MemberFormSections({
         description="Quyền tổng hợp từ mọi vai trò đã chọn ở trên."
         icon={<Eye aria-hidden />}
       >
-        <PermissionPreview roles={roles} selectedRoleIds={roleIds} permissionsAvailable={canCreateRole} />
+        {tier === 'tenant' ? (
+          <PermissionPreview
+            roles={roles}
+            selectedRoleIds={roleIds}
+            // `tenant.roles.manage` also gates the full-permission fetch that fills
+            // `roles[].permissions` on this tier — see `AssignableRole`'s doc comment.
+            permissionsAvailable={canCreateRole}
+            groups={TENANT_PERMISSION_GROUPS}
+            labels={TENANT_PERMISSION_LABELS}
+            unavailableMessage="Bạn cần quyền Quản lý vai trò để xem chi tiết quyền của các vai trò đã chọn."
+          />
+        ) : (
+          <PermissionPreview
+            roles={roles}
+            selectedRoleIds={roleIds}
+            // The partner tier's assignable-roles endpoint always returns
+            // permissions (no second, more-privileged endpoint to gate on).
+            permissionsAvailable
+            groups={PARTNER_PERMISSION_GROUPS}
+            labels={PARTNER_PERMISSION_LABELS}
+            unavailableMessage="Không có dữ liệu quyền cho các vai trò đã chọn."
+          />
+        )}
       </Section>
     </FormSurface>
   );

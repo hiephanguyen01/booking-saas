@@ -87,9 +87,9 @@ export class PrismaTenantInvitationRepository implements ITenantInvitationReposi
       return invitation.id;
     } catch (error) {
       // `tenant_invitations_pending_email_key` (partial unique on
-      // (tenant_id, email) WHERE status='pending') — a live invite already
-      // exists for this address. Never let the raw Prisma error reach the
-      // client.
+      // (tenant_id, partner_id, email) NULLS NOT DISTINCT WHERE status = 'pending')
+      // — a live invite already exists for this address in this scope. Never
+      // let the raw Prisma error reach the client.
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new InvitationAlreadyPending();
       }

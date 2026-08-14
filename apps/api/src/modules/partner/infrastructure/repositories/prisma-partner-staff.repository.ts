@@ -216,6 +216,6 @@ export class PrismaPartnerStaffRepository implements IPartnerStaffRepository {
     // LOCKSTEP, the other direction. Leaving the member row behind would keep mailing
     // booking notifications to someone who can no longer act on them.
     await tx.roleAssignment.deleteMany({ where: { userId, tenantId, partnerId } });
-    await tx.partnerMember.deleteMany({ where: { partnerId, userId } });
+    await tx.partnerMember.deleteMany({ where: { tenantId, partnerId, userId } });
   }
 }

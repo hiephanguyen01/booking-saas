@@ -1,5 +1,5 @@
 import { redirect } from 'react-router';
-import type { PartnerMember, RoleRef } from '@booking/contracts';
+import type { PartnerMember, PartnerRoleRef } from '@booking/contracts';
 import type { Route } from './+types/detail';
 import { apiGet, unwrapApiResult } from '~/lib/api.server';
 import { apiPaths } from '~/constants/api-paths';
@@ -18,15 +18,15 @@ export function meta(): Route.MetaDescriptors {
 /**
  * There is no `GET /partner/members/:userId` — same shape as the tenant
  * tier's `detail.tsx` — so the member is found in the same list
- * `MembersTable` renders. See `invite.tsx` for why every assignable role's
- * `permissions` is seeded empty here.
+ * `MembersTable` renders. See `invite.tsx` for why the assignable-roles call
+ * carries each role's `permissions` directly on this tier.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requirePartner(request, 'partner.members.manage');
 
   const [membersRes, assignableRes] = await Promise.all([
     apiGet<PartnerMember[]>(apiPaths.partner.members, auth),
-    apiGet<RoleRef[]>(apiPaths.partner.rolesAssignable, auth),
+    apiGet<PartnerRoleRef[]>(apiPaths.partner.rolesAssignable, auth),
   ]);
 
   const members = unwrapApiResult(membersRes, 'Không tải được danh sách nhân sự.');
@@ -39,7 +39,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const roles: AssignableRole[] = assignableRoles.map((role) => ({
     id: role.id,
     name: role.name,
-    permissions: [],
+    permissions: role.permissions,
   }));
 
   return { member, roles };
@@ -67,6 +67,7 @@ export default function EditPartnerMember({ loaderData, actionData }: Route.Comp
     >
       <MemberForm
         mode="edit"
+        tier="partner"
         member={loaderData.member}
         roles={loaderData.roles}
         canCreateRole={false}

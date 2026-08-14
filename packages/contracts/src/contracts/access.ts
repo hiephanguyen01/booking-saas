@@ -123,7 +123,7 @@ export const partnerPermissionKeySchema = z.enum([
   'partner.bookings.approve',
   'partner.bookings.cancel',
   'partner.availability.manage',
-  'partner.promotions.manage',
+  'partner.promotions.manage', // enforced from Phase 2
   'partner.finance.read',
   'partner.members.manage',
   'partner.roles.manage',
@@ -134,6 +134,18 @@ export const partnerPermissionKeySchema = z.enum([
   'partner.disputes.respond',
 ]);
 export type PartnerPermissionKey = z.infer<typeof partnerPermissionKeySchema>;
+
+/**
+ * The partner tier's assignable-role picker entry — unlike the tenant tier's
+ * `roleRefSchema` (`{id, name}` only, permissions fetched separately behind
+ * `tenant.roles.manage`), the partner tier has no such second endpoint (no
+ * partner role-management screen exists), so its one assignable-roles route
+ * is the only source and carries `permissions` directly.
+ */
+export const partnerRoleRefSchema = roleRefSchema.extend({
+  permissions: z.array(partnerPermissionKeySchema),
+});
+export type PartnerRoleRef = z.infer<typeof partnerRoleRefSchema>;
 
 export const partnerMemberSchema = z.object({
   userId: z.string().uuid(),

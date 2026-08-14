@@ -1,5 +1,5 @@
 import { redirect } from 'react-router';
-import type { RoleRef } from '@booking/contracts';
+import type { PartnerRoleRef } from '@booking/contracts';
 import type { Route } from './+types/invite';
 import { apiGet, unwrapApiResult } from '~/lib/api.server';
 import { apiPaths } from '~/constants/api-paths';
@@ -15,25 +15,25 @@ export function meta(): Route.MetaDescriptors {
 }
 
 /**
- * Roles come from `GET /partner/roles/assignable` (`{id, name}`, gated on
- * `partner.members.manage` — see `list-assignable-partner-roles.use-case.ts`,
- * the partner-tier mirror of the tenant tier's own assignable-roles route).
- * This tier has no `partner.roles.manage`-gated detail endpoint returning
- * each role's permission set (no such route exists — there is no partner
- * role-management screen), so every role's `permissions` is seeded empty.
- * `MemberForm` is always called with `canCreateRole={false}` here, so
- * `PermissionPreview` never actually reads those arrays — it shows its
- * "cần quyền Quản lý vai trò" fallback instead — but the picker still lists
- * every role name to choose from.
+ * Roles come from `GET /partner/roles/assignable` (`{id, name, permissions}`,
+ * gated on `partner.members.manage` — see
+ * `list-assignable-partner-roles.use-case.ts`, the partner-tier mirror of the
+ * tenant tier's own assignable-roles route). Unlike the tenant tier, this
+ * tier has no `partner.roles.manage`-gated detail endpoint (no such route
+ * exists — there is no partner role-management screen), so this one call is
+ * the only source of a role's permission set, and carries it directly.
+ * `MemberForm` is always called with `canCreateRole={false}` here (no inline
+ * role creator on this tier) but `tier="partner"`, so `PermissionPreview`
+ * still renders the real permission breakdown.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth } = await requirePartner(request, 'partner.members.manage');
-  const assignableRes = await apiGet<RoleRef[]>(apiPaths.partner.rolesAssignable, auth);
+  const assignableRes = await apiGet<PartnerRoleRef[]>(apiPaths.partner.rolesAssignable, auth);
   const assignableRoles = unwrapApiResult(assignableRes, 'Không tải được danh sách vai trò.');
   const roles: AssignableRole[] = assignableRoles.map((role) => ({
     id: role.id,
     name: role.name,
-    permissions: [],
+    permissions: role.permissions,
   }));
   return { roles };
 }
@@ -60,6 +60,7 @@ export default function InvitePartnerMember({ loaderData, actionData }: Route.Co
     >
       <MemberForm
         mode="invite"
+        tier="partner"
         roles={loaderData.roles}
         canCreateRole={false}
         scopeLabel="đối tác"

@@ -1,7 +1,7 @@
 import type {
   PartnerMember,
   PartnerPermissionKey,
-  RoleRef,
+  PartnerRoleRef,
   TenantInvitation,
 } from '@booking/contracts';
 import type { InvitationRow } from '../../identity-access/domain/ports/tenant-invitation-repository.port';
@@ -28,8 +28,8 @@ export function toPartnerMember(row: PartnerStaffRow): PartnerMember {
   };
 }
 
-export function toPartnerRoleRef(row: PartnerRoleRow): RoleRef {
-  return { id: row.id, name: row.name };
+export function toPartnerRoleRef(row: PartnerRoleRow): PartnerRoleRef {
+  return { id: row.id, name: row.name, permissions: row.permissions as PartnerPermissionKey[] };
 }
 
 /**
