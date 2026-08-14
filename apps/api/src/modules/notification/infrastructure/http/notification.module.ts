@@ -14,6 +14,7 @@ import {
   PAYOUT_NOTIFICATION_EVENTS,
   TAX_CERTIFICATE_NOTIFICATION_EVENTS,
 } from '../../domain/notification-plan';
+import { TENANT_NOTIFICATION_EVENTS } from '../../domain/tenant-notification-plan';
 import { SmtpEmailSender } from '../smtp-email-sender';
 import { ReactEmailRenderer } from '../email/react-email.renderer';
 import { PrismaNotificationInboxRepository } from '../repositories/prisma-notification-inbox.repository';
@@ -24,6 +25,7 @@ import { DispatchBookingEventUseCase } from '../../application/use-cases/dispatc
 import { DispatchListingEventUseCase } from '../../application/use-cases/dispatch-listing-event.use-case';
 import { DispatchPartnerEventUseCase } from '../../application/use-cases/dispatch-partner-event.use-case';
 import { DispatchPayoutEventUseCase } from '../../application/use-cases/dispatch-payout-event.use-case';
+import { DispatchTenantEventUseCase } from '../../application/use-cases/dispatch-tenant-event.use-case';
 import {
   DispatchLegalDocumentEventUseCase,
   type LegalDocumentPublishedPayload,
@@ -59,6 +61,7 @@ import {
     DispatchListingEventUseCase,
     DispatchPartnerEventUseCase,
     DispatchPayoutEventUseCase,
+    DispatchTenantEventUseCase,
     DispatchLegalDocumentEventUseCase,
     DispatchMemberInvitationEventUseCase,
     DispatchReminderUseCase,
@@ -78,6 +81,7 @@ export class NotificationModule implements OnModuleInit {
     private readonly dispatchListingEvent: DispatchListingEventUseCase,
     private readonly dispatchPartnerEvent: DispatchPartnerEventUseCase,
     private readonly dispatchPayoutEvent: DispatchPayoutEventUseCase,
+    private readonly dispatchTenantEvent: DispatchTenantEventUseCase,
     private readonly dispatchLegalDocumentEvent: DispatchLegalDocumentEventUseCase,
     private readonly dispatchMemberInvitationEvent: DispatchMemberInvitationEventUseCase,
     private readonly dispatchTaxCertificateEvent: DispatchTaxCertificateEventUseCase,
@@ -134,6 +138,17 @@ export class NotificationModule implements OnModuleInit {
           tenantId,
           eventType as 'tax.certificate_issued' | 'tax.certificate_voided',
           taxCertificatePayloadOf(event.payload),
+        );
+      });
+    }
+    for (const eventType of TENANT_NOTIFICATION_EVENTS) {
+      this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
+        return this.dispatchTenantEvent.execute(
+          tenantId,
+          event.eventType,
+          (event.payload ?? {}) as Record<string, unknown>,
         );
       });
     }
