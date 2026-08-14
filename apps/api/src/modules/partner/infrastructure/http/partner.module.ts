@@ -10,9 +10,13 @@ import { PARTNER_REPOSITORY } from '../../domain/ports/partner-repository.port';
 import { PARTNER_TAX_REPOSITORY } from '../../domain/ports/partner-tax-repository.port';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PARTNER_ROLES } from '../../domain/ports/partner-roles.port';
+import { PARTNER_STAFF_REPOSITORY } from '../../domain/ports/partner-staff-repository.port';
+import { PARTNER_MEMBERSHIP_WRITER } from '../../../identity-access/domain/ports/partner-membership-writer.port';
 import { PrismaPartnerRepository } from '../repositories/prisma-partner.repository';
 import { PrismaPartnerTaxRepository } from '../repositories/prisma-partner-tax.repository';
+import { PrismaPartnerStaffRepository } from '../repositories/prisma-partner-staff.repository';
 import { PrismaPartnerRoles } from '../services/prisma-partner-roles';
+import { PartnerMembershipWriterAdapter } from '../services/partner-membership-writer.adapter';
 import { ApplyAsPartnerUseCase } from '../../application/use-cases/apply-as-partner.use-case';
 import { CreateHousePartnerUseCase } from '../../application/use-cases/create-house-partner.use-case';
 import { ApprovePartnerUseCase } from '../../application/use-cases/approve-partner.use-case';
@@ -60,6 +64,8 @@ import { PublicPartnerController } from './public-partner.controller';
     { provide: PARTNER_READER, useExisting: PrismaPartnerRepository },
     { provide: PARTNER_TAX_REPOSITORY, useClass: PrismaPartnerTaxRepository },
     { provide: PARTNER_ROLES, useClass: PrismaPartnerRoles },
+    { provide: PARTNER_STAFF_REPOSITORY, useClass: PrismaPartnerStaffRepository },
+    { provide: PARTNER_MEMBERSHIP_WRITER, useClass: PartnerMembershipWriterAdapter },
     { provide: PUBLIC_PARTNER_REPOSITORY, useClass: PrismaPublicPartnerRepository },
     ApplyAsPartnerUseCase,
     CreateHousePartnerUseCase,
@@ -81,10 +87,14 @@ import { PublicPartnerController } from './public-partner.controller';
     SetPartnerDefaultCancellationPolicyUseCase,
     GetPublicPartnerProfileUseCase,
   ],
-  // Exported so Task 1.4 (listing creation) reads the partner's verification status.
-  // The identity-verification gate itself is a plain function
+  // PARTNER_REPOSITORY exported so Task 1.4 (listing creation) reads the partner's
+  // verification status. The identity-verification gate itself is a plain function
   // (application/assert-can-serve-listing-type.ts), imported directly.
-  exports: [PARTNER_REPOSITORY],
+  // PARTNER_MEMBERSHIP_WRITER exported so identity-access's shared accept-invitation
+  // flow (Task 4) can materialise a PARTNER membership through this module without
+  // reaching into `partner_members` itself. Not injected anywhere yet in this task —
+  // Task 4 wires the consumer side, so an unused-export lint warning here is expected.
+  exports: [PARTNER_REPOSITORY, PARTNER_MEMBERSHIP_WRITER],
 })
 export class PartnerModule implements OnModuleInit {
   constructor(
