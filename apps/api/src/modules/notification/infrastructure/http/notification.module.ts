@@ -21,6 +21,7 @@ import { PrismaNotificationInboxRepository } from '../repositories/prisma-notifi
 import { PrismaNotificationLogRepository } from '../repositories/prisma-notification-log.repository';
 import { PrismaNotificationReader } from '../prisma-notification.reader';
 import { ReminderWorker } from '../reminder.worker';
+import { NotificationRetentionWorker } from '../notification-retention.worker';
 import { ResolveNotificationTenantContextGuard } from './guards/resolve-notification-tenant-context.guard';
 import { NotificationController } from './notification.controller';
 import { ListNotificationsUseCase } from '../../application/use-cases/list-notifications.use-case';
@@ -80,6 +81,7 @@ import {
     SendBookingOtpUseCase,
     DispatchTaxCertificateEventUseCase,
     ReminderWorker,
+    NotificationRetentionWorker,
   ],
   // Exported so the booking module can send the guest-lookup OTP synchronously (§8.6).
   exports: [SendBookingOtpUseCase, EMAIL_SENDER, EMAIL_RENDERER, NOTIFICATION_READER],
