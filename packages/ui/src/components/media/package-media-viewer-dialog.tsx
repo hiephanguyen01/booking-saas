@@ -13,5 +13,5 @@ export function PackageMediaViewerDialog({
   details,
   ...props
 }: PackageMediaViewerDialogProps) {
-  return <MediaViewerCore {...props} details={details} />
+  return <MediaViewerCore {...props} details={details} mobileMediaLayout="full-bleed" />
 }

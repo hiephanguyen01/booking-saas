@@ -61,6 +61,11 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
     mapWithConcurrency(group.listings, LISTING_DETAIL_CONCURRENCY, async (child) => {
       const detail = await safe(fetchListing(request, child.slug));
       if (!detail) return null;
+      // Capacity is a storefront search concern, so keep it in this BFF loader:
+      // rooms with known insufficient capacity are not presented as matches,
+      // while rooms whose capacity is not configured remain discoverable.
+      const capacity = detail.capacity ?? child.capacity;
+      if (typeof capacity === 'number' && capacity > 0 && capacity < state.guests) return null;
       const availability = hasAvailabilityFilter
         ? await resolveRoomAvailability(request, child.slug, detail, state)
         : browsingRoom(child.priceFrom);

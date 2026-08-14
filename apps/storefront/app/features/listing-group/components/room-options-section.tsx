@@ -15,7 +15,7 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import { roomAvailabilityState } from '~/features/booking-widget/lib/slot-selection';
-import { PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
+import { PolicyList, RoomAction, RoomDetails, RoomHeading, RoomPrice } from './room-cells';
 import { RoomMediaDetails } from './room-media-details';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useRoomOptionsController } from '~/features/listing-group/hooks/use-room-options-controller';
@@ -73,7 +73,7 @@ export function RoomOptionsSection({
     <SectionCard
       id="room-options"
       aria-labelledby="room-options-title"
-      className="scroll-mt-20 md:scroll-mt-28"
+      className="scroll-mt-20 max-md:rounded-none max-md:border-x-0 max-md:shadow-none md:scroll-mt-28"
     >
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -219,17 +219,34 @@ function RoomCard({
 }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
-    <article className={cn(PANEL_SURFACE, 'overflow-hidden bg-card md:border md:border-border')}>
+    <article
+      className={cn(
+        PANEL_SURFACE,
+        'grid overflow-hidden bg-card max-md:rounded-none md:grid-cols-[13rem_minmax(0,1fr)] md:grid-rows-[auto_1fr] md:border md:border-border',
+      )}
+    >
+      <div className="p-(--sf-surface-pad) pb-3 md:col-start-2 md:row-start-1 md:pb-2">
+        <RoomHeading option={option} />
+      </div>
       <RoomPhotoStrip
         photos={option.child.photos}
         title={option.child.title}
+        className="mx-(--sf-surface-pad) mb-3 h-39 md:col-start-1 md:row-span-2 md:row-start-1 md:m-0 md:size-52 md:h-32 md:self-start md:rounded-none"
         onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
       />
-      <div className="flex flex-col gap-4 p-(--sf-surface-pad) md:gap-5 md:p-5">
-        <RoomDetails option={option} attributeSchema={attributeSchema} hidePhotos />
-        <div className="grid grid-cols-2 gap-4">
-          <GuestCapacityRules capacity={option.child.capacity} />
-          <RoomPrice option={option} mode={mode} state={state} />
+      <div className="flex flex-col gap-4 p-(--sf-surface-pad) pt-0 md:col-start-2 md:row-start-2 md:pt-2">
+        <RoomDetails
+          option={option}
+          attributeSchema={attributeSchema}
+          hidePhotos
+          hideHeading
+        />
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 border-t border-border pt-3">
+          <PolicyList depositPercent={option.detail.depositPercent} compact />
+          <div className="flex flex-col items-end gap-3">
+            <GuestCapacityRules capacity={option.child.capacity} compact />
+            <RoomPrice option={option} mode={mode} state={state} compact />
+          </div>
         </div>
         <RoomAction
           option={option}
@@ -239,7 +256,6 @@ function RoomCard({
           state={state}
           slots={slots}
         />
-        <PolicyList depositPercent={option.detail.depositPercent} />
       </div>
     </article>
   );

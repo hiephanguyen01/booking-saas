@@ -32,10 +32,13 @@ export function SearchForm({
   onTypeChange,
   typeChangeBehavior,
   onSubmit,
+  submitAction,
+  fieldScope = 'full',
 }: SearchFormProps) {
   const { t } = useTranslation(NsI18n.Common);
   const isHero = variant === 'hero';
   const isMobileSheet = variant === 'mobile-sheet';
+  const isScheduleGuests = fieldScope === 'schedule-guests';
   const formRef = useRef<HTMLFormElement>(null);
   const {
     action,
@@ -147,7 +150,7 @@ export function SearchForm({
           ),
         }
       : null,
-    mode === 'inventory'
+    !isScheduleGuests && mode === 'inventory'
       ? {
           key: 'quantity',
           node: (
@@ -170,12 +173,14 @@ export function SearchForm({
       : null,
   ].filter((field) => field !== null);
 
+  const formAction = submitAction ?? action;
+
   if (isHero) {
     return (
       <Form
         ref={formRef}
         method="get"
-        action={action}
+        action={formAction}
         onSubmit={onSubmit}
         aria-label={t('home.search')}
         className={cn(
@@ -263,7 +268,7 @@ export function SearchForm({
       <Form
         ref={formRef}
         method="get"
-        action={action}
+        action={formAction}
         onSubmit={onSubmit}
         aria-label={t('home.search')}
         className="rounded-none bg-card font-studio text-card-foreground"
@@ -291,8 +296,12 @@ export function SearchForm({
           />
 
           <div className="flex flex-col gap-2.5">
-            <div className="min-w-0">{queryField}</div>
-            <div className="min-w-0">{locationField}</div>
+            {!isScheduleGuests ? (
+              <>
+                <div className="min-w-0">{queryField}</div>
+                <div className="min-w-0">{locationField}</div>
+              </>
+            ) : null}
             {compactFields.length ? (
               <div
                 className={cn(
@@ -326,7 +335,7 @@ export function SearchForm({
     <Form
       ref={formRef}
       method="get"
-      action={action}
+      action={formAction}
       onSubmit={onSubmit}
       aria-label={t('home.search')}
       className="bg-foreground font-studio text-background"
@@ -349,11 +358,19 @@ export function SearchForm({
         />
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="grid min-w-0 gap-3 lg:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
+          <div className="grid min-w-0 gap-3 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
             {queryField}
             {locationField}
-            {compactFields.map((field) => (
-              <div key={field.key} className="min-w-0">
+            {compactFields.map((field, index) => (
+              <div
+                key={field.key}
+                className={cn(
+                  'min-w-0',
+                  compactFields.length % 2 === 1 &&
+                    index === compactFields.length - 1 &&
+                    'md:col-span-2 lg:col-span-1',
+                )}
+              >
                 {field.node}
               </div>
             ))}

@@ -9,9 +9,9 @@ import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatListingLocation, googleMapsHref } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
-import { clockHoursBetween } from '~/lib/time';
 import type { StorefrontContext } from '~/root';
 import { SearchForm } from '~/features/search/components/search-form';
+import { searchResultContext } from '~/features/search/lib/search-state';
 import { AmenitiesSection } from './amenities-section';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
@@ -24,6 +24,7 @@ import { minimumRoomPrice } from '~/features/listing-group/lib/room-attributes';
 import { MobileDetailHeader } from '~/components/mobile-detail-header';
 import { MobileDetailSummary } from '~/components/mobile-detail-summary';
 import { catalogReturnHref } from '~/features/search/lib/catalog-return-href';
+import { ListingGroupSearchDrawer } from './listing-group-search-drawer';
 
 /**
  * A listing group ("studio") and the rooms bookable inside it.
@@ -42,9 +43,15 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   const minimumPrice = minimumRoomPrice(
     roomOptions.filter((option) => option.browsing || option.available),
   );
-  const selectedHours = state.hasTimeSelection
-    ? clockHoursBetween(state.startTime, state.endTime)
-    : null;
+  const searchContext = searchResultContext(state);
+  const priceDurationLabel =
+    state.mode === 'hourly'
+      ? searchContext.selectedHours
+        ? t('forHours', { count: searchContext.selectedHours })
+        : t('perHour')
+      : searchContext.hasDailyRange
+        ? t('forSelectedDays', { count: searchContext.selectedDayCount })
+        : t('perDay');
   const mapsHref = googleMapsHref(location);
 
   return (
@@ -58,6 +65,15 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           locations={locations}
           variant="bar"
           typeChangeBehavior="navigate-to-catalog"
+        />
+      }
+      mobileSearchBar={
+        <ListingGroupSearchDrawer
+          groupSlug={group.slug}
+          listingTypes={listingTypes}
+          currentType={group.listingTypeSlug}
+          state={state}
+          locations={locations}
         />
       }
       mobileHeader={
@@ -103,15 +119,39 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           ratingAvg={group.ratingAvg}
           reviewCount={group.reviewCount}
           completedBookings={group.trust?.completedBookings}
+          variant="figma"
         />
       }
       main={
         <>
-          <SectionCard aria-labelledby="introduction-title">
-            <h2 id="introduction-title" className="text-base font-semibold">
+          <SectionCard
+            aria-labelledby="introduction-title"
+            className="max-md:rounded-none max-md:border-x-0"
+          >
+            <h2 id="introduction-title" className="text-sm font-semibold md:text-base">
               {t('group.introduction')}
             </h2>
             <ExpandableDescription description={group.description} />
+          </SectionCard>
+
+          <SectionCard
+            aria-label={t('group.viewRooms')}
+            className="rounded-none border-x-0 md:hidden"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 text-xs text-muted-foreground">
+                <p>
+                  {t('fromPriceShort')}{' '}
+                  <strong className="text-base text-primary">
+                    {minimumPrice ?? t('group.priceOnRequest')}
+                  </strong>
+                </p>
+                <p className="mt-1">{priceDurationLabel}</p>
+              </div>
+              <Button asChild size="control" className="w-29 shrink-0">
+                <a href="#room-options">{t('group.viewRooms')}</a>
+              </Button>
+            </div>
           </SectionCard>
 
           <AmenitiesSection amenities={group.amenities} />
@@ -126,13 +166,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
                 {minimumPrice ?? t('group.priceOnRequest')}
               </strong>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {state.mode === 'hourly'
-                ? selectedHours
-                  ? t('forHours', { count: selectedHours })
-                  : t('perHour')
-                : t('group.priceForRange', { from: state.from, to: state.to })}
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{priceDurationLabel}</p>
             <Button asChild size="control" className="mt-5 w-full">
               <a href="#room-options">{t('group.viewRooms')}</a>
             </Button>
@@ -140,7 +174,10 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
         </div>
       }
       mobileBooking={false}
-      provider={<ProviderCard trust={trust} />}
+      mobileSummaryPlacement="before-gallery"
+      mobileProviderPlacement="after-main"
+      mobileFooterInset={false}
+      provider={<ProviderCard trust={trust} compactMobile />}
       footerSections={
         <>
           <RoomOptionsSection
@@ -159,12 +196,14 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
             locale={locale}
             reviewRating={loaderData.reviewRating}
             reviewLimit={loaderData.reviewLimit}
+            compactMobile
           />
 
           <RelatedListings
             listings={relatedListings}
             title={t('group.related')}
             titleId="related-title"
+            compactMobile
           />
         </>
       }

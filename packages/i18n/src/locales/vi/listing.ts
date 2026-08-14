@@ -193,6 +193,8 @@ export const viListing = {
     policyPrivacy: 'Thông tin liên hệ được bảo vệ đến khi booking được xác nhận',
     pickHours: 'Lựa chọn giờ',
     chooseSchedule: 'Chọn ngày/giờ',
+    searchDrawerTitle: 'Thay đổi lịch và số khách',
+    searchDrawerDescription: 'Chọn lịch sử dụng và số khách để cập nhật các phòng phù hợp.',
     bookNow: 'Đặt ngay',
     closeSchedule: 'Đóng phần chọn lịch',
     changeDay: 'Đổi ngày',

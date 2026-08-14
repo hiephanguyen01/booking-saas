@@ -170,7 +170,7 @@ export function MediaViewerCore({
   }
 
   const hasDetails = details !== undefined
-  const fullBleedMobile = !hasDetails && mobileMediaLayout === "full-bleed"
+  const fullBleedMobile = mobileMediaLayout === "full-bleed"
 
   return (
     <Dialog open={open && items.length > 0} onOpenChange={onOpenChange}>
@@ -209,7 +209,10 @@ export function MediaViewerCore({
               className={cn(
                 "grid items-center gap-2 sm:gap-6",
                 hasDetails
-                  ? "relative h-[min(540px,58vh)] shrink-0 grid-cols-1 lg:h-auto lg:min-h-0 lg:flex-1"
+                  ? cn(
+                      "relative h-[min(540px,58vh)] shrink-0 grid-cols-1 lg:h-auto lg:min-h-0 lg:flex-1",
+                      fullBleedMobile && "-mx-4 w-[calc(100%+2rem)] sm:mx-0 sm:w-auto",
+                    )
                   : fullBleedMobile
                     ? "relative -mx-4 min-h-0 w-[calc(100%+2rem)] flex-1 grid-cols-1 sm:mx-0 sm:w-auto sm:grid-cols-[40px_minmax(0,1fr)_40px] lg:gap-10"
                     : "min-h-0 flex-1 grid-cols-[40px_minmax(0,1fr)_40px] lg:gap-10",

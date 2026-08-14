@@ -4,6 +4,7 @@ import { cn } from '@booking/ui/lib/utils';
 
 export function DetailPageLayout({
   searchBar,
+  mobileSearchBar,
   header,
   mobileHeader,
   gallery,
@@ -14,8 +15,12 @@ export function DetailPageLayout({
   footerSections,
   desktopAsideOrder = 'booking-first',
   mobileBooking = true,
+  mobileSummaryPlacement = 'after-gallery',
+  mobileProviderPlacement = 'before-main',
+  mobileFooterInset = true,
 }: {
   searchBar: ReactNode;
+  mobileSearchBar?: ReactNode;
   header: ReactNode;
   mobileHeader: ReactNode;
   gallery: ReactNode;
@@ -26,20 +31,29 @@ export function DetailPageLayout({
   footerSections?: ReactNode;
   desktopAsideOrder?: 'booking-first' | 'provider-first';
   mobileBooking?: boolean;
+  mobileSummaryPlacement?: 'before-gallery' | 'after-gallery';
+  mobileProviderPlacement?: 'before-main' | 'after-main';
+  mobileFooterInset?: boolean;
 }) {
   return (
     <div className="overflow-x-clip bg-muted/30 pb-5 font-studio text-foreground md:pb-20">
       <div className="max-md:hidden">{searchBar}</div>
       <div className="contents md:hidden">{mobileHeader}</div>
+      {mobileSearchBar ? <div className="md:hidden">{mobileSearchBar}</div> : null}
       {/* `--sf-section-gap` is the tenant's density setting: it separates the
           stacked panels here, which is what "khoảng cách khối" means on a detail
           page. Hard-coded `gap-4` left that setting controlling nothing. */}
       <main className="mx-auto flex max-w-292.5 flex-col gap-(--sf-section-gap) py-0 md:px-4 md:py-4 xl:px-0">
+        {mobileSummaryPlacement === 'before-gallery' ? (
+          <div className="md:hidden">{mobileSummary}</div>
+        ) : null}
         <SectionCard className="max-md:rounded-none max-md:border-x-0 max-md:p-0 max-md:shadow-none">
           <div className="max-md:hidden">{header}</div>
           {gallery}
         </SectionCard>
-        <div className="md:hidden">{mobileSummary}</div>
+        {mobileSummaryPlacement === 'after-gallery' ? (
+          <div className="md:hidden">{mobileSummary}</div>
+        ) : null}
         <div className="flex flex-col gap-(--sf-section-gap) md:px-0 lg:grid lg:items-start lg:grid-cols-[minmax(0,870px)_284px]">
           <div className="contents min-w-0 [&>*]:order-3 md:flex md:flex-col md:gap-(--sf-section-gap) md:[&>*]:order-none">
             {main}
@@ -60,7 +74,8 @@ export function DetailPageLayout({
             ) : null}
             <div
               className={cn(
-                'order-2 max-md:px-3',
+                'max-md:px-3',
+                mobileProviderPlacement === 'after-main' ? 'order-4' : 'order-2',
                 desktopAsideOrder === 'provider-first' ? 'md:order-1' : 'md:order-2',
               )}
             >
@@ -69,7 +84,12 @@ export function DetailPageLayout({
           </aside>
         </div>
         {footerSections ? (
-          <div className="order-5 flex flex-col gap-(--sf-section-gap) max-md:px-3">
+          <div
+            className={cn(
+              'order-5 flex flex-col gap-(--sf-section-gap)',
+              mobileFooterInset && 'max-md:px-3',
+            )}
+          >
             {footerSections}
           </div>
         ) : null}

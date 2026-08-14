@@ -5,6 +5,7 @@ export type DateRange = { from: Date | undefined; to?: Date | undefined };
 export type LocationOption = string | { value: string; label: string };
 export type SearchFormVariant = 'hero' | 'bar' | 'mobile-sheet';
 export type TypeChangeBehavior = 'local' | 'navigate-to-catalog';
+export type SearchFormFieldScope = 'full' | 'schedule-guests';
 
 export interface SearchFormOptions {
   listingTypes: PublicListingTypeResponse[];
@@ -19,4 +20,8 @@ export interface SearchFormProps extends Omit<SearchFormOptions, 'locations'> {
   locations?: LocationOption[];
   variant: SearchFormVariant;
   onSubmit?: () => void;
+  /** Override the canonical catalog destination for context-specific GET forms. */
+  submitAction?: string;
+  /** Limit a compact form to fields that affect a listing group's availability. */
+  fieldScope?: SearchFormFieldScope;
 }

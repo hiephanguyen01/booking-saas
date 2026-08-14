@@ -2,6 +2,7 @@ import { ImageIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { Image } from '@booking/ui/components/media/image';
+import { cn } from '@booking/ui/lib/utils';
 
 /**
  * Compact gallery shared by listing and booking surfaces: one large cover plus two
@@ -17,12 +18,14 @@ export function RoomPhotoStrip({
   onOpenPhoto,
   coverBadge,
   photoLabel,
+  className,
 }: {
   photos: string[];
   title: string;
   onOpenPhoto?: (index: number, trigger: HTMLButtonElement) => void;
   coverBadge?: ReactNode;
   photoLabel?: (oneBasedIndex: number) => string;
+  className?: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const label = photoLabel ?? ((index: number) => t('group.goToPhoto', { index }));
@@ -30,14 +33,24 @@ export function RoomPhotoStrip({
 
   if (!cover)
     return (
-      <div className="grid h-36 place-items-center rounded-(--sf-image-radius) bg-muted text-muted-foreground md:rounded-md">
+      <div
+        className={cn(
+          'grid h-36 place-items-center rounded-(--sf-image-radius) bg-muted text-muted-foreground md:rounded-md',
+          className,
+        )}
+      >
         <ImageIcon className="size-7" aria-hidden="true" />
         <span className="sr-only">{title}</span>
       </div>
     );
 
   return (
-    <div className="grid h-36 grid-cols-[2fr_1fr] grid-rows-2 gap-1.5 overflow-hidden rounded-(--sf-image-radius) md:rounded-md">
+    <div
+      className={cn(
+        'grid h-36 grid-cols-[2fr_1fr] grid-rows-2 gap-1.5 overflow-hidden rounded-(--sf-image-radius) md:rounded-md',
+        className,
+      )}
+    >
       <RoomPhoto
         photo={cover}
         title={title}

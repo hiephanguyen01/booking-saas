@@ -19,12 +19,14 @@ export function PublicReviewsSection({
   locale,
   reviewRating,
   reviewLimit,
+  compactMobile = false,
 }: {
   reviews: ReviewListResponse | null;
   reviewSummary: ReviewSummary | null;
   locale: 'vi' | 'en';
   reviewRating?: number;
   reviewLimit: number;
+  compactMobile?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const viewerLabels = useMediaViewerLabels();
@@ -39,7 +41,13 @@ export function PublicReviewsSection({
   if (!model) return null;
 
   return (
-    <SectionCard aria-labelledby="public-reviews-title" className="flex flex-col gap-5">
+    <SectionCard
+      aria-labelledby="public-reviews-title"
+      className={cn(
+        'flex flex-col gap-5',
+        compactMobile && 'max-md:rounded-none max-md:border-x-0 max-md:shadow-none',
+      )}
+    >
       <div className="flex flex-col gap-4">
         <h2 id="public-reviews-title" className="text-base leading-6 font-semibold">
           {t('reviews.title')}
@@ -72,6 +80,7 @@ export function PublicReviewsSection({
             aria-label={`${item.rating} / 5, ${t('reviewCount', { count: item.count })}`}
             className={cn(
               'inline-flex h-8 shrink-0 items-center gap-1 rounded-sm border bg-card px-3 text-sm leading-5 shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              compactMobile && 'max-md:h-9.5',
               item.active
                 ? 'border-primary text-primary'
                 : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground',
@@ -86,7 +95,13 @@ export function PublicReviewsSection({
 
       <div className="divide-y divide-border border-t border-border">
         {reviews?.items.map((review) => (
-          <ReviewItem key={review.id} review={review} locale={locale} viewerLabels={viewerLabels} />
+          <ReviewItem
+            key={review.id}
+            review={review}
+            locale={locale}
+            viewerLabels={viewerLabels}
+            compactMobile={compactMobile}
+          />
         ))}
       </div>
 
@@ -114,17 +129,22 @@ function ReviewItem({
   review,
   locale,
   viewerLabels,
+  compactMobile,
 }: {
   review: ReviewResponse;
   locale: 'vi' | 'en';
   viewerLabels: MediaViewerLabels;
+  compactMobile: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   return (
     <article className="flex flex-col gap-2 py-5 first:pt-4 last:pb-0">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <ReviewAvatar name={review.customerName} className="size-10" />
+          <ReviewAvatar
+            name={review.customerName}
+            className={cn('size-10', compactMobile && 'max-md:size-9')}
+          />
           <div className="min-w-0">
             <p className="truncate text-sm leading-5 font-semibold">{review.customerName}</p>
             <RatingStars rating={review.rating} className="mt-1" />
@@ -137,14 +157,18 @@ function ReviewItem({
         />
       </div>
 
-      <p className="text-sm leading-5 text-foreground/85">{review.content}</p>
+      <p className={cn('text-sm leading-5 text-foreground/85', compactMobile && 'max-md:text-xs')}>
+        {review.content}
+      </p>
       <ReviewMediaGallery
         items={review.media}
         viewLabel={t('reviews.mediaView')}
         viewerTitle={t('reviews.mediaViewerTitle')}
         viewerLabels={viewerLabels}
       />
-      <p className="text-sm leading-5 text-muted-foreground">
+      <p
+        className={cn('text-sm leading-5 text-muted-foreground', compactMobile && 'max-md:text-xs')}
+      >
         {t('reviews.listingLabel', { title: review.listingTitle })}
       </p>
 
@@ -162,7 +186,14 @@ function ReviewItem({
                 className="shrink-0 pt-0.5 text-xs leading-4 text-muted-foreground"
               />
             </div>
-            <p className="mt-2 text-sm leading-5 text-foreground/85">{review.reply.content}</p>
+            <p
+              className={cn(
+                'mt-2 text-sm leading-5 text-foreground/85',
+                compactMobile && 'max-md:text-xs',
+              )}
+            >
+              {review.reply.content}
+            </p>
           </div>
         </div>
       ) : null}
