@@ -9,6 +9,10 @@ import { payoutTemplateData } from '../../domain/payout-notification-data';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
 import { EMAIL_RENDERER, type IEmailRenderer } from '../../domain/ports/email-renderer.port';
 import {
+  NOTIFICATION_INBOX_REPOSITORY,
+  type INotificationInboxRepository,
+} from '../../domain/ports/notification-inbox-repository.port';
+import {
   NOTIFICATION_LOG_REPOSITORY,
   type INotificationLogRepository,
 } from '../../domain/ports/notification-log-repository.port';
@@ -18,6 +22,7 @@ import {
 } from '../../domain/ports/notification-reader.port';
 import { DedupeKey } from '../../domain/value-objects/dedupe-key.value-object';
 import { deliverNotification } from '../deliver-notification';
+import { InboxCollector } from '../inbox-collector';
 
 /**
  * payout.paid → the partner's members (§17; affiliate payouts have no Phase-1
@@ -31,6 +36,7 @@ export class DispatchPayoutEventUseCase {
     @Inject(EMAIL_SENDER) private readonly email: IEmailSender,
     @Inject(EMAIL_RENDERER) private readonly renderer: IEmailRenderer,
     @Inject(NOTIFICATION_LOG_REPOSITORY) private readonly logs: INotificationLogRepository,
+    @Inject(NOTIFICATION_INBOX_REPOSITORY) private readonly inbox: INotificationInboxRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -44,6 +50,7 @@ export class DispatchPayoutEventUseCase {
       this.reader.loadPartnerContext(tx, payload.payeeId),
     );
     if (!ctx) return;
+    const collector = new InboxCollector();
     for (const item of plan) {
       for (const recipient of ctx.recipients) {
         const delivery = NotificationDelivery.start({
@@ -61,12 +68,19 @@ export class DispatchPayoutEventUseCase {
           bookingId: null,
           policy: OUTBOX_DELIVERY_POLICY,
         });
-        await deliverNotification({ email: this.email, logs: this.logs, renderer: this.renderer }, delivery, {
-          locale: recipient.locale,
-          brand: ctx.brand,
-          data: payoutTemplateData(ctx, recipient, payload),
-        });
+        await deliverNotification(
+          { email: this.email, logs: this.logs, renderer: this.renderer, inbox: collector },
+          delivery,
+          {
+            locale: recipient.locale,
+            brand: ctx.brand,
+            data: payoutTemplateData(ctx, recipient, payload),
+          },
+        );
       }
+    }
+    if (!collector.isEmpty()) {
+      await this.tenantDb.forTenant(tenantId, (tx) => this.inbox.insertMany(tx, collector.rows()));
     }
   }
 }

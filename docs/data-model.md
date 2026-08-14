@@ -38,7 +38,7 @@ read it before touching money, migrations, or tenant tables. Domain term definit
   hard gate. See [`features/legal-documents.md`](./features/legal-documents.md) and
   [ADR 0008](./decisions/0008-legal-documents-and-consent.md).
 - **Reference** — administrative divisions (Vietnamese provinces/wards), audit logs, outbox events,
-  notifications.
+  `Notification` (the in-app bell inbox — see the invariant below).
 
 ## Invariants enforced in the database (hand-written SQL, not Prisma)
 
@@ -67,7 +67,19 @@ guards the RLS parts in CI.
    `(tenant_id, reporter_user_id, target_type, target_id)` while status is `open` or `reviewing`.
    Repeated submissions are idempotent; resolved/dismissed reports remain an audit trail and allow a
    later, genuinely new report.
-6. **Other SQL-only bits:** extensions `btree_gist`, `citext`, `pgcrypto`; `NULLS NOT DISTINCT` unique
+6. **Per-user isolation is NOT RLS (notifications).** `notifications` (the in-app bell inbox) carries
+   `tenant_id` and gets the same `tenant_isolation` policy as every other tenant-scoped table — but
+   RLS isolates **tenants**, not users. Inside one tenant, any `app_user` session in that tenant's
+   context can see every row: the policy has no `user_id` predicate, and one was deliberately never
+   added, because a session's tenant scope is already the coarsest thing RLS enforces. Per-user
+   isolation is entirely the repository's job — every read is `WHERE user_id = $me`, and
+   `markRead`/`markAllRead` express ownership as the UPDATE's predicate, not as a separate ownership
+   check. Three indexes carry the query shapes: a **unique** `(user_id, dedupe_key)` makes an outbox
+   redelivery an `INSERT … ON CONFLICT DO NOTHING` no-op; `(user_id, tenant_id, area, created_at DESC)`
+   serves the feed; a partial `(user_id, tenant_id, area) WHERE read_at IS NULL` serves the unread
+   count, the single most frequently executed query in the feature (every open dashboard, every 60s).
+   A plain `(created_at)` index serves the 90-day retention sweep.
+7. **Other SQL-only bits:** extensions `btree_gist`, `citext`, `pgcrypto`; `NULLS NOT DISTINCT` unique
    indexes; the `app_user` / `app_admin` / migrate roles.
 
 ## Units & types (hard rules)

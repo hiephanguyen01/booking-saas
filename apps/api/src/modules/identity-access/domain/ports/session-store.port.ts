@@ -1,3 +1,5 @@
+import type { SessionPrincipal } from '../../../../shared/http/session-principal';
+
 export const SESSION_STORE = Symbol('SESSION_STORE');
 
 export interface SessionTokens {
@@ -8,16 +10,14 @@ export interface SessionTokens {
   refreshExpiresAt: Date;
 }
 
-export interface SessionPrincipal {
-  sessionId: string;
-  userId: string;
-  email: string;
-  fullName: string;
-  phone: string | null;
-  avatarUrl: string | null;
-  locale: string;
-  status: string;
-}
+/**
+ * Canonical definition moved to `shared/http/session-principal.ts` — see that file for why.
+ * Re-exported here so every existing importer of `SessionPrincipal` from this path keeps working
+ * untouched. Do not delete this re-export or move the type back: `identity-access` already depends
+ * on `notification` (the OTP-email adapter), so a `SessionPrincipal` defined here would close a
+ * module cycle the moment any other module needs it — which the notification inbox now does.
+ */
+export type { SessionPrincipal };
 
 export interface ISessionStore {
   create(userId: string, meta: { ip?: string; userAgent?: string }): Promise<SessionTokens>;

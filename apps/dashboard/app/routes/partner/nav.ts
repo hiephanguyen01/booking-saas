@@ -1,4 +1,5 @@
 import {
+  Bell,
   CalendarCheck,
   CalendarDays,
   ContactRound,
@@ -23,6 +24,11 @@ export const partnerNavSections: DashboardNavSection[] = [
         title: 'Tổng quan',
         to: dashboardPaths.partner.home,
         icon: LayoutDashboard,
+      },
+      {
+        title: 'Thông báo',
+        to: dashboardPaths.partner.notifications,
+        icon: Bell,
       },
     ],
   },

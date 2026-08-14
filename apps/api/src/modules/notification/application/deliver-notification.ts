@@ -1,9 +1,11 @@
 import { Logger } from '@nestjs/common';
 import type { EmailBrand, TemplateData } from '../domain/email-template';
 import type { NotificationDelivery } from '../domain/entities/notification-delivery.entity';
+import { IN_APP_TEMPLATES } from '../domain/in-app-templates';
 import type { IEmailRenderer } from '../domain/ports/email-renderer.port';
 import type { IEmailSender } from '../domain/ports/email-sender.port';
 import type { INotificationLogRepository } from '../domain/ports/notification-log-repository.port';
+import type { InboxCollector } from './inbox-collector';
 
 const logger = new Logger('NotificationDelivery');
 
@@ -12,6 +14,8 @@ export interface DeliveryPorts {
   email: IEmailSender;
   logs: INotificationLogRepository;
   renderer: IEmailRenderer;
+  /** Absent on the synchronous OTP path, which never produces a bell row. */
+  inbox?: InboxCollector;
 }
 
 /**
@@ -30,6 +34,27 @@ export async function deliverNotification(
   input: { locale: string; brand: EmailBrand; data: TemplateData },
 ): Promise<void> {
   const { dedupe, onFailure } = delivery.policy;
+  // ⚠️ ORDER IS LOAD-BEARING. This sits BEFORE the dedupe gate below, which
+  // returns early. If the row were collected after it, this would happen:
+  // first delivery sends the email, the process dies before the flush, the
+  // outbox redelivers, `alreadySent` is now true, we return at the gate — and
+  // the email arrived while the bell row never existed. Outbox delivery is
+  // at-least-once precisely because processes die. The unique index on
+  // (user_id, dedupe_key) makes collecting on every redelivery harmless.
+  const inApp = IN_APP_TEMPLATES[delivery.templateId];
+  if (inApp && ports.inbox && delivery.userId) {
+    ports.inbox.add({
+      tenantId: delivery.tenantId,
+      userId: delivery.userId,
+      area: inApp.area,
+      eventType: delivery.eventType,
+      title: inApp.title,
+      body: null,
+      targetType: inApp.targetType,
+      targetId: inApp.targetId === 'booking' ? delivery.bookingId : null,
+      dedupeKey: delivery.dedupeKey,
+    });
+  }
   if (dedupe && (await ports.logs.alreadySent(delivery.dedupeKey))) return;
   const content = await ports.renderer.render(
     delivery.templateId,

@@ -11,6 +11,7 @@ import {
 import { Separator } from '@booking/ui/components/ui/separator';
 import { SidebarTrigger } from '@booking/ui/components/ui/sidebar';
 import { ModeToggle } from '@booking/ui/components/theme/mode-toggle';
+import { NotificationBell } from '~/features/notifications/components/notification-bell';
 import { DASHBOARD_AREAS } from '~/lib/navigation';
 
 const LABELS: Record<string, string> = Object.fromEntries(
@@ -84,6 +85,7 @@ export function DashboardHeader() {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="ml-auto flex items-center gap-2">
+        <NotificationBell />
         <ModeToggle />
       </div>
     </header>

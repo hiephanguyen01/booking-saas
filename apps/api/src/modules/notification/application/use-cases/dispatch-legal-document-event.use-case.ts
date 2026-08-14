@@ -10,6 +10,10 @@ import { planForLegalDocumentPublished } from '../../domain/notification-plan';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
 import { EMAIL_RENDERER, type IEmailRenderer } from '../../domain/ports/email-renderer.port';
 import {
+  NOTIFICATION_INBOX_REPOSITORY,
+  type INotificationInboxRepository,
+} from '../../domain/ports/notification-inbox-repository.port';
+import {
   NOTIFICATION_LOG_REPOSITORY,
   type INotificationLogRepository,
 } from '../../domain/ports/notification-log-repository.port';
@@ -19,6 +23,7 @@ import {
 } from '../../domain/ports/notification-reader.port';
 import { DedupeKey } from '../../domain/value-objects/dedupe-key.value-object';
 import { deliverNotification } from '../deliver-notification';
+import { InboxCollector } from '../inbox-collector';
 
 /** The outbox payload `PublishLegalDocumentUseCase` emits — see that file for the exact shape. */
 export interface LegalDocumentPublishedPayload {
@@ -50,6 +55,7 @@ export class DispatchLegalDocumentEventUseCase {
     @Inject(EMAIL_SENDER) private readonly email: IEmailSender,
     @Inject(EMAIL_RENDERER) private readonly renderer: IEmailRenderer,
     @Inject(NOTIFICATION_LOG_REPOSITORY) private readonly logs: INotificationLogRepository,
+    @Inject(NOTIFICATION_INBOX_REPOSITORY) private readonly inbox: INotificationInboxRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -62,6 +68,7 @@ export class DispatchLegalDocumentEventUseCase {
     // (see planForLegalDocumentPublished's switch), both keys of LEGAL_DOCUMENT_SLUGS.
     const slug = LEGAL_DOCUMENT_SLUGS[payload.docType as LegalDocumentType];
 
+    const collector = new InboxCollector();
     for (const item of plan) {
       const recipients = await this.tenantDb.forTenant(tenantId, (tx) =>
         item.audience === 'affiliate'
@@ -94,11 +101,14 @@ export class DispatchLegalDocumentEventUseCase {
           policy: OUTBOX_DELIVERY_POLICY,
         });
         await deliverNotification(
-          { email: this.email, logs: this.logs, renderer: this.renderer },
+          { email: this.email, logs: this.logs, renderer: this.renderer, inbox: collector },
           delivery,
           { locale: recipient.locale, brand, data },
         );
       }
+    }
+    if (!collector.isEmpty()) {
+      await this.tenantDb.forTenant(tenantId, (tx) => this.inbox.insertMany(tx, collector.rows()));
     }
   }
 

@@ -28,6 +28,8 @@ export default [
 
   // Presign proxy for direct-to-storage image uploads (§4.2) — any logged-in user.
   route('uploads/presign', 'routes/uploads.presign.tsx'),
+  // The bell's poll target (Task 9) — any logged-in user, not tenant-gated.
+  route('notifications', 'routes/notifications.tsx'),
   route('administrative-divisions/provinces', 'routes/administrative-provinces.tsx'),
   route('administrative-divisions/wards', 'routes/administrative-wards.tsx'),
 

@@ -96,6 +96,22 @@ export class NotificationDelivery {
     return this.attempt.recipientEmail;
   }
 
+  get tenantId(): string {
+    return this.attempt.tenantId;
+  }
+
+  get userId(): string | null {
+    return this.attempt.userId;
+  }
+
+  get eventType(): string {
+    return this.attempt.eventType;
+  }
+
+  get bookingId(): string | null {
+    return this.attempt.bookingId;
+  }
+
   /**
    * The email went out. `sentAt` is stamped here (app clock, supplied by the caller —
    * the same source the repository used before the refactor).

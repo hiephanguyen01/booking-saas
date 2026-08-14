@@ -4,6 +4,7 @@ import { TenantContextModule } from '../../../../shared/tenant-context/tenant-co
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { EMAIL_SENDER } from '../../domain/ports/email-sender.port';
 import { EMAIL_RENDERER } from '../../domain/ports/email-renderer.port';
+import { NOTIFICATION_INBOX_REPOSITORY } from '../../domain/ports/notification-inbox-repository.port';
 import { NOTIFICATION_LOG_REPOSITORY } from '../../domain/ports/notification-log-repository.port';
 import { NOTIFICATION_READER } from '../../domain/ports/notification-reader.port';
 import {
@@ -13,15 +14,25 @@ import {
   PAYOUT_NOTIFICATION_EVENTS,
   TAX_CERTIFICATE_NOTIFICATION_EVENTS,
 } from '../../domain/notification-plan';
+import { TENANT_NOTIFICATION_EVENTS } from '../../domain/tenant-notification-plan';
 import { SmtpEmailSender } from '../smtp-email-sender';
 import { ReactEmailRenderer } from '../email/react-email.renderer';
+import { PrismaNotificationInboxRepository } from '../repositories/prisma-notification-inbox.repository';
 import { PrismaNotificationLogRepository } from '../repositories/prisma-notification-log.repository';
 import { PrismaNotificationReader } from '../prisma-notification.reader';
 import { ReminderWorker } from '../reminder.worker';
+import { NotificationRetentionWorker } from '../notification-retention.worker';
+import { ResolveNotificationTenantContextGuard } from './guards/resolve-notification-tenant-context.guard';
+import { NotificationController } from './notification.controller';
+import { ListNotificationsUseCase } from '../../application/use-cases/list-notifications.use-case';
+import { CountUnreadNotificationsUseCase } from '../../application/use-cases/count-unread-notifications.use-case';
+import { MarkNotificationReadUseCase } from '../../application/use-cases/mark-notification-read.use-case';
+import { MarkAllNotificationsReadUseCase } from '../../application/use-cases/mark-all-notifications-read.use-case';
 import { DispatchBookingEventUseCase } from '../../application/use-cases/dispatch-booking-event.use-case';
 import { DispatchListingEventUseCase } from '../../application/use-cases/dispatch-listing-event.use-case';
 import { DispatchPartnerEventUseCase } from '../../application/use-cases/dispatch-partner-event.use-case';
 import { DispatchPayoutEventUseCase } from '../../application/use-cases/dispatch-payout-event.use-case';
+import { DispatchTenantEventUseCase } from '../../application/use-cases/dispatch-tenant-event.use-case';
 import {
   DispatchLegalDocumentEventUseCase,
   type LegalDocumentPublishedPayload,
@@ -47,21 +58,30 @@ import {
  */
 @Module({
   imports: [PrismaModule, TenantContextModule],
+  controllers: [NotificationController],
   providers: [
     { provide: EMAIL_SENDER, useClass: SmtpEmailSender },
     { provide: EMAIL_RENDERER, useClass: ReactEmailRenderer },
     { provide: NOTIFICATION_LOG_REPOSITORY, useClass: PrismaNotificationLogRepository },
+    { provide: NOTIFICATION_INBOX_REPOSITORY, useClass: PrismaNotificationInboxRepository },
     { provide: NOTIFICATION_READER, useClass: PrismaNotificationReader },
+    ResolveNotificationTenantContextGuard,
+    ListNotificationsUseCase,
+    CountUnreadNotificationsUseCase,
+    MarkNotificationReadUseCase,
+    MarkAllNotificationsReadUseCase,
     DispatchBookingEventUseCase,
     DispatchListingEventUseCase,
     DispatchPartnerEventUseCase,
     DispatchPayoutEventUseCase,
+    DispatchTenantEventUseCase,
     DispatchLegalDocumentEventUseCase,
     DispatchMemberInvitationEventUseCase,
     DispatchReminderUseCase,
     SendBookingOtpUseCase,
     DispatchTaxCertificateEventUseCase,
     ReminderWorker,
+    NotificationRetentionWorker,
   ],
   // Exported so the booking module can send the guest-lookup OTP synchronously (§8.6).
   exports: [SendBookingOtpUseCase, EMAIL_SENDER, EMAIL_RENDERER, NOTIFICATION_READER],
@@ -75,6 +95,7 @@ export class NotificationModule implements OnModuleInit {
     private readonly dispatchListingEvent: DispatchListingEventUseCase,
     private readonly dispatchPartnerEvent: DispatchPartnerEventUseCase,
     private readonly dispatchPayoutEvent: DispatchPayoutEventUseCase,
+    private readonly dispatchTenantEvent: DispatchTenantEventUseCase,
     private readonly dispatchLegalDocumentEvent: DispatchLegalDocumentEventUseCase,
     private readonly dispatchMemberInvitationEvent: DispatchMemberInvitationEventUseCase,
     private readonly dispatchTaxCertificateEvent: DispatchTaxCertificateEventUseCase,
@@ -131,6 +152,17 @@ export class NotificationModule implements OnModuleInit {
           tenantId,
           eventType as 'tax.certificate_issued' | 'tax.certificate_voided',
           taxCertificatePayloadOf(event.payload),
+        );
+      });
+    }
+    for (const eventType of TENANT_NOTIFICATION_EVENTS) {
+      this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
+        return this.dispatchTenantEvent.execute(
+          tenantId,
+          event.eventType,
+          (event.payload ?? {}) as Record<string, unknown>,
         );
       });
     }

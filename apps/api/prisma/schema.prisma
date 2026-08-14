@@ -609,6 +609,14 @@ enum NotificationStatus {
   @@map("notification_status")
 }
 
+enum NotificationArea {
+  tenant
+  partner
+  affiliate
+
+  @@map("notification_area")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 7.1 Identity & Access
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2546,4 +2554,27 @@ model NotificationLog {
   @@index([tenantId])
   @@index([userId])
   @@map("notification_logs")
+}
+
+/// In-app notification inbox. RLS isolates TENANTS, not users: inside one
+/// tenant an app_user session can read every row. Per-user isolation lives
+/// entirely in the repository's `WHERE user_id = $me` — never remove it.
+model Notification {
+  id         String           @id @default(uuid(7)) @db.Uuid
+  tenantId   String           @map("tenant_id") @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  area       NotificationArea
+  eventType  String           @map("event_type")
+  title      String
+  body       String?
+  targetType String           @map("target_type")
+  targetId   String?          @map("target_id") @db.Uuid
+  dedupeKey  String           @map("dedupe_key")
+  readAt     DateTime?        @map("read_at") @db.Timestamptz(6)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, tenantId, area, createdAt(sort: Desc)])
+  @@index([createdAt])
+  @@map("notifications")
 }
