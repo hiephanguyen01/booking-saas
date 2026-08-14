@@ -215,9 +215,17 @@ CREATE INDEX "tenant_invitations_partner_id_status_idx"
 DROP INDEX "tenant_invitations_pending_email_key";
 CREATE UNIQUE INDEX "tenant_invitations_pending_email_key"
   ON "tenant_invitations"("tenant_id", "partner_id", "email")
-  WHERE "status" = 'pending'
-  NULLS NOT DISTINCT;
+  NULLS NOT DISTINCT
+  WHERE "status" = 'pending';
 ```
+
+> **Clause order:** `NULLS NOT DISTINCT` must precede `WHERE` in Postgres's `CREATE INDEX` grammar —
+> `... NULLS NOT DISTINCT WHERE predicate`, not the reverse. Putting it after `WHERE` is a syntax
+> error (`42601`) and the migration will fail to apply. Confirmed against Postgres 16.14 while
+> executing this task on 2026-08-14; the one prior `NULLS NOT DISTINCT` index in this repo
+> (`role_assignments_user_role_scope_key`) had no `WHERE` clause, so this ordering bug had nothing to
+> catch it earlier. If you're copying this pattern for a future partial unique index, get the order
+> right the first time.
 
 No RLS change: the table already has `tenant_id`, its `tenant_isolation` policy and its grants. A partner-scoped row carries both ids and is covered unchanged.
 
