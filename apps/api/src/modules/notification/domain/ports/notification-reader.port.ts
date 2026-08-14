@@ -1,5 +1,6 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { EmailBrand } from '../email-template';
+import type { SubjectKind } from '../tenant-notification-plan';
 
 export const NOTIFICATION_READER = Symbol('NOTIFICATION_READER');
 
@@ -86,4 +87,33 @@ export interface INotificationReader {
   loadActiveAffiliateRecipients(tx: PrismaTx, tenantId: string): Promise<NotificationRecipient[]>;
   /** Confirmed bookings whose start falls in [from, to) — the reminder job (cross-tenant, admin pool). */
   findUpcomingConfirmed(from: Date, to: Date): Promise<Array<{ tenantId: string; bookingId: string }>>;
+  /**
+   * Tenant staff holding `permissionKey` in TENANT scope (partner-scoped
+   * assignments are excluded by `partner_id IS NULL`). Queried directly against
+   * `role_assignments`/`role_permissions`, exactly as `loadActivePartnerRecipients`
+   * queries `partners`/`partner_members` directly — so this module never imports
+   * identity-access.
+   */
+  loadTenantStaffWithPermission(
+    tx: PrismaTx, tenantId: string, permissionKey: string,
+  ): Promise<NotificationRecipient[]>;
+
+  /**
+   * Does this user hold ANY membership in this tenant — staff, partner member,
+   * or affiliate? Backs `ResolveNotificationTenantContextGuard`, which must not
+   * seed RLS from an unverified `x-tenant-id` header. Runs on the admin pool:
+   * it is the check that decides which tenant to scope to, so it cannot itself
+   * run inside a tenant-scoped transaction.
+   */
+  hasTenantMembership(userId: string, tenantId: string): Promise<boolean>;
+
+  /**
+   * The `body` line for a tenant notification — WHICH listing, WHICH partner.
+   * One read per event, not per recipient. Returns null when the subject was
+   * deleted between emit and delivery; the row is still written, just without
+   * a subject line.
+   */
+  loadNotificationSubject(
+    tx: PrismaTx, kind: SubjectKind, subjectId: string,
+  ): Promise<string | null>;
 }

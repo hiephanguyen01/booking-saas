@@ -13,6 +13,7 @@ import type {
   NotificationRecipient,
   PartnerNotificationContext,
 } from '../domain/ports/notification-reader.port';
+import type { SubjectKind } from '../domain/tenant-notification-plan';
 
 interface BookingRow {
   code: string;
@@ -265,6 +266,54 @@ export class PrismaNotificationReader implements INotificationReader {
         AND lower(timeslot) >= ${from} AND lower(timeslot) < ${to}
       LIMIT 500`);
     return rows.map((r) => ({ tenantId: r.tenant_id, bookingId: r.id }));
+  }
+
+  async loadTenantStaffWithPermission(
+    tx: PrismaTx, tenantId: string, permissionKey: string,
+  ): Promise<NotificationRecipient[]> {
+    // NOTE: `role_permissions` stores the permission key directly
+    // (`permission_key`, FK'd to `permissions.key`) — there is no
+    // `role_permissions.permission_id`/`permissions.id`, so no join to
+    // `permissions` is needed at all.
+    const rows = await tx.$queryRaw<UserRow[]>(Prisma.sql`
+      SELECT DISTINCT u.id, u.email, u.full_name, u.locale, u.phone
+      FROM role_assignments ra
+      JOIN role_permissions rp ON rp.role_id = ra.role_id
+      JOIN users u ON u.id = ra.user_id
+      WHERE ra.tenant_id = ${tenantId}::uuid
+        AND ra.partner_id IS NULL
+        AND rp.permission_key = ${permissionKey}
+        AND u.status = 'active'`);
+    return rows.map((u) => this.toRecipient(u));
+  }
+
+  async hasTenantMembership(userId: string, tenantId: string): Promise<boolean> {
+    const rows = await this.prisma.admin.$queryRaw<{ ok: boolean }[]>(Prisma.sql`
+      SELECT (
+        EXISTS (SELECT 1 FROM role_assignments
+                WHERE user_id = ${userId}::uuid AND tenant_id = ${tenantId}::uuid)
+        OR EXISTS (SELECT 1 FROM partner_members
+                   WHERE user_id = ${userId}::uuid AND tenant_id = ${tenantId}::uuid)
+        OR EXISTS (SELECT 1 FROM affiliates
+                   WHERE user_id = ${userId}::uuid AND tenant_id = ${tenantId}::uuid)
+      ) AS ok`);
+    return rows[0]?.ok === true;
+  }
+
+  async loadNotificationSubject(
+    tx: PrismaTx, kind: SubjectKind, subjectId: string,
+  ): Promise<string | null> {
+    const sql = {
+      listing_title: Prisma.sql`SELECT title AS s FROM listings WHERE id = ${subjectId}::uuid`,
+      listing_group_title: Prisma.sql`SELECT title AS s FROM listing_groups WHERE id = ${subjectId}::uuid`,
+      partner_name: Prisma.sql`SELECT name AS s FROM partners WHERE id = ${subjectId}::uuid`,
+      booking_code: Prisma.sql`SELECT code AS s FROM bookings WHERE id = ${subjectId}::uuid`,
+      affiliate_user_name: Prisma.sql`
+        SELECT u.full_name AS s FROM affiliates a
+        JOIN users u ON u.id = a.user_id WHERE a.id = ${subjectId}::uuid`,
+    }[kind];
+    const rows = await tx.$queryRaw<{ s: string | null }[]>(sql);
+    return rows[0]?.s ?? null;
   }
 
   private async loadUser(tx: PrismaTx, userId: string): Promise<NotificationRecipient | null> {
