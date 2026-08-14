@@ -19,6 +19,7 @@ import {
   assertKeepsAManager,
   assertNotSelf,
   diffRoleIds,
+  TENANT_MEMBER_MANAGE_KEY,
 } from '../../domain/tenant-access-policy';
 import { MemberNotFound, RoleNotFound } from '../../domain/errors/tenant-access-errors';
 
@@ -67,6 +68,7 @@ export class SetTenantMemberRolesUseCase {
         all.map((m) =>
           m.userId === targetUserId ? { userId: m.userId, permissions: nextPermissions } : m,
         ),
+        TENANT_MEMBER_MANAGE_KEY,
       );
 
       const { add, remove } = diffRoleIds(

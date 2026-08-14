@@ -9,7 +9,11 @@ import {
   TENANT_MEMBER_REPOSITORY,
   type ITenantMemberRepository,
 } from '../../domain/ports/tenant-member-repository.port';
-import { assertKeepsAManager, assertNotSelf } from '../../domain/tenant-access-policy';
+import {
+  assertKeepsAManager,
+  assertNotSelf,
+  TENANT_MEMBER_MANAGE_KEY,
+} from '../../domain/tenant-access-policy';
 
 /**
  * Deletes every tenant-scoped role assignment the target user holds. Two of
@@ -37,7 +41,10 @@ export class RemoveTenantMemberUseCase {
 
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const all = await this.members.list(tx, tenantId);
-      assertKeepsAManager(all.filter((m) => m.userId !== targetUserId));
+      assertKeepsAManager(
+        all.filter((m) => m.userId !== targetUserId),
+        TENANT_MEMBER_MANAGE_KEY,
+      );
 
       await this.members.removeAll(tx, tenantId, targetUserId);
 

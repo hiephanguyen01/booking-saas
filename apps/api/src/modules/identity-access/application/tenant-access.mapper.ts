@@ -81,5 +81,8 @@ export function toTenantInvitationPreview(
     roles: roles.map(toRoleRef),
     status: invitationStateOf(row, now),
     matchesCurrentUser,
+    // This mapper only ever handles a tenant-scoped invitation; the partner
+    // invite flow (later task) builds its own preview with this set.
+    partnerName: null,
   };
 }

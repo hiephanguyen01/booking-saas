@@ -103,5 +103,56 @@ export const tenantInvitationPreviewSchema = z.object({
   status: tenantInvitationStatusSchema,
   /** False when the signed-in account is not the invited address. */
   matchesCurrentUser: z.boolean(),
+  /** Set when the invitation is into a partner rather than the tenant itself. */
+  partnerName: z.string().nullable(),
 });
 export type TenantInvitationPreview = z.infer<typeof tenantInvitationPreviewSchema>;
+
+/**
+ * The partner half of the fixed permission catalog (§14.2). Same role as
+ * `tenantPermissionKeySchema`: the single source the backend catalog and the
+ * dashboard's Vietnamese label map both build from, so they cannot drift.
+ */
+export const partnerPermissionKeySchema = z.enum([
+  'partner.profile.manage',
+  'partner.listings.read',
+  'partner.listings.write',
+  'partner.listings.publish',
+  'partner.bookings.read',
+  'partner.bookings.write',
+  'partner.bookings.approve',
+  'partner.bookings.cancel',
+  'partner.availability.manage',
+  'partner.promotions.manage',
+  'partner.finance.read',
+  'partner.members.manage',
+  'partner.roles.manage',
+  'partner.reviews.read',
+  'partner.reviews.reply',
+  'partner.favorites.read',
+  'partner.disputes.read',
+  'partner.disputes.respond',
+]);
+export type PartnerPermissionKey = z.infer<typeof partnerPermissionKeySchema>;
+
+export const partnerMemberSchema = z.object({
+  userId: z.string().uuid(),
+  fullName: z.string(),
+  email: z.string(),
+  avatarUrl: z.string().nullable(),
+  roles: z.array(roleRefSchema),
+  permissions: z.array(partnerPermissionKeySchema),
+  joinedAt: z.string(),
+});
+export type PartnerMember = z.infer<typeof partnerMemberSchema>;
+
+export const invitePartnerMemberInputSchema = z.object({
+  email: z.string().trim().toLowerCase().email('Email không hợp lệ'),
+  roleIds: z.array(z.string().uuid()).min(1, 'Chọn ít nhất một vai trò'),
+});
+export type InvitePartnerMemberInput = z.infer<typeof invitePartnerMemberInputSchema>;
+
+export const setPartnerMemberRolesInputSchema = z.object({
+  roleIds: z.array(z.string().uuid()).min(1, 'Chọn ít nhất một vai trò'),
+});
+export type SetPartnerMemberRolesInput = z.infer<typeof setPartnerMemberRolesInputSchema>;
