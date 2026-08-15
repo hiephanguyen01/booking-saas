@@ -700,7 +700,7 @@ ACME_EMAIL=ops@bookingos.vn
 
 PUBLIC_API_URL=https://api.stg.bookingos.vn
 DASHBOARD_URL=https://admin.stg.bookingos.vn
-STOREFRONT_URL=https://stg.bookingos.vn
+PLATFORM_STOREFRONT_URL=https://stg.bookingos.vn
 PLATFORM_BASE_DOMAIN=stg.bookingos.vn
 PLATFORM_STOREFRONT_CNAME=connect.stg.bookingos.vn
 PLATFORM_STOREFRONT_IPV4=STAGING_EIP

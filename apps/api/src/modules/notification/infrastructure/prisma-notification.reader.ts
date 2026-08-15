@@ -74,7 +74,7 @@ export class PrismaNotificationReader implements INotificationReader {
         name: 'BookingOS',
         primaryColor: '#6941C6',
         dashboardUrl: process.env.DASHBOARD_URL ?? 'http://localhost:5174',
-        storefrontUrl: process.env.STOREFRONT_URL ?? 'http://localhost:5173',
+        storefrontUrl: process.env.PLATFORM_STOREFRONT_URL ?? 'http://localhost:5173',
         contactEmail: process.env.EMAIL_FROM ?? 'no-reply@bookingos.vn',
       };
     }
@@ -370,7 +370,7 @@ export class PrismaNotificationReader implements INotificationReader {
       storefrontUrl: this.tenantOrigin(
         row.primary_hostname,
         process.env.STOREFRONT_PORT ?? '5173',
-        process.env.STOREFRONT_URL ?? 'http://localhost:5173',
+        process.env.PLATFORM_STOREFRONT_URL ?? 'http://localhost:5173',
       ),
       dashboardUrl: this.tenantOrigin(
         row.admin_hostname,

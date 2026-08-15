@@ -31,11 +31,14 @@ const LINK_FILTER_SPEC: FilterSpec = [
  * This is per-tenant data, not deployment config: each tenant storefront lives on
  * its own hostname (§6.1), so a single platform-wide env var can only ever be
  * right for one of them. The membership's `tenantHostname` (the tenant's primary
- * domain) is therefore authoritative; `STOREFRONT_URL` is a fallback for the one
- * case it cannot answer — a tenant with no primary domain mapped.
+ * domain) is therefore authoritative; `PLATFORM_STOREFRONT_URL` is a safe
+ * platform fallback for the one case it cannot answer — a tenant with no primary
+ * domain mapped.
  */
 function storefrontOrigin(tenantHostname: string | null): string {
-  if (!tenantHostname) return process.env.STOREFRONT_URL ?? 'http://localhost:5173';
+  if (!tenantHostname) {
+    return process.env.PLATFORM_STOREFRONT_URL ?? 'http://localhost:5173';
+  }
   const isLocal =
     tenantHostname === 'localhost' ||
     tenantHostname === '127.0.0.1' ||

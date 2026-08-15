@@ -1882,7 +1882,7 @@ In `toBrand`, both URLs now go through it:
       storefrontUrl: this.tenantOrigin(
         row.primary_hostname,
         process.env.STOREFRONT_PORT ?? '5173',
-        process.env.STOREFRONT_URL ?? 'http://localhost:5173',
+        process.env.PLATFORM_STOREFRONT_URL ?? 'http://localhost:5173',
       ),
       dashboardUrl: this.tenantOrigin(
         row.admin_hostname,
@@ -1981,7 +1981,7 @@ Expected: `Valid configuration`. This is the check `Caddyfile:20-24` already req
 
 - [ ] **Step 3: Give the dashboard container its own host name**
 
-In `docker-compose.deploy.yml`, the `dashboard` service needs `DASHBOARD_HOST` so `isPlatformHostname` can recognise the platform console. Add it beside the existing `STOREFRONT_URL`:
+In `docker-compose.deploy.yml`, the `dashboard` service needs `DASHBOARD_HOST` so `isPlatformHostname` can recognise the platform console. Add it beside the existing `PLATFORM_STOREFRONT_URL`:
 
 ```yaml
       DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}

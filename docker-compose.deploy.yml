@@ -64,7 +64,7 @@ services:
       # recipient's own laptop. The storefront and dashboard services already
       # require both; the API needs them for the same reason.
       DASHBOARD_URL: ${DASHBOARD_URL:?DASHBOARD_URL is required}
-      STOREFRONT_URL: ${STOREFRONT_URL:?STOREFRONT_URL is required}
+      PLATFORM_STOREFRONT_URL: ${PLATFORM_STOREFRONT_URL:?PLATFORM_STOREFRONT_URL is required}
       # Master key for tenant gateway credentials. There is no boot guard for
       # this in the API — omit it and every stored secret is encrypted with the
       # key published in the repo.
@@ -152,7 +152,7 @@ services:
       PORT: 3000
       BACKEND_URL: ${INTERNAL_API_URL:-http://api:3000}
       REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
-      STOREFRONT_URL: ${STOREFRONT_URL:?STOREFRONT_URL is required}
+      PLATFORM_STOREFRONT_URL: ${PLATFORM_STOREFRONT_URL:?PLATFORM_STOREFRONT_URL is required}
       # This console's own public origin — cross-host links (the "Đổi workspace"
       # switcher, the workspaces directory's per-tenant cards) resolve against
       # it. Required, not defaulted: a missing value used to silently fall back
