@@ -278,7 +278,7 @@ Three states must be explicit:
 No tests (hard rule 1). Acceptance is the full static check in `AGENTS.md` — including
 `check:theme-tokens` — followed by running the app:
 
-1. Sign in as `owner@bookingstudio.vn` at `admin.bookingstudio.localhost:5174`.
+1. Sign in as `owner@studiohub.vn` at `admin.studiohub.localhost:5174`.
 2. Create a role "Lễ tân" holding only `tenant.bookings.read`.
 3. Invite an email with no account; complete registration via Mailpit (`localhost:8025`).
 4. Accept the invitation.

@@ -4,7 +4,7 @@
 
 **Goal:** Make the production BookingOS platform landing closely match the attached bundled HTML while preserving its React Router, localization, login, and consultation behavior.
 
-**Architecture:** Keep the existing platform-only component boundary and translation contract. Recompose the current JSX with the reference layout, centralize visual tokens and shared controls in `app.css`, and continue using real BookingStudio and BookingStad assets instead of prototype media blocks.
+**Architecture:** Keep the existing platform-only component boundary and translation contract. Recompose the current JSX with the reference layout, centralize visual tokens and shared controls in `app.css`, and continue using real StudioHub and BookingStad assets instead of prototype media blocks.
 
 **Tech Stack:** React Router 8 SSR, React 19, TypeScript, Tailwind CSS v4 utilities, shared CSS in `app.css`, Lucide React, `@booking/i18n`.
 
@@ -109,7 +109,7 @@ git commit -m "feat(storefront): align landing shell with reference"
 
 Use a 1200px two-column grid with `1.15fr / .95fr`, 56px gap, 64px top padding, and 72px bottom padding. Set the headline to `clamp(38px,5vw,60px)`, `1.04` line height, `-.03em` tracking, and `14ch` maximum width. Keep the current Vietnamese and English headline and description.
 
-Use `/booking-studio/hero.png` as the 4:3 main media. Keep `SchedulePreview` as the real overlapping operations visual, but size and place it like the reference's smaller 16:11 card (`left:-42px`, `bottom:-38px`, `width:56%`) on desktop and return it to normal flow on mobile. Remove the current image caption because the prototype hero has only headline, description, calls to action, and media.
+Use `/studiohub/hero.png` as the 4:3 main media. Keep `SchedulePreview` as the real overlapping operations visual, but size and place it like the reference's smaller 16:11 card (`left:-42px`, `bottom:-38px`, `width:56%`) on desktop and return it to normal flow on mobile. Remove the current image caption because the prototype hero has only headline, description, calls to action, and media.
 
 - [ ] **Step 2: Match service model composition**
 
@@ -171,7 +171,7 @@ git commit -m "feat(storefront): match landing hero and opening sections"
 
 Set the anchor to `capabilities` and update header/footer links. Replace the current sticky stack with the reference rhythm:
 
-- Storefront: copy left, real BookingStudio media right.
+- Storefront: copy left, real StudioHub media right.
 - Scheduling: media treatment left, copy right.
 - Partners: wide media-first row.
 - Finance: copy left, ledger-oriented visual treatment right.
@@ -182,7 +182,7 @@ Use white panels on `#F4F5F7`, 20px radii, `#E4E6EA` borders, real project image
 
 Keep the workflow's three translated stages, but use the reference's simple horizontal progression with sparse dividers and amber sequence markers. Collapse to one column below 768px.
 
-Render BookingStudio and BookingStad as the reference's two large side-by-side demo cards. Use the existing image URLs and keep alt text from translations. Preserve each demo's real destination URL behavior already encoded in the component.
+Render StudioHub and BookingStad as the reference's two large side-by-side demo cards. Use the existing image URLs and keep alt text from translations. Preserve each demo's real destination URL behavior already encoded in the component.
 
 - [ ] **Step 3: Match pricing and trust treatments**
 

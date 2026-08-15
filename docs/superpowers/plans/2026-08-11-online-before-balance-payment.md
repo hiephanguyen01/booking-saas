@@ -37,7 +37,7 @@ gains a *balance* branch beside its existing *deposit* branch; the `payment.succ
 
 Measured consequence (`2026-08-11-money-flow-results.md`): a `balance_due = online_before` booking and
 an `on_arrival` one produce **identical** money to the đồng, because both end with the partner
-collecting cash. **80 of BookingStudio's 120 listings are configured `online_before`.**
+collecting cash. **80 of StudioHub's 120 listings are configured `online_before`.**
 
 ## Decisions locked before implementation
 
@@ -223,7 +223,7 @@ then:
 
 ```bash
 curl -s -b "$CUSTOMER_JAR" -X POST "http://localhost:3000/public/bookings/$BID/checkout" \
-  -H 'Host: bookingstudio.localhost' -H 'Content-Type: application/json' \
+  -H 'Host: studiohub.localhost' -H 'Content-Type: application/json' \
   -H "x-booking-code: $CODE" -d '{"paymentMethod":"bank_transfer"}'
 ```
 
@@ -616,7 +616,7 @@ pnpm dev
 ```
 
 Book a `studio-a-han-quoc` slot, pay the 140,000 deposit, then open
-`http://bookingstudio.localhost:5173/vi/account/bookings/<CODE>`.
+`http://studiohub.localhost:5173/vi/account/bookings/<CODE>`.
 
 Expected: **"Còn lại phải thanh toán 140.000 ₫"** now sits above a **"Thanh toán số dư"** button.
 Click it, settle the resulting payment with a signed mock webhook, reload: the balance row is replaced

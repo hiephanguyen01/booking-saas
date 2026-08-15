@@ -663,7 +663,7 @@ git commit -m "fix(tenancy): scope every primary-domain read to its surface kind
 - Modify: `apps/api/src/modules/tenancy/application/use-cases/create-tenant.use-case.ts`
 - Modify: `apps/api/src/modules/tenancy/application/tenancy.mapper.ts:144-166`
 - Modify: `apps/api/src/modules/tenancy/infrastructure/http/dto/tenancy.dto.ts`
-- Modify: `apps/api/prisma/seed/tenants/booking-studio.ts:104-113`, `apps/api/prisma/seed/tenants/booking-stad.ts` (same block)
+- Modify: `apps/api/prisma/seed/tenants/studiohub.ts:104-113`, `apps/api/prisma/seed/tenants/booking-stad.ts` (same block)
 
 **Interfaces:**
 - Consumes: `TenantHostKind`, `DomainRecord.kind`, `listByTenantAndKind` (Task 2).
@@ -893,17 +893,17 @@ export interface TenancyConfig {
 
 - [ ] **Step 9: Seed an admin host for both demo tenants**
 
-In `apps/api/prisma/seed/tenants/booking-studio.ts`, replace the domain loop:
+In `apps/api/prisma/seed/tenants/studiohub.ts`, replace the domain loop:
 
 ```ts
   // Staging host is primary; the `.localhost` host rides along so ONE seed serves
   // both environments without an env switch. Bare `localhost`/`127.0.0.1` are
   // deliberately NOT mapped — the storefront serves the platform landing there.
   for (const [hostname, isPrimary, kind] of [
-    ['bookingstudio.stg.bookingos.vn', true, 'storefront'],
-    ['bookingstudio.localhost', false, 'storefront'],
-    ['admin.bookingstudio.stg.bookingos.vn', true, 'dashboard'],
-    ['admin.bookingstudio.localhost', false, 'dashboard'],
+    ['studiohub.stg.bookingos.vn', true, 'storefront'],
+    ['studiohub.localhost', false, 'storefront'],
+    ['admin.studiohub.stg.bookingos.vn', true, 'dashboard'],
+    ['admin.studiohub.localhost', false, 'dashboard'],
   ] as const) {
     await prisma.tenantDomain.upsert({
       where: { hostname },
@@ -913,7 +913,7 @@ In `apps/api/prisma/seed/tenants/booking-studio.ts`, replace the domain loop:
   }
 ```
 
-Apply the identical change in `apps/api/prisma/seed/tenants/booking-stad.ts`, substituting `bookingstad` for `bookingstudio`.
+Apply the identical change in `apps/api/prisma/seed/tenants/booking-stad.ts`, substituting `bookingstad` for `studiohub`.
 
 - [ ] **Step 10: Re-seed and verify**
 
@@ -1182,9 +1182,9 @@ Check line `:114` in the same file — if it re-derives the primary rather than 
 pnpm dev
 ```
 
-Sign in at `localhost:5174` as `owner@bookingstudio.vn` / `demo-password`, open tenant settings, and confirm: two domain cards; the dashboard card lists `admin.bookingstudio.*`; adding `quanly.example.vn` under the dashboard card is refused with the Vietnamese prefix message; adding `admin.example.vn` under the storefront card is refused too.
+Sign in at `localhost:5174` as `owner@studiohub.vn` / `demo-password`, open tenant settings, and confirm: two domain cards; the dashboard card lists `admin.studiohub.*`; adding `quanly.example.vn` under the dashboard card is refused with the Vietnamese prefix message; adding `admin.example.vn` under the storefront card is refused too.
 
-Then the regression this task also closes: the **"Mở storefront"** button must open `bookingstudio.stg.bookingos.vn`, not `admin.bookingstudio.stg.bookingos.vn`, and the "Tên miền chính" value on the overview card must show the storefront host. Check both before and after your Step 5 change if you want to see the bug — it reproduces deterministically.
+Then the regression this task also closes: the **"Mở storefront"** button must open `studiohub.stg.bookingos.vn`, not `admin.studiohub.stg.bookingos.vn`, and the "Tên miền chính" value on the overview card must show the storefront host. Check both before and after your Step 5 change if you want to see the bug — it reproduces deterministically.
 
 - [ ] **Step 7: Verify and commit**
 
@@ -1753,14 +1753,14 @@ pnpm dev
 ```
 
 Confirm each of these:
-- Signing in as `owner@bookingstudio.vn` on the **platform** host (`localhost:5174`) lands on `/workspaces`, **not** a 500. That path is broken on this branch until Step 6 lands — check it before and after.
-- `admin.bookingstudio.localhost:5174` shows the BookingStudio brand on the **login** screen.
-- After signing in as `owner@bookingstudio.vn`, the sidebar shows only Tenant (and Partner if applicable) — no Platform Admin group.
-- `admin.bookingstudio.localhost:5174/admin` returns 404.
+- Signing in as `owner@studiohub.vn` on the **platform** host (`localhost:5174`) lands on `/workspaces`, **not** a 500. That path is broken on this branch until Step 6 lands — check it before and after.
+- `admin.studiohub.localhost:5174` shows the StudioHub brand on the **login** screen.
+- After signing in as `owner@studiohub.vn`, the sidebar shows only Tenant (and Partner if applicable) — no Platform Admin group.
+- `admin.studiohub.localhost:5174/admin` returns 404.
 - `localhost:5174/tenant` redirects to `/workspaces` when signed in, and 404s when signed out.
 - `localhost:5174` signed in as `admin@bookingos.local` lands on `/admin`.
 - `admin.nosuchtenant.localhost:5174` returns the 404 unknown-host page.
-- **Sessions are per host, as designed.** Signed in at `admin.bookingstudio.localhost:5174`, open
+- **Sessions are per host, as designed.** Signed in at `admin.studiohub.localhost:5174`, open
   `admin.bookingstad.localhost:5174` and confirm it asks for a login rather than carrying the session
   across. The `__dashboard_session` cookie sets no `domain`, so this needs no code — but it is the
   behaviour the design chose deliberately, and a regression here would be silent.
@@ -1901,7 +1901,7 @@ The five CTA builders — `booking-notification-data.ts`, `dispatch-listing-even
 
 - [ ] **Step 7: Verify in the running app**
 
-With `pnpm dev` up, trigger a partner-facing notification (approve a pending listing in the BookingStudio tenant console) and open Mailpit at `localhost:8025`. The CTA must point at `admin.bookingstudio.stg.bookingos.vn` — the seeded **primary** dashboard host. That mirrors the existing `storefrontUrl()` behaviour, where the primary is also the staging host; it is a pre-existing quirk of the seed, not a regression, and it is why the `.localhost` branch exists for deployments whose primary is a local host.
+With `pnpm dev` up, trigger a partner-facing notification (approve a pending listing in the StudioHub tenant console) and open Mailpit at `localhost:8025`. The CTA must point at `admin.studiohub.stg.bookingos.vn` — the seeded **primary** dashboard host. That mirrors the existing `storefrontUrl()` behaviour, where the primary is also the staging host; it is a pre-existing quirk of the seed, not a regression, and it is why the `.localhost` branch exists for deployments whose primary is a local host.
 
 - [ ] **Step 8: Verify and commit**
 
@@ -1965,7 +1965,7 @@ a dashboard host — the two halves of the routing contract would disagree on th
 after `caddy validate`:
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' -H 'Host: ADMIN.bookingstudio.stg.bookingos.vn' https://<ingress>/
+curl -sS -o /dev/null -w '%{http_code}\n' -H 'Host: ADMIN.studiohub.stg.bookingos.vn' https://<ingress>/
 ```
 
 Expected: the console's response, identical to the all-lowercase spelling — not the storefront's.
@@ -2037,7 +2037,7 @@ Expected: every gate passes.
 
 - [ ] **Step 10: End-to-end walk-through**
 
-With `docker compose up -d` and `pnpm dev`, confirm the full list from the spec's Verification section: branded login at `admin.bookingstudio.localhost:5174`; `/admin` 404 there and `/tenant` 404 on `localhost:5174`; the 403 for a user with no role in the host's tenant (sign in as `owner@bookingstad.vn` at `admin.bookingstudio.localhost:5174`); a non-`admin.` dashboard domain refused in tenant settings; a partner email CTA in Mailpit pointing at the tenant console; and an affiliate referral link in `/affiliate/links` still pointing at the storefront host.
+With `docker compose up -d` and `pnpm dev`, confirm the full list from the spec's Verification section: branded login at `admin.studiohub.localhost:5174`; `/admin` 404 there and `/tenant` 404 on `localhost:5174`; the 403 for a user with no role in the host's tenant (sign in as `owner@bookingstad.vn` at `admin.studiohub.localhost:5174`); a non-`admin.` dashboard domain refused in tenant settings; a partner email CTA in Mailpit pointing at the tenant console; and an affiliate referral link in `/affiliate/links` still pointing at the storefront host.
 
 - [ ] **Step 11: Commit**
 

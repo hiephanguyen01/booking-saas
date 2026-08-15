@@ -25,9 +25,9 @@ import { createHmac } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 
 const BASE = argValue('--base') ?? 'http://localhost:3999';
-const TENANT_HOST = argValue('--host') ?? 'bookingstudio.localhost';
-const CUSTOMER = { email: 'customer@bookingstudio.vn', password: 'demo-password' };
-const TENANT_OWNER = { email: 'owner@bookingstudio.vn', password: 'demo-password' };
+const TENANT_HOST = argValue('--host') ?? 'studiohub.localhost';
+const CUSTOMER = { email: 'customer@studiohub.vn', password: 'demo-password' };
+const TENANT_OWNER = { email: 'owner@studiohub.vn', password: 'demo-password' };
 const PARTNER_PASSWORD = argValue('--partner-password') ?? 'demo-password';
 /** Only a household/individual seller is withheld from (NĐ 117). */
 const WITHHELD_TAX_STATUS = 'household_declaring';

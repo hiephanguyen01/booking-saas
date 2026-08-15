@@ -28,11 +28,11 @@ storefront home carousel after a normal `seed` + `storage:init` setup. The custo
 ## Carousel assets
 
 - Add the four supplied JPEGs as optimized repository assets under the existing
-  `booking-studio` defaults. Preserve their order (`img1` through `img4`) and downsize/compress them
+  `studiohub` defaults. Preserve their order (`img1` through `img4`) and downsize/compress them
   for web delivery without changing their visible composition; the existing carousel's
   `object-cover` remains responsible for responsive cropping.
 - Extend `storage:init` to upload them idempotently to
-  `defaults/booking-studio/carousel/01.jpg` through `04.jpg` with `image/jpeg` and the existing
+  `defaults/studiohub/carousel/01.jpg` through `04.jpg` with `image/jpeg` and the existing
   public-cache policy.
 - Set StudioHub's `themeConfig.carousel` to the four corresponding `S3_PUBLIC_URL` URLs. Do not use
   local Downloads paths or hard-code `localhost`; other tenants and listing photos are unchanged.

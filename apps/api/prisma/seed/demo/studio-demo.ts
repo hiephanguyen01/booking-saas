@@ -5,10 +5,10 @@ import { bookingHistory, ensure, ensureRoleAssignment, seedBooking } from '../sh
 import { seedDemoCatalog } from '../catalog/studio-catalog';
 import { percentOfBps } from '../../../src/shared/money/money';
 import { addMinutes, wallClockInZone, zonedTimeToUtc } from '../../../src/shared/time/time';
-import type { TenantSetup } from '../tenants/booking-studio';
+import type { TenantSetup } from '../tenants/studiohub';
 
 /**
- * BookingStudio DEMO data — partners, 121 listings, promotions, the platform-health
+ * StudioHub DEMO data — partners, 121 listings, promotions, the platform-health
  * fixtures and the affiliate. Never runs when SEED_SCOPE=tenants.
  */
 export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
@@ -47,10 +47,10 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
     },
   });
   const customer = await prisma.user.upsert({
-    where: { email: 'customer@bookingstudio.vn' },
+    where: { email: 'customer@studiohub.vn' },
     update: {},
     create: {
-      email: 'customer@bookingstudio.vn',
+      email: 'customer@studiohub.vn',
       passwordHash: password,
       fullName: 'Nguyen Van Khach',
     },
@@ -123,7 +123,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   const partnerTermsVersionId = setup.legalVersions?.partner_terms;
   if (!partnerTermsVersionId) {
     throw new Error(
-      'Studio demo seed requires partner_terms to already be published — seedBookingStudio must run with scope "full" before seedStudioDemo',
+      'Studio demo seed requires partner_terms to already be published — seedStudioHub must run with scope "full" before seedStudioDemo',
     );
   }
   for (const agreementType of ['partner_terms', 'commission_schedule'] as const) {
@@ -238,12 +238,12 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
     });
   }
   const housePartner = await prisma.partner.upsert({
-    where: { tenantId_slug: { tenantId: tenant.id, slug: 'bookingstudio-house' } },
+    where: { tenantId_slug: { tenantId: tenant.id, slug: 'studiohub-house' } },
     update: { taxStatus: 'company_vat' },
     create: {
       tenantId: tenant.id,
-      name: 'BookingStudio House',
-      slug: 'bookingstudio-house',
+      name: 'StudioHub House',
+      slug: 'studiohub-house',
       partnerType: 'company',
       isHouse: true,
       status: 'approved',
@@ -617,10 +617,10 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   // An approved affiliate + a referral link so both dashboards render non-empty.
   // Commissions populate through the real booking flow (?ref=R-DEMO01 at checkout).
   const affiliateUser = await prisma.user.upsert({
-    where: { email: 'affiliate@bookingstudio.vn' },
+    where: { email: 'affiliate@studiohub.vn' },
     update: {},
     create: {
-      email: 'affiliate@bookingstudio.vn',
+      email: 'affiliate@studiohub.vn',
       passwordHash: password,
       fullName: 'Le Thi Cong Tac Vien',
     },

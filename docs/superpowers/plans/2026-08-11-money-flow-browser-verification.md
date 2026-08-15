@@ -39,7 +39,7 @@ Established by reading the code on 2026-08-11 — these facts shape every task:
 | Seeded hourly listings | `giang-studio` — 70 listings, **all 50 % deposit**, `online_before`. `hoang-gia-sport` (BookingStad) — 40 listings, **30 % deposit**. |
 | No seeded listing has `balance_due = on_arrival` | The on-site-collection branch needs a listing flipped first (Task 6). |
 | `trang-makeup` (the only VAT-exempt partner) has **0 published listings** | The 0 %-VAT branch is not reachable from the storefront without publishing one (Task 7). |
-| `bookingstudio-house` is a house partner with 40 published listings | The no-partner-leg branch is reachable, but its listings are equipment/costume (inventory mode, security deposit). |
+| `studiohub-house` is a house partner with 40 published listings | The no-partner-leg branch is reachable, but its listings are equipment/costume (inventory mode, security deposit). |
 | Promotions seeded | `WELCOME10` (`funded_by = tenant`, 10 %), `PARTNER15` (`funded_by = partner`, 15 %). |
 
 ## The invariant every scenario checks
@@ -132,20 +132,20 @@ Step 2 — running against a shifted port is how the last run went wrong.
 **Files:** none — tenant configuration through the UI.
 
 **Interfaces:**
-- Produces: BookingStudio payout policy with `holdingDays = 0`, so a completed booking releases within
+- Produces: StudioHub payout policy with `holdingDays = 0`, so a completed booking releases within
   ~30 s instead of 3 days.
 
 - [ ] **Step 1: Set the holding period to 0**
 
 Log in at `http://localhost:5174` as `admin@bookingos.local` / `admin-dev-password`, switch to the
-BookingStudio tenant workspace, open the tenant finance area and set the payout **holding period to 0
+StudioHub tenant workspace, open the tenant finance area and set the payout **holding period to 0
 days** (`PUT /tenant/finance/payout-policy`). Record the previous value — Task 12 restores it.
 
 - [ ] **Step 2: Confirm it stored**
 
 ```bash
 docker compose exec -T postgres psql -U postgres -d booking -c \
-  "SELECT slug, settings->'payout' FROM tenants WHERE slug='bookingstudio';"
+  "SELECT slug, settings->'payout' FROM tenants WHERE slug='studiohub';"
 ```
 
 Expected: `holdingDays` is `0`.
@@ -166,7 +166,7 @@ rather than editing the jsonb directly, so the value goes through the same valid
 - [ ] **Step 1: Book `studio-a-han-quoc` for 1 hour**
 
 Navigate to
-`http://bookingstudio.localhost:5173/vi/checkout?listing=studio-a-han-quoc&mode=hourly&start=<UTC>&end=<UTC+1h>`
+`http://studiohub.localhost:5173/vi/checkout?listing=studio-a-han-quoc&mode=hourly&start=<UTC>&end=<UTC+1h>`
 choosing a slot at least 3 days out so the free-cancellation tier is active. Fill the phone field
 (`0900000123`), submit. Record the booking code.
 
@@ -303,7 +303,7 @@ Invariant: `204,944 + 4,407 + 28,649 == 238,000`.
 - [ ] **Step 1: Book with the seeded referral code**
 
 Repeat the recipe, entering the storefront through `?ref=R-DEMO01` (affiliate
-`affiliate@bookingstudio.vn`) so attribution attaches, then check out normally.
+`affiliate@studiohub.vn`) so attribution attaches, then check out normally.
 
 - [ ] **Step 2: Check S4**
 
@@ -314,7 +314,7 @@ of the partner's (unchanged at 241,111). Invariant: the four legs sum to 280,000
 
 - [ ] **Step 3: Book a house-partner listing**
 
-Pick a published `bookingstudio-house` listing. These are inventory-mode equipment/costume items, so the
+Pick a published `studiohub-house` listing. These are inventory-mode equipment/costume items, so the
 booking also carries a **security deposit** — record it separately; it is refundable and must never appear
 as revenue or attract commission.
 
@@ -336,7 +336,7 @@ platform fee is still computed on the VAT-net base.
 - Consumes: the Task 3 recipe.
 - Produces: the two payment shapes Task 3 does not reach — 100 % upfront, and `on_arrival`.
 
-Every seeded hourly listing on BookingStudio is fixed at **50 % deposit, `online_before`**, so Task 3 can
+Every seeded hourly listing on StudioHub is fixed at **50 % deposit, `online_before`**, so Task 3 can
 only ever exercise the partial-deposit-then-online-balance shape. The other two shapes need the listing
 reconfigured, which is a legitimate tenant setting change, not a data hack.
 
@@ -458,12 +458,12 @@ Before changing anything, note the settlement figures of the S1 booking from Tas
 
 - [ ] **Step 2: Raise the platform fee from 2 % to 5 %**
 
-Admin area → `/admin/tenants/<BookingStudio id>` → **Phí nền tảng** → 5 → Lưu.
+Admin area → `/admin/tenants/<StudioHub id>` → **Phí nền tảng** → 5 → Lưu.
 
 ```bash
 docker compose exec -T postgres psql -U postgres -d booking -c \
   "SELECT applies_to, tenant_rate, platform_rate, affiliate_rate FROM commission_rules
-     WHERE tenant_id=(SELECT id FROM tenants WHERE slug='bookingstudio');"
+     WHERE tenant_id=(SELECT id FROM tenants WHERE slug='studiohub');"
 ```
 
 Expected: every rule shows `platform_rate = 5`.
@@ -507,7 +507,7 @@ Platform fee back to **2** via the admin card, tenant commission back to **15 %*
 ```bash
 docker compose exec -T postgres psql -U postgres -d booking -c \
   "SELECT applies_to, tenant_rate, platform_rate FROM commission_rules
-     WHERE tenant_id=(SELECT id FROM tenants WHERE slug='bookingstudio');"
+     WHERE tenant_id=(SELECT id FROM tenants WHERE slug='studiohub');"
 ```
 
 Expected: `tenant_default | 15 | 2`.
@@ -624,16 +624,16 @@ findings; fixes get their own plan.
 
 - [ ] **Step 1: Restore the payout holding period**
 
-Set BookingStudio's `holdingDays` back to the value recorded in Task 2 Step 1 (3 unless it differed).
+Set StudioHub's `holdingDays` back to the value recorded in Task 2 Step 1 (3 unless it differed).
 
 - [ ] **Step 2: Confirm nothing was left changed**
 
 ```bash
 docker compose exec -T postgres psql -U postgres -d booking -c \
   "SELECT applies_to, tenant_rate, platform_rate FROM commission_rules
-     WHERE tenant_id=(SELECT id FROM tenants WHERE slug='bookingstudio');
+     WHERE tenant_id=(SELECT id FROM tenants WHERE slug='studiohub');
    SELECT slug, deposit_percent, balance_due FROM listings WHERE slug='studio-a-han-quoc';
-   SELECT settings->'payout' FROM tenants WHERE slug='bookingstudio';
+   SELECT settings->'payout' FROM tenants WHERE slug='studiohub';
    SELECT p.slug, count(l.id) FROM partners p LEFT JOIN listings l ON l.partner_id=p.id AND l.status='published'
      WHERE p.slug='trang-makeup' GROUP BY 1;"
 ```

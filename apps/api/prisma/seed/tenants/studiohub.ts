@@ -24,14 +24,14 @@ export type TenantSetup = {
 };
 
 /**
- * BookingStudio — the studio-vertical tenant, SETTINGS ONLY.
+ * StudioHub — the studio-vertical tenant, SETTINGS ONLY.
  *
  * Everything here exists on production too: the tenant row, its domains, theme,
  * subscription, owner account, cancellation policy, commission rules and the
  * listing-type catalogue. Partners, listings and bookings live in
  * `seed/demo/studio-demo.ts` and are skipped when `SEED_SCOPE=tenants`.
  */
-export async function seedBookingStudio(input: {
+export async function seedStudioHub(input: {
   planId: string;
   scope: SeedScope;
   createdAt: Date;
@@ -40,46 +40,46 @@ export async function seedBookingStudio(input: {
   const carouselUrls = Array.from(
     { length: 4 },
     (_, index) =>
-      `${publicUrl}/defaults/booking-studio/carousel/${String(index + 1).padStart(2, '0')}.jpg`,
+      `${publicUrl}/defaults/studiohub/carousel/${String(index + 1).padStart(2, '0')}.jpg`,
   );
   const theme = {
     colors: { primary: '#E21114', accent: '#F97316', background: '#FFFFFF' },
-    logoUrl: `${publicUrl}/defaults/booking-studio/logo.png`,
-    faviconUrl: `${publicUrl}/defaults/booking-studio/app-icon.png`,
+    logoUrl: `${publicUrl}/defaults/studiohub/logo.png`,
+    faviconUrl: `${publicUrl}/defaults/studiohub/app-icon.png`,
     pwaIcons: {
-      icon180Url: `${publicUrl}/defaults/booking-studio/app-icon-180.png`,
-      icon192Url: `${publicUrl}/defaults/booking-studio/app-icon-192.png`,
-      icon512Url: `${publicUrl}/defaults/booking-studio/app-icon.png`,
+      icon180Url: `${publicUrl}/defaults/studiohub/app-icon-180.png`,
+      icon192Url: `${publicUrl}/defaults/studiohub/app-icon-192.png`,
+      icon512Url: `${publicUrl}/defaults/studiohub/app-icon.png`,
     },
     font: 'Montserrat',
     hero: {
       title: 'Đặt studio trong 30 giây',
       subtitle: 'Không gian chuyên nghiệp cho mọi ý tưởng hình ảnh của bạn.',
-      imageUrl: `${publicUrl}/defaults/booking-studio/background.png`,
+      imageUrl: `${publicUrl}/defaults/studiohub/background.png`,
     },
     carousel: carouselUrls,
     contact: {
-      email: 'hello@bookingstudio.vn',
+      email: 'hello@studiohub.vn',
       phone: '0900 000 001',
       address: '12 Nguyễn Huệ, Phường Sài Gòn, Thành phố Hồ Chí Minh',
     },
     seo: {
-      title: 'BookingStudio — Đặt studio chuyên nghiệp tại TP.HCM',
+      title: 'StudioHub — Đặt studio chuyên nghiệp tại TP.HCM',
       description:
         'Khám phá và đặt studio chụp ảnh, thiết bị cùng dịch vụ sáng tạo chuyên nghiệp tại TP.HCM.',
     },
     socialLinks: {
-      facebook: 'https://facebook.com/bookingstudio.vn',
-      instagram: 'https://instagram.com/bookingstudio.vn',
-      tiktok: 'https://tiktok.com/@bookingstudio.vn',
-      youtube: 'https://youtube.com/@bookingstudio.vn',
+      facebook: 'https://facebook.com/studiohub.vn',
+      instagram: 'https://instagram.com/studiohub.vn',
+      tiktok: 'https://tiktok.com/@studiohub.vn',
+      youtube: 'https://youtube.com/@studiohub.vn',
     },
   } satisfies ThemeConfigInput;
 
   const tenant = await prisma.tenant.upsert({
-    where: { slug: 'bookingstudio' },
+    where: { slug: 'studiohub' },
     update: {
-      name: 'BookingStudio',
+      name: 'StudioHub',
       status: 'active',
       vertical: 'studio',
       defaultTimezone: 'Asia/Ho_Chi_Minh',
@@ -87,8 +87,8 @@ export async function seedBookingStudio(input: {
       themeConfig: theme,
     },
     create: {
-      name: 'BookingStudio',
-      slug: 'bookingstudio',
+      name: 'StudioHub',
+      slug: 'studiohub',
       status: 'active',
       vertical: 'studio',
       defaultTimezone: 'Asia/Ho_Chi_Minh',
@@ -102,10 +102,10 @@ export async function seedBookingStudio(input: {
   // both environments without an env switch. Bare `localhost`/`127.0.0.1` are
   // deliberately NOT mapped — the storefront serves the platform landing there.
   for (const [hostname, isPrimary, kind] of [
-    ['bookingstudio.stg.bookingos.vn', true, 'storefront'],
-    ['bookingstudio.localhost', false, 'storefront'],
-    ['admin.bookingstudio.stg.bookingos.vn', true, 'dashboard'],
-    ['admin.bookingstudio.localhost', false, 'dashboard'],
+    ['studiohub.stg.bookingos.vn', true, 'storefront'],
+    ['studiohub.localhost', false, 'storefront'],
+    ['admin.studiohub.stg.bookingos.vn', true, 'dashboard'],
+    ['admin.studiohub.localhost', false, 'dashboard'],
   ] as const) {
     await prisma.tenantDomain.upsert({
       where: { hostname },
@@ -129,12 +129,12 @@ export async function seedBookingStudio(input: {
   }
 
   const owner = await prisma.user.upsert({
-    where: { email: 'owner@bookingstudio.vn' },
+    where: { email: 'owner@studiohub.vn' },
     update: {},
     create: {
-      email: 'owner@bookingstudio.vn',
+      email: 'owner@studiohub.vn',
       passwordHash: await argon2.hash(await ownerPassword(input.scope), { type: argon2.argon2id }),
-      fullName: 'BookingStudio Owner',
+      fullName: 'StudioHub Owner',
       phone: '0900000001',
       emailVerifiedAt: new Date(),
     },

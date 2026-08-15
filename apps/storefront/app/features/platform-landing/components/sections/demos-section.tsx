@@ -16,7 +16,7 @@ export function DemosSection() {
         </div>
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           <DemoFigure
-            image="/booking-studio/carousel/01.jpg"
+            image="/studiohub/carousel/01.jpg"
             width="1200"
             height="1800"
             title={t('demos.studio.title')}

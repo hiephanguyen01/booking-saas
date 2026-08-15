@@ -210,7 +210,7 @@ pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure
   && pnpm --filter=@booking/api check:rls
 ```
 
-Manual run on `bookingstudio.localhost:5173`, signed in as `customer@bookingstudio.vn`:
+Manual run on `studiohub.localhost:5173`, signed in as `customer@studiohub.vn`:
 
 1. Open three listing pages and one studio page.
 2. `/vi/account/recent` shows all four, most recent first, each with a price.

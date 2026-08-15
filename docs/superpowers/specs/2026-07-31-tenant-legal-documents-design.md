@@ -254,9 +254,9 @@ Seeding follows the existing scope split (`AGENTS.md` → Seed scopes):
 | Scope | Behaviour |
 | --- | --- |
 | `SEED_SCOPE=tenants` (production) | Creates the four documents as **drafts**. The real tenant owner must read and publish. The gate has teeth. |
-| dev / staging (default) | Creates them **published**, so `bookingstudio.localhost` and `bookingstad.localhost` are live after `pnpm dev`. |
+| dev / staging (default) | Creates them **published**, so `studiohub.localhost` and `bookingstad.localhost` are live after `pnpm dev`. |
 
-Document seeding belongs in `apps/api/prisma/seed/tenants/booking-studio.ts` and `booking-stad.ts`,
+Document seeding belongs in `apps/api/prisma/seed/tenants/studiohub.ts` and `booking-stad.ts`,
 alongside the other tenant settings, not in `demo/`.
 
 `CreateTenantUseCase` seeds the four drafts for every new tenant in its existing transaction. A new
@@ -417,7 +417,7 @@ pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure
 
 Then, against a reset database:
 
-1. `prisma migrate reset` + dev seed → `bookingstudio.localhost:5173` is live, all four documents
+1. `prisma migrate reset` + dev seed → `studiohub.localhost:5173` is live, all four documents
    published, footer links render.
 2. Withdraw one document in the dashboard → the storefront returns 423, the dashboard stays usable
    and shows the readiness card, `/legal/dieu-khoan-su-dung` still renders.

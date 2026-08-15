@@ -109,9 +109,9 @@ export const viCommon = {
     bank: 'Ngân hàng',
     bankAccountNumber: 'Số tài khoản',
     bankAccountHolder: 'Tên người thụ hưởng',
-    acceptedTerms: 'Tôi đồng ý với Hợp đồng đối tác của Booking Studio',
+    acceptedTerms: 'Tôi đồng ý với Hợp đồng đối tác của StudioHub',
     privacyNotice:
-      'Bằng việc nhấn vào nút đăng ký, anh/chị đồng ý rằng Booking Studio có thể thu thập, sử dụng và tiết lộ thông tin do anh/chị cung cấp, thay mặt cho công ty đăng ký. Theo Phụ lục 1: NGUYÊN TẮC QUYỀN RIÊNG TƯ DỮ LIỆU VÀ NHẮN TIN trong Hợp đồng đối tác.',
+      'Bằng việc nhấn vào nút đăng ký, anh/chị đồng ý rằng StudioHub có thể thu thập, sử dụng và tiết lộ thông tin do anh/chị cung cấp, thay mặt cho công ty đăng ký. Theo Phụ lục 1: NGUYÊN TẮC QUYỀN RIÊNG TƯ DỮ LIỆU VÀ NHẮN TIN trong Hợp đồng đối tác.',
     identityCardFront: 'CCCD mặt trước',
     identityCardBack: 'CCCD mặt sau',
     submit: 'Đăng ký đối tác',

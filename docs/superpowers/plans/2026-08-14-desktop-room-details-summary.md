@@ -30,7 +30,7 @@
 
 - [x] **Step 1: Capture the failing desktop behavior in the running storefront**
 
-At `http://bookingstudio.localhost:5173/vi/g/seed-studio-group-03` with a 1280×900 viewport, inspect the first room row before changing code.
+At `http://studiohub.localhost:5173/vi/g/seed-studio-group-03` with a 1280×900 viewport, inspect the first room row before changing code.
 
 Expected current failure:
 

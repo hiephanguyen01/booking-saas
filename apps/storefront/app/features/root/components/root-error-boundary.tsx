@@ -135,7 +135,7 @@ function RootErrorNotice({
 function NotFoundIllustration() {
   return (
     <Image
-      src="/booking-studio/404-illustration.png"
+      src="/studiohub/404-illustration.png"
       alt=""
       width={500}
       height={500}

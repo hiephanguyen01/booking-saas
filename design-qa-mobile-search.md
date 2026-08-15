@@ -1,23 +1,23 @@
-# BookingStudio Mobile Search and Home Header — Design QA
+# StudioHub Mobile Search and Home Header — Design QA
 
 ## Evidence
 
 - Source visual truth:
   `/Users/hiephanguyen01/Library/Application Support/CleanShot/media/media_IduLBkYCbF/CleanShot 2026-08-09 at 01.07.12@2x.png`
 - Browser-rendered implementation:
-  `/private/tmp/bookingstudio-mobile-search-767.png`
+  `/private/tmp/studiohub-mobile-search-767.png`
 - Focused comparison:
-  `/private/tmp/bookingstudio-mobile-search-comparison.png`
+  `/private/tmp/studiohub-mobile-search-comparison.png`
 - Follow-up source visuals:
   `/Users/hiephanguyen01/Library/Application Support/CleanShot/media/media_m0MBP9JMQk/CleanShot 2026-08-09 at 01.26.45.png`
   and
   `/Users/hiephanguyen01/Library/Application Support/CleanShot/media/media_Kccy68dNbJ/CleanShot 2026-08-09 at 01.26.35.png`
 - Follow-up browser captures:
-  `/private/tmp/bookingstudio-search-back-fixed-390.png` and
-  `/private/tmp/bookingstudio-home-menu-hidden-390.png`
+  `/private/tmp/studiohub-search-back-fixed-390.png` and
+  `/private/tmp/studiohub-home-menu-hidden-390.png`
 - Follow-up focused comparison:
-  `/private/tmp/bookingstudio-mobile-header-followup-comparison.png`
-- Implementation route: `http://bookingstudio.localhost:5175/vi/t/studio`
+  `/private/tmp/studiohub-mobile-header-followup-comparison.png`
+- Implementation route: `http://studiohub.localhost:5175/vi/t/studio`
 
 ## Capture normalization
 
@@ -46,7 +46,7 @@ On Search, the Back control sits outside the horizontally scrolling category rai
 - **Spacing and layout rhythm:** Search and filter controls align on one row with consistent 12 px
   outer spacing, a compact gap, matching rounded corners, and equal vertical centering.
 - **Colors and visual tokens:** The header, foreground, muted text, borders, primary badge, radius, and
-  hover states use tenant semantic tokens rather than BookingStudio literals.
+  hover states use tenant semantic tokens rather than StudioHub literals.
 - **Image quality and assets:** No raster assets are required. Search and three-line filter symbols use
   the existing Lucide icon package; the supplied Back and Menu crops are treated as control-state
   references rather than image assets.

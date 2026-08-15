@@ -112,9 +112,9 @@ export const enCommon = {
     bank: 'Bank',
     bankAccountNumber: 'Account number',
     bankAccountHolder: 'Beneficiary name',
-    acceptedTerms: 'I agree to the Booking Studio Partner Agreement',
+    acceptedTerms: 'I agree to the StudioHub Partner Agreement',
     privacyNotice:
-      'By selecting register, you agree that Booking Studio may collect, use, and disclose the information you provide on behalf of the registering company under the Partner Agreement privacy and messaging terms.',
+      'By selecting register, you agree that StudioHub may collect, use, and disclose the information you provide on behalf of the registering company under the Partner Agreement privacy and messaging terms.',
     identityCardFront: 'Citizen ID — front',
     identityCardBack: 'Citizen ID — back',
     submit: 'Register as partner',

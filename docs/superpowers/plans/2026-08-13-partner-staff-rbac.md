@@ -790,7 +790,7 @@ pnpm --filter=@booking/dashboard typecheck && pnpm --filter=@booking/dashboard l
 pnpm check:frontend-structure && pnpm check:theme-tokens
 ```
 
-Then run the app and look at it: sign in at `admin.bookingstudio.localhost:5174` as `giang@giangstudio.vn` / `demo-password`, confirm "Nhân sự" appears, both tabs render, and the owner's own row does **not** offer actions that would be refused.
+Then run the app and look at it: sign in at `admin.studiohub.localhost:5174` as `giang@giangstudio.vn` / `demo-password`, confirm "Nhân sự" appears, both tabs render, and the owner's own row does **not** offer actions that would be refused.
 
 - [ ] **Step 6: Commit**
 
@@ -818,10 +818,10 @@ Run the whole line, not a subset. Paste the real output.
 
 - [ ] **Step 2: Walk the scenario**
 
-Sign in at `admin.bookingstudio.localhost:5174` as `giang@giangstudio.vn` / `demo-password`.
+Sign in at `admin.studiohub.localhost:5174` as `giang@giangstudio.vn` / `demo-password`.
 
 1. Invite an address with no account to that partner with the `Staff` role.
-2. Register through the OTP flow (Mailpit at `localhost:8025`; copy the token and open `http://admin.bookingstudio.localhost:5174/invitations/<token>` directly, since the CTA points at the staging primary host which does not resolve locally).
+2. Register through the OTP flow (Mailpit at `localhost:8025`; copy the token and open `http://admin.studiohub.localhost:5174/invitations/<token>` directly, since the CTA points at the staging primary host which does not resolve locally).
 3. Accept, and confirm the member appears in `/partner/members` with the screens `Staff` permits and no more.
 4. **Check the lockstep rule directly in the database** — the point of this feature's riskiest invariant:
 

@@ -183,8 +183,8 @@ they are joining.
 
 No tests (hard rule 1, ADR 0005). The full static check from `AGENTS.md`, then the app:
 
-1. Sign in at `admin.bookingstudio.localhost:5174` as `giang@giangstudio.vn` / `demo-password`
-   (the seeded BookingStudio partner).
+1. Sign in at `admin.studiohub.localhost:5174` as `giang@giangstudio.vn` / `demo-password`
+   (the seeded StudioHub partner).
 2. Invite an address with no account to that partner with the `Staff` role.
 3. Register through the OTP flow, accept the invitation.
 4. Confirm the new member appears in `/partner/members` and that their sidebar shows only the

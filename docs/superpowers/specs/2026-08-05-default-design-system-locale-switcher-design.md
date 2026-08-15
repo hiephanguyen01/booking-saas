@@ -182,5 +182,5 @@ aria-label on the old link ("View in English") to the group label ("Ngôn ngữ"
 Per ADR 0005 there are no tests. Verification is `pnpm check:frontend-structure`, `pnpm turbo lint
 typecheck build`, and running both apps: the landing in both locales at mobile / tablet / desktop widths
 with a hash anchor set, a return visit to `/` to confirm the cookie held, the dashboard signed in as
-BookingStudio owner (tenant config present) and as the platform admin (no tenant config), plus the
+StudioHub owner (tenant config present) and as the platform admin (no tenant config), plus the
 dashboard sign-in screen in light and dark.

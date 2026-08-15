@@ -55,8 +55,8 @@ function shortLabel(name: string): string {
   if (trimmed.length <= SHORT_NAME_MAX) return trimmed;
 
   // Word boundary only. A single long word is returned whole and left to the
-  // launcher: hard-cutting turns "BookingStudio" into "BookingStudi", which reads
-  // as a typo, where every launcher would have shown "BookingStudio…" or simply
+  // launcher: hard-cutting turns "StudioHub" into "BookingStudi", which reads
+  // as a typo, where every launcher would have shown "StudioHub…" or simply
   // fitted it. Truncation is a presentation call the platform makes better than we
   // can — the only thing worth doing here is not shipping a mangled word.
   const lastSpace = trimmed.slice(0, SHORT_NAME_MAX + 1).lastIndexOf(' ');

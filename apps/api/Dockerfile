@@ -53,7 +53,7 @@ COPY --from=builder --chown=node:node /app/apps/api/dist /app/apps/api/dist
 # The storage bootstrap uploads the same default tenant assets bundled by the
 # storefront. turbo prune for @booking/api intentionally excludes the storefront,
 # so copy this small asset directory explicitly into the runtime image.
-COPY --from=pruner --chown=node:node /app/apps/storefront/public/booking-studio /app/apps/storefront/public/booking-studio
+COPY --from=pruner --chown=node:node /app/apps/storefront/public/studiohub /app/apps/storefront/public/studiohub
 USER node
 WORKDIR /app/apps/api
 EXPOSE 3000

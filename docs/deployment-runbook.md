@@ -29,7 +29,7 @@ Tài liệu này là trình tự triển khai staging chính thức cho BookingO
 | --- | --- |
 | API | `api.stg.bookingos.vn` |
 | Dashboard | `admin.stg.bookingos.vn` |
-| BookingStudio | `bookingstudio.stg.bookingos.vn` |
+| StudioHub | `studiohub.stg.bookingos.vn` |
 | BookingStad | `bookingstad.stg.bookingos.vn` |
 | Wildcard tenant | `*.stg.bookingos.vn` |
 | Đích CNAME cho tên miền riêng của tenant | `connect.stg.bookingos.vn` |
@@ -389,7 +389,7 @@ Kiểm tra:
 dig +short stg.bookingos.vn @1.1.1.1
 dig +short api.stg.bookingos.vn @1.1.1.1
 dig +short admin.stg.bookingos.vn @1.1.1.1
-dig +short bookingstudio.stg.bookingos.vn @1.1.1.1
+dig +short studiohub.stg.bookingos.vn @1.1.1.1
 ```
 
 Tất cả phải trả về Elastic IP.
@@ -408,7 +408,7 @@ Tenant tự thêm tên miền riêng trong dashboard bất cứ lúc nào, nên 
 tới ứng dụng. Caddy **on-demand TLS** xin certificate ngay ở request đầu tiên cho từng hostname —
 không thao tác ops, không deploy lại cho mỗi tenant.
 
-Hệ quả: **không cần wildcard certificate nữa.** Subdomain tenant (`bookingstudio.stg.bookingos.vn`)
+Hệ quả: **không cần wildcard certificate nữa.** Subdomain tenant (`studiohub.stg.bookingos.vn`)
 cũng là một row đã verified trong `tenant_domains`, nên nó đi chung đường on-demand HTTP-01 như custom
 domain. Không cần DNS-01, không cần build `xcaddy` với plugin Cloudflare, không cần đặt Cloudflare API
 token trên máy.
@@ -476,7 +476,7 @@ chính container caddy, đúng đường mà Caddy đi:
 COMPOSE="docker compose --env-file .env.stg -f docker-compose.deploy.yml -f docker-compose.stg-data.yml"
 
 $COMPOSE exec caddy sh -c '
-  for d in bookingstudio.stg.bookingos.vn khong-ton-tai.example; do
+  for d in studiohub.stg.bookingos.vn khong-ton-tai.example; do
     printf "%-34s → " "$d"
     curl -s -o /dev/null -w "%{http_code}\n" \
       "http://api:3000/public/domains/tls-allowed?domain=$d"
@@ -499,7 +499,7 @@ domain xin ở request đầu tiên tới hostname đó — request đó chậm 
 thường.
 
 ```bash
-for h in api.stg.bookingos.vn admin.stg.bookingos.vn bookingstudio.stg.bookingos.vn; do
+for h in api.stg.bookingos.vn admin.stg.bookingos.vn studiohub.stg.bookingos.vn; do
   echo "--- $h"
   openssl s_client -connect "$h:443" -servername "$h" </dev/null 2>/dev/null |
     openssl x509 -noout -subject -issuer -dates
@@ -519,7 +519,7 @@ docker compose --env-file .env.stg \
 ```
 
 Rồi bằng trình duyệt: đăng nhập `admin.stg.bookingos.vn`, mở một subdomain tenant
-(`bookingstudio.stg.bookingos.vn`), và thêm một custom domain thật trong Dashboard → Cài đặt cửa hàng
+(`studiohub.stg.bookingos.vn`), và thêm một custom domain thật trong Dashboard → Cài đặt cửa hàng
 → Tên miền, làm đủ bước TXT và bước trỏ CNAME/A, rồi mở nó bằng HTTPS. **Bước cuối mới là thứ toàn bộ
 việc này sinh ra để làm được.**
 
@@ -700,7 +700,7 @@ ACME_EMAIL=ops@bookingos.vn
 
 PUBLIC_API_URL=https://api.stg.bookingos.vn
 DASHBOARD_URL=https://admin.stg.bookingos.vn
-STOREFRONT_URL=https://bookingstudio.stg.bookingos.vn
+STOREFRONT_URL=https://stg.bookingos.vn
 PLATFORM_BASE_DOMAIN=stg.bookingos.vn
 PLATFORM_STOREFRONT_CNAME=connect.stg.bookingos.vn
 PLATFORM_STOREFRONT_IPV4=STAGING_EIP
@@ -904,7 +904,7 @@ read đi qua R2 custom domain.
 ```bash
 curl -fsS https://api.stg.bookingos.vn/health/ready
 curl -fsS https://admin.stg.bookingos.vn/healthz
-curl -fsS https://bookingstudio.stg.bookingos.vn/healthz
+curl -fsS https://studiohub.stg.bookingos.vn/healthz
 curl -fsS https://bookingstad.stg.bookingos.vn/healthz
 ```
 
@@ -932,12 +932,12 @@ docker compose --env-file .env.stg \
 ### 13.3. Smoke check bằng trình duyệt
 
 1. Mở `https://admin.stg.bookingos.vn`.
-2. Đăng nhập `owner@bookingstudio.vn` bằng password đã truyền vào `SEED_OWNER_PASSWORD`.
+2. Đăng nhập `owner@studiohub.vn` bằng password đã truyền vào `SEED_OWNER_PASSWORD`.
 3. Tạo listing.
 4. Upload ảnh và xác nhận request PUT tới R2 thành công.
 5. Mở URL ảnh từ `https://cdn.stg.bookingos.vn`.
 6. Trigger password reset và xác nhận email tới qua Resend.
-7. Mở `https://bookingstudio.stg.bookingos.vn`.
+7. Mở `https://studiohub.stg.bookingos.vn`.
 8. Mở `https://bookingstad.stg.bookingos.vn`.
 9. Cấu hình payment gateway sandbox; không bật mock payment.
 

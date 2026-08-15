@@ -80,9 +80,9 @@ features/pwa/
 | `categories` | `['travel', 'lifestyle', 'business']` |
 
 `short_name` is shortened **only at a word boundary**. A single long word is passed
-through whole and left to the launcher: hard-cutting turned "BookingStudio" into
+through whole and left to the launcher: hard-cutting turned "StudioHub" into
 "BookingStudi", which reads as a typo, where every launcher would have shown
-"BookingStudio…" or simply fitted it.
+"StudioHub…" or simply fitted it.
 
 Two notes on `icons`. A tenant favicon is a single unknown-dimension URL, so it is declared
 `sizes: "any"` with `purpose: "any"` rather than claimed to be 192 or 512 — a lie there makes
@@ -248,7 +248,7 @@ the current `flex` scroll row with its `min-w-40` items is unchanged.
 Both layouts come from one `ToggleGroup` with responsive utilities — no duplicated DOM, so the
 `onSelectType` wiring, `aria-label`, and keyboard behaviour are untouched.
 
-The mockup shows six tiles in two rows, which is what BookingStudio's six listing types produce
+The mockup shows six tiles in two rows, which is what StudioHub's six listing types produce
 naturally. Nothing hardcodes six: a tenant with four types gets 3 + 1, and the grid scrolls
 vertically inside the card rather than horizontally.
 
@@ -403,8 +403,8 @@ pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure
 Then, manually:
 
 1. `pnpm --filter=@booking/storefront build && pnpm --filter=@booking/storefront start`
-2. `bookingstudio.localhost:5173/vi` — Chrome DevTools → Application → Manifest shows
-   "BookingStudio", the tenant primary as theme color, and no icon errors; Service Workers shows
+2. `studiohub.localhost:5173/vi` — Chrome DevTools → Application → Manifest shows
+   "StudioHub", the tenant primary as theme color, and no icon errors; Service Workers shows
    `sw.js` activated.
 3. Install the app; confirm the icon, the standalone launch at `/vi`, and that the bottom nav clears
    the home indicator.

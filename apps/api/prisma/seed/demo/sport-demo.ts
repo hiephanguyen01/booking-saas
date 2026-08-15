@@ -3,7 +3,7 @@ import { PRICING_RULE_PRIORITY } from '@booking/contracts';
 import { prisma } from '../client';
 import { ensureRoleAssignment } from '../shared';
 import { seedSportCatalog } from '../catalog/sport-catalog';
-import type { TenantSetup } from '../tenants/booking-studio';
+import type { TenantSetup } from '../tenants/studiohub';
 
 /** BookingStad DEMO data — the venue partner, 40 courts and peak-hour pricing. */
 export async function seedSportDemo(setup: TenantSetup): Promise<void> {

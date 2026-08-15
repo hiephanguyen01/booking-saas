@@ -237,7 +237,7 @@ function OverviewItem({
           )}
         </span>
         {/* Wrap rather than ellipsis: these values are the answer the operator
-            came for ("bookingstudio.stg.bookingos.vn", "3 ngày · hàng tháng"),
+            came for ("studiohub.stg.bookingos.vn", "3 ngày · hàng tháng"),
             and in a narrow column every one of them was cut mid-word. */}
         <span className="mt-1 block text-xs leading-5 break-words text-muted-foreground">
           {value}

@@ -28,7 +28,7 @@ export const enPlatform = {
       'BookingOS unifies your booking website, schedule, partners, and finance so your service business can grow.',
     primaryCta: 'Book a consultation',
     secondaryCta: 'View real demos',
-    visualAlt: 'Studio space used in the BookingStudio demo model',
+    visualAlt: 'Studio space used in the StudioHub demo model',
     schedule: {
       title: 'Sample operations schedule',
       status: 'Synced',
@@ -135,10 +135,10 @@ export const enPlatform = {
     demoLabel: 'BookingOS demo model',
     illustrationLabel: 'Illustrative service-space image',
     studio: {
-      title: 'BookingStudio',
+      title: 'StudioHub',
       description:
         'Studios, photo packages, and rental equipment using hourly, daily, and inventory bookings.',
-      alt: 'Photography space in the BookingStudio demo model',
+      alt: 'Photography space in the StudioHub demo model',
     },
     sport: {
       title: 'BookingStad',

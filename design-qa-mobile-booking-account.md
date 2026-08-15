@@ -1,7 +1,7 @@
 # Design QA — Mobile booking & account (04–08)
 
 Date: 2026-08-10  
-Reference: `BookingStudio Mobile v2.dc.html`  
+Reference: `StudioHub Mobile v2.dc.html`
 Viewport: 393 × 852 (mobile), 1440 × 900 (desktop regression)
 
 ## Coverage
@@ -18,7 +18,7 @@ Viewport: 393 × 852 (mobile), 1440 × 900 (desktop regression)
 
 - Mobile hierarchy follows the supplied artifact: fixed dark flow chrome, compact tenant-aware cards, horizontal history tabs, bottom navigation on success/history/overview, and sticky primary actions on checkout/detail.
 - Desktop checkout and account booking surfaces retain their existing composition from `md` upward; verified at 1440 × 900.
-- Tenant semantic theming is preserved. BookingStudio renders its configured primary styling; BookingStad renders a green checkout CTA and financial accents without component-level tenant color literals.
+- Tenant semantic theming is preserved. StudioHub renders its configured primary styling; BookingStad renders a green checkout CTA and financial accents without component-level tenant color literals.
 - VI and EN copy/layout were exercised. Catalog content remains tenant-provided and may stay Vietnamese in an English shell when the seeded tenant data itself is Vietnamese.
 
 ## Interaction matrix

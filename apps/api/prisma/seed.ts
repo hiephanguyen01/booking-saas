@@ -7,7 +7,7 @@ import { seedTaxThresholdRules } from './seed/tax-threshold-rules';
 import { seedPlatform } from './seed/platform';
 import { seedPlans } from './seed/plans';
 import { seedScope } from './seed/scope';
-import { seedBookingStudio } from './seed/tenants/booking-studio';
+import { seedStudioHub } from './seed/tenants/studiohub';
 import { seedBookingStad } from './seed/tenants/booking-stad';
 import { seedStudioDemo } from './seed/demo/studio-demo';
 import { seedSportDemo } from './seed/demo/sport-demo';
@@ -35,7 +35,7 @@ async function main() {
 
   const day = 24 * 60 * 60 * 1000;
   const now = Date.now();
-  const studio = await seedBookingStudio({
+  const studio = await seedStudioHub({
     planId: plan.id,
     scope,
     createdAt: new Date(now - 45 * day),
@@ -58,7 +58,7 @@ async function main() {
   await seedStudioDemo(studio);
   await seedSportDemo(stad);
   console.log(
-    `Seeded 2 demo tenants: "${studio.tenant.name}" (studio — 6 listing types, 121 listings, commission rules, WELCOME10, booking-history fixtures covering 5 UI states, 1 overdue payout, 1 webhook failure, affiliate affiliate@bookingstudio.vn / R-DEMO01) and "${stad.tenant.name}" (sport — 5 court types, 40 courts, peak-hour pricing, trial expiring soon).`,
+    `Seeded 2 demo tenants: "${studio.tenant.name}" (studio — 6 listing types, 121 listings, commission rules, WELCOME10, booking-history fixtures covering 5 UI states, 1 overdue payout, 1 webhook failure, affiliate affiliate@studiohub.vn / R-DEMO01) and "${stad.tenant.name}" (sport — 5 court types, 40 courts, peak-hour pricing, trial expiring soon).`,
   );
 }
 

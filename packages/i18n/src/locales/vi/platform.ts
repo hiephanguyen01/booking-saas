@@ -27,7 +27,7 @@ export const viPlatform = {
       'BookingOS hợp nhất website đặt chỗ, lịch, đối tác và tài chính để doanh nghiệp dịch vụ tăng trưởng.',
     primaryCta: 'Đăng ký tư vấn',
     secondaryCta: 'Xem demo thực tế',
-    visualAlt: 'Không gian studio được sử dụng trong mô hình demo BookingStudio',
+    visualAlt: 'Không gian studio được sử dụng trong mô hình demo StudioHub',
     schedule: {
       title: 'Lịch vận hành mẫu',
       status: 'Đồng bộ',
@@ -133,10 +133,10 @@ export const viPlatform = {
     demoLabel: 'Mô hình demo BookingOS',
     illustrationLabel: 'Hình minh họa không gian dịch vụ',
     studio: {
-      title: 'BookingStudio',
+      title: 'StudioHub',
       description:
         'Studio, gói chụp và thiết bị cho thuê với lịch theo giờ, theo ngày và số lượng tồn kho.',
-      alt: 'Không gian chụp ảnh trong mô hình demo BookingStudio',
+      alt: 'Không gian chụp ảnh trong mô hình demo StudioHub',
     },
     sport: {
       title: 'BookingStad',

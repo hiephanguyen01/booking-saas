@@ -86,7 +86,7 @@ infrastructure/
   repositories/prisma-agreement-acceptance.repository.ts
 ```
 
-**Modified — API:** `prisma/schema.prisma`, one new migration dir, `permission-catalog.ts`, `tenancy/{domain/ports/tenant-repository.port.ts, infrastructure/repositories/prisma-tenant.repository.ts, application/use-cases/resolve-tenant-by-host.use-case.ts, application/use-cases/get-subscription-status.use-case.ts, application/tenancy.mapper.ts, application/use-cases/apply-legal-readiness.use-case.ts (new), infrastructure/http/tenancy.module.ts, application/use-cases/create-tenant.use-case.ts}`, `partner/{apply-as-partner, approve-partner}.use-case.ts` + `partner.entity.ts` + `partner.module.ts` + `partner-application.controller.ts` + `partner-profile.controller.ts` (− 2 deleted files, − 1 deleted use-case, − `agreement-versions.ts` pruned), `affiliate/{apply-affiliate.use-case.ts, affiliate.controller.ts, affiliate.module.ts}`, `booking/{create-booking.use-case.ts, public-booking.controller.ts, booking.module.ts}`, `identity-access/{complete-registration.use-case.ts, auth-challenge-store.port.ts, start-registration.use-case.ts, public-auth.controller.ts}`, `app.module.ts`, `prisma/seed/tenants/{booking-studio,booking-stad}.ts`, `prisma/seed/demo/studio-demo.ts`.
+**Modified — API:** `prisma/schema.prisma`, one new migration dir, `permission-catalog.ts`, `tenancy/{domain/ports/tenant-repository.port.ts, infrastructure/repositories/prisma-tenant.repository.ts, application/use-cases/resolve-tenant-by-host.use-case.ts, application/use-cases/get-subscription-status.use-case.ts, application/tenancy.mapper.ts, application/use-cases/apply-legal-readiness.use-case.ts (new), infrastructure/http/tenancy.module.ts, application/use-cases/create-tenant.use-case.ts}`, `partner/{apply-as-partner, approve-partner}.use-case.ts` + `partner.entity.ts` + `partner.module.ts` + `partner-application.controller.ts` + `partner-profile.controller.ts` (− 2 deleted files, − 1 deleted use-case, − `agreement-versions.ts` pruned), `affiliate/{apply-affiliate.use-case.ts, affiliate.controller.ts, affiliate.module.ts}`, `booking/{create-booking.use-case.ts, public-booking.controller.ts, booking.module.ts}`, `identity-access/{complete-registration.use-case.ts, auth-challenge-store.port.ts, start-registration.use-case.ts, public-auth.controller.ts}`, `app.module.ts`, `prisma/seed/tenants/{studiohub,booking-stad}.ts`, `prisma/seed/demo/studio-demo.ts`.
 
 **New — packages:** `packages/contracts/src/contracts/legal.ts`, `packages/ui/components/markdown/restricted-markdown.tsx`.
 
@@ -1471,7 +1471,7 @@ State plainly in the code comment why this is not atomic with the user insert: `
 
 ## Task 12: Templates on tenant creation + seed
 
-**Files:** Modify `tenancy/application/use-cases/create-tenant.use-case.ts`, `apps/api/prisma/seed/tenants/booking-studio.ts`, `apps/api/prisma/seed/tenants/booking-stad.ts`, `apps/api/prisma/seed/demo/studio-demo.ts:113-128`
+**Files:** Modify `tenancy/application/use-cases/create-tenant.use-case.ts`, `apps/api/prisma/seed/tenants/studiohub.ts`, `apps/api/prisma/seed/tenants/booking-stad.ts`, `apps/api/prisma/seed/demo/studio-demo.ts:113-128`
 
 - [ ] **Step 1:** `CreateTenantUseCase` calls `SeedTenantLegalDraftsUseCase` inside its existing transaction. A new tenant therefore starts **dark with four drafts** — intended, not a regression: auto-publishing on the owner's behalf would make the gate decorative.
 - [ ] **Step 2:** Seed, honouring the existing scope split: `SEED_SCOPE=tenants` creates **drafts only**; the dev/staging default creates **and publishes** all four for both demo tenants with `publishedByUserId` = the seeded owner, so `pnpm dev` does not bring up two dark storefronts.
@@ -1619,7 +1619,7 @@ pnpm dev
 
 - [ ] **Step 3: Walk all ten spec verification steps**
 
-1. `bookingstudio.localhost:5173` serves normally; all four documents published; footer links render.
+1. `studiohub.localhost:5173` serves normally; all four documents published; footer links render.
 2. Withdraw one document in the dashboard → storefront returns 423, dashboard stays usable and shows the readiness card, `/vi/legal/dieu-khoan-su-dung` still renders.
 3. Republish → storefront live again on the next request (no cache flush needed).
 4. Register a customer without ticking → blocked; with ticking → two acceptance rows.

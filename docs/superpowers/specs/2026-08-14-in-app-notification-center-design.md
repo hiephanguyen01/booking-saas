@@ -352,7 +352,7 @@ pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure
 Then run the app and drive it:
 
 1. As `giang@giangstudio.vn`, submit a listing for review.
-2. As `owner@bookingstudio.vn` on `admin.bookingstudio.localhost:5174`, the bell shows 1; the item
+2. As `owner@studiohub.vn` on `admin.studiohub.localhost:5174`, the bell shows 1; the item
    links to the moderation screen; marking it read clears the badge.
 3. Confirm a booking and check the partner bell receives the mirrored row — and that the customer
    receives only the email.

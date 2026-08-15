@@ -132,10 +132,10 @@ pnpm dev                                               # api :3000, storefront :
 
 - **Storefront** (`localhost:5173`) serves the **BookingOS platform landing** — a single-label host
   (`localhost`) or a bare IP can never be a tenant domain, so it skips tenant resolution entirely.
-  A tenant storefront is reached on its own host: `bookingstudio.localhost:5173`,
+  A tenant storefront is reached on its own host: `studiohub.localhost:5173`,
   `bookingstad.localhost:5173`.
 - **Dashboard** (`localhost:5174`) is the **platform console** — `/admin`, log in as the platform admin
-  below. A tenant's own console is a different host, same port: `admin.bookingstudio.localhost:5174`,
+  below. A tenant's own console is a different host, same port: `admin.studiohub.localhost:5174`,
   `admin.bookingstad.localhost:5174` serve that tenant's `/tenant` `/partner` `/affiliate`. See
   [`docs/features/dashboard-hosts.md`](./docs/features/dashboard-hosts.md).
 - **OTP emails** (registration / password reset) land in **Mailpit** at `localhost:8025`.
@@ -145,7 +145,7 @@ pnpm dev                                               # api :3000, storefront :
 
 | Tenant | Vertical | Staging | Local | Console (local) | Catalog |
 | --- | --- | --- | --- | --- | --- |
-| **BookingStudio** | studio | `bookingstudio.stg.bookingos.vn` | `bookingstudio.localhost` | `admin.bookingstudio.localhost` | 6 types, 121 listings |
+| **StudioHub** | studio | `studiohub.stg.bookingos.vn` | `studiohub.localhost` | `admin.studiohub.localhost` | 6 types, 121 listings |
 | **BookingStad** | sport | `bookingstad.stg.bookingos.vn` | `bookingstad.localhost` | `admin.bookingstad.localhost` | 5 court types (bóng đá, bóng rổ, tennis, cầu lông, pickleball), 40 courts |
 
 BookingStad's subscription is a **trial expiring in 5 days** on purpose — it is what fills the admin
@@ -156,9 +156,9 @@ Seeded logins (override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`):
 | Who | Email | Password |
 | --- | --- | --- |
 | Platform admin | `admin@bookingos.local` | `admin-dev-password` |
-| BookingStudio owner | `owner@bookingstudio.vn` | `demo-password` |
-| BookingStudio partner | `giang@giangstudio.vn` | `demo-password` |
-| BookingStudio customer | `customer@bookingstudio.vn` | `demo-password` |
+| StudioHub owner | `owner@studiohub.vn` | `demo-password` |
+| StudioHub partner | `giang@giangstudio.vn` | `demo-password` |
+| StudioHub customer | `customer@studiohub.vn` | `demo-password` |
 | BookingStad owner | `owner@bookingstad.vn` | `demo-password` |
 | BookingStad partner | `hoang@sanhoanggia.vn` | `demo-password` |
 
@@ -184,7 +184,7 @@ prisma/
     client.ts   scope.ts   shared.ts   platform.ts   plans.ts
     administrative-divisions.ts
     catalog/    studio-catalog.ts   sport-catalog.ts     type defs + upsert helpers
-    tenants/    booking-studio.ts   booking-stad.ts      SETTINGS (production)
+    tenants/    studiohub.ts   booking-stad.ts      SETTINGS (production)
     demo/       studio-demo.ts      sport-demo.ts        partners, listings, fixtures
 ```
 

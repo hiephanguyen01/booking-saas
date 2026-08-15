@@ -59,41 +59,41 @@ async function main(): Promise<void> {
     console.log(`applied public-read policy to "${cfg.bucket}"`);
   }
 
-  const storefrontAssets = resolve(process.cwd(), '../storefront/public/booking-studio');
+  const storefrontAssets = resolve(process.cwd(), '../storefront/public/studiohub');
   const defaultAssets = [
     {
       label: 'logo',
-      key: 'defaults/booking-studio/logo.png',
+      key: 'defaults/studiohub/logo.png',
       path: resolve(storefrontAssets, 'logo.png'),
       contentType: 'image/png',
     },
     {
       label: 'app icon',
-      key: 'defaults/booking-studio/app-icon.png',
+      key: 'defaults/studiohub/app-icon.png',
       path: resolve(storefrontAssets, 'app-icon.png'),
       contentType: 'image/png',
     },
     {
       label: 'app icon 180',
-      key: 'defaults/booking-studio/app-icon-180.png',
+      key: 'defaults/studiohub/app-icon-180.png',
       path: resolve(storefrontAssets, 'app-icon-180.png'),
       contentType: 'image/png',
     },
     {
       label: 'app icon 192',
-      key: 'defaults/booking-studio/app-icon-192.png',
+      key: 'defaults/studiohub/app-icon-192.png',
       path: resolve(storefrontAssets, 'app-icon-192.png'),
       contentType: 'image/png',
     },
     {
       label: 'background',
-      key: 'defaults/booking-studio/background.png',
+      key: 'defaults/studiohub/background.png',
       path: resolve(storefrontAssets, 'hero.png'),
       contentType: 'image/png',
     },
     ...[1, 2, 3, 4].map((index) => ({
       label: `carousel image ${index}`,
-      key: `defaults/booking-studio/carousel/${String(index).padStart(2, '0')}.jpg`,
+      key: `defaults/studiohub/carousel/${String(index).padStart(2, '0')}.jpg`,
       path: resolve(storefrontAssets, `carousel/${String(index).padStart(2, '0')}.jpg`),
       contentType: 'image/jpeg',
     })),

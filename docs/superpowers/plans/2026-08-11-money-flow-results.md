@@ -104,7 +104,7 @@ there:
 - `POST /public/bookings/:id/checkout` returns **`BOOKING_NOT_PAYABLE`** — *"Booking is confirmed, not
   awaiting payment"*.
 
-There is no path, UI or API, to collect the remaining balance online. **80 of BookingStudio's 120
+There is no path, UI or API, to collect the remaining balance online. **80 of StudioHub's 120
 listings are configured this way.** Confirmed quantitatively: MF6b (`on_arrival`) produced results
 **identical** to S1 (`online_before`) — the setting currently makes no difference, because either way
 the balance can only be collected on site.
@@ -140,7 +140,7 @@ real booking releases. Database reset and reseeded to pick it up.
 
 Stated explicitly rather than implied:
 
-- **S5 house partner / inventory mode.** All 40 `bookingstudio-house` listings are `inventory` with a
+- **S5 house partner / inventory mode.** All 40 `studiohub-house` listings are `inventory` with a
   3,500,000 ₫ security deposit, and settle through the pickup/return flow, not `complete`. Needs a
   different driver.
 - **Damage deductions, `clawback` after release, reschedule fees.**

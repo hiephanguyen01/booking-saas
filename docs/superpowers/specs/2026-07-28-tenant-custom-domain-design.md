@@ -64,7 +64,7 @@ compose nginx (giữ nguyên: storefront là default_server)
    ▼ storefront / dashboard / api
 ```
 
-**Không cần wildcard certificate nữa.** Subdomain tenant (`bookingstudio.stg.bookingos.vn`) cũng là
+**Không cần wildcard certificate nữa.** Subdomain tenant (`studiohub.stg.bookingos.vn`) cũng là
 row đã verified trong `tenant_domains` (seed đặt `verifiedAt`), nên nó đi chung đường on-demand như
 custom domain: HTTP-01 cho từng host, không cần DNS-01, không cần build `xcaddy` với plugin
 Cloudflare, không cần đặt Cloudflare API token trên máy. Certbot chỉ còn là đường lùi.
@@ -213,7 +213,7 @@ hình trên một cách thực chất.
    đích CNAME cho tên miền con của tenant. Đồng thời thay CORS của bucket R2 bằng cấu hình wildcard ở
    § "CORS của R2" (làm được ngay, độc lập với mọi bước sau).
 1. Deploy code mới trước — nginx host vẫn giữ 80/443, chưa ảnh hưởng gì. Nghiệm thu:
-   `curl "http://127.0.0.1:8081/public/domains/tls-allowed?domain=bookingstudio.stg.bookingos.vn"`
+   `curl "http://127.0.0.1:8081/public/domains/tls-allowed?domain=studiohub.stg.bookingos.vn"`
    trả 200, domain lạ trả 404.
 2. Cài Caddy từ repo chính thức, đặt Caddyfile (thay `email` bằng email vận hành thật — Let's Encrypt
    gửi cảnh báo hết hạn về đó), chạy `caddy validate`.

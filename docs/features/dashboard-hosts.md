@@ -196,7 +196,7 @@ identity and carries **every** scope the user holds (platform + every tenant + e
 membership); it is not minted per host. What actually confines a session to one host is simpler and
 lower-level: the cookie (`createCookie('__dashboard_session', …)` in `apps/dashboard/app/lib/session.server.ts`)
 sets no `domain` attribute, so the browser treats it as **host-only** — it is sent back exclusively to
-the exact hostname that set it. A cookie minted while signed in at `admin.bookingstudio.vn` is simply
+the exact hostname that set it. A cookie minted while signed in at `admin.studiohub.vn` is simply
 never presented to `admin.bookingstad.vn` or to the platform host; those are different origins as far as
 the browser is concerned, regardless of what the underlying backend token would actually authorize.
 

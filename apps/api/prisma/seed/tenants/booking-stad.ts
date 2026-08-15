@@ -5,7 +5,7 @@ import { ensure, ensureRoleAssignment } from '../shared';
 import { seedSportCatalogTypes } from '../catalog/sport-catalog';
 import { publishTenantLegalDocuments, seedTenantLegalDrafts } from '../legal';
 import { ownerPassword, type SeedScope } from '../scope';
-import type { TenantSetup } from './booking-studio';
+import type { TenantSetup } from './studiohub';
 
 /**
  * BookingStad — the sport-vertical tenant, SETTINGS ONLY.
@@ -94,7 +94,7 @@ export async function seedBookingStad(input: {
     });
   }
 
-  // BookingStad gets its OWN owner — never reuse BookingStudio's, or that account
+  // BookingStad gets its OWN owner — never reuse StudioHub's, or that account
   // would belong to two tenants and the dashboard (one tenant scope per session)
   // would resolve the wrong one.
   const owner = await prisma.user.upsert({

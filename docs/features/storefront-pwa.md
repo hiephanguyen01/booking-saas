@@ -28,7 +28,7 @@ after every upload succeeds. The optional 512px maskable icon is uploaded separa
 overlays the Android safe zone and it is never synthesized from the main artwork. Legacy small or ICO
 favicons remain tab-only until replaced with qualifying artwork.
 
-BookingStudio's seed points to 180/192/512 variants produced from its existing app icon. Tenants with
+StudioHub's seed points to 180/192/512 variants produced from its existing app icon. Tenants with
 no complete `pwaIcons` object use the complete BookingOS fallback set for their manifest, touch icon
 and Home install banner.
 

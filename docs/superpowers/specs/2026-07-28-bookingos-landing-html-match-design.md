@@ -20,7 +20,7 @@ The implementation will preserve:
 - Existing consultation-form validation and submission states.
 - Keyboard navigation, focus treatment, mobile navigation, FAQ disclosures, and reduced-motion
   behavior.
-- Existing BookingStudio and BookingStad image assets in place of the reference file's placeholders.
+- Existing StudioHub and BookingStad image assets in place of the reference file's placeholders.
 
 ## Reference fidelity
 
@@ -47,7 +47,7 @@ The page retains the reference's information architecture:
 4. Before-and-after operational transformation.
 5. Four core platform capabilities with varied media compositions.
 6. Configure, publish, and grow workflow.
-7. BookingStudio and BookingStad demos.
+7. StudioHub and BookingStad demos.
 8. Pricing consultation state without invented prices.
 9. Trust and architecture safeguards.
 10. FAQ accordion.

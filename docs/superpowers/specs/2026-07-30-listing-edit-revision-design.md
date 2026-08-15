@@ -168,8 +168,8 @@ No tests, per [ADR 0005](../../decisions/0005-no-tests-policy.md).
 
 1. `pnpm check:module-cycles && pnpm turbo lint typecheck build` and
    `pnpm --filter=@booking/api check:rls`.
-2. Run the app and drive it as `giang@giangstudio.vn` (partner) and `owner@bookingstudio.vn` (tenant):
-   - edit a `published` standalone listing → `bookingstudio.localhost:5173` still shows the old
+2. Run the app and drive it as `giang@giangstudio.vn` (partner) and `owner@studiohub.vn` (tenant):
+   - edit a `published` standalone listing → `studiohub.localhost:5173` still shows the old
      content; the tenant queue shows it under changes with an accurate diff; approve → the storefront
      updates.
    - reject with a note → the partner sees the note, edits, saves, and the item returns to the queue.

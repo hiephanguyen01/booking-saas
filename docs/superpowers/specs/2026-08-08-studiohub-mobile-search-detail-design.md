@@ -1,16 +1,16 @@
-# BookingStudio mobile: search and service detail refresh
+# StudioHub mobile: search and service detail refresh
 
 ## Scope
 
-Refresh only the **Search** and **Service detail** device views in `BookingStudio Mobile v2.dc.html`. The Home view, iOS frame, runtime support, and image-slot implementation remain untouched.
+Refresh only the **Search** and **Service detail** device views in `StudioHub Mobile v2.dc.html`. The Home view, iOS frame, runtime support, and image-slot implementation remain untouched.
 
 ## Design direction
 
-An editorial booking experience: warm off-white surfaces, near-black navigation chrome, BookingStudio red for the primary action and selected states, and a deliberately consistent content rhythm. The screens prioritize photography, package pricing, and scan-friendly booking metadata.
+An editorial booking experience: warm off-white surfaces, near-black navigation chrome, StudioHub red for the primary action and selected states, and a deliberately consistent content rhythm. The screens prioritize photography, package pricing, and scan-friendly booking metadata.
 
 ## Shared visual language
 
-- Keep the existing `Be Vietnam Pro` typeface and BookingStudio red (`#ee3b2f`).
+- Keep the existing `Be Vietnam Pro` typeface and StudioHub red (`#ee3b2f`).
 - Use a single hierarchy for section labels, titles, muted metadata, outlined controls, and solid primary actions.
 - Standardize icon-button dimensions, card radii, inline spacing, selected pills, and sticky bottom actions across Search and Detail.
 - Retain every existing image slot, runtime construct, tenant-derived data value, and interaction handler.

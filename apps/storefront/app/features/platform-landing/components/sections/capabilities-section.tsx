@@ -21,7 +21,7 @@ export function CapabilitiesSection() {
             title={t('capabilities.storefront.title')}
             description={t('capabilities.storefront.description')}
             detail={t('capabilities.storefront.detail')}
-            image="/booking-studio/carousel/04.jpg"
+            image="/studiohub/carousel/04.jpg"
             imageAlt={t('demos.studio.alt')}
           />
           <CapabilityRow
@@ -29,7 +29,7 @@ export function CapabilitiesSection() {
             title={t('capabilities.scheduling.title')}
             description={t('capabilities.scheduling.description')}
             detail={t('capabilities.scheduling.detail')}
-            image="/booking-studio/carousel/02.jpg"
+            image="/studiohub/carousel/02.jpg"
             imageAlt={t('hero.visualAlt')}
             mediaFirst
           />
@@ -47,7 +47,7 @@ export function CapabilitiesSection() {
             title={t('capabilities.finance.title')}
             description={t('capabilities.finance.description')}
             detail={t('capabilities.finance.detail')}
-            image="/booking-studio/carousel/03.jpg"
+            image="/studiohub/carousel/03.jpg"
             imageAlt={t('demos.studio.alt')}
           />
         </div>

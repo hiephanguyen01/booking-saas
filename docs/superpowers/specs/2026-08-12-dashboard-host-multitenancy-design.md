@@ -248,8 +248,8 @@ second lookup for the admin hostname.
 ## Seed and Local Development
 
 The seed adds an admin domain per demo tenant, in both host families the seed already registers:
-`admin.bookingstudio.localhost` / `admin.bookingstad.localhost`, and the `admin.<slug>.stg.bookingos.vn`
-pair. Dev URLs become `admin.bookingstudio.localhost:5174`; `vite.config.ts` needs no change, since the
+`admin.studiohub.localhost` / `admin.bookingstad.localhost`, and the `admin.<slug>.stg.bookingos.vn`
+pair. Dev URLs become `admin.studiohub.localhost:5174`; `vite.config.ts` needs no change, since the
 storefront already serves `.localhost` hosts under the same configuration.
 
 ## Error Handling
@@ -269,7 +269,7 @@ No tests, per ADR 0005. Run the full static check:
 `pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls`,
 plus `caddy validate` against the compose-pinned Caddy version.
 
-Then exercise the real app: sign in at `admin.bookingstudio.localhost:5174` and confirm the tenant
+Then exercise the real app: sign in at `admin.studiohub.localhost:5174` and confirm the tenant
 brand appears on the login screen; confirm `/admin` 404s there and `/tenant` 404s on
 `localhost:5174`; confirm a user with no role in a tenant gets the 403; add a custom `admin.` domain
 through tenant settings and confirm a non-`admin.` hostname is refused; check Mailpit that a partner

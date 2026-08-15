@@ -1066,7 +1066,7 @@ Then, with a tenant-owner session cookie, confirm three things by hand:
 
 ```bash
 # 1. Lists system + custom roles
-curl -s localhost:3000/tenant/roles -H "x-tenant-id: <bookingstudio-id>" -b "sid=<...>" | jq length
+curl -s localhost:3000/tenant/roles -H "x-tenant-id: <studiohub-id>" -b "sid=<...>" | jq length
 # 2. Escalation is refused (expects 400 PERMISSION_ESCALATION when the caller lacks a key)
 # 3. Deleting a role in use returns 409 ROLE_IN_USE, not a silent cascade
 ```
@@ -1177,7 +1177,7 @@ imports `identity-access`'s decorators, so importing it back would close a modul
 pnpm --filter=@booking/api typecheck && pnpm --filter=@booking/api lint
 ```
 
-With the API running, confirm by hand: `GET /tenant/members` for BookingStudio returns the seeded owner with role `Tenant Owner`; `DELETE` on **yourself** returns 409 `CANNOT_EDIT_SELF`; `DELETE` on the only owner returns 409 `LAST_MANAGER_REMOVED`.
+With the API running, confirm by hand: `GET /tenant/members` for StudioHub returns the seeded owner with role `Tenant Owner`; `DELETE` on **yourself** returns 409 `CANNOT_EDIT_SELF`; `DELETE` on the only owner returns 409 `LAST_MANAGER_REMOVED`.
 
 - [ ] **Step 5: Commit**
 
@@ -1436,7 +1436,7 @@ this.registry.register('tenant.member_invited', (event) => {
 pnpm --filter=@booking/api typecheck && pnpm --filter=@booking/api lint && pnpm check:module-cycles
 ```
 
-With the API running and `docker compose up -d`: POST an invitation, then open Mailpit at `localhost:8025`. Expected: one mail, subject in Vietnamese, CTA host `admin.bookingstudio.localhost`. Clicking it 404s for now — the screen arrives in Task 14.
+With the API running and `docker compose up -d`: POST an invitation, then open Mailpit at `localhost:8025`. Expected: one mail, subject in Vietnamese, CTA host `admin.studiohub.localhost`. Clicking it 404s for now — the screen arrives in Task 14.
 
 - [ ] **Step 5: Commit**
 
@@ -1608,7 +1608,7 @@ The roles table shows name, system/custom, holder count, and "Sửa"/"Xóa" (bot
 pnpm --filter=@booking/dashboard typecheck && pnpm --filter=@booking/dashboard lint && pnpm check:frontend-structure && pnpm check:theme-tokens
 ```
 
-Then run `pnpm dev`, sign in at `admin.bookingstudio.localhost:5174` as `owner@bookingstudio.vn` / `demo-password`, and confirm: "Nhân sự" appears in the sidebar, all three tabs render, and the members table lists the owner with a `Tenant Owner` chip.
+Then run `pnpm dev`, sign in at `admin.studiohub.localhost:5174` as `owner@studiohub.vn` / `demo-password`, and confirm: "Nhân sự" appears in the sidebar, all three tabs render, and the members table lists the owner with a `Tenant Owner` chip.
 
 - [ ] **Step 5: Commit**
 
@@ -1799,19 +1799,19 @@ Expected: every command exits 0. Run the **whole** line, not a subset — `check
 docker compose up -d && pnpm dev
 ```
 
-1. Sign in at `admin.bookingstudio.localhost:5174` as `owner@bookingstudio.vn` / `demo-password`.
+1. Sign in at `admin.studiohub.localhost:5174` as `owner@studiohub.vn` / `demo-password`.
 2. Nhân sự → Vai trò → create "Lễ tân" with only `tenant.bookings.read`.
 3. Nhân sự → "Mời nhân sự" → invite an address with no account, role "Lễ tân".
 4. Open Mailpit (`localhost:8025`); confirm the CTA host-selection logic is correct — i.e. it matches
    the tenant's **primary verified dashboard domain** — not that it equals any particular literal. For
-   the seeded BookingStudio that domain is `admin.bookingstudio.stg.bookingos.vn`, a staging host, even
-   when the invite was sent from local dev: the seed registers both `admin.bookingstudio.stg.bookingos.vn`
-   and `admin.bookingstudio.localhost` for the tenant but marks the staging one `is_primary` (see
-   `apps/api/prisma/seed/tenants/booking-studio.ts:101-108`), and the CTA always resolves to the primary
+   the seeded StudioHub that domain is `admin.studiohub.stg.bookingos.vn`, a staging host, even
+   when the invite was sent from local dev: the seed registers both `admin.studiohub.stg.bookingos.vn`
+   and `admin.studiohub.localhost` for the tenant but marks the staging one `is_primary` (see
+   `apps/api/prisma/seed/tenants/studiohub.ts:101-108`), and the CTA always resolves to the primary
    verified domain, so seeing the staging host here is correct, not a resolver bug to "fix".
 5. Register that address through the storefront OTP flow. The mailed link itself does not resolve on a
    developer machine (it points at the staging host), so copy the token from the Mailpit link and open
-   `http://admin.bookingstudio.localhost:5174/invitations/<token>` directly instead of clicking it.
+   `http://admin.studiohub.localhost:5174/invitations/<token>` directly instead of clicking it.
 6. Accept. Confirm the sidebar shows **only** "Đặt chỗ", and that visiting `/tenant/finance` returns 403.
 7. As the owner, edit that member to hold **two** roles; confirm both chips render and the effective-permission preview shows the union.
 8. Try to remove your own roles → expect `CANNOT_EDIT_SELF`.

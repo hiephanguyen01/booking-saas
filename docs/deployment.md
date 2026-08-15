@@ -123,7 +123,7 @@ Caddy instance that is mid-handshake and would also depend on public DNS. The si
 `nginx:8081` listener this used to go through existed only because Caddy once ran outside compose and
 needed a published port — with Caddy inside, there is nothing to publish and nothing to restrict.
 
-**No wildcard certificate is needed any more.** A tenant subdomain (`bookingstudio.stg.bookingos.vn`)
+**No wildcard certificate is needed any more.** A tenant subdomain (`studiohub.stg.bookingos.vn`)
 is also a verified `tenant_domains` row, so it takes the same on-demand HTTP-01 path as a custom
 domain — no DNS-01, no `xcaddy` build with the Cloudflare plugin, no Cloudflare API token on the box.
 

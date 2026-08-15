@@ -1532,7 +1532,7 @@ In `notification.module.ts` add `controllers: [NotificationController]`, add the
 pnpm --filter=@booking/api dev
 ```
 
-Then, in another shell, log in and call the endpoints (replace the tenant id with BookingStudio's from the seed):
+Then, in another shell, log in and call the endpoints (replace the tenant id with StudioHub's from the seed):
 
 ```bash
 curl -si localhost:3000/notifications/unread-count?area=tenant \
@@ -2289,14 +2289,14 @@ pnpm --filter=@booking/api prisma:deploy
 pnpm dev
 ```
 
-1. Sign in at `admin.bookingstudio.localhost:5174` as `giang@giangstudio.vn` / `demo-password`. Submit a listing for review.
-2. Sign in as `owner@bookingstudio.vn` / `demo-password` on the same host. **The bell shows 1 within 60 seconds without a reload.**
+1. Sign in at `admin.studiohub.localhost:5174` as `giang@giangstudio.vn` / `demo-password`. Submit a listing for review.
+2. Sign in as `owner@studiohub.vn` / `demo-password` on the same host. **The bell shows 1 within 60 seconds without a reload.**
 3. The item reads "Tin đăng chờ duyệt" with the listing's title beneath it, and clicking it lands on that listing's moderation screen — not a list.
 4. Marking it read clears the badge. Reloading keeps it read.
 
 - [ ] **Step 5: Drive the mirrored partner path**
 
-Confirm a booking for a BookingStudio listing. Expected: `giang@giangstudio.vn`'s partner bell gains a row, and the customer receives **only** the email — no customer row is written, because every `*_customer` template is absent from `IN_APP_TEMPLATES`.
+Confirm a booking for a StudioHub listing. Expected: `giang@giangstudio.vn`'s partner bell gains a row, and the customer receives **only** the email — no customer row is written, because every `*_customer` template is absent from `IN_APP_TEMPLATES`.
 
 - [ ] **Step 6: The negative check — this is the one that matters**
 

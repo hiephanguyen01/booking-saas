@@ -1014,7 +1014,7 @@ partner upsert:
 
 - `slug: 'giang-studio'` (line ~62, `partnerType: 'company'`, has `taxId`) → `taxStatus: 'company_vat',`
 - `slug: 'trang-makeup'` (line ~153, `partnerType: 'individual'`) → `taxStatus: 'household_below_threshold',`
-- `slug: 'bookingstudio-house'` (line ~187, house partner) → `taxStatus: 'company_vat',`
+- `slug: 'studiohub-house'` (line ~187, house partner) → `taxStatus: 'company_vat',`
 
 In `apps/api/prisma/seed/demo/sport-demo.ts`:
 
@@ -1083,7 +1083,7 @@ docker compose up -d
 pnpm dev
 ```
 
-Book a listing on `http://bookingstudio.localhost:5173` belonging to **Giang Studio**
+Book a listing on `http://studiohub.localhost:5173` belonging to **Giang Studio**
 (`company_vat`, so VAT applies).
 
 - [ ] **Step 3: Verify the frozen snapshot on that booking**
@@ -1497,7 +1497,7 @@ pnpm dev
 ```
 
 Log in at `http://localhost:5174` as `admin@bookingos.local` / `admin-dev-password`, open
-**BookingStudio**, set the platform fee to 3, save. Expected: success message; reload shows 3; the
+**StudioHub**, set the platform fee to 3, save. Expected: success message; reload shows 3; the
 tenant's own finance screen (`/tenant/finance`) shows "Phí nền tảng 3%" on every rule. Set it back
 to 2. Then try 99 and confirm the error surfaces in the card and nothing changes.
 
@@ -1631,7 +1631,7 @@ pnpm turbo lint typecheck
 pnpm dev
 ```
 
-On `http://bookingstudio.localhost:5173`, open checkout for a **Giang Studio** listing
+On `http://studiohub.localhost:5173`, open checkout for a **Giang Studio** listing
 (`company_vat`). Expected: "Đã bao gồm thuế GTGT 8%" — no service-fee text anywhere.
 Then a **Trang Makeup** listing (`household_below_threshold`). Expected: "Giá cuối cùng, không chịu
 thuế GTGT". Complete one booking of each and confirm the booking-detail note matches, with the VAT

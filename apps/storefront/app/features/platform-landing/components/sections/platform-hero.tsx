@@ -29,7 +29,7 @@ export function PlatformHero() {
         <figure className="platform-hero-media relative pb-0 lg:pb-10">
           <div className="platform-media-shadow relative overflow-hidden rounded-[1.25rem] border border-border bg-card">
             <Image
-              src="/booking-studio/hero.png"
+              src="/studiohub/hero.png"
               width="1024"
               height="485"
               alt={t('hero.visualAlt')}
