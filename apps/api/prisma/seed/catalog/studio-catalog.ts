@@ -81,9 +81,9 @@ export const LOCATIONS: LocationFixture[] = [
   {
     key: 'sapa',
     shortName: 'Sapa',
-    provinceCode: '10',
+    provinceCode: '15',
     provinceName: 'Tỉnh Lào Cai',
-    wardCode: '03106',
+    wardCode: '03006',
     wardName: 'Phường Sa Pa',
     address: '18 Fansipan',
     latitude: 22.3344,
@@ -94,7 +94,7 @@ export const LOCATIONS: LocationFixture[] = [
     shortName: 'Đà Lạt',
     provinceCode: '68',
     provinceName: 'Tỉnh Lâm Đồng',
-    wardCode: '24787',
+    wardCode: '24781',
     wardName: 'Phường Xuân Hương - Đà Lạt',
     address: '22 Trần Phú',
     latitude: 11.9404,
@@ -222,8 +222,8 @@ const CATALOG: CatalogDefinition[] = [
     unitLabel: 'gói',
     bookingSelection: 'fixed_packages',
     partner: 'service',
-    bufferBefore: 30,
-    bufferAfter: 60,
+    bufferBefore: 0,
+    bufferAfter: 0,
     depositPercent: 50,
     attributeSchema: [
       {
