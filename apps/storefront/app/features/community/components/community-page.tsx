@@ -53,7 +53,7 @@ export function CommunityPage() {
               key={key}
               className={cn(
                 PANEL_SURFACE,
-                'flex min-h-36 items-center justify-center bg-background/80 p-(--sf-surface-pad) backdrop-blur md:rounded-2xl md:border md:border-border md:p-0 md:shadow-sm',
+                'flex min-h-36 items-center justify-center bg-background/80 p-(--sf-surface-pad) backdrop-blur md:p-0',
               )}
             >
               <Icon className="size-8 text-primary" />

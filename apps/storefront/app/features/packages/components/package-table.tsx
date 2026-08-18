@@ -21,7 +21,7 @@ import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { GuestCapacityRules } from '~/components/guest-capacity-rules';
 import { OfferingDetailsDisclosure } from '~/components/offering-details-disclosure';
 import { specCards } from '~/lib/listing-attributes';
-import { PANEL_SURFACE } from '~/constants/surfaces';
+import { PANEL_SURFACE, SURFACE_OUTLINE } from '~/constants/surfaces';
 
 /** Stable identity so the media-items memo does not rebuild while nothing is open. */
 const EMPTY_PHOTOS: string[] = [];
@@ -68,7 +68,7 @@ export function PackageTable({
         </Empty>
       ) : (
         <>
-          <div className="mt-5 hidden overflow-hidden rounded-md border xl:block">
+          <div className={cn(SURFACE_OUTLINE, 'mt-5 hidden overflow-hidden xl:block')}>
             <table className="w-full table-fixed text-left text-sm">
               <caption className="sr-only">{t('packages.tableLabel')}</caption>
               <thead className="bg-muted/70 text-xs font-semibold">
@@ -157,7 +157,7 @@ function PackageCard(props: PackageProps) {
     <article
       className={cn(
         PANEL_SURFACE,
-        'overflow-hidden bg-card md:border md:border-border',
+        'overflow-hidden bg-card',
         props.selected && 'border-primary bg-primary/5',
       )}
     >

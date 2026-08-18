@@ -8,7 +8,9 @@ import { formatCurrency } from '@booking/i18n';
 import { Image } from '@booking/ui/components/media/image';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { CalendarDays, Check, MapPin } from 'lucide-react';
+import { cn } from '@booking/ui/lib/utils';
 import { SectionCard } from '~/components/section-card';
+import { SURFACE_OUTLINE } from '~/constants/surfaces';
 import { cancellationLineTexts, type CancellationPolicyLine } from '~/lib/cancellation-policy';
 import { NsI18n, type ScopedI18n, useTranslation } from '@booking/i18n';
 import { dateLabelInTz, dateOnlyInTz, hoursBetween, nightsBetween, timeInTz } from '~/lib/time';
@@ -90,7 +92,7 @@ export function BookingColumn({
           Below 400px the photo becomes a full-width cover and the summary gets
           the whole column. */}
       <div className="mt-3 flex flex-col gap-3 min-[400px]:flex-row min-[400px]:gap-4">
-        <div className="h-32 w-full shrink-0 overflow-hidden rounded-(--sf-image-radius) bg-muted min-[400px]:h-27.5 min-[400px]:w-39 md:rounded-sm">
+        <div className="h-32 w-full shrink-0 overflow-hidden rounded-(--sf-image-radius) bg-muted min-[400px]:h-27.5 min-[400px]:w-39">
           {coverPhoto ? (
             <Image
               src={coverPhoto}
@@ -123,7 +125,7 @@ export function BookingColumn({
       </div>
 
       {quote.selectedPackage ? (
-        <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+        <div className={cn(SURFACE_OUTLINE, 'mt-4 bg-muted/30 p-3')}>
           <p className="text-sm font-semibold">{quote.selectedPackage.name}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {'durationMinutes' in quote.selectedPackage
@@ -140,7 +142,7 @@ export function BookingColumn({
                   key={photo}
                   src={photo}
                   alt=""
-                  className="h-14 w-20 shrink-0 rounded-(--sf-image-radius) object-cover md:rounded-md"
+                  className="h-14 w-20 shrink-0 rounded-(--sf-image-radius) object-cover"
                 />
               ))}
             </div>

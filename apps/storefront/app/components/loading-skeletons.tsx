@@ -60,7 +60,7 @@ export function ReviewsSectionSkeleton({ label }: { label: string }) {
       label={label}
       className={cn(
         PANEL_SURFACE,
-        'bg-card p-(--sf-surface-pad) md:rounded-lg md:border-0 md:p-6 md:shadow-sm',
+        'bg-card p-(--sf-surface-pad) md:p-6',
       )}
     >
       <div className="space-y-5">
@@ -92,7 +92,7 @@ export function RelatedListingsSkeleton({ label, count = 3 }: { label: string; c
       label={label}
       className={cn(
         PANEL_SURFACE,
-        'bg-card p-(--sf-surface-pad) md:rounded-lg md:border-0 md:p-6 md:shadow-sm',
+        'bg-card p-(--sf-surface-pad) md:p-6',
       )}
     >
       <StorefrontSkeleton className="mb-5 h-6 w-44" />
@@ -102,7 +102,7 @@ export function RelatedListingsSkeleton({ label, count = 3 }: { label: string; c
             key={index}
             className={cn(
               PANEL_SURFACE,
-              'overflow-hidden bg-background md:rounded-lg md:border md:border-border md:shadow-none',
+              'overflow-hidden bg-background',
             )}
           >
             <StorefrontSkeleton className="aspect-4/3 rounded-none" />
@@ -194,7 +194,7 @@ function AccountResultRows({ count }: { count: number }) {
       key={index}
       className={cn(
         PANEL_SURFACE,
-        'bg-background p-(--sf-surface-pad) md:rounded-lg md:border md:border-border md:p-5 md:shadow-none',
+        'bg-background p-(--sf-surface-pad) md:p-5',
       )}
     >
       <div className="flex items-center gap-4">
@@ -214,7 +214,7 @@ function AccountFormSkeletonBody() {
     <div
       className={cn(
         PANEL_SURFACE,
-        'bg-background p-(--sf-surface-pad) md:rounded-none md:border md:border-border md:px-8 md:py-8 md:shadow-none',
+        'bg-background p-(--sf-surface-pad) md:px-8 md:py-8',
       )}
     >
       <div className="mb-8 flex items-center gap-4">
@@ -244,7 +244,7 @@ function AccountDetailSkeletonBody() {
           key={index}
           className={cn(
             PANEL_SURFACE,
-            'bg-background p-(--sf-surface-pad) md:rounded-lg md:border md:border-border md:p-6 md:shadow-none',
+            'bg-background p-(--sf-surface-pad) md:p-6',
           )}
         >
           <StorefrontSkeleton className="h-5 w-40" />

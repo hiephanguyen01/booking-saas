@@ -21,7 +21,7 @@ import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useRoomOptionsController } from '~/features/listing-group/hooks/use-room-options-controller';
 import { GuestCapacityRules } from '~/components/guest-capacity-rules';
 import { cn } from '@booking/ui/lib/utils';
-import { PANEL_SURFACE } from '~/constants/surfaces';
+import { PANEL_SURFACE, SURFACE_OUTLINE } from '~/constants/surfaces';
 
 /** Stable identity so the media-items memo does not rebuild while nothing is open. */
 const EMPTY_PHOTOS: string[] = [];
@@ -99,7 +99,7 @@ export function RoomOptionsSection({
 
       {visibleOptions.length ? (
         <>
-          <div className="hidden overflow-hidden rounded-md border xl:block">
+          <div className={cn(SURFACE_OUTLINE, 'hidden overflow-hidden xl:block')}>
             <table className="w-full table-fixed text-left text-sm">
               <caption className="sr-only">{t('group.roomTableLabel')}</caption>
               <thead>
@@ -222,7 +222,7 @@ function RoomCard({
     <article
       className={cn(
         PANEL_SURFACE,
-        'grid overflow-hidden bg-card max-md:rounded-none md:grid-cols-[13rem_minmax(0,1fr)] md:grid-rows-[auto_1fr] md:border md:border-border',
+        'grid overflow-hidden bg-card max-md:rounded-none md:grid-cols-[13rem_minmax(0,1fr)] md:grid-rows-[auto_1fr]',
       )}
     >
       <div className="p-(--sf-surface-pad) pb-3 md:col-start-2 md:row-start-1 md:pb-2">
