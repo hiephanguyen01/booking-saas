@@ -14,6 +14,7 @@
     "check:no-tests": "node scripts/architecture/check-no-tests.mjs",
     "check:storefront-security": "node scripts/architecture/check-storefront-security.mjs",
     "check:theme-tokens": "node scripts/architecture/check-theme-tokens.mjs",
+    "check:tenant-surfaces": "node scripts/architecture/check-tenant-surfaces.mjs",
     "check:module-cycles": "node scripts/architecture/check-module-cycles.mjs",
     "format": "prettier --write ."
   },

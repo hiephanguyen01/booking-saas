@@ -25,14 +25,6 @@ export const PHOTO_UPLOAD_ACCEPT: readonly UploadContentType[] = [
   'image/gif',
 ];
 
-/** Favicons: raster images plus `.ico`. */
-export const FAVICON_UPLOAD_ACCEPT: readonly UploadContentType[] = [
-  'image/png',
-  'image/x-icon',
-  'image/vnd.microsoft.icon',
-  'image/webp',
-];
-
 /** Default client-side max upload size, in megabytes (no server-side cap exists yet). */
 export const MAX_UPLOAD_SIZE_MB = 5;
 

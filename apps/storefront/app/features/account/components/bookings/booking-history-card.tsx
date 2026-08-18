@@ -51,12 +51,12 @@ export function BookingHistoryCard({
             <Image
               src={booking.imageUrl}
               alt={booking.listingTitle}
-              className="aspect-[4/3] w-full rounded-(--sf-image-radius) object-cover"
+              className="aspect-4/3 w-full rounded-(--sf-image-radius) object-cover"
             />
           ) : (
             <ListingThumbnail
               label={booking.listingTitle}
-              className="aspect-[4/3] w-full rounded-(--sf-image-radius) border border-border/70"
+              className="aspect-4/3 w-full rounded-(--sf-image-radius) border border-border/70"
             />
           )}
           <div className="min-w-0">

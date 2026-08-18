@@ -89,7 +89,10 @@ const EVENT_TONE: Array<[RegExp, NotificationTone]> = [
   // The one create that is a queue rather than a fact: "Lượt đặt mới chờ duyệt".
   [/^booking[._]created$/, 'warning'],
   [/(cancelled|rejected|voided|hidden|suspended|expired)$/, 'danger'],
-  [/(submitted|applied|requested|opened)$/, 'warning'],
+  // `responded` belongs here, not in the target's `danger` fallback: a partner
+  // answering a dispute is progress that needs adjudicating, and without it the
+  // two dispute rows sat side by side on one screen in two different colours.
+  [/(submitted|applied|requested|opened|responded)$/, 'warning'],
   [/(approved|confirmed|published|paid|issued|completed|verified)$/, 'success'],
 ];
 

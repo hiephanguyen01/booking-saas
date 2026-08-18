@@ -166,7 +166,9 @@ function DiscoveryListingCardSkeleton({ className }: { className?: string }) {
       )}
     >
       <div className="h-[calc(24.625rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[220px]:h-[calc(18rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[190px]:h-[calc(16rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))]">
-        <StorefrontSkeleton className="h-46 rounded-(--sf-image-radius) sm:rounded-none @max-[220px]:h-34 @max-[190px]:h-28" />
+        {/* `rounded-none` cancels `Skeleton`'s own `rounded-md`: the real card's cover
+            carries no radius either — the card clips it. */}
+        <StorefrontSkeleton className="h-46 rounded-none @max-[220px]:h-34 @max-[190px]:h-28" />
         <div className="space-y-3 p-(--sf-surface-pad) @max-[220px]:space-y-2">
           <StorefrontSkeleton className="h-6 w-4/5 @max-[220px]:h-5" />
           <StorefrontSkeleton className="h-5 w-3/5 @max-[220px]:h-4" />

@@ -95,12 +95,12 @@ function ListingSummary({
           <Image
             src={booking.imageUrl}
             alt={booking.listingTitle}
-            className="aspect-[4/3] w-full object-cover"
+            className="aspect-4/3 w-full object-cover"
           />
         ) : (
           <ListingThumbnail
             label={booking.listingTitle}
-            className="aspect-[4/3] w-full border border-border"
+            className="aspect-4/3 w-full border border-border"
           />
         )}
         <div className="min-w-0">

@@ -36,7 +36,10 @@ export function AuthFrame({
     <section
       className={cn(
         PANEL_SURFACE,
-        'relative mx-auto flex w-full max-w-292.5 flex-col items-stretch overflow-visible bg-transparent max-md:rounded-none max-md:[border-width:0] max-md:shadow-none md:flex-row md:overflow-hidden md:rounded-sm md:border md:border-border md:bg-card md:shadow-lg',
+        // Shape, border and elevation come from `PANEL_SURFACE`, so the desktop frame
+        // is the tenant's own surface; `max-md:` strips it below `md`, where the auth
+        // screen runs edge-to-edge. Only the background and layout are per-breakpoint.
+        'relative mx-auto flex w-full max-w-292.5 flex-col items-stretch overflow-visible bg-transparent max-md:rounded-none max-md:[border-width:0] max-md:shadow-none md:flex-row md:overflow-hidden md:bg-card',
       )}
     >
       <div className="relative h-37 w-full shrink-0 overflow-hidden bg-primary/10 md:hidden">
