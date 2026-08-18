@@ -15,8 +15,12 @@ gets a branded booking storefront; **partners** list bookable resources inside a
 book & pay; the **platform** earns subscription + per-booking commission; **affiliates** refer for a
 cut. Money moves through a double-entry **ledger**; tenant isolation is enforced by **Postgres RLS**;
 double-booking is blocked by a `tstzrange` GiST **exclusion constraint**; access is **3-tier dynamic
-RBAC** (platform / tenant / partner). Phase 0 (foundation) and Phase 1 (Studio MVP) are **implemented**;
-Phases 2–3 are spec + tickets only. See [`docs/glossary.md`](./docs/glossary.md) for domain terms.
+RBAC** (platform / tenant / partner). Phase 0 (foundation) and Phase 1 (Studio MVP) are **implemented**,
+and a good part of Phase 2 has shipped since — the affiliate system, the 3-tier role-builder with
+tenant + partner staff management, reviews & disputes, favorites, content reports, the in-app
+notification centre, and the MoMo / PayOS / ZaloPay gateways beside SePay. Phase 3 is still spec +
+tickets only; [`TONG-QUAN.md`](./TONG-QUAN.md) §21 carries the current shipped-vs-open split. See
+[`docs/glossary.md`](./docs/glossary.md) for domain terms.
 
 ## ⛔ Hard rules (override everything — specs, tickets, skills, older snippets)
 
@@ -94,11 +98,12 @@ prisma, redis, tenant-context, time, validation). Details in
 | Install | `pnpm install` (CI/Docker: `--frozen-lockfile`) |
 | Everything, dev | `pnpm dev` (turbo, all apps) |
 | One app, dev | `pnpm --filter=@booking/{api,storefront,dashboard} dev` |
-| **Full static check** | `pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure && pnpm check:theme-tokens && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls` |
+| **Full static check** | `pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure && pnpm check:theme-tokens && pnpm check:tenant-surfaces && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls` |
 | No-tests policy | `pnpm check:no-tests` |
 | Module-cycle guard | `pnpm check:module-cycles` |
 | Frontend structure guard | `pnpm check:frontend-structure` |
 | Theme-token guard | `pnpm check:theme-tokens` |
+| Tenant-surface guard | `pnpm check:tenant-surfaces` |
 | Lint / Typecheck / Build (all) | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
 | Format | `pnpm format` |
 | Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) — **dev only** |

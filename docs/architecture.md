@@ -74,6 +74,25 @@ manual-transfer truth and converges Booking + Settlement idempotently. Payout al
 released booking debt into guarded payout runs. Other consumers react independently. See
 [`settlement-flow.md`](./settlement-flow.md).
 
+### Remaining synchronous coupling
+
+The outbox rule covers **write-path side effects**; synchronous cross-module reads are still allowed
+and still numerous. Measured 2026-08-18 over `apps/api/src/modules`:
+
+| | Count | Reading |
+| --- | --- | --- |
+| Technical seams (`→ identity-access`, `→ tenancy`) | 227 | Guards, decorators, principal types, tenant context. Sanctioned — auth and tenancy are de-facto framework here. |
+| Business-facing | 95 | 53 from `application/`, 42 from `infrastructure/` |
+| From a `domain/` layer | **0** | The eslint rule forbidding `domain/` → another module's `application/` is holding. |
+
+Heaviest business pairs: `scheduling→listing` 14, `listing→catalog` 9, `listing→legal` 7,
+`booking→listing` 6, `booking→promotions` 5, `finance→storage` 5.
+
+The July 2026 entity-centric refactor left this deliberately: closing it means moving technical seams
+into a shared kernel and introducing module-owned reader/command ports, which **must not** be done as
+a mechanical import rewrite — transaction boundaries, CAS and event ordering are involved. Treat it as
+its own architecture track, not cleanup.
+
 ## Backend internals
 
 `apps/api/src/`:
@@ -125,7 +144,11 @@ The in-app bell has two producer paths, both writing the same `notifications` ta
   Collecting first and letting the unique `(user_id, dedupe_key)` index absorb the redelivery as a
   no-op is what keeps "email arrived, bell didn't" from happening. `InboxCollector` itself does no
   I/O — the dispatcher flushes the whole batch once, inside its one `forTenant` transaction, after its
-  recipient loop finishes.
+  recipient loop finishes. The row's `title` is fixed per template, and its `body` is built by that
+  template's optional `body(data)` from the **same `TemplateData` the email renders from**, so a bell
+  row can never claim a detail the mail does not. Bodies are Vietnamese-only, like the titles: an `en`
+  recipient still gets an English email, but the dashboard the row is read in is Vietnamese-hardcoded.
+  A template with no builder stores `body: null`, which the dashboard renders as a single-line row.
 - **Tenant plan.** Nine tenant-facing events (`listing.submitted`, `partner.applied`,
   `settlement.dispute_opened`, `review.created`, … — `TENANT_NOTIFICATION_PLAN` in
   `notification/domain/tenant-notification-plan.ts`) are in-app only, no email, so routine moderation

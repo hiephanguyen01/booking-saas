@@ -25,14 +25,10 @@ in an older doc, ticket, or snippet is recognisable as history rather than somet
 | Artifact | What it is | Why it's flagged | Recommendation |
 | --- | --- | --- | --- |
 | 16 unused `packages/ui/src/components/ui/*` primitives | `aspect-ratio`, `bubble`, `button-group`, `combobox`, `context-menu`, `direction`, `hover-card`, `item`, `kbd`, `marker`, `menubar`, `message`, `message-scroller`, `navigation-menu`, `resizable`, `slider` | Zero importers anywhere. Kept deliberately as ready-to-use registry copies, not deleted. (`scroll-area` was on this list until 2026-08-18, when the dashboard notification bell adopted it — the list is only true until a primitive is picked up, so re-check before citing it.) | Keep. Deleting them would orphan `@base-ui/react`, `@shadcn/react`, `react-resizable-panels`. |
-| `skills-lock.json` (root) | Lockfile listing 24 skill names | Only 6 skills are vendored under `.agents/skills/` (5 symlinked into `.claude/skills/`). The lock is a stale superset. | Regenerate to match, or remove. |
 | `apps/api/prisma/migrations/20260708000001_rls_roles_policies/migration.sql` line ~34 | Comment pointing at the removed `test/rls-coverage.integration.spec.ts` | Stale, but the file is an **applied** migration: its sha256 is recorded in `_prisma_migrations.checksum`, and editing even a comment breaks that match. | **Leave as-is.** Not worth a checksum drift. |
 
 ## Notes
 
-- `README.md` line ~33 ("Phase 0: demo stub" for storefront tenant resolution) is stale —
-  `tenant.server.ts` now does a real backend lookup. Not "dead", just out of date; the README is the
-  owner's, so it's left as-is.
 - The design spec `TONG-QUAN.md` §22 "Testing Strategy" is superseded by the no-tests policy
   ([ADR 0005](./decisions/0005-no-tests-policy.md)) but kept for historical/product context.
 - `TONG-QUAN.md` and `tasks/phase-0-foundation/02-shared-packages.md` still describe
@@ -68,7 +64,7 @@ These are **live** (used inside their own module) yet exported with no external 
 `patchSearchParams`, `ListParams`, `ReadListParamsOptions`). Narrowing them is safe — the compiler
 catches any real use — but it is an API-surface change, not dead-code removal.
 
-The 17 unused `packages/ui` primitives listed above remain deliberate.
+The unused `packages/ui` primitives listed above remain deliberate.
 
 ## Removed on 2026-08-18
 
@@ -107,3 +103,52 @@ vocabulary. Narrow them only as a deliberate API-surface decision.
 The unused `packages/ui` primitives remain deliberate (see above) — 16 now, since `scroll-area` was
 adopted by the dashboard notification bell. Two of them, `direction.tsx` and `resizable.tsx`, are the
 only files in the repo that nothing imports at all; every other module is reachable.
+
+## Docs removed on 2026-08-18
+
+`docs/superpowers/` held the scratch output of the planning skill: one design spec and one
+implementation plan per shipped feature, 74 files and 1.2MB. **Neither `AGENTS.md` nor `CLAUDE.md`
+ever referenced the directory** — it was not part of the documented docs graph, and the durable half
+of that knowledge had already been distilled into `docs/features/*`, the ADRs and
+[`conventions.md`](./conventions.md). Nine of the files still described a file layout that no longer
+exists (`apps/storefront/app/templates/…`, deleted long ago), so reading one would have actively
+misled an agent about the current structure.
+
+Deleted: every file under `docs/superpowers/` **except the two that are cited from somewhere durable**,
+plus `docs/refactor/storefront-convention-HANDOFF.md` (referenced only by itself) and the three
+root-level `design-qa*.md` reports (one-off QA write-ups whose "evidence" is screenshot paths inside
+another machine's home directory, so nothing in them can be re-checked).
+
+| Kept | Why it survived |
+| --- | --- |
+| `docs/superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md` | Cited by **source code** — `apps/api/src/shared/domain/domain-error.ts` points at its §2.9 — and by `conventions.md`. |
+| `docs/superpowers/plans/2026-08-11-money-flow-results.md` | Cited by `TONG-QUAN.md` §D1 as the money-flow verification record. Its two companion links were rewritten to plain prose so the file no longer points at deleted siblings. |
+
+Two other links into the deleted set were fixed rather than left dangling: the money-flow record's
+references to its own plan and follow-up, and the `docs/superpowers/specs/…-reviews-disputes-…`
+citation in `tasks/phase-2-marketplace-depth/05-reviews-disputes-all-sites.md`. A relative-link sweep
+over the remaining 158 markdown files reports zero broken targets.
+
+**Not a doc, but found during the same sweep:** `.claude/worktrees/in-app-notifications` is a leftover
+git worktree (834MB) on `feat/in-app-notifications`, a branch already merged as PR #95. It is
+gitignored, so it costs disk rather than repo hygiene; `git worktree remove` clears it.
+
+### Follow-up on 2026-08-18 (full re-check)
+
+| Artifact | What it was |
+| --- | --- |
+| `FAVICON_ACCEPT` (`packages/ui/.../form/image-upload.tsx`), `FAVICON_UPLOAD_ACCEPT` (`contracts/storage.ts`) | Two copies of a "PNG + `.ico` + WebP" accept list for a **favicon upload field that no longer exists**. The favicon is now derived: the tenant uploads one square PNG/WebP source and `pwa-icon-uploader.tsx` generates the 180/192/512 launcher set, with the 512 doubling as `faviconUrl`. Both constants were unreferenced *and* described an abandoned flow — `TONG-QUAN.md` §16.2 still claimed "favicon accepts `.ico`" because of them, and has been corrected. `DEFAULT_IMAGE_ACCEPT` / `PHOTO_UPLOAD_ACCEPT` are live and stay. |
+
+Missed on the first pass because that sweep scoped deletions to `apps/*` and left `packages/*`
+untouched; the re-check covered both.
+
+### Docs removed on 2026-08-18 (second pass)
+
+| Artifact | Why |
+| --- | --- |
+| `docs/refactor/entity-centric-final-report.md` (directory now empty and gone) | Its "Conventions established" section said so itself: *"The normative rules live in `docs/conventions.md`, `apps/api/CLAUDE.md` and the design spec."* A report restating rules that are normative elsewhere is a second source of truth. Its one piece of unique content — the **measured** cross-module coupling left by the refactor — was folded into [`architecture.md`](./architecture.md) → *Remaining synchronous coupling*, and **re-measured** rather than copied: the July figure of 229 cross-context imports is 322 today (227 sanctioned auth/tenancy seams, 95 business-facing, 0 from any `domain/` layer). The three links from the surviving design spec now point at that section. |
+| `pnpm test` / `pnpm --filter=@booking/storefront test` in `README.md` | Not a file, but the same class of trap: the README taught two commands that **do not exist in any package** and that [ADR 0005](./decisions/0005-no-tests-policy.md) forbids. Replaced with the real verification chain. `README.md` also pointed at `app/lib/tenant.server.ts`; the module is `app/lib/server/tenant.server.ts`. |
+| 18 stale entries in `skills-lock.json` | The lock listed 24 skills against 6 vendored in `.agents/skills/` — including `vitest`, which the no-tests policy forbids outright. Pruned to exactly the 6 vendored; every surviving entry keeps its original hash. |
+
+**Note:** the "README.md line ~33 is stale" entry under *Notes* above was itself stale — that
+sentence had already been rewritten. The README's real defects were the two above.
