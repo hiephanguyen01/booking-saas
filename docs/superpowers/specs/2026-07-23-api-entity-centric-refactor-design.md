@@ -1,7 +1,7 @@
 # Design: Entity-centric refactor toàn bộ `apps/api` (Rich DDD aggregate)
 
 **Ngày:** 2026-07-23 · **Trạng thái:** Đã triển khai 16/16 module; final review toàn nhánh đạt 2026-07-24
-**Kết quả triển khai và verification:** [`docs/refactor/entity-centric-final-report.md`](../../refactor/entity-centric-final-report.md)
+**Kết quả triển khai và verification:** the refactor shipped; its conventions are normative in [`docs/conventions.md`](../../conventions.md) and [`apps/api/CLAUDE.md`](../../../apps/api/CLAUDE.md), and the coupling it left behind is measured in [`docs/architecture.md`](../../architecture.md) → *Remaining synchronous coupling*
 
 ## 1. Bối cảnh & mục tiêu
 
@@ -420,7 +420,7 @@ Audit AST/import graph trên 257 `modules/**/*.use-case.ts` không dùng tên fi
   orchestration có chủ đích. Application use-case không còn direct Prisma model/raw SQL.
 
 Frozen-wire matrix, inventory và kết quả cuối được tổng hợp trong
-[`docs/refactor/entity-centric-final-report.md`](../../refactor/entity-centric-final-report.md).
+[`docs/architecture.md`](../../architecture.md) → *Remaining synchronous coupling*.
 
 ### 8f. Typed application errors (đã làm hậu refactor 2026-07-24)
 
@@ -436,7 +436,7 @@ Hai helper khác trả về custom exception, nên baseline có 79 inline custom
   field được giữ nguyên.
 
 Inventory, allowlist và frozen-wire matrix cuối được tổng hợp trong
-[`docs/refactor/entity-centric-final-report.md`](../../refactor/entity-centric-final-report.md).
+[`docs/architecture.md`](../../architecture.md) → *Remaining synchronous coupling*.
 
 ## 9. Xác minh mỗi PR (ADR 0005 — không có test)
 

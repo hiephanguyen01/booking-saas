@@ -1,7 +1,7 @@
 # Money-Flow Verification Results — 2026-08-11
 
-Run against branch `feat/dynamic-vat` on the local dev stack. Plan:
-[`2026-08-11-money-flow-browser-verification.md`](./2026-08-11-money-flow-browser-verification.md).
+Run against branch `feat/dynamic-vat` on the local dev stack, following the money-flow browser
+verification plan (removed with the rest of the superpowers scratch on 2026-08-18).
 
 **Headline:** 13 scenarios, every one matching its predicted split to the đồng. Across the whole
 database: **0 unbalanced journals, 0 negative legs.** Two defects found — one seed fixture (fixed) and
@@ -109,7 +109,7 @@ listings are configured this way.** Confirmed quantitatively: MF6b (`on_arrival`
 **identical** to S1 (`online_before`) — the setting currently makes no difference, because either way
 the balance can only be collected on site.
 
-**Fixed** by [`2026-08-11-online-before-balance-payment.md`](./2026-08-11-online-before-balance-payment.md)
+**Fixed** by the online-before-balance-payment change
 on branch `feat/balance-payment`. The customer now settles the balance from their booking page; the
 three payment shapes finally differ as they should:
 

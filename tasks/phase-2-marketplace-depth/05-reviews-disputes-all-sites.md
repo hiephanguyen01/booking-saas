@@ -1,6 +1,6 @@
 # Task 2.5 — Reviews and dispute operations across all sites
 
-**Phase:** 2 — Marketplace Depth · **Depends on:** Phase 1 booking completion + settlement disputes · **Design refs:** `TONG-QUAN.md` sections 8.5, 13, 16, 17, 24; `docs/superpowers/specs/2026-07-19-reviews-disputes-all-sites-design.md`
+**Phase:** 2 — Marketplace Depth · **Depends on:** Phase 1 booking completion + settlement disputes · **Design refs:** `TONG-QUAN.md` sections 8.5, 13, 16, 17, 24
 
 ## Goal
 
