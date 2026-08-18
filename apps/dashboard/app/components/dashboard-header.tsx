@@ -20,6 +20,7 @@ const LABELS: Record<string, string> = Object.fromEntries(
 
 Object.assign(LABELS, {
   partner: 'Đối tác',
+  notifications: 'Thông báo',
   listings: 'Tin đăng',
   'listing-groups': 'Tin nhiều hạng mục',
   new: 'Tạo mới',

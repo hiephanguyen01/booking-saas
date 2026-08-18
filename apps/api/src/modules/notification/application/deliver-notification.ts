@@ -49,7 +49,9 @@ export async function deliverNotification(
       area: inApp.area,
       eventType: delivery.eventType,
       title: inApp.title,
-      body: null,
+      // Built from the same `input.data` the email below renders from, so the
+      // bell row and the mail can never describe the same event differently.
+      body: inApp.body?.(input.data) ?? null,
       targetType: inApp.targetType,
       targetId: inApp.targetId === 'booking' ? delivery.bookingId : null,
       dedupeKey: delivery.dedupeKey,

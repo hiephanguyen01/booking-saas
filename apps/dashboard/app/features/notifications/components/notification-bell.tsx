@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Bell } from 'lucide-react';
-import { useFetcher, useLocation } from 'react-router';
-import type { NotificationResponse } from '@booking/contracts';
+import { Bell, CheckCheck } from 'lucide-react';
+import { Link, useFetcher, useLocation } from 'react-router';
+import type { NotificationArea, NotificationResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -10,8 +10,9 @@ import {
   PopoverTrigger,
 } from '@booking/ui/components/ui/popover';
 import { ScrollArea } from '@booking/ui/components/ui/scroll-area';
+import { dashboardPaths } from '~/constants/paths';
 import { areaForPathname } from '~/features/notifications/lib/notification-area';
-import { NotificationList } from './notification-list';
+import { NotificationList, NotificationListSkeleton } from './notification-list';
 
 const POLL_MS = 60_000;
 
@@ -19,6 +20,16 @@ interface FeedData {
   count: number;
   items: NotificationResponse[];
 }
+
+/**
+ * The full inbox behind the menu. `affiliate` is absent on purpose: the
+ * affiliate portal has no notifications screen, so that bell shows its ten rows
+ * and no footer rather than linking into a 404.
+ */
+const INBOX_PATH: Partial<Record<NotificationArea, string>> = {
+  tenant: dashboardPaths.tenant.notifications,
+  partner: dashboardPaths.partner.notifications,
+};
 
 /**
  * The shell bell. Polls `/notifications` every 60s, and PAUSES while the tab is
@@ -57,6 +68,10 @@ export function NotificationBell() {
   if (!area) return null;
 
   const data = feed.data ?? { count: 0, items: [] };
+  // Only the very first poll has nothing to draw; later polls keep the rows on
+  // screen so a 60s refresh never flashes the menu back to skeletons.
+  const loading = !feed.data && feed.state === 'loading';
+  const inboxPath = INBOX_PATH[area];
   const submit = (body: Record<string, string>) =>
     action.submit(body, { method: 'post', action: '/notifications' });
 
@@ -67,7 +82,7 @@ export function NotificationBell() {
           <Bell className="size-5" />
           {data.count > 0 ? (
             <Badge
-              className="absolute -right-0.5 -top-0.5 h-4 min-w-4 justify-center px-1 text-[10px]"
+              className="absolute -right-0.5 -top-0.5 h-4 min-w-4 justify-center px-1 text-[10px] tabular-nums"
               aria-label={`${data.count} thông báo chưa đọc`}
             >
               {data.count > 99 ? '99+' : data.count}
@@ -75,28 +90,61 @@ export function NotificationBell() {
           ) : null}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0">
-        <div className="flex items-center justify-between border-b px-4 py-2">
-          <span className="text-sm font-semibold">Thông báo</span>
+
+      <PopoverContent align="end" className="w-[22rem] overflow-hidden p-0 sm:w-96">
+        <div className="flex items-center justify-between gap-2 border-b px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold">Thông báo</span>
+            {data.count > 0 ? (
+              <Badge variant="secondary" className="h-5 px-1.5 text-[11px] tabular-nums">
+                {data.count > 99 ? '99+' : data.count} chưa đọc
+              </Badge>
+            ) : null}
+          </div>
           {data.count > 0 ? (
             <Button
               variant="ghost"
               size="sm"
+              className="h-7 gap-1.5 px-2 text-xs"
+              disabled={action.state !== 'idle'}
               onClick={() => submit({ intent: 'read-all', area })}
             >
-              Đánh dấu tất cả đã đọc
+              <CheckCheck className="size-3.5" aria-hidden />
+              Đánh dấu đã đọc
             </Button>
           ) : null}
         </div>
-        <ScrollArea className="max-h-96">
-          <NotificationList
-            items={data.items}
-            onRead={(id) => {
-              setOpen(false);
-              submit({ intent: 'read', id });
-            }}
-          />
+
+        {/* The cap goes on the VIEWPORT, not the root. Radix gives the viewport
+            `h-full`, which against an auto-height root resolves to auto — so a
+            `max-h` on the root only clips the overflow, it never makes the list
+            scroll, and the rows run on under the footer. */}
+        <ScrollArea className="[&>[data-slot=scroll-area-viewport]]:max-h-[24rem]">
+          {loading ? (
+            <NotificationListSkeleton />
+          ) : (
+            <NotificationList
+              items={data.items}
+              variant="popover"
+              onRead={(id) => {
+                setOpen(false);
+                submit({ intent: 'read', id });
+              }}
+            />
+          )}
         </ScrollArea>
+
+        {inboxPath ? (
+          <div className="border-t">
+            <Link
+              to={inboxPath}
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2.5 text-center text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            >
+              Xem tất cả thông báo
+            </Link>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

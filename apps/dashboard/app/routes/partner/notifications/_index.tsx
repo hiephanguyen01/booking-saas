@@ -27,7 +27,7 @@ export default function PartnerNotificationsPage({ loaderData }: Route.Component
   return (
     <div className="space-y-4">
       <PageHeader title="Thông báo" />
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-lg border">
         <NotificationList
           items={loaderData.items}
           onRead={(id) =>
