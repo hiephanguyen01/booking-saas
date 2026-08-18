@@ -1,7 +1,5 @@
 import type { PartnerTaxStatus } from './tax';
 
-export const HOUSEHOLD_REVENUE_THRESHOLD_CODE = 'household_annual_revenue';
-
 export interface TaxThresholdRule {
   id: string;
   thresholdAmount: bigint;

@@ -3,8 +3,6 @@ import type { NewPromoRedemption } from '../entities/promo-redemption.entity';
 
 export const PROMO_REDEMPTION_REPOSITORY = Symbol('PROMO_REDEMPTION_REPOSITORY');
 
-export type PromoRedemptionStatus = 'reserved' | 'applied' | 'released';
-
 export interface RedemptionUsageStats {
   reservedCount: number;
   appliedCount: number;

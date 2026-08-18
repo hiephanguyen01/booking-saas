@@ -6,8 +6,6 @@ import type { PlanLimits } from '@booking/contracts';
  * block an end-customer's checkout — it only warns the tenant.
  */
 
-export type HardLimitResource = 'maxPartners' | 'maxListings';
-
 export interface HardLimitCheck {
   allowed: boolean;
   limit: number;

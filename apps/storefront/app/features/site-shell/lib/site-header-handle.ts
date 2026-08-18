@@ -17,9 +17,6 @@ export interface SiteHeaderRouteHandle {
   hideBottomNav?: boolean;
 }
 
-/** Export this as a route module's `handle` to float the header over its hero. */
-export const OVERLAY_HEADER_HANDLE: SiteHeaderRouteHandle = { overlayHeader: true };
-
 export const HOME_HEADER_HANDLE: SiteHeaderRouteHandle = {
   overlayHeader: true,
   showPwaInstall: true,
@@ -35,10 +32,5 @@ export const ACCOUNT_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = { mobileChrom
 
 export const CHECKOUT_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = {
   mobileChrome: 'flow',
-  hideBottomNav: true,
-};
-
-export const BOOKING_DETAIL_MOBILE_CHROME_HANDLE: SiteHeaderRouteHandle = {
-  mobileChrome: 'account',
   hideBottomNav: true,
 };

@@ -74,6 +74,3 @@ export async function runModerationAction({
   }
   return redirect(redirectTo);
 }
-
-/** What a route `action` delegating to {@link runModerationAction} returns. */
-export type ModerationActionResult = Awaited<ReturnType<typeof runModerationAction>>;

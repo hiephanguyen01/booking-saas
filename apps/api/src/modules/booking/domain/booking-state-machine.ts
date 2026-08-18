@@ -45,10 +45,6 @@ const EDGES: readonly Edge[] = [
   { from: 'expired', to: 'refunded', actors: ['system'] },
 ];
 
-export function canTransition(from: BookingStatus, to: BookingStatus): boolean {
-  return EDGES.some((e) => e.from === from && e.to === to);
-}
-
 /** Throws unless `actor` may move a booking `from → to`. */
 export function assertTransition(
   from: BookingStatus,

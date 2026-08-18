@@ -24,7 +24,7 @@ in an older doc, ticket, or snippet is recognisable as history rather than somet
 
 | Artifact | What it is | Why it's flagged | Recommendation |
 | --- | --- | --- | --- |
-| 17 unused `packages/ui/src/components/ui/*` primitives | `aspect-ratio`, `bubble`, `button-group`, `combobox`, `context-menu`, `direction`, `hover-card`, `item`, `kbd`, `marker`, `menubar`, `message`, `message-scroller`, `navigation-menu`, `resizable`, `scroll-area`, `slider` | Zero importers anywhere. Kept deliberately as ready-to-use registry copies, not deleted. | Keep. Deleting them would orphan `@base-ui/react`, `@shadcn/react`, `react-resizable-panels`. |
+| 16 unused `packages/ui/src/components/ui/*` primitives | `aspect-ratio`, `bubble`, `button-group`, `combobox`, `context-menu`, `direction`, `hover-card`, `item`, `kbd`, `marker`, `menubar`, `message`, `message-scroller`, `navigation-menu`, `resizable`, `slider` | Zero importers anywhere. Kept deliberately as ready-to-use registry copies, not deleted. (`scroll-area` was on this list until 2026-08-18, when the dashboard notification bell adopted it — the list is only true until a primitive is picked up, so re-check before citing it.) | Keep. Deleting them would orphan `@base-ui/react`, `@shadcn/react`, `react-resizable-panels`. |
 | `skills-lock.json` (root) | Lockfile listing 24 skill names | Only 6 skills are vendored under `.agents/skills/` (5 symlinked into `.claude/skills/`). The lock is a stale superset. | Regenerate to match, or remove. |
 | `apps/api/prisma/migrations/20260708000001_rls_roles_policies/migration.sql` line ~34 | Comment pointing at the removed `test/rls-coverage.integration.spec.ts` | Stale, but the file is an **applied** migration: its sha256 is recorded in `_prisma_migrations.checksum`, and editing even a comment breaks that match. | **Leave as-is.** Not worth a checksum drift. |
 
@@ -69,3 +69,41 @@ These are **live** (used inside their own module) yet exported with no external 
 catches any real use — but it is an API-surface change, not dead-code removal.
 
 The 17 unused `packages/ui` primitives listed above remain deliberate.
+
+## Removed on 2026-08-18
+
+Found by scanning every exported symbol in `apps/*/src|app` and `packages/*/src` for references
+across the source **plus `prisma/seed/` and `scripts/`** (so seed-only helpers were not mistaken for
+dead code). Everything below had exactly one occurrence repo-wide — its own declaration.
+
+| Artifact | What it was |
+| --- | --- |
+| `canTransition` (`booking/domain/booking-state-machine.ts`) | Predicate over the same `EDGES` table `assertTransition` walks. Callers always want the throw, never the boolean. |
+| `hasCapacity` (`booking/domain/inventory-stock.ts`) | Stock fit check. `remainingStock`, in the same file, is the live one; the module comment now describes it. |
+| `TenantAccount`, `isBalanced` (`finance/domain/ledger-journal.ts`) | A `'cash' \| 'revenue'` alias no leg type referenced, and a balance assertion superseded by `withTenantResidual`, which makes a journal balance by construction. |
+| `ListingHasPendingRevision` (`listing/domain/errors/listing-revision-errors.ts`) | A `DomainError` never thrown. The pending-revision guard it was written for is not wired ([ADR 0007](./decisions/0007-listing-edit-revisions.md) parks the edit instead of blocking). |
+| `PromoRedemptionStatus` (`promotions/domain/ports/promo-redemption-repository.port.ts`) | Status union no port method took or returned. |
+| `HardLimitResource` (`tenancy/domain/plan-limits.ts`) | `'maxPartners' \| 'maxListings'` alias; `HardLimitCheck` carries no such field. |
+| `TENANT_SHARE_FLOOR_CODE` (`shared/domain/commission/commission-rate-guard.ts`) | Named the code `'COMMISSION_RATES_NEGATIVE_TENANT'`. **The literal is still spelled out** in `finance-domain-errors.ts`, `affiliate-errors.ts` and the dashboard's `tenant-detail-actions.server.ts` — the const was an unrealised single-source-of-truth, never an import. |
+| `HOUSEHOLD_REVENUE_THRESHOLD_CODE` (`shared/domain/tax/threshold.ts`) | Same shape: `'household_annual_revenue'` stays literal in `prisma-partner-tax.repository.ts` and the seed. |
+| `ApiErrorResponses` + `shared/openapi/dto.ts` (`ApiErrorDto`) | A Swagger decorator documenting 400/401/403/404 that no controller applied. Its only consumer gone, `dto.ts` held nothing else and was deleted whole. |
+| `fetchListings` (`storefront/features/catalog/server/catalog.server.ts`) | Mapped catalog items to `PublicListingResponse`. `fetchDiscoveryListings`, its sibling, is what every loader calls — it keeps the sale/price-unit metadata this one dropped. |
+| `usePwa` (`storefront/features/pwa/lib/pwa-context.ts`) | The context hook. `PwaContext` itself stays: `pwa-provider.tsx` renders the Provider and reads its value directly. |
+| `SiteHeaderLogoutForm` (`storefront/features/site-shell/components/site-header-account-menu.tsx`) | Orphaned when the menu moved its logout into `useSiteHeaderAccountMenuController` (`fetcher` + `logoutAction`), which the menu now renders inline. |
+| `OVERLAY_HEADER_HANDLE`, `BOOKING_DETAIL_MOBILE_CHROME_HANDLE` (`storefront/features/site-shell/lib/site-header-handle.ts`) | Two route handles no route module exported. `HOME_HEADER_HANDLE` supersedes the first (same `overlayHeader`, plus `showPwaInstall`). |
+| `attributeSummary` (`storefront/lib/ui.ts`) | Joined attribute values with `·`. Attribute display goes through `specCards` / `AttributeSpecCards`. |
+| `TENANT_TAX_CATEGORY_LABELS` (`dashboard/constants/tax.ts`) | Vietnamese labels per `TenantTaxCategory`, rendered by no screen. |
+| `ModerationActionResult` (`dashboard/features/tenant/server/moderation-action.server.ts`) | `Awaited<ReturnType<...>>` alias no route imported. |
+
+### Deliberately NOT removed
+
+**~70 `z.infer` types in `packages/contracts`** (`UserStatus`, `BookingAccessGrant`,
+`PublicCatalogSort`, `StartCheckoutInput`, the five gateway `*Credentials`, …). Each is the typed half
+of a schema that **is** live — `userStatusSchema` has 3 references, `bookingAccessGrantSchema` 7. This
+is the *over-exported* category already described above, not dead code: deleting the type while the
+schema stays is arbitrary, and a contracts package exists precisely to publish the whole wire
+vocabulary. Narrow them only as a deliberate API-surface decision.
+
+The unused `packages/ui` primitives remain deliberate (see above) — 16 now, since `scroll-area` was
+adopted by the dashboard notification bell. Two of them, `direction.tsx` and `resizable.tsx`, are the
+only files in the repo that nothing imports at all; every other module is reachable.

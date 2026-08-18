@@ -1,6 +1,5 @@
 import type { CurrentUser } from '@booking/contracts';
 import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
-import { Button } from '@booking/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,11 +12,10 @@ import { cn } from '@booking/ui/lib/utils';
 import { LogOut } from 'lucide-react';
 import { Fragment } from 'react';
 import { ACCOUNT_NAV_ICONS, type AccountNavIcon } from '~/components/account-nav-icons';
-import { Link, useFetcher } from 'react-router';
+import { Link } from 'react-router';
 import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import { type AccountNavKey, userInitials } from '~/features/account/lib/account-nav';
 import { type Locale, NsI18n, useTranslation } from '@booking/i18n';
-import { storefrontPaths } from '~/constants/paths';
 import { useSiteHeaderAccountMenuController } from '~/features/site-shell/hooks/use-site-header-account-menu-controller';
 
 const ACCOUNT_MENU_DIVIDERS = new Set<AccountNavKey>(['reviews', 'recent', 'help']);
@@ -124,33 +122,6 @@ export function SiteHeaderAccountAvatar({
         {userInitials(currentUser.fullName)}
       </AvatarFallback>
     </Avatar>
-  );
-}
-
-export function SiteHeaderLogoutForm({
-  locale,
-  label,
-  mobile = false,
-}: {
-  locale: Locale;
-  label: string;
-  mobile?: boolean;
-}) {
-  const fetcher = useFetcher();
-  return (
-    <fetcher.Form method="post" action={storefrontPaths.logout(locale)}>
-      <Button
-        type="submit"
-        variant="ghost"
-        className={
-          mobile
-            ? 'h-auto justify-start rounded-sm px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 hover:text-destructive'
-            : 'h-10 rounded-sm px-2 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive'
-        }
-      >
-        {label}
-      </Button>
-    </fetcher.Form>
   );
 }
 
