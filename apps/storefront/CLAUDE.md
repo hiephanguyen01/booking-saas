@@ -123,6 +123,26 @@ nothing on their own and have to opt in:
   a placeholder whose real card reads `SURFACE_FRAME` makes the panel visibly jump the moment data
   arrives, for every tenant whose surface is not the default.
 
+### The CSP nonce and hydration
+
+Every nonce-bearing element we render (`TenantThemeStyle`'s `<style>`, the three routes'
+JSON-LD `<script>`) carries `suppressHydrationWarning`. **Do not remove it, and do not go
+looking for the "real" mismatch it hides.** Once a browser applies the CSP it blanks the
+`nonce` **content attribute** in the DOM — deliberate, per the HTML spec, so a
+`[nonce="…"]` selector cannot exfiltrate it — while keeping the value on the IDL
+property. Measured: `getAttribute('nonce') === ""` on every such element while
+`el.nonce` still holds the real value. React hydration compares the content attribute,
+so without the suppression every page load logs a mismatch it says it "won't patch up",
+forever — which trains everyone to ignore the one console error that matters.
+
+One mismatch remains in **dev only** and is not ours: React Router's critical-CSS
+`<link data-react-router-critical-css href="/@react-router/critical.css?…">`. Its
+`criticalCss` context value exists on the server and not on the client, so RR renders it
+with `nonce={undefined}` against a DOM that has the blanked attribute. The whole
+`unstable_getCriticalCss` export is emitted only when Vite runs as `serve`
+(`@react-router/dev/dist/vite.js`, `viteCommand === 'serve' ? … : ''`), so the element
+does not exist in a production build.
+
 ### The platform landing is not a tenant surface
 
 `features/platform-landing` renders only for `kind: 'platform'` (the configured platform base domain,

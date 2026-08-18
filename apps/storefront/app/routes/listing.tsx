@@ -38,8 +38,13 @@ export default function ListingRoute(props: Route.ComponentProps) {
 
   return (
     <>
+      {/* `suppressHydrationWarning` is for the nonce, not the JSON-LD: the browser blanks
+          the `nonce` content attribute once CSP is applied (spec behaviour, so a CSS
+          attribute selector cannot read it), which React hydration then reports as an
+          unpatchable mismatch on every load. */}
       <script
         nonce={cspNonce}
+        suppressHydrationWarning
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
       />
