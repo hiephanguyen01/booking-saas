@@ -32,9 +32,6 @@ export type LedgerEntryType =
 
 export type OwnerType = 'platform' | 'tenant' | 'partner' | 'affiliate' | 'tax_authority';
 
-/** Which tenant sub-account a leg targets (only meaningful for `tenant` legs). */
-export type TenantAccount = 'cash' | 'revenue';
-
 export interface LedgerOwnerRef {
   ownerType: OwnerType;
   /** partner/affiliate id; null for platform + the tenant cash account. */
@@ -122,9 +119,6 @@ export function sumDebit(legs: JournalLeg[]): Vnd {
 }
 export function sumCredit(legs: JournalLeg[]): Vnd {
   return legs.reduce((acc, l) => acc + l.credit, 0n);
-}
-export function isBalanced(legs: JournalLeg[]): boolean {
-  return sumDebit(legs) === sumCredit(legs);
 }
 
 /** Append the tenant-revenue residual leg so the journal balances exactly. */

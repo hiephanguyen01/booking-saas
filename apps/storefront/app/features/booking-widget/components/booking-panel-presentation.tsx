@@ -50,7 +50,7 @@ export function PackagePicker({
                   <Image
                     src={item.photos[0] ?? fallbackPhoto}
                     alt=""
-                    className="size-14 shrink-0 rounded-(--sf-image-radius) object-cover md:rounded-md"
+                    className="size-14 shrink-0 rounded-(--sf-image-radius) object-cover"
                   />
                 ) : null}
                 <span className="min-w-0 flex-1">

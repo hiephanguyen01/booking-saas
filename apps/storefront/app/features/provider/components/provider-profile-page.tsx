@@ -3,7 +3,9 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { BriefcaseBusiness, CalendarCheck, ShieldCheck, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
+import { cn } from '@booking/ui/lib/utils';
 import { SectionCard } from '~/components/section-card';
+import { SURFACE_OUTLINE } from '~/constants/surfaces';
 import { storefrontPaths } from '~/constants/paths';
 import type { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import { useLocale } from '~/hooks/use-locale';
@@ -135,7 +137,7 @@ function Stat({
   label: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/30 p-4">
+    <div className={cn(SURFACE_OUTLINE, 'flex items-center gap-3 bg-muted/30 p-4')}>
       <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
         <Icon className="size-5" />
       </span>

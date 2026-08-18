@@ -2,6 +2,13 @@
 
 **Phase:** 1 — Studio MVP · **Depends on:** 1.6, 1.7, 1.11 · **Design refs:** TONG-QUAN.md §16, §18, §19
 
+> **Paths below are as-proposed, not as-shipped.** This ticket predates the storefront's
+> feature-folder refactor, so the flat `app/components/*` and `app/routes/*` files it names (slot
+> picker, date-range calendar, lookup, my-bookings, group…) do not exist at those paths any more —
+> they live under `app/features/<name>/{components,hooks,server,lib}`, a layout now enforced by
+> `pnpm check:frontend-structure`. Read [`apps/storefront/CLAUDE.md`](../../apps/storefront/CLAUDE.md)
+> for the real structure; keep this ticket as the record of what was scoped.
+
 ## Goal
 A themeable, SEO-ready public site where customers search, book and pay.
 

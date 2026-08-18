@@ -24,6 +24,7 @@ import {
   DrawerTrigger,
 } from '@booking/ui/components/ui/drawer';
 import { cn } from '@booking/ui/lib/utils';
+import { SURFACE_OUTLINE } from '~/constants/surfaces';
 import { CalendarDays, ChevronDown, Clock3, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { PendingLink } from '~/components/pending-link';
@@ -141,7 +142,7 @@ function SlotPickerContent({
             aria-hidden="true"
           />
         </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2 overflow-hidden rounded-md border">
+        <CollapsibleContent className={cn(SURFACE_OUTLINE, 'mt-2 overflow-hidden')}>
           <div className="max-h-65 overflow-y-auto p-2">
             {slots.length ? (
               slots.map((slot) => (

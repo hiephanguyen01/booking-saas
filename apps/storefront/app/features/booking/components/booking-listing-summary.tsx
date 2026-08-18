@@ -38,12 +38,12 @@ export function BookingListingSummary({
           <Image
             src={booking.imageUrl}
             alt={booking.listingTitle}
-            className="aspect-[4/3] w-full rounded-(--sf-image-radius) object-cover object-top"
+            className="aspect-4/3 w-full rounded-(--sf-image-radius) object-cover object-top"
           />
         ) : (
           <ListingThumbnail
             label={booking.listingTitle}
-            className="aspect-[4/3] w-full rounded-(--sf-image-radius) border border-border"
+            className="aspect-4/3 w-full rounded-(--sf-image-radius) border border-border"
           />
         )}
         <div className="min-w-0">

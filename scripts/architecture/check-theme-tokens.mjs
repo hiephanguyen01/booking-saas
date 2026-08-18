@@ -110,9 +110,12 @@ const REQUIRED_SURFACE_CONTRACTS = new Map([
       '--sf-surface-pad',
     ],
   ],
+  // No `--sf-image-radius`: the cover is flush inside an `overflow-hidden` card, so
+  // the card's own `--sf-surface-radius` clips it. A radius here would fight that
+  // clip the moment a tenant sets `imageRadius` larger than `radius`.
   [
     'apps/storefront/app/features/catalog/components/listing-card.tsx',
-    ['--sf-image-radius', '--sf-surface-pad'],
+    ['SURFACE_FRAME', '--sf-surface-pad'],
   ],
   [
     'apps/storefront/app/features/catalog/components/search-result-card.tsx',
@@ -148,8 +151,9 @@ const REQUIRED_SURFACE_CONTRACTS = new Map([
     ['PANEL_SURFACE', '--sf-surface-pad', '--sf-section-gap'],
   ],
   [
+    // Same as `listing-card` above, which this mirrors: its cover carries no radius.
     'apps/storefront/app/components/loading-skeletons.tsx',
-    ['PANEL_SURFACE', '--sf-image-radius', '--sf-surface-pad', '--sf-section-gap'],
+    ['PANEL_SURFACE', 'SURFACE_FRAME', '--sf-surface-pad', '--sf-section-gap'],
   ],
 ]);
 

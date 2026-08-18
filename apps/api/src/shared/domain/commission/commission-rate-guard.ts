@@ -15,8 +15,6 @@ import type { RateType } from './commission-split';
  * platform fee is taken on GMV and there is no partner-payable step, so the floor
  * does not apply.
  */
-export const TENANT_SHARE_FLOOR_CODE = 'COMMISSION_RATES_NEGATIVE_TENANT';
-
 export interface CommissionRateGuardInput {
   tenantRateType: RateType;
   /** `percent`: whole percent (15 = 15%). `fixed`: VND đồng. */

@@ -168,7 +168,7 @@ export function ReviewDialogView({
                 {media.map((item) => (
                   <div
                     key={item.id}
-                    className="relative aspect-square overflow-hidden rounded-(--sf-image-radius) border border-border bg-muted md:rounded-md"
+                    className="relative aspect-square overflow-hidden rounded-(--sf-image-radius) border border-border bg-muted"
                   >
                     {item.kind === 'image' ? (
                       <Image

@@ -74,7 +74,7 @@ export function BookingPanel({
     <div
       className={cn(
         PANEL_SURFACE,
-        'bg-card p-(--sf-surface-pad) text-card-foreground md:rounded-lg md:border-0 md:p-5 md:shadow-sm',
+        'bg-card p-(--sf-surface-pad) text-card-foreground md:p-5',
       )}
     >
       <div className="space-y-5">

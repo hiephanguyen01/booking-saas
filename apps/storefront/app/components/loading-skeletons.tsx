@@ -60,7 +60,7 @@ export function ReviewsSectionSkeleton({ label }: { label: string }) {
       label={label}
       className={cn(
         PANEL_SURFACE,
-        'bg-card p-(--sf-surface-pad) md:rounded-lg md:border-0 md:p-6 md:shadow-sm',
+        'bg-card p-(--sf-surface-pad) md:p-6',
       )}
     >
       <div className="space-y-5">
@@ -92,7 +92,7 @@ export function RelatedListingsSkeleton({ label, count = 3 }: { label: string; c
       label={label}
       className={cn(
         PANEL_SURFACE,
-        'bg-card p-(--sf-surface-pad) md:rounded-lg md:border-0 md:p-6 md:shadow-sm',
+        'bg-card p-(--sf-surface-pad) md:p-6',
       )}
     >
       <StorefrontSkeleton className="mb-5 h-6 w-44" />
@@ -102,7 +102,7 @@ export function RelatedListingsSkeleton({ label, count = 3 }: { label: string; c
             key={index}
             className={cn(
               PANEL_SURFACE,
-              'overflow-hidden bg-background md:rounded-lg md:border md:border-border md:shadow-none',
+              'overflow-hidden bg-background',
             )}
           >
             <StorefrontSkeleton className="aspect-4/3 rounded-none" />
@@ -166,7 +166,9 @@ function DiscoveryListingCardSkeleton({ className }: { className?: string }) {
       )}
     >
       <div className="h-[calc(24.625rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[220px]:h-[calc(18rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[190px]:h-[calc(16rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))]">
-        <StorefrontSkeleton className="h-46 rounded-(--sf-image-radius) sm:rounded-none @max-[220px]:h-34 @max-[190px]:h-28" />
+        {/* `rounded-none` cancels `Skeleton`'s own `rounded-md`: the real card's cover
+            carries no radius either — the card clips it. */}
+        <StorefrontSkeleton className="h-46 rounded-none @max-[220px]:h-34 @max-[190px]:h-28" />
         <div className="space-y-3 p-(--sf-surface-pad) @max-[220px]:space-y-2">
           <StorefrontSkeleton className="h-6 w-4/5 @max-[220px]:h-5" />
           <StorefrontSkeleton className="h-5 w-3/5 @max-[220px]:h-4" />
@@ -194,7 +196,7 @@ function AccountResultRows({ count }: { count: number }) {
       key={index}
       className={cn(
         PANEL_SURFACE,
-        'bg-background p-(--sf-surface-pad) md:rounded-lg md:border md:border-border md:p-5 md:shadow-none',
+        'bg-background p-(--sf-surface-pad) md:p-5',
       )}
     >
       <div className="flex items-center gap-4">
@@ -214,7 +216,7 @@ function AccountFormSkeletonBody() {
     <div
       className={cn(
         PANEL_SURFACE,
-        'bg-background p-(--sf-surface-pad) md:rounded-none md:border md:border-border md:px-8 md:py-8 md:shadow-none',
+        'bg-background p-(--sf-surface-pad) md:px-8 md:py-8',
       )}
     >
       <div className="mb-8 flex items-center gap-4">
@@ -244,7 +246,7 @@ function AccountDetailSkeletonBody() {
           key={index}
           className={cn(
             PANEL_SURFACE,
-            'bg-background p-(--sf-surface-pad) md:rounded-lg md:border md:border-border md:p-6 md:shadow-none',
+            'bg-background p-(--sf-surface-pad) md:p-6',
           )}
         >
           <StorefrontSkeleton className="h-5 w-40" />

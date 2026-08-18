@@ -1,10 +1,22 @@
 /**
+ * Shape and border from the tenant's `--sf-surface-*` tokens, WITHOUT elevation.
+ *
+ * The frame for a region that is bounded but not lifted: a table inside a card,
+ * a collapsible body, a stat tile. Those sit on a surface that already carries
+ * the tenant's shadow, and giving them a second one reads as a panel floating
+ * inside a panel. They still owe the tenant their radius and border, which is
+ * what this is for — the alternative in practice was a hardcoded `rounded-md
+ * border`, invisible to `theme_config` entirely.
+ */
+export const SURFACE_OUTLINE =
+  'rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)]';
+
+/**
  * The tenant-configurable frame shared by cards and panels. Shape, border and
  * elevation all read the `--sf-surface-*` tokens; background and padding remain
  * the caller's responsibility.
  */
-export const SURFACE_FRAME =
-  'rounded-(--sf-surface-radius) [border:var(--sf-surface-border-width)_solid_var(--sf-surface-border-color)] shadow-(--sf-surface-shadow)';
+export const SURFACE_FRAME = `${SURFACE_OUTLINE} shadow-(--sf-surface-shadow)`;
 
 /**
  * The tenant-configurable panel surface: radius, border and shadow all read the

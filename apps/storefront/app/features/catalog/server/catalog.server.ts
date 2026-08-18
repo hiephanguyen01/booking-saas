@@ -1,6 +1,5 @@
 import type {
   PublicListingDetailWithTimezoneResponse,
-  PublicListingResponse,
   PublicListingTypeResponse,
   PublicListingGroupDetailResponse,
   PublicCatalogSearchResponse,
@@ -19,10 +18,7 @@ import { publicGetData } from '~/lib/server/api.server';
 import { mapWithConcurrency } from '~/lib/server/concurrency.server';
 import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 import { apiPaths } from '~/constants/api-paths';
-import {
-  discoveryListingFromCatalogItem,
-  publicListingFromCatalogItem,
-} from '~/features/catalog/lib/listing-card-presentation';
+import { discoveryListingFromCatalogItem } from '~/features/catalog/lib/listing-card-presentation';
 import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 
 const listingTypesSchema = z.array(publicListingTypeResponseSchema);
@@ -83,14 +79,6 @@ export function fetchListingGroup(
     schema: publicListingGroupDetailResponseSchema,
     allowNotFound: true,
   });
-}
-
-export async function fetchListings(
-  request: Request,
-  search: URLSearchParams,
-): Promise<PublicListingResponse[]> {
-  const items = await fetchCatalogItems(request, search);
-  return items.map(publicListingFromCatalogItem);
 }
 
 /** Catalog cards that retain real sale, price-unit and completed-booking metadata. */

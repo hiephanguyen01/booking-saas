@@ -29,7 +29,7 @@ pnpm --filter=@booking/storefront dev # customer site, multi-tenant by Host head
 pnpm --filter=@booking/dashboard dev  # 4 role areas: /admin /tenant /partner /affiliate
 ```
 
-React Router 8 framework mode (SSR) + Tailwind v4. Storefront resolves the tenant in `app/lib/tenant.server.ts` and themes via tenant-configured semantic CSS variables.
+React Router 8 framework mode (SSR) + Tailwind v4. Storefront resolves the tenant in `app/lib/server/tenant.server.ts` and themes via tenant-configured semantic CSS variables.
 
 ## Agent skills
 
@@ -46,14 +46,17 @@ Project-level skills in `.agents/skills/` (symlinked into `.claude/skills/`), in
 ## Commands
 
 ```bash
-pnpm test                       # targeted package tests
 pnpm turbo lint typecheck build # static checks and production builds
 ```
 
-Storefront-only tests:
+**There are no tests, by owner decision** ([ADR 0005](docs/decisions/0005-no-tests-policy.md)) — no
+`test` script exists in any package, and none may be added. Verification is lint + typecheck + build,
+the architecture guard scripts, and running the app:
 
 ```bash
-pnpm --filter=@booking/storefront test
+pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure \
+  && pnpm check:theme-tokens && pnpm --filter=@booking/storefront security \
+  && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls
 ```
 
 ## Architecture notes (Phase 0)

@@ -58,7 +58,14 @@ export function ListingCard({
         }
         className="group flex h-[calc(24.625rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] min-h-[calc(24.625rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring @max-[220px]:h-[calc(18rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[220px]:min-h-[calc(18rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[190px]:h-[calc(16rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))] @max-[190px]:min-h-[calc(16rem_-_var(--sf-surface-border-width)_-_var(--sf-surface-border-width))]"
       >
-        <div className="relative h-46 shrink-0 overflow-hidden rounded-(--sf-image-radius) bg-muted sm:rounded-none @max-[220px]:h-34 @max-[190px]:h-28">
+        {/* No radius of its own: the cover is flush with the card's top edge, and the
+            card is `overflow-hidden` with the tenant's `--sf-surface-radius`, so the
+            card clips these corners at every width. Rounding here instead produced a
+            visible rounded *bottom* edge floating mid-card — which is what the old
+            `sm:rounded-none` was patching, and only from `sm` up. Worse, `sm:` is a
+            viewport breakpoint while this card is a container-query context, so a
+            narrow card on a wide screen took the wrong branch. */}
+        <div className="relative h-46 shrink-0 overflow-hidden bg-muted @max-[220px]:h-34 @max-[190px]:h-28">
           {cover ? (
             <Image
               src={cover}

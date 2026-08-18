@@ -89,6 +89,40 @@ SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--prim
   tenant-driven (it's shadcn's neutral hover surface). Legacy `--sf-primary` / `--sf-accent` /
   `--sf-background` are still emitted for hand-rolled classNames — prefer semantic tokens for new work.
 
+### Surface shape is tenant config too, at every breakpoint
+
+`theme_config.surface` drives `--sf-surface-radius`, `--sf-image-radius`,
+`--sf-surface-border-{width,color}`, `--sf-surface-shadow`, `--sf-surface-pad` and `--sf-section-gap`
+(plus `--sf-base-size`). Panels are hand-rolled here rather than shadcn `Card`s, so they inherit
+nothing on their own and have to opt in:
+
+- **A content panel** takes `SectionCard`, or `PANEL_SURFACE` / `SURFACE_FRAME` from
+  `~/constants/surfaces`. **A bounded-but-not-lifted region** — a table inside a card, a collapsible
+  body, a stat tile — takes `SURFACE_OUTLINE` (radius + border, no shadow): it sits on a surface that
+  already carries the tenant's shadow, and a second one reads as a card inside a card.
+- **Images** take `rounded-(--sf-image-radius)`.
+- **Never shadow one of those tokens with a fixed shape at a breakpoint.** `rounded-(--sf-image-radius)
+  md:rounded-md` looks harmless and means "the tenant's radius applies on phones only" — the desktop
+  half silently ignores `theme_config`. This is not hypothetical: the tokens were introduced that way
+  (`eef5dc0e`, "improve tenant config") by adding the token and keeping the old literal as a `md:`
+  override, and every such site was still mobile-only until 2026-08-18. **`pnpm check:tenant-surfaces`
+  now fails the build on it** (in CI).
+- **Substituting** a fixed shape is the bug; **removing** the surface is not. `md:rounded-md` says
+  "use 6px instead of whatever the tenant chose". `md:rounded-none` / `md:shadow-none` / `md:border-0`
+  say "this element has no surface at this width" — a panel dissolving into the frame around it, an
+  image sitting flush in its container. The guard flags only the first, which is why it needs no
+  allowlist. `max-md:` is likewise fine: it strips the frame *below* a breakpoint, and the tenant's
+  shape still applies from there up.
+- **A child of an `overflow-hidden` surface needs no radius at all** — the parent clips it. Giving the
+  cover image its own `rounded-(--sf-image-radius)` inside `listing-card` did nothing at the top (the
+  card already clipped it) and produced a rounded *bottom* edge floating mid-card, which a
+  `sm:rounded-none` then patched from `sm` up only. Let the parent do the clipping.
+- **Not tenant surfaces:** buttons, inputs, badges, alerts, dropdown/dialog chrome, radio-style option
+  tiles and dashed empty-state placeholders. Their shape belongs to the design system.
+- A **skeleton must use the same tokens as the component it stands in for.** A fixed `md:rounded-lg` on
+  a placeholder whose real card reads `SURFACE_FRAME` makes the panel visibly jump the moment data
+  arrives, for every tenant whose surface is not the default.
+
 ### The platform landing is not a tenant surface
 
 `features/platform-landing` renders only for `kind: 'platform'` (the configured platform base domain,

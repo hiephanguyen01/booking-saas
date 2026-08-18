@@ -48,6 +48,25 @@ Concrete example:
 
 **Phase 1 (MVP) goal**: get the studio vertical running — hourly + daily booking, **and quantity-based equipment/outfit rental (with security deposit)** — with SePay payment, commissions, basic discount codes, and a dashboard. The architecture is designed for the full model from day one.
 
+### 1.1. Load-bearing features (each has its own deep-dive doc)
+
+Three shipped features carry a rule the rest of the system has to obey. Read the linked doc before
+touching anything near them — this spec describes the *product*, those describe the *invariant*.
+
+| Feature | The one rule everything else follows | Deep dive |
+| --- | --- | --- |
+| **VAT** | The platform owns the **rate**, the tenant owns the **classification**. Prices are VAT-inclusive gross, every commission rate applies to the amount **net of VAT**, and the rate is resolved for the *service date* and frozen into `commission_snapshot.tax` — customer-facing copy reads it from there, never from a constant. Get this wrong and every split is wrong. | [`docs/features/vat.md`](./docs/features/vat.md) |
+| **Legal documents & consent** | A tenant's storefront **refuses to serve traffic** until all four documents (customer terms, privacy, partner terms, affiliate terms) are published in its default language. Acceptances record the exact version *and the language actually rendered*, so the text someone agreed to can always be reproduced. | [`docs/features/legal-documents.md`](./docs/features/legal-documents.md) · [ADR 0008](./docs/decisions/0008-legal-documents-and-consent.md) |
+| **Dashboard host multi-tenancy** | The console is reached at `admin.<slug>.<domain>` and its scope comes from the **`Host` header**, exactly as the storefront resolves a tenant — not from the login session. The platform-only `/admin` area is gated to the platform's own host. | [`docs/features/dashboard-hosts.md`](./docs/features/dashboard-hosts.md) |
+
+Two further features are documented but carry no cross-cutting invariant — read them only when working
+on that surface: the **storefront PWA** (installable on every tenant host; install promotion is
+tenant-Home-only, and the launcher-icon trio is atomic so a half-configured theme can never mix two
+brands in one manifest — [`docs/features/storefront-pwa.md`](./docs/features/storefront-pwa.md)) and
+**favorites** (a customer's heart on a listing or group, exactly one target enforced by a DB `CHECK`;
+partners and tenants see who favorited what —
+[`docs/features/favorites.md`](./docs/features/favorites.md)).
+
 ---
 
 ## 2. Terminology & Actors
@@ -125,12 +144,12 @@ Detailed custody, split and recovery rules: [`docs/settlement-flow.md`](./docs/s
 
 ```
                     ┌──────────────────────────────────────────────┐
-   Customer ──────▶ │  apps/storefront (React Router 7, SSR)        │
+   Customer ──────▶ │  apps/storefront (React Router 8, SSR)        │
    (by tenant       │  studiohub.vn / stayvn.com / *.bookingos.vn     │
     domain)         └───────────────────────┬──────────────────────┘
                                             │ HTTP (REST, packages/shared)
    Tenant/Partner/  ┌──────────────────────▼──────────────────────┐
-   Affiliate/Admin ▶│  apps/dashboard (React Router 7, SSR)        │
+   Affiliate/Admin ▶│  apps/dashboard (React Router 8, SSR)        │
                     └───────────────────────┬──────────────────────┘
                                             │
                     ┌───────────────────────▼──────────────────────┐
@@ -151,7 +170,7 @@ Detailed custody, split and recovery rules: [`docs/settlement-flow.md`](./docs/s
 
 | Layer                  | Technology                                                    | Notes                                                                                                      |
 | ---------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Frontend               | React Router 7 (framework mode, SSR)                          | 2 apps: storefront + dashboard                                                                             |
+| Frontend               | React Router 8 (framework mode, SSR)                          | 2 apps: storefront + dashboard                                                                             |
 | UI                     | Tailwind CSS + shadcn/ui                                      | In `packages/ui`, supports theming via CSS variables                                                       |
 | Backend                | NestJS 11, strict TypeScript                                  | Hexagonal architecture (ports & adapters) per module                                                       |
 | ORM                    | **Prisma** (locked in)                                        | `schema.prisma` is the source of truth for the data model; RLS via the `forTenant()` pattern (section 6.4) |
@@ -159,7 +178,7 @@ Detailed custody, split and recovery rules: [`docs/settlement-flow.md`](./docs/s
 | Cache / Queue          | Redis 7 + BullMQ                                              | Hold TTL, expiry jobs, notification sending, outbox relay                                                  |
 | Validation & contracts | Zod in `packages/shared`                                      | A single shared schema source for FE/BE                                                                    |
 | Auth                   | Session cookie (httpOnly) + refresh; Argon2id hashing         | Detailed in section 20                                                                                     |
-| i18n                   | vi/en, resources in `packages/shared`                         | remix-i18next for RR7, nestjs-i18n for email                                                               |
+| i18n                   | vi/en, resources in `packages/shared`                         | remix-i18next for RR8, nestjs-i18n for email                                                               |
 | Dev infra              | docker-compose: postgres, redis, mailpit, minio               |                                                                                                            |
 | Monorepo               | pnpm workspaces + Turborepo                                   |                                                                                                            |
 | Testing                | Vitest (unit), Testcontainers (integration), Playwright (E2E) |                                                                                                            |
@@ -205,7 +224,7 @@ Modules communicate via **domain events + the outbox pattern** (an `outbox_event
 ### 4.4. Operations & Observability
 
 - **Logging**: pino structured JSON, every log line carries `requestId` + `tenantId`; output to stdout → collector.
-- **Error tracking**: Sentry for `api` and both RR7 apps (server + client).
+- **Error tracking**: Sentry for `api` and both RR8 apps (server + client).
 - **Health checks**: `/health` (liveness) + `/health/ready` (checks DB/Redis) for the orchestrator; uptime monitoring per storefront domain.
 - **Metrics**: count bookings/payments/webhook failures per tenant (Prometheus format); alert when payment webhooks fail repeatedly or the BullMQ queue backs up.
 - **Backups**: daily pg_dump + WAL archiving (PITR), periodic restore drills. Redis only holds transient data (hold/cache/queue) — losing Redis does not break correctness thanks to DB-level constraints.
@@ -250,16 +269,12 @@ booking-saas/
 │   │   │       ├── money/                    # VND bigint format/parse
 │   │   │       └── time/                     # UTC timezone helpers (DB is always UTC)
 │   │   ├── prisma/{ schema.prisma · migrations/ (incl. hand-written RLS + tstzrange exclusion SQL) · seed.ts }
-│   │   └── test/                             # e2e / integration (Testcontainers)
-│   ├── storefront/                          # RR7 SSR — customer site, tenant resolved from Host (port 3000)
+│   ├── storefront/                          # RR8 SSR — customer site, tenant resolved from Host (port 5173)
 │   │   └── app/
 │   │       ├── routes/                       # home, catalog t/:typeSlug, listing l/:listingSlug, checkout, bookings
-│   │       ├── features/                     # catalog/ · listing/ · booking/ · checkout/ · partner/ (feature-based)
-│   │       ├── templates/studio/             # vertical-specific storefront templates
-│   │       ├── theme/                        # tenant theme_config → SSR-injected CSS variables
-│   │       ├── layouts/
+│   │       ├── features/                     # 24 features: catalog · listing · listing-group · booking · checkout · account · site-shell · pwa …
 │   │       └── lib/*.server.ts               # api/session/auth server helpers; tenant from Host header
-│   └── dashboard/                           # RR7 SSR — /admin /tenant /partner /affiliate (port 3002)
+│   └── dashboard/                           # RR8 SSR — /admin /tenant /partner /affiliate (port 5174)
 │       └── app/
 │           ├── routes/{ admin · tenant · partner · affiliate · auth }/   # config-based routing
 │           ├── features/{ admin · tenant · partner }/
@@ -308,7 +323,7 @@ modules/<context>/
 
 ### 6.1. Tenant Resolution
 
-- **Storefront**: by `Host` header. The `tenant_domains` table maps `hostname → tenant_id`. Supports both a default subdomain (`studiohub.bookingos.vn`) and a custom domain (`studiohub.vn`). RR7's root loader resolves the tenant and puts it into context; cached in Redis for 60s.
+- **Storefront**: by `Host` header. The `tenant_domains` table maps `hostname → tenant_id`. Supports both a default subdomain (`studiohub.bookingos.vn`) and a custom domain (`studiohub.vn`). RR8's root loader resolves the tenant and puts it into context; cached in Redis for 60s.
 - **Dashboard & API**: the tenant is taken from **the login session** (which tenant the user belongs to) — the tenant_id sent by the client is never trusted. The platform admin has no tenant context (uses a connection that bypasses RLS, see 6.3).
 
 ### 6.2. RLS Design
@@ -1130,7 +1145,7 @@ When a tenant pays out a partner: Debit `Partner payable` / Credit `Tenant cash`
 ### 14.4. Enforcement
 
 - NestJS: a `@RequirePermissions('tenant.listings.write')` decorator + `PermissionsGuard` — resolves the user's permissions within the request's scope (cached in Redis by user+scope, invalidated on role change).
-- RR7 dashboard: the root loader returns `permissions[]` → hides/shows menu items, blocks routes via a guard in the loader (not just hiding UI).
+- RR8 dashboard: the root loader returns `permissions[]` → hides/shows menu items, blocks routes via a guard in the loader (not just hiding UI).
 - Every role/assignment change is audit-logged.
 
 ---
@@ -1186,27 +1201,49 @@ A template is a set of route components + its own layout, sharing `packages/ui` 
 {
   "logoUrl": "...",
   "faviconUrl": "...",
+  "pwaIcons": { "icon180Url": "...", "icon192Url": "...", "icon512Url": "...", "maskable512Url": "..." },
   "colors": {
     "primary": "#0EA5E9",
     "accent": "#F97316",
     "background": "#FFFFFF"
   },
+  "surface": {
+    "radius": "12px",
+    "imageRadius": "8px",
+    "borderWidth": "1px",
+    "borderColor": "#E5E7EB",
+    "shadow": "md",
+    "cardPadding": "16px",
+    "sectionGap": "16px"
+  },
   "font": "inter",
+  "baseSize": "16px",
   "hero": {
     "title": "Book a studio in 30 seconds",
     "subtitle": "...",
     "imageUrl": "..."
   },
   "carousel": ["https://cdn/.../slide-1.jpg", "https://cdn/.../slide-2.jpg"],
-  "contact": { "phone": "...", "zalo": "...", "address": "..." },
+  "contact": { "email": "...", "phone": "...", "address": "..." },
   "seo": { "title": "...", "description": "..." },
-  "socialLinks": { "facebook": "...", "instagram": "..." }
+  "socialLinks": { "facebook": "...", "instagram": "...", "tiktok": "...", "youtube": "..." }
 }
 ```
 
-`logoUrl`, `faviconUrl`, `hero.imageUrl`, and every `carousel` entry are **uploaded images** — the tenant settings route (`apps/dashboard/app/routes/tenant/settings.tsx`) uses the GenericForm `file` field (favicon accepts `.ico`); the storefront renders `carousel` as a homepage slideshow (`apps/storefront/app/templates/studio/carousel.tsx`) above the hero, and hides it when empty. Rendered as CSS variables at SSR time (`<style>:root{--color-primary:...}</style>`) — no rebuild needed when a tenant changes its theme. The tenant dashboard groups brand, domains, operational rules, payments, and payouts in one permission-aware settings workspace; its theme editor has a live preview, and tenant-owned cancellation policies can be created, edited, selected as the fallback default, or deleted when unused.
+**A tenant configures surfaces, never ink.** `colors` sets only primary/accent/background; every
+foreground and the whole neutral ramp is *derived* from the background, so no combination of settings
+can produce unreadable text. `surface` shapes the panels — radius, border, elevation, inset, section
+rhythm — and `baseSize` scales every `rem` in the storefront. Both are re-validated and range-clamped
+before they reach a `<style>` block (`theme_config` is tenant-controlled jsonb, so the contract checks
+shape and length while the sanitizers check grammar and range); an invalid value falls back to the
+platform default rather than disabling the token. `surface` and `baseSize` apply at **every**
+breakpoint — a fixed shape written on top of one of these tokens at `md:` silently discards the
+tenant's configuration on desktop, which is why the storefront's panel constants exist
+(`apps/storefront/CLAUDE.md` → *Surface shape is tenant config too*).
 
-**Storefront SEO**: each domain auto-generates a `sitemap.xml` (homepage + published `listing_groups` + published standalone listings) and `robots.txt`; meta title/description + Open Graph come from `theme_config.seo` and listing data; RR7's SSR ensures crawlers can read the content.
+`logoUrl`, `faviconUrl`, `hero.imageUrl`, and every `carousel` entry are **uploaded images** — the tenant settings route (`apps/dashboard/app/routes/tenant/settings.tsx`) uses the GenericForm `file` field. **The favicon is derived, not uploaded on its own**: the tenant supplies one square source image (PNG or WebP only), and `pwa-icon-uploader.tsx` generates the 180/192/512 launcher set from it, with the 512 doubling as `faviconUrl` — the form commits only when all three succeed, so a tenant can never end up with a half-branded manifest. The storefront renders `carousel` as a homepage slideshow (`apps/storefront/app/features/home/components/brand-carousel.tsx`) above the hero, and hides it when empty. Rendered as CSS variables at SSR time (`<style>:root{--primary:...;--sf-surface-radius:...}</style>`, built by `apps/storefront/app/lib/theme.ts`) — the shadcn **base** tokens are overridden, so every `@booking/ui` component re-skins with no rebuild when a tenant changes its theme. The tenant dashboard groups brand, domains, operational rules, payments, and payouts in one permission-aware settings workspace; its theme editor has a live preview, and tenant-owned cancellation policies can be created, edited, selected as the fallback default, or deleted when unused.
+
+**Storefront SEO**: each domain auto-generates a `sitemap.xml` (homepage + published `listing_groups` + published standalone listings) and `robots.txt`; meta title/description + Open Graph come from `theme_config.seo` and listing data; RR8's SSR ensures crawlers can read the content.
 
 ---
 
@@ -1226,6 +1263,18 @@ A template is a set of route components + its own layout, sharing `packages/ui` 
 | SubscriptionExpiring (T−7d)      | Tenant admin + **Platform admin** (reminder to collect payment — manual invoicing) | Email                |
 
 Every notification goes through the outbox → BullMQ (retry + dead-letter). Email templates are per-tenant (logo, colors), bilingual vi/en based on `users.locale`. A `notification_logs` table tracks what was sent.
+
+**In-app bell (implemented).** A `notifications` table backs a per-user inbox for the tenant, partner
+and affiliate dashboard areas, fanned out one row per recipient at write time. Two producers feed it:
+a partner/affiliate email whose template is listed in `IN_APP_TEMPLATES` also drops a bell row, and
+nine tenant-facing events (`listing.submitted`, `partner.applied`, `settlement.dispute_opened`,
+`review.created`, …) are **in-app only** — routine moderation traffic gets no email template designed
+for it. A row's `body` is built from the same `TemplateData` the email renders from, so the bell can
+never claim a detail the mail does not. The dashboard shell polls unread counts every 60s through a
+resource route and pauses while the tab is hidden. Per-user isolation is the repository's job, not
+RLS: the tenant policy has no `user_id` predicate, so every read carries `WHERE user_id = $me` (see
+[`docs/data-model.md`](./docs/data-model.md) §6). Customers get no bell — they never open the
+dashboard.
 
 Email HTML is rendered server-side from reusable React Email components, with a plain-text fallback
 and CID-hosted status assets for mail-client compatibility. Registration/password-reset and guest
@@ -1309,7 +1358,7 @@ GET  /affiliate/stats  GET /affiliate/commissions
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Passwords                   | Argon2id; login rate limiting; temporary lockout after N failed attempts                                                                         |
 | Sessions                    | httpOnly session cookie + SameSite=Lax, refresh rotation; cookie scoped to the dashboard domain; storefront guests use a guest session for holds |
-| CSRF                        | Token for every dashboard form (RR7 action)                                                                                                      |
+| CSRF                        | Token for every dashboard form (RR8 action)                                                                                                      |
 | Tenant isolation            | RLS FORCE (section 6) + automated isolation tests in CI                                                                                          |
 | Webhooks                    | Signature verification per gateway, raw body, idempotency, IP allowlist where the gateway supports it                                            |
 | Payment gateway credentials | AES-256-GCM at the app layer, key kept outside the DB; never returned by the API                                                                 |
@@ -1320,7 +1369,7 @@ GET  /affiliate/stats  GET /affiliate/commissions
 
 Additional auth flows (Phase 1): **email verification** at signup; **password reset** (one-time token, expires in 30 minutes); **email OTP** for guest booking lookup (section 8.6). Google/Zalo login: backlog (section 24).
 
-**Auth on a tenant's custom domain**: the RR7 storefront acts as a **BFF** — the session cookie is set on the tenant's own domain, and every API call happens **server-side** from RR7 (with internal auth between the BFF and the API); this entirely avoids cross-site/SameSite cookie issues when the storefront and API are on different domains. CSRF tokens apply to storefront actions too (checkout, cancel, entering a promo code), not just the dashboard.
+**Auth on a tenant's custom domain**: the RR8 storefront acts as a **BFF** — the session cookie is set on the tenant's own domain, and every API call happens **server-side** from RR8 (with internal auth between the BFF and the API); this entirely avoids cross-site/SameSite cookie issues when the storefront and API are on different domains. CSRF tokens apply to storefront actions too (checkout, cancel, entering a promo code), not just the dashboard.
 
 ---
 
@@ -1350,7 +1399,15 @@ Additional auth flows (Phase 1): **email verification** at signup; **password re
 
 ### Phase 2 — Marketplace Depth
 
-Full affiliate system (links, cookie attribution, commission lifecycle, dashboard) · advanced promotions (auto-applied campaigns without a code, partner-created codes, off-peak time-window discounts) · a 3-tier role-builder UI · MoMo + VNPay adapters · reschedule · manual walk-in bookings · in-app customer↔partner chat · automatic penalties for a partner's wrongful cancellation/no-show · Zalo ZNS · an advanced payout screen + platform-fee reconciliation · the `rental` template.
+**Shipped:** the full affiliate system (links, cookie attribution, commission lifecycle, dashboard) ·
+the 3-tier role-builder UI with tenant + partner staff management · auto-applied campaigns without a
+code · MoMo, PayOS and ZaloPay adapters beside SePay · reviews & ratings with partner replies ·
+booking disputes (claim → partner response → tenant adjudication) · content reports · favorites ·
+the in-app notification centre (section 17).
+
+**Still open:** VNPay · reschedule · manual walk-in bookings · in-app customer↔partner chat ·
+automatic penalties for a partner's wrongful cancellation/no-show · Zalo ZNS · an advanced payout
+screen + platform-fee reconciliation · the `rental` template.
 
 ### Phase 3 — New Verticals & Automation
 
@@ -1359,6 +1416,13 @@ Full affiliate system (links, cookie attribution, commission lifecycle, dashboar
 ---
 
 ## 22. Testing Strategy
+
+> ⛔ **Superseded — this section is product history, not the current policy.** The repository has a
+> hard **no-tests rule** by owner decision ([ADR 0005](./docs/decisions/0005-no-tests-policy.md)):
+> there are no test files, no vitest/jest/playwright config, no `test` script and no CI test step, and
+> none may be added. Verification is `typecheck` + `lint` + `build` + the architecture guard scripts +
+> running the app. The table below records what was originally planned; do not implement it, and do not
+> quote the definition-of-done line under it.
 
 | Layer         | Tooling                          | Focus                                                                                                                                                                                                                                                                                                                                                                                           |
 | ------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1390,12 +1454,15 @@ Definition of done per phase: `pnpm turbo lint typecheck test` green + E2E green
 
 ## 24. Out of Scope — Future Backlog
 
-Items that have **already been considered** but deliberately deferred (not overlooked); the current architecture doesn't block adding them later:
+Items that have **already been considered** but deliberately deferred (not overlooked); the current architecture doesn't block adding them later.
 
-- **Reviews & ratings**: customers review after a booking is `completed` (already supported by the state machine); partners can reply + filter by responded/not responded. Two independent tables `reviews` (booking_id unique, rating, content) + `review_replies`; `rating_avg`/`review_count` are denormalized onto the listing/group via the outbox.
+> **Shipped since this list was written** — do not treat these as backlog: **reviews & ratings**
+> (`modules/reviews`, storefront review section + reply flow), **wishlist** (shipped as *favorites* —
+> `modules/favorites`, [`docs/features/favorites.md`](./docs/features/favorites.md)), the
+> **in-app notification center** (section 17), and the **content-report** half of the feed/CMS cluster
+> (`modules/content-reports` + the storefront `community` feature). What remains of that cluster is the
+> feed and the CMS itself.
 - **Chat with admin**: two channels, customer↔admin and partner↔admin (the customer↔partner channel is already on the Phase 2 roadmap) — one shared `conversations` module (type, booking_id nullable, status open/resolved) + `messages` (read_at); a **Partner Hub** (a queue of partner support requests) is simply the partner↔admin conversations with a status, needing no separate module. The contact-info ban (section 7.3) also applies to chat content before a booking is confirmed.
-- **In-app notification center** (read/unread): add an `in-app` adapter to the existing `NotificationPort` — writes to a `notifications (user_id, type, title, body, link, read_at)` table; every event in section 17 automatically gets an in-app version, with no logic duplicated.
-- **Wishlist**: a `wishlists (customer_id, group_id | listing_id — one or the other, covering standalone listings too)` table + a few endpoints — entirely independent.
 - **Community/Feed + content CMS + Reports**: `feed_posts` (user posts, hashtags, media), `content_posts` (admin: news/solutions/support/static policy pages), a polymorphic `reports` table (target_type: feed/review/listing) shared across every content type — this whole cluster has no foreign key into bookings/money, so it can be built last without blocking anything.
 - **Traffic analytics** on the dashboard: not built in-house — plug Plausible/Umami into the storefront, and have the dashboard read metrics via its API.
 - **Similar posts** (same type + category + area, sorted by rating) and **partner-suggested new amenities** for admin approval into master data.

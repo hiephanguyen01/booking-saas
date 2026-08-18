@@ -67,7 +67,7 @@ export function AffiliateApplicationPage({
           <div
             className={cn(
               PANEL_SURFACE,
-              'w-full max-w-[570px] bg-card p-(--sf-surface-pad) text-center text-card-foreground md:rounded-2xl md:border md:border-border md:p-10 md:shadow-sm',
+              'w-full max-w-[570px] bg-card p-(--sf-surface-pad) text-center text-card-foreground md:p-10',
             )}
           >
             <div
@@ -101,7 +101,7 @@ export function AffiliateApplicationPage({
         <div
           className={cn(
             PANEL_SURFACE,
-            'bg-card p-(--sf-surface-pad) text-card-foreground md:rounded-2xl md:border md:border-border md:p-8 md:shadow-sm lg:p-10',
+            'bg-card p-(--sf-surface-pad) text-card-foreground md:p-8 lg:p-10',
           )}
         >
           <h1 className="text-2xl font-bold tracking-tight text-foreground">

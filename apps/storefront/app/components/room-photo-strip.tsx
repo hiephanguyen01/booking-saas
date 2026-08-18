@@ -35,7 +35,7 @@ export function RoomPhotoStrip({
     return (
       <div
         className={cn(
-          'grid h-36 place-items-center rounded-(--sf-image-radius) bg-muted text-muted-foreground md:rounded-md',
+          'grid h-36 place-items-center rounded-(--sf-image-radius) bg-muted text-muted-foreground',
           className,
         )}
       >
@@ -47,7 +47,7 @@ export function RoomPhotoStrip({
   return (
     <div
       className={cn(
-        'grid h-36 grid-cols-[2fr_1fr] grid-rows-2 gap-1.5 overflow-hidden rounded-(--sf-image-radius) md:rounded-md',
+        'grid h-36 grid-cols-[2fr_1fr] grid-rows-2 gap-1.5 overflow-hidden rounded-(--sf-image-radius)',
         className,
       )}
     >

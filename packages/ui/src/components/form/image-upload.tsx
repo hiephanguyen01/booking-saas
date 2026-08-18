@@ -38,14 +38,6 @@ export const DEFAULT_IMAGE_ACCEPT = [
   'image/gif',
 ] as const;
 
-/** Favicons additionally allow `.ico`. */
-export const FAVICON_ACCEPT = [
-  'image/png',
-  'image/x-icon',
-  'image/vnd.microsoft.icon',
-  'image/webp',
-] as const;
-
 const DEFAULT_MAX_SIZE_MB = 5;
 
 export interface ImageUploadProps {

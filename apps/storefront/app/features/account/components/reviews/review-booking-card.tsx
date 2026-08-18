@@ -50,10 +50,10 @@ export function ReviewBookingCard({
           <Image
             src={review.listingImageUrl}
             alt=""
-            className="h-36 w-full rounded-(--sf-image-radius) object-cover sm:h-[114px] md:rounded-sm"
+            className="h-36 w-full rounded-(--sf-image-radius) object-cover sm:h-[114px]"
           />
         ) : (
-          <div className="h-36 rounded-(--sf-image-radius) bg-muted sm:h-[114px] md:rounded-sm" />
+          <div className="h-36 rounded-(--sf-image-radius) bg-muted sm:h-[114px]" />
         )}
         <div className="min-w-0 space-y-2">
           <Link

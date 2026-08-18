@@ -34,14 +34,6 @@ export function nameInitials(name: string, fallback: string): string {
   );
 }
 
-export function attributeSummary(attributes: Record<string, unknown>, max = 3): string {
-  return Object.values(attributes)
-    .filter((v) => v !== null && v !== '' && typeof v !== 'boolean')
-    .slice(0, max)
-    .map((v) => String(v))
-    .join(' · ');
-}
-
 export interface ListingLocation {
   address?: string | null;
   wardName?: string | null;

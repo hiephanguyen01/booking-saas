@@ -18,18 +18,3 @@ export class ListingRevisionAlreadyDecided extends DomainError {
     super('LISTING_REVISION_ALREADY_DECIDED', 409, 'This change has already been handled');
   }
 }
-
-/**
- * Re-publishing must not smuggle unreviewed content back onto the storefront:
- * while an edit is waiting, the partner either waits for the decision or discards
- * the change.
- */
-export class ListingHasPendingRevision extends DomainError {
-  constructor() {
-    super(
-      'LISTING_HAS_PENDING_REVISION',
-      409,
-      'This listing has a change awaiting review — wait for the decision or discard it before re-publishing',
-    );
-  }
-}
