@@ -6,10 +6,6 @@
 # A NEW use case never belongs here — it ships with its test or it does not merge.
 #
 # Touching one of these? Backfill it in the same change. That is the whole rule.
-apps/api/src/modules/administrative-division/application/use-cases/geocode-administrative-address.use-case.ts
-apps/api/src/modules/administrative-division/application/use-cases/list-provinces.use-case.ts
-apps/api/src/modules/administrative-division/application/use-cases/list-wards.use-case.ts
-apps/api/src/modules/administrative-division/application/use-cases/resolve-administrative-address.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/apply-affiliate.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/clawback-commission.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/create-referral-link.use-case.ts
@@ -40,10 +36,6 @@ apps/api/src/modules/catalog/application/use-cases/list-nearby-public-listings.u
 apps/api/src/modules/catalog/application/use-cases/list-public-listing-types.use-case.ts
 apps/api/src/modules/catalog/application/use-cases/search-public-catalog.use-case.ts
 apps/api/src/modules/catalog/application/use-cases/update-listing-type.use-case.ts
-apps/api/src/modules/content-reports/application/use-cases/create-content-report.use-case.ts
-apps/api/src/modules/content-reports/application/use-cases/get-content-report.use-case.ts
-apps/api/src/modules/content-reports/application/use-cases/list-content-reports.use-case.ts
-apps/api/src/modules/content-reports/application/use-cases/update-content-report.use-case.ts
 apps/api/src/modules/favorites/application/use-cases/add-favorite.use-case.ts
 apps/api/src/modules/favorites/application/use-cases/favorites-summary.use-case.ts
 apps/api/src/modules/favorites/application/use-cases/list-customer-favorites.use-case.ts
@@ -262,12 +254,7 @@ apps/api/src/modules/reviews/application/use-cases/list-partner-reviews.use-case
 apps/api/src/modules/reviews/application/use-cases/list-public-reviews.use-case.ts
 apps/api/src/modules/reviews/application/use-cases/list-tenant-reviews.use-case.ts
 apps/api/src/modules/reviews/application/use-cases/reply-review.use-case.ts
-apps/api/src/modules/scheduling/application/use-cases/add-availability-exception-range.use-case.ts
-apps/api/src/modules/scheduling/application/use-cases/add-availability-exception.use-case.ts
 apps/api/src/modules/scheduling/application/use-cases/get-availability.use-case.ts
-apps/api/src/modules/scheduling/application/use-cases/list-availability-rules.use-case.ts
-apps/api/src/modules/scheduling/application/use-cases/set-availability-rules.use-case.ts
-apps/api/src/modules/storage/application/use-cases/create-presigned-upload.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/add-domain.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/apply-legal-readiness.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/assert-can-add-listing.use-case.ts
