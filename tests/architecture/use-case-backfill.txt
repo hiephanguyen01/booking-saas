@@ -40,13 +40,9 @@ apps/api/src/modules/booking/application/use-cases/get-booking.use-case.ts
 apps/api/src/modules/booking/application/use-cases/issue-booking-access-grant.use-case.ts
 apps/api/src/modules/booking/application/use-cases/list-my-bookings.use-case.ts
 apps/api/src/modules/booking/application/use-cases/list-tenant-bookings.use-case.ts
-apps/api/src/modules/booking/application/use-cases/mark-completed.use-case.ts
-apps/api/src/modules/booking/application/use-cases/mark-no-show.use-case.ts
 apps/api/src/modules/booking/application/use-cases/mark-picked-up.use-case.ts
-apps/api/src/modules/booking/application/use-cases/mark-returned.use-case.ts
 apps/api/src/modules/booking/application/use-cases/partner-booking-stats.use-case.ts
 apps/api/src/modules/booking/application/use-cases/partner-calendar.use-case.ts
-apps/api/src/modules/booking/application/use-cases/record-balance-payment.use-case.ts
 apps/api/src/modules/booking/application/use-cases/reject-booking.use-case.ts
 apps/api/src/modules/booking/application/use-cases/request-booking-otp.use-case.ts
 apps/api/src/modules/booking/application/use-cases/resolve-booking-access.use-case.ts
