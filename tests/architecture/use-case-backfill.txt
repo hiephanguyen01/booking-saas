@@ -256,10 +256,8 @@ apps/api/src/modules/partner/application/use-cases/update-partner-documents.use-
 apps/api/src/modules/partner/application/use-cases/update-partner-tax-status.use-case.ts
 apps/api/src/modules/partner/application/use-cases/update-payout-info.use-case.ts
 apps/api/src/modules/partner/application/use-cases/verify-identity.use-case.ts
-apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts
 apps/api/src/modules/payments/application/use-cases/confirm-manual-refund.use-case.ts
 apps/api/src/modules/payments/application/use-cases/deactivate-gateway.use-case.ts
-apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts
 apps/api/src/modules/payments/application/use-cases/get-gateway-config.use-case.ts
 apps/api/src/modules/payments/application/use-cases/get-payment-status.use-case.ts
 apps/api/src/modules/payments/application/use-cases/get-public-payment-options.use-case.ts
