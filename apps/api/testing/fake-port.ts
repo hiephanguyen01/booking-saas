@@ -1,3 +1,4 @@
+import type { TenantContextService } from '../src/shared/tenant-context/tenant-context.service';
 import type { PrismaTx } from '../src/shared/tenant-context/tenant-db.service';
 
 /**
@@ -44,4 +45,18 @@ export function fakeCollaborator<T>(stubs: Record<string, unknown>): T {
  */
 export function fakeTx(models: Record<string, unknown>): PrismaTx {
   return fakeCollaborator<PrismaTx>(models);
+}
+
+/**
+ * The request-scoped tenant context, answering one tenant id.
+ *
+ * The real service reads an AsyncLocalStorage store that only exists inside a
+ * request; a unit test would otherwise have to wrap every call in `run()` just to
+ * assert what the use case does with the id.
+ */
+export function fakeTenantContext(tenantId: string): TenantContextService {
+  return fakeCollaborator<TenantContextService>({
+    tenantId: () => tenantId,
+    tenantIdOrThrow: () => tenantId,
+  });
 }
