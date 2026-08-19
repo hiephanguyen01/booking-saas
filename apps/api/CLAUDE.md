@@ -159,11 +159,15 @@ const resources = fakePort<IResourceRepository>({ findById: () => Promise.resolv
 const useCase = new ListAvailabilityExceptionsUseCase(resources, exceptions, tenantDb.service);
 ```
 
-`fakeTenantDb()` runs the callback and records the tenant `forTenant` was opened with — assert
-`tenantDb.openedFor` to prove the use case opened **one** transaction for the right tenant.
-`fakePort` throws by name on any method the test did not stub, so a use case that starts calling a
-second port fails loudly instead of reading `undefined`. Both live in `apps/api/testing/`, outside
-`src/` so `tsconfig.build.json` cannot compile them into a bundle.
+Four fakes live in `apps/api/testing/`, outside `src/` so `tsconfig.build.json` cannot compile them
+into a bundle:
+
+| Fake | For | What it buys you |
+| --- | --- | --- |
+| `fakeTenantDb({ now })` | `TenantDbService` | Runs the callback and records the tenant `forTenant` was opened with — assert `tenantDb.openedFor` to prove **one** transaction, for the right tenant. Pass `now` when the use case reads `databaseNow`, and make it a different date from any service date in the test, or the two clocks cannot be told apart. |
+| `fakePort<IXxx>({ … })` | a repository port | Throws **by name** on any method the test did not stub, so a use case that starts calling a second port fails loudly instead of reading `undefined`. |
+| `fakeTx({ partner: { findUnique } })` | `PrismaTx` | For the minority of use cases that read the transaction directly instead of going through a port. Touching an unstubbed model throws. |
+| `fakeCollaborator<XxxUseCase>({ … })` | a dependency injected by **concrete class** | A class with private fields is not assignable from an object literal, so the stub shape cannot be type-checked. Prefer a real port where one exists. |
 
 Assert what the use case decides: which port it called with what, which domain error it threw, the
 order of side effects. Do **not** try to assert rollback, RLS, the GiST exclusion constraint or outbox

@@ -20,7 +20,19 @@ export interface FakeTenantDb {
   readonly openedFor: string[];
 }
 
-export function fakeTenantDb(tx: PrismaTx = {} as PrismaTx): FakeTenantDb {
+export interface FakeTenantDbOptions {
+  readonly tx?: PrismaTx;
+  /**
+   * What `databaseNow(tx)` answers. Business deadlines read the Postgres clock,
+   * not the app host's, so a use case that compares against `databaseNow` must be
+   * tested against a fixed one — and against a DIFFERENT date from any service
+   * date in the test, or the two clocks cannot be told apart.
+   */
+  readonly now?: Date;
+}
+
+export function fakeTenantDb(options: FakeTenantDbOptions = {}): FakeTenantDb {
+  const tx = options.tx ?? ({} as PrismaTx);
   const openedFor: string[] = [];
   const service = {
     forTenant<T>(tenantId: string, fn: (transaction: PrismaTx) => Promise<T>): Promise<T> {
@@ -31,7 +43,7 @@ export function fakeTenantDb(tx: PrismaTx = {} as PrismaTx): FakeTenantDb {
       return fn(tx);
     },
     databaseNow(): Promise<Date> {
-      return Promise.resolve(new Date());
+      return Promise.resolve(options.now ?? new Date());
     },
     // `TenantDbService` has private members, so a structural object is not
     // assignable to it however complete it is. The cast is contained here.

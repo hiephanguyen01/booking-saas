@@ -1,3 +1,5 @@
+import type { PrismaTx } from '../src/shared/tenant-context/tenant-db.service';
+
 /**
  * A repository port with only the methods this test needs.
  *
@@ -17,4 +19,29 @@ export function fakePort<T extends object>(stubs: Partial<T>): T {
       throw new Error(`port method "${property}" was called but this test did not stub it`);
     },
   }) as T;
+}
+
+/**
+ * Same behaviour, for a collaborator injected by **concrete class** rather than
+ * by port token — another use case, typically. A class with private fields is
+ * not assignable from an object literal however complete it is, so the stub
+ * shape cannot be type-checked here and the cast is deliberate.
+ *
+ * Prefer a real port where one exists; reach for this only when the constructor
+ * signature leaves no choice.
+ */
+export function fakeCollaborator<T>(stubs: Record<string, unknown>): T {
+  return fakePort<Record<string, unknown>>(stubs) as unknown as T;
+}
+
+/**
+ * A `PrismaTx` carrying only the models this test stubs.
+ *
+ * Most use cases reach the database through a repository port, and those need
+ * nothing but `fakeTenantDb().tx` as an opaque token. A few read the tx directly
+ * (`tx.partner.findUnique(…)`); this is for those, and touching an unstubbed
+ * model throws by name.
+ */
+export function fakeTx(models: Record<string, unknown>): PrismaTx {
+  return fakeCollaborator<PrismaTx>(models);
 }
