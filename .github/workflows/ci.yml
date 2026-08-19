@@ -23,12 +23,11 @@ jobs:
           node-version: 22.22.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check:no-tests
-      - run: pnpm check:module-cycles
-      - run: pnpm check:frontend-structure
-      - run: pnpm check:theme-tokens
-      - run: pnpm check:tenant-surfaces
-      - run: pnpm --filter=@booking/storefront security
+      # Architecture guards + use-case unit tests (ADR 0009). One vitest run,
+      # no database and no browser: the guards read files, and a use-case test
+      # constructs the class over fake ports.
+      - name: Tests
+        run: pnpm test
       - name: API typecheck
         # Run through Turbo so workspace dependencies such as contracts are
         # built once and reused by the frontend checks below.
@@ -39,5 +38,3 @@ jobs:
         # Keep this separate from typecheck: React Router typegen and build both
         # write generated route files and should not race within the same app.
         run: pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
-      # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
-      - run: pnpm --filter=@booking/api check:rls

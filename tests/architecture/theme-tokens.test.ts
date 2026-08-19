@@ -1,5 +1,11 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { extname, join, relative } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import {
+  filesWithExtension,
+  displayPath,
+  readSource,
+  repoPath,
+  staleAllowlistEntries,
+} from './support/repo';
 
 /**
  * Every colour on a themed surface must come from a token, so one tenant
@@ -13,11 +19,6 @@ import { extname, join, relative } from 'node:path';
  * block, which are where the literals are *defined*.
  */
 
-const root = process.cwd();
-const failures = [];
-const ignoredDirectories = new Set(['.git', 'node_modules', 'build', 'dist', '.react-router']);
-const sourceExtensions = new Set(['.ts', '.tsx']);
-
 /**
  * Text over an image is the one place a literal is correct. A photo is supplied
  * by a tenant or a customer and is not themed, so its overlay has to stay white
@@ -25,7 +26,7 @@ const sourceExtensions = new Set(['.ts', '.tsx']);
  * `--foreground` would put dark text on a dark photo for any light-theme tenant.
  * Each entry names the file and why; nothing lands here without a reason.
  */
-const IMAGE_OVERLAY_ALLOWLIST = new Map([
+const IMAGE_OVERLAY_ALLOWLIST = new Map<string, string>([
   ['apps/storefront/app/features/home/components/hero.tsx', 'hero copy over the tenant hero photo'],
   [
     'apps/storefront/app/features/site-shell/components/site-header.tsx',
@@ -56,7 +57,13 @@ const PALETTE =
 const UTILITY =
   'bg|text|border|ring|from|to|via|fill|stroke|shadow|outline|decoration|divide|caret';
 
-const RULES = [
+interface ColourRule {
+  readonly name: string;
+  readonly re: RegExp;
+  readonly allowImageOverlay: boolean;
+}
+
+const RULES: readonly ColourRule[] = [
   {
     name: 'Tailwind palette class',
     re: new RegExp(`\\b(?:${UTILITY})-(?:${PALETTE})-\\d{2,3}\\b`, 'g'),
@@ -90,7 +97,7 @@ const RULES = [
  * out their low-level tokens. The shared constants are checked separately, so
  * this remains one contract rather than duplicated class strings.
  */
-const REQUIRED_SURFACE_CONTRACTS = new Map([
+const REQUIRED_SURFACE_CONTRACTS = new Map<string, readonly string[]>([
   [
     'apps/storefront/app/constants/surfaces.ts',
     [
@@ -157,78 +164,64 @@ const REQUIRED_SURFACE_CONTRACTS = new Map([
   ],
 ]);
 
-function walk(directory) {
-  const files = [];
-  for (const entry of readdirSync(directory)) {
-    if (ignoredDirectories.has(entry)) continue;
-    const path = join(directory, entry);
-    if (statSync(path).isDirectory()) files.push(...walk(path));
-    else files.push(path);
-  }
-  return files;
-}
-
 /**
  * Comments are prose, not styling. `section-card.tsx` documents the ten
  * hand-written surfaces it replaced, literal shadows included, and that history
  * is worth more than a clean regex match.
  */
-function stripComments(source) {
+function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
 
-const targets = [
-  join(root, 'apps/storefront/app'),
-  join(root, 'apps/dashboard/app'),
-  join(root, 'packages/ui/src/components'),
-];
-let scanned = 0;
-const sourcesByPath = new Map();
+const SCAN_ROOTS = [
+  'apps/storefront/app',
+  'apps/dashboard/app',
+  'packages/ui/src/components',
+] as const;
 
-for (const target of targets) {
-  for (const file of walk(target)) {
-    if (!sourceExtensions.has(extname(file))) continue;
-    const path = relative(root, file);
-    const source = stripComments(readFileSync(file, 'utf8'));
-    sourcesByPath.set(path, source);
-    scanned += 1;
+const sourcesByPath = new Map<string, string>();
+for (const target of SCAN_ROOTS) {
+  for (const file of filesWithExtension(repoPath(target), new Set(['.ts', '.tsx']))) {
+    sourcesByPath.set(displayPath(file), stripComments(readSource(file)));
+  }
+}
 
-    for (const rule of RULES) {
-      if (rule.allowImageOverlay && IMAGE_OVERLAY_ALLOWLIST.has(path)) continue;
-      for (const match of source.matchAll(rule.re)) {
-        failures.push(`${path}: ${rule.name} \`${match[0]}\` — use a theme token instead`);
+describe('theme tokens (TONG-QUAN.md §16.2)', () => {
+  it('scans the storefront, the dashboard and the shared UI', () => {
+    expect(sourcesByPath.size).toBeGreaterThan(0);
+  });
+
+  it('carries no literal colour on a themed surface', () => {
+    const failures: string[] = [];
+    for (const [path, source] of sourcesByPath) {
+      for (const rule of RULES) {
+        if (rule.allowImageOverlay && IMAGE_OVERLAY_ALLOWLIST.has(path)) continue;
+        for (const match of source.matchAll(rule.re)) {
+          failures.push(`${path}: ${rule.name} \`${match[0]}\` — use a theme token instead`);
+        }
       }
     }
-  }
-}
+    expect(failures).toEqual([]);
+  });
 
-for (const [path, requiredTokens] of REQUIRED_SURFACE_CONTRACTS) {
-  const source = sourcesByPath.get(path);
-  if (source === undefined) {
-    failures.push(`${path}: required tenant-surface contract file was not scanned`);
-    continue;
-  }
-  for (const token of requiredTokens) {
-    if (!source.includes(token)) {
-      failures.push(`${path}: tenant-surface contract is missing \`${token}\``);
+  it('keeps every tenant-surface primitive wired to the geometry contract', () => {
+    const failures: string[] = [];
+    for (const [path, requiredTokens] of REQUIRED_SURFACE_CONTRACTS) {
+      const source = sourcesByPath.get(path);
+      if (source === undefined) {
+        failures.push(`${path}: required tenant-surface contract file was not scanned`);
+        continue;
+      }
+      for (const token of requiredTokens) {
+        if (!source.includes(token)) {
+          failures.push(`${path}: tenant-surface contract is missing \`${token}\``);
+        }
+      }
     }
-  }
-}
+    expect(failures).toEqual([]);
+  });
 
-for (const [path, reason] of IMAGE_OVERLAY_ALLOWLIST) {
-  try {
-    statSync(join(root, path));
-  } catch {
-    failures.push(`${path}: allowlisted as "${reason}" but the file no longer exists`);
-  }
-}
-
-if (failures.length > 0) {
-  console.error(['Theme token check failed:', ...failures.map((item) => `- ${item}`)].join('\n'));
-  process.exit(1);
-}
-
-console.log(
-  `Theme token check passed — ${scanned} files carry no literal colours ` +
-    `(${IMAGE_OVERLAY_ALLOWLIST.size} image-overlay exemptions).`,
-);
+  it('carries no stale image-overlay exemption', () => {
+    expect(staleAllowlistEntries(IMAGE_OVERLAY_ALLOWLIST)).toEqual([]);
+  });
+});

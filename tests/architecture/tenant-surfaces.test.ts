@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { loadSources, repoPath, staleAllowlistEntries } from './support/repo';
 
 /**
  * A tenant's `theme_config.surface` drives `--sf-surface-radius`, `--sf-image-radius`,
@@ -14,15 +14,9 @@ import { join, relative } from 'node:path';
  *     +  className="… rounded-(--sf-image-radius) md:rounded-md"
  *
  * Every such site was mobile-only until 2026-08-18. This guard stops it coming back.
- *
- * `max-*:` variants are the opposite case and are deliberately NOT flagged: they
- * suppress the frame below a breakpoint so a card runs edge-to-edge on a phone, and
- * the tenant's shape still applies from that breakpoint up.
  */
 
-const root = process.cwd();
 const SCAN_ROOT = 'apps/storefront/app';
-const failures = [];
 
 /** Something on this line is a tenant-configured surface. */
 const SURFACE =
@@ -48,50 +42,35 @@ const OVERRIDE =
  * Empty on purpose. If a genuine exception ever appears, add it here with the reason —
  * an entry whose file disappears fails the check, so the list cannot rot.
  */
-const ALLOWLIST = new Map([]);
+const ALLOWLIST = new Map<string, string>([]);
 
-function collect(dir, out) {
-  for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry.startsWith('.')) continue;
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) collect(full, out);
-    else if (full.endsWith('.tsx')) out.push(full);
-  }
-  return out;
-}
+const files = loadSources(repoPath(SCAN_ROOT), new Set(['.tsx']), { skipDotEntries: true });
 
-let scanned = 0;
-for (const file of collect(join(root, SCAN_ROOT), [])) {
-  const path = relative(root, file);
-  const lines = readFileSync(file, 'utf8').split('\n');
-  scanned += 1;
-  if (ALLOWLIST.has(path)) continue;
-  for (let i = 0; i < lines.length; i += 1) {
-    // `cn(SURFACE, '…')` puts the marker and the class string on different lines.
-    const window = lines.slice(Math.max(0, i - 3), i + 1).join(' ');
-    const hits = lines[i].match(OVERRIDE);
-    if (!hits || !SURFACE.test(window)) continue;
-    failures.push(
-      `${path}:${i + 1}: \`${[...new Set(hits)].join(' ')}\` overrides a tenant surface token — ` +
-        `drop it so \`theme_config.surface\` applies at every width`,
-    );
-  }
-}
+describe('tenant surface tokens (theme_config.surface)', () => {
+  it('scans the storefront app', () => {
+    expect(files.length).toBeGreaterThan(0);
+  });
 
-for (const [path, reason] of ALLOWLIST) {
-  try {
-    statSync(join(root, path));
-  } catch {
-    failures.push(`${path}: allowlisted as "${reason}" but the file no longer exists`);
-  }
-}
+  it('never substitutes a fixed shape for a tenant token at a breakpoint', () => {
+    const failures: string[] = [];
+    for (const { path, source } of files) {
+      if (ALLOWLIST.has(path)) continue;
+      const lines = source.split('\n');
+      for (let index = 0; index < lines.length; index += 1) {
+        // `cn(SURFACE, '…')` puts the marker and the class string on different lines.
+        const window = lines.slice(Math.max(0, index - 3), index + 1).join(' ');
+        const hits = (lines[index] as string).match(OVERRIDE);
+        if (!hits || !SURFACE.test(window)) continue;
+        failures.push(
+          `${path}:${index + 1}: \`${[...new Set(hits)].join(' ')}\` overrides a tenant surface ` +
+            'token — drop it so `theme_config.surface` applies at every width',
+        );
+      }
+    }
+    expect(failures).toEqual([]);
+  });
 
-if (failures.length > 0) {
-  console.error(['Tenant surface check failed:', ...failures.map((item) => `- ${item}`)].join('\n'));
-  process.exit(1);
-}
-
-console.log(
-  `Tenant surface check passed — ${scanned} files keep tenant surface tokens at every ` +
-    `breakpoint (${ALLOWLIST.size} layout exemptions).`,
-);
+  it('carries no stale layout exemption', () => {
+    expect(staleAllowlistEntries(ALLOWLIST)).toEqual([]);
+  });
+});

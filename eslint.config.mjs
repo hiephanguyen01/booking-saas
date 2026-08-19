@@ -15,15 +15,6 @@ export default tseslint.config(
     },
   },
   {
-    files: ['scripts/**/*.mjs'],
-    languageOptions: {
-      globals: {
-        console: 'readonly',
-        process: 'readonly',
-      },
-    },
-  },
-  {
     // NestJS DI relies on emitDecoratorMetadata: constructor-injected classes
     // must stay value imports — `import type` would erase them at runtime
     files: ['apps/api/**'],
