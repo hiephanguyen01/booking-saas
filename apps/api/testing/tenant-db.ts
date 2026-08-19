@@ -18,6 +18,12 @@ export interface FakeTenantDb {
   readonly tx: PrismaTx;
   /** Every tenant id `forTenant` was opened with, in call order. */
   readonly openedFor: string[];
+  /**
+   * How many times `databaseNow` was read. A guard placed BEFORE the clock read
+   * is often the only thing that stops a rejected request costing a query, and
+   * that ordering is invisible unless the test counts.
+   */
+  readonly clockReads: () => number;
 }
 
 export interface FakeTenantDbOptions {
@@ -34,6 +40,7 @@ export interface FakeTenantDbOptions {
 export function fakeTenantDb(options: FakeTenantDbOptions = {}): FakeTenantDb {
   const tx = options.tx ?? ({} as PrismaTx);
   const openedFor: string[] = [];
+  let clockReads = 0;
   const service = {
     forTenant<T>(tenantId: string, fn: (transaction: PrismaTx) => Promise<T>): Promise<T> {
       openedFor.push(tenantId);
@@ -43,11 +50,12 @@ export function fakeTenantDb(options: FakeTenantDbOptions = {}): FakeTenantDb {
       return fn(tx);
     },
     databaseNow(): Promise<Date> {
+      clockReads += 1;
       return Promise.resolve(options.now ?? new Date());
     },
     // `TenantDbService` has private members, so a structural object is not
     // assignable to it however complete it is. The cast is contained here.
   } satisfies Record<string, unknown> as unknown as TenantDbService;
 
-  return { service, tx, openedFor };
+  return { service, tx, openedFor, clockReads: () => clockReads };
 }
