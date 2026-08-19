@@ -1,0 +1,41 @@
+import type { PrismaTx, TenantDbService } from '../src/shared/tenant-context/tenant-db.service';
+
+/**
+ * A `TenantDbService` that runs the callback and records the tenant it was
+ * opened for, without a database.
+ *
+ * What it proves: the use case opened ONE transaction, for the right tenant, and
+ * handed the `tx` down to its repositories. That is the tenancy half of every
+ * tenant-scoped use case and it is otherwise only observable at runtime.
+ *
+ * What it does NOT prove: rollback. Nothing here undoes writes when the callback
+ * throws, so "the acceptance row rolls back with the state change" stays a claim
+ * for runtime smoke, not a unit test. Assert the throw; don't assert the undo.
+ */
+export interface FakeTenantDb {
+  readonly service: TenantDbService;
+  /** The `tx` handed to the callback — pass the same object to fake repositories. */
+  readonly tx: PrismaTx;
+  /** Every tenant id `forTenant` was opened with, in call order. */
+  readonly openedFor: string[];
+}
+
+export function fakeTenantDb(tx: PrismaTx = {} as PrismaTx): FakeTenantDb {
+  const openedFor: string[] = [];
+  const service = {
+    forTenant<T>(tenantId: string, fn: (transaction: PrismaTx) => Promise<T>): Promise<T> {
+      openedFor.push(tenantId);
+      return fn(tx);
+    },
+    forCurrentTenant<T>(fn: (transaction: PrismaTx) => Promise<T>): Promise<T> {
+      return fn(tx);
+    },
+    databaseNow(): Promise<Date> {
+      return Promise.resolve(new Date());
+    },
+    // `TenantDbService` has private members, so a structural object is not
+    // assignable to it however complete it is. The cast is contained here.
+  } satisfies Record<string, unknown> as unknown as TenantDbService;
+
+  return { service, tx, openedFor };
+}
