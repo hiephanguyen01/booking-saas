@@ -97,7 +97,7 @@ Two Prisma pools live in **one** `PrismaService`: `prisma.app` (`DATABASE_URL`, 
 `MIGRATE_DATABASE_URL` (superuser). There is **no** `PrismaAdminService` class (older docs invented it).
 
 Adding a tenant-scoped table: add the model with `tenant_id`, then a **hand-written RLS migration**
-(FORCE RLS + `tenant_isolation` policy), then `prisma:deploy`, then `check:rls`. `prisma migrate dev`
+(FORCE RLS + `tenant_isolation` policy), then `prisma:deploy`, then `pnpm test` (RLS coverage guard). `prisma migrate dev`
 is **not** used — see [`../../docs/decisions/0004-hand-written-migrations.md`](../../docs/decisions/0004-hand-written-migrations.md).
 
 ## Authorization
@@ -121,7 +121,7 @@ so the change and its effects commit together. Synchronous **reads** across modu
 the other module's use-case or repository port, as are guards/decorators/Nest modules from
 `identity-access` and `tenancy`. Two things are hard-enforced: `domain/` may not import another
 module's `application/` (eslint), and the module import graph must stay acyclic
-(`pnpm check:module-cycles`, in CI). Logic two contexts genuinely share is not an import — move it to
+(the module-cycle guard in `pnpm test`, in CI). Logic two contexts genuinely share is not an import — move it to
 `src/shared/domain/*`, alongside the existing `pricing/`, `availability/`, `commission/` and `errors/`
 kernels. Full boundary table in [ADR 0003](../../docs/decisions/0003-outbox-for-inter-module.md).
 
@@ -139,7 +139,37 @@ When one module must write another module's table **inside the same transaction*
 to the caller's own invariant for an outbox event — e.g. the shared invitation-accept flow writing
 `partner_members`), the *caller's* module declares the port and the *owner* module provides it from a
 `@Global()` module, not the other way round — that keeps the existing import direction intact and
-`check:module-cycles` green (see `PARTNER_MEMBERSHIP_WRITER` / `PartnerMembershipWriterModule`).
+the module-cycle guard green (see `PARTNER_MEMBERSHIP_WRITER` / `PartnerMembershipWriterModule`).
+
+## Use-case unit tests ([ADR 0009](../../docs/decisions/0009-limited-tests-policy.md))
+
+Every use case carries **one** unit test beside it: `xxx.use-case.ts` → `xxx.use-case.spec.ts`. It is
+required for a new use case, and `tests/architecture/use-case-unit-tests.test.ts` fails the build
+without it. The 341 use cases that predate the policy are listed in
+`tests/architecture/use-case-backfill.txt`; write the test and delete the line when you touch one.
+That list may only shrink — a new use case never belongs in it.
+
+Construct the class directly, never through the Nest container:
+
+```ts
+import { fakePort, fakeTenantDb } from '~testing';
+
+const tenantDb = fakeTenantDb();
+const resources = fakePort<IResourceRepository>({ findById: () => Promise.resolve(resource()) });
+const useCase = new ListAvailabilityExceptionsUseCase(resources, exceptions, tenantDb.service);
+```
+
+`fakeTenantDb()` runs the callback and records the tenant `forTenant` was opened with — assert
+`tenantDb.openedFor` to prove the use case opened **one** transaction for the right tenant.
+`fakePort` throws by name on any method the test did not stub, so a use case that starts calling a
+second port fails loudly instead of reading `undefined`. Both live in `apps/api/testing/`, outside
+`src/` so `tsconfig.build.json` cannot compile them into a bundle.
+
+Assert what the use case decides: which port it called with what, which domain error it threw, the
+order of side effects. Do **not** try to assert rollback, RLS, the GiST exclusion constraint or outbox
+delivery — the fakes cannot see them, and pretending otherwise is worse than no test. Those stay
+runtime smoke. Run with `pnpm test:api` from the workspace root; there is no package-level `test`
+script.
 
 ## Bootstrap, errors, config
 
@@ -157,5 +187,6 @@ above; never restore inline payload literals. Never leak Prisma errors. Env vars
 ## Scripts (verified)
 
 `dev` / `start:dev` (both `prisma generate && nest start --watch`) · `build` · `lint` · `typecheck` ·
-`prisma:generate` · `prisma:deploy` · `seed` · `storage:init` · `check:rls`. Run via
-`pnpm --filter=@booking/api <script>`.
+`prisma:generate` · `prisma:deploy` · `seed` · `storage:init`. Run via `pnpm --filter=@booking/api
+<script>`. Tests are **not** a package script — they run from the workspace root (`pnpm test`,
+`pnpm test:api`).

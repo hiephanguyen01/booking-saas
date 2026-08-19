@@ -29,8 +29,9 @@ in an older doc, ticket, or snippet is recognisable as history rather than somet
 
 ## Notes
 
-- The design spec `TONG-QUAN.md` §22 "Testing Strategy" is superseded by the no-tests policy
-  ([ADR 0005](./decisions/0005-no-tests-policy.md)) but kept for historical/product context.
+- The design spec `TONG-QUAN.md` §22 "Testing Strategy" is superseded by
+  [ADR 0009](./decisions/0009-limited-tests-policy.md) (and before it ADR 0005) but kept for
+  historical/product context.
 - `TONG-QUAN.md` and `tasks/phase-0-foundation/02-shared-packages.md` still describe
   `@booking/query` / `@booking/config` / `@booking/shared` as planned packages. They are historical
   planning docs — the code above is what shipped.
@@ -147,8 +148,8 @@ untouched; the re-check covered both.
 | Artifact | Why |
 | --- | --- |
 | `docs/refactor/entity-centric-final-report.md` (directory now empty and gone) | Its "Conventions established" section said so itself: *"The normative rules live in `docs/conventions.md`, `apps/api/CLAUDE.md` and the design spec."* A report restating rules that are normative elsewhere is a second source of truth. Its one piece of unique content — the **measured** cross-module coupling left by the refactor — was folded into [`architecture.md`](./architecture.md) → *Remaining synchronous coupling*, and **re-measured** rather than copied: the July figure of 229 cross-context imports is 322 today (227 sanctioned auth/tenancy seams, 95 business-facing, 0 from any `domain/` layer). The three links from the surviving design spec now point at that section. |
-| `pnpm test` / `pnpm --filter=@booking/storefront test` in `README.md` | Not a file, but the same class of trap: the README taught two commands that **do not exist in any package** and that [ADR 0005](./decisions/0005-no-tests-policy.md) forbids. Replaced with the real verification chain. `README.md` also pointed at `app/lib/tenant.server.ts`; the module is `app/lib/server/tenant.server.ts`. |
-| 18 stale entries in `skills-lock.json` | The lock listed 24 skills against 6 vendored in `.agents/skills/` — including `vitest`, which the no-tests policy forbids outright. Pruned to exactly the 6 vendored; every surviving entry keeps its original hash. |
+| `pnpm --filter=@booking/storefront test` in `README.md` | Not a file, but the same class of trap: the README taught commands that **did not exist in any package**. Replaced with the real verification chain. A root `pnpm test` does exist since [ADR 0009](./decisions/0009-limited-tests-policy.md), but no package has ever had one. `README.md` also pointed at `app/lib/tenant.server.ts`; the module is `app/lib/server/tenant.server.ts`. |
+| 18 stale entries in `skills-lock.json` | The lock listed 24 skills against 6 vendored in `.agents/skills/` — including `vitest`, which the policy of the day (ADR 0005) forbade outright — [ADR 0009](./decisions/0009-limited-tests-policy.md) has since adopted vitest as the one sanctioned runner, but the lock entry was still stale. Pruned to exactly the 6 vendored; every surviving entry keeps its original hash. |
 
 **Note:** the "README.md line ~33 is stale" entry under *Notes* above was itself stale — that
 sentence had already been rewritten. The README's real defects were the two above.

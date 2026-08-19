@@ -56,15 +56,14 @@ cd /Users/duyvo/Desktop/booking-saas
 node --version
 pnpm --version
 pnpm install --frozen-lockfile
-pnpm check:no-tests
-pnpm check:module-cycles
-pnpm --filter=@booking/storefront security
+pnpm test
 pnpm turbo lint typecheck build
-pnpm --filter=@booking/api check:rls
 ```
 
-Không deploy nếu bất kỳ lệnh nào thất bại. Repository này không dùng test file; verification chính
-thức là lint, typecheck, build, security gate, module-cycle guard và RLS coverage.
+Không deploy nếu bất kỳ lệnh nào thất bại. `pnpm test` chạy toàn bộ architecture guard (tests policy,
+module cycles, frontend structure, theme tokens, tenant surfaces, storefront security, RLS coverage,
+use-case test coverage) và unit test của use case — không cần database. Repository này không có
+integration/e2e test; verification còn lại là lint, typecheck, build và chạy thật ứng dụng.
 
 Commit cần deploy phải được push lên GitHub:
 

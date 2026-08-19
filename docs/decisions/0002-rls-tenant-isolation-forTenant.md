@@ -19,7 +19,7 @@ Enforce isolation in the **database** with Row-Level Security, driven by a per-t
   `set_config('app.tenant_id', tenantId, true)` on that same tx. Repositories receive the `tx`.
 - Two pools in one `PrismaService`: `app` (app_user, RLS) and `admin` (app_admin, BYPASSRLS for
   platform/webhook/reconciliation). Migrations run as a separate superuser role.
-- A static `check:rls` script (runs in CI) fails if any `tenant_id` table lacks FORCE RLS + policy.
+- A static RLS coverage guard (`pnpm test`, runs in CI) fails if any `tenant_id` table lacks FORCE RLS + policy.
 
 ## Consequences
 
@@ -28,4 +28,4 @@ Enforce isolation in the **database** with Row-Level Security, driven by a per-t
   call it per-query, or use the raw client in business code).
 - Background jobs have no request context and must resolve `tenant_id` from the payload before calling
   `forTenant` (the outbox relay does this).
-- `check:rls` proves *coverage*, not runtime correctness — sanity-check manually when editing RLS itself.
+- The RLS coverage guard proves *coverage*, not runtime correctness — sanity-check manually when editing RLS itself.

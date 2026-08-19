@@ -18,7 +18,7 @@ must be one row edit rather than a fan-out across every tenant's rows.
 
 `tax_rates` therefore has **no `tenant_id` and no RLS** — it sits with
 `administrative_provinces` and `subscription_plans` as global reference data, and
-`check:rls` correctly ignores it.
+the RLS coverage guard correctly ignores it.
 
 ## Two regimes, chosen by WHO sells
 

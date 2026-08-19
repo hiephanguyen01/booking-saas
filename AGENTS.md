@@ -24,9 +24,15 @@ tickets only; [`TONG-QUAN.md`](./TONG-QUAN.md) §21 carries the current shipped-
 
 ## ⛔ Hard rules (override everything — specs, tickets, skills, older snippets)
 
-1. **NO TESTS, ever.** Zero test files by owner decision. Never add `*.spec.*`/`*.test.*`/e2e, nor
-   vitest/jest/playwright config, `test` scripts, or CI test steps — even if a ticket says to.
-   Verification = `typecheck` + `lint` + `build` + running the app. See
+1. **Exactly two kinds of test exist; anything else is forbidden.**
+   **(a) One use case = one unit test**, `*.use-case.spec.ts` beside it, required for every new use
+   case (the 341 older ones are debt tracked in `tests/architecture/use-case-backfill.txt`, and that
+   list may only shrink). **(b) Architecture guards** in `tests/architecture/*.test.ts`.
+   Never add an integration/e2e suite, a browser driver, a frontend or contracts test, a test for a
+   controller or repository, or a second runner — even if a ticket says to. Verification is still
+   `pnpm test` + `typecheck` + `lint` + `build` + **running the app**; a unit test over fake ports
+   proves no rollback, no RLS and no constraint. See
+   [ADR 0009](./docs/decisions/0009-limited-tests-policy.md), which supersedes
    [ADR 0005](./docs/decisions/0005-no-tests-policy.md).
 2. **Backend flow is `controller → use-case → repository-port → repository`. No service classes** in
    the application layer. Sanctioned alternatives (pure domain function / use-case / port+adapter) in
@@ -46,6 +52,8 @@ packages/ui       @booking/ui         shadcn + GenericForm + theme, raw TSX (no 
 packages/api-client @booking/api-client typed server-side HTTP client (loaders/actions)
 packages/auth     @booking/auth       permission helpers (hasScope/hasPermission/defaultAreaFor)
 packages/i18n     @booking/i18n        i18next locales (storefront only; dashboard is Vietnamese-hardcoded)
+tests/architecture                    repo-wide static guards, run by `pnpm test` (not a workspace)
+apps/api/testing                      fakes for the use-case unit tests, imported as `~testing`
 ```
 
 The API's internals: 18 bounded contexts under `apps/api/src/modules/*` (identity-access, tenancy,
@@ -61,8 +69,8 @@ prisma, redis, tenant-context, time, validation). Details in
   transaction per business operation; it sets the `app.tenant_id` GUC so RLS applies. Repositories
   receive the `tx`, never the raw client. Never nest `forTenant`, never call it per-query.
 - **Every tenant-scoped table needs `tenant_id uuid NOT NULL` + a hand-written RLS migration** (FORCE
-  RLS + `tenant_isolation` policy). `pnpm --filter=@booking/api check:rls` (a static script, runs in CI)
-  fails otherwise. **Migrations are hand-authored, not `prisma migrate dev`** — see [ADR 0004](./docs/decisions/0004-hand-written-migrations.md).
+  RLS + `tenant_isolation` policy). The RLS coverage guard in `pnpm test` (static, no database; runs
+  in CI) fails otherwise. **Migrations are hand-authored, not `prisma migrate dev`** — see [ADR 0004](./docs/decisions/0004-hand-written-migrations.md).
 - **Every protected endpoint declares `@RequirePermissions('scope.resource.action')`** (or `@Public()`
   / `@AuthenticatedOnly()`). The global guard is **deny-by-default**: an undeclared route is 403.
 - **Auth is opaque session cookies, not JWT** (`sid`/`rid`, SHA-256-hashed, rotated) — see [ADR 0001](./docs/decisions/0001-opaque-sessions-over-jwt.md).
@@ -76,7 +84,7 @@ prisma, redis, tenant-context, time, validation). Details in
   (auth and tenancy are de-facto framework here), and injecting another module's use-case or
   repository **port** for a synchronous read. What is **forbidden**: reaching into another module's
   `infrastructure/`, a `domain/` layer importing another module's `application/`, and **any cycle in
-  the module graph** (`pnpm check:module-cycles`). Logic two contexts genuinely share moves to
+  the module graph** (the module-cycle guard in `pnpm test`). Logic two contexts genuinely share moves to
   `apps/api/src/shared/domain/*` — that is where the pricing, availability and commission kernels
   live. See [ADR 0003](./docs/decisions/0003-outbox-for-inter-module.md).
 - **Money is `bigint` VND** (đồng, never a float); **commission/platform rates are integer percent 0–100**;
@@ -98,12 +106,11 @@ prisma, redis, tenant-context, time, validation). Details in
 | Install | `pnpm install` (CI/Docker: `--frozen-lockfile`) |
 | Everything, dev | `pnpm dev` (turbo, all apps) |
 | One app, dev | `pnpm --filter=@booking/{api,storefront,dashboard} dev` |
-| **Full static check** | `pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure && pnpm check:theme-tokens && pnpm check:tenant-surfaces && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls` |
-| No-tests policy | `pnpm check:no-tests` |
-| Module-cycle guard | `pnpm check:module-cycles` |
-| Frontend structure guard | `pnpm check:frontend-structure` |
-| Theme-token guard | `pnpm check:theme-tokens` |
-| Tenant-surface guard | `pnpm check:tenant-surfaces` |
+| **Full static check** | `pnpm test && pnpm turbo lint typecheck build` |
+| Architecture guards + use-case unit tests | `pnpm test` |
+| Architecture guards only | `pnpm test:arch` |
+| Use-case unit tests only | `pnpm test:api` |
+| One guard while iterating | `pnpm exec vitest run --project architecture tests/architecture/<name>.test.ts` |
 | Lint / Typecheck / Build (all) | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
 | Format | `pnpm format` |
 | Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) — **dev only** |
@@ -112,14 +119,15 @@ prisma, redis, tenant-context, time, validation). Details in
 | Regenerate Prisma client | `pnpm --filter=@booking/api prisma:generate` |
 | Seed demo data | `pnpm --filter=@booking/api seed` |
 | Create MinIO bucket | `pnpm --filter=@booking/api storage:init` |
-| RLS coverage check | `pnpm --filter=@booking/api check:rls` |
 
 > `--filter=api` also resolves (pnpm matches the directory). CI (`.github/workflows/ci.yml`, "Frontend
-> CI") runs the no-tests policy guard, module-cycle, frontend-structure and theme-token guards,
-> Storefront security gate, API typecheck, frontend lint/typechecks/production builds, and
-> `check:rls`. **Run the full static check above, not a subset** — `check:theme-tokens` was missing
-> from this table until 2026-08-12, so a branch could pass everything documented here and still fail
-> CI. Turbo builds
+> CI") runs `pnpm test`, API typecheck, and frontend lint/typechecks/production builds. `pnpm test` is
+> one vitest run over two projects — the eight architecture guards (tests policy, module cycles,
+> frontend structure, theme tokens, tenant surfaces, storefront security, RLS coverage, use-case test
+> coverage) and the use-case unit tests. It needs no database, no Redis and no built workspace package.
+> **Run the full static check above, not a subset**: until these guards were consolidated on 2026-08-19
+> they were seven separate `check:*` scripts, and `check:theme-tokens` was missing from this table
+> until 2026-08-12 — so a branch could pass everything documented here and still fail CI. Turbo builds
 > required workspace packages once through the dependency graph. CI runs for pull requests into
 > `main` (or manually); container images are built only by the manual Deploy workflow.
 

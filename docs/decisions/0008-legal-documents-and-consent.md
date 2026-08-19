@@ -58,7 +58,7 @@ against that exact text). Correcting a bad translation is a publish like any oth
 `tenancy` handler writes two columns and imports nothing from `legal`.
 
 This is forced, not stylistic. `legal` imports `tenancy` for `RequireActiveSubscriptionGuard` and host
-resolution, and `pnpm check:module-cycles` builds its graph from **every** relative import including
+resolution, and the module-cycle guard builds its graph from **every** relative import including
 `import type` — so a single `tenancy → legal` import closes the cycle and fails CI. The same
 constraint produced two more indirections: new-tenant draft seeding rides the `tenant.created` event
 `tenancy` already emitted, and customer-registration consent rides a `user.registration_consent` event

@@ -26,7 +26,7 @@ Plug-in payment architecture with SePay live and a mock gateway for local develo
 ## Verification
 - `pnpm --filter=@booking/contracts build`
 - `pnpm --filter=@booking/api typecheck`
-- `pnpm --filter=@booking/api check:rls`
+- `pnpm test`
 - `pnpm --filter=@booking/dashboard typecheck`
 - Run one SePay sandbox payment and verify `held → dispute_window → released → payout` using the
   runbook. Automated tests are intentionally prohibited by ADR 0005.
