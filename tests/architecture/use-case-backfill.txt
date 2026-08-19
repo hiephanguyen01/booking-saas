@@ -99,17 +99,13 @@ apps/api/src/modules/finance/application/use-cases/list-settlement-disputes.use-
 apps/api/src/modules/finance/application/use-cases/list-tax-filing-periods.use-case.ts
 apps/api/src/modules/finance/application/use-cases/list-tax-withholding-certificates.use-case.ts
 apps/api/src/modules/finance/application/use-cases/list-tenant-ledger.use-case.ts
-apps/api/src/modules/finance/application/use-cases/mark-payout-paid.use-case.ts
 apps/api/src/modules/finance/application/use-cases/open-settlement-dispute.use-case.ts
 apps/api/src/modules/finance/application/use-cases/prepare-settlement-refund.use-case.ts
 apps/api/src/modules/finance/application/use-cases/prepare-tax-filing-period.use-case.ts
-apps/api/src/modules/finance/application/use-cases/record-clawback-journal.use-case.ts
 apps/api/src/modules/finance/application/use-cases/record-held-settlement.use-case.ts
 apps/api/src/modules/finance/application/use-cases/record-settlement-withholding.use-case.ts
 apps/api/src/modules/finance/application/use-cases/record-tax-remittance.use-case.ts
 apps/api/src/modules/finance/application/use-cases/record-withholding-reversal.use-case.ts
-apps/api/src/modules/finance/application/use-cases/release-settlement.use-case.ts
-apps/api/src/modules/finance/application/use-cases/resolve-settlement-dispute.use-case.ts
 apps/api/src/modules/finance/application/use-cases/respond-settlement-dispute.use-case.ts
 apps/api/src/modules/finance/application/use-cases/start-no-show-settlement-window.use-case.ts
 apps/api/src/modules/finance/application/use-cases/start-settlement-window.use-case.ts
