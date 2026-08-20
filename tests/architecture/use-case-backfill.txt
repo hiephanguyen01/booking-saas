@@ -113,7 +113,6 @@ apps/api/src/modules/reviews/application/use-cases/list-public-reviews.use-case.
 apps/api/src/modules/reviews/application/use-cases/list-tenant-reviews.use-case.ts
 apps/api/src/modules/reviews/application/use-cases/reply-review.use-case.ts
 apps/api/src/modules/scheduling/application/use-cases/get-availability.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/add-domain.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/apply-legal-readiness.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/assert-can-add-listing.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/assert-can-add-partner.use-case.ts
@@ -125,7 +124,6 @@ apps/api/src/modules/tenancy/application/use-cases/check-domain-tls-allowed.use-
 apps/api/src/modules/tenancy/application/use-cases/check-slug-availability.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/create-plan.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/create-tenant.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/delete-domain.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/delete-plan.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/get-current-subscription.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/get-plan-limits.use-case.ts
@@ -134,15 +132,10 @@ apps/api/src/modules/tenancy/application/use-cases/get-subscription-status.use-c
 apps/api/src/modules/tenancy/application/use-cases/get-tenancy-config.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/get-tenant-detail.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/get-tenant.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/list-domains.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/list-plans.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/list-subscriptions.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/list-tenants.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/resolve-tenant-by-admin-host.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/resolve-tenant-by-host.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/set-partner-promotions.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/set-primary-domain.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/set-tenant-default-cancellation-policy.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/update-plan.use-case.ts
 apps/api/src/modules/tenancy/application/use-cases/update-tenant.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/verify-domain.use-case.ts
