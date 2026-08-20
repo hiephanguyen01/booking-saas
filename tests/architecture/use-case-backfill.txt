@@ -7,9 +7,6 @@
 #
 # Touching one of these? Backfill it in the same change. That is the whole rule.
 apps/api/src/modules/affiliate/application/use-cases/apply-affiliate.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/clawback-commission.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/create-referral-link.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/delete-referral-link.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/get-affiliate-memberships.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/get-affiliate-stats.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/get-tenant-affiliate.use-case.ts
@@ -17,15 +14,9 @@ apps/api/src/modules/affiliate/application/use-cases/list-affiliate-commissions.
 apps/api/src/modules/affiliate/application/use-cases/list-affiliate-links.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/list-affiliate-memberships.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/list-tenant-affiliates.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/mark-commissions-paid.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/record-confirmed-commission.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/record-pending-commission.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/require-affiliate-membership.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/require-approved-affiliate.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/resolve-attribution.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/reverse-commission.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/set-affiliate-status.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/track-referral.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/update-affiliate-payout-info.use-case.ts
 apps/api/src/modules/affiliate/application/use-cases/update-affiliate-rate.use-case.ts
 apps/api/src/modules/catalog/application/use-cases/list-nearby-public-listings.use-case.ts

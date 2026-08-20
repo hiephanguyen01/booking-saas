@@ -25,7 +25,7 @@ const BACKFILL_FILE = 'tests/architecture/use-case-backfill.txt';
  * The number of use cases still without a test. Lower it when you backfill one;
  * never raise it. A new use case is not backfill — it is required to ship a test.
  */
-const BACKFILL_CEILING = 82;
+const BACKFILL_CEILING = 73;
 
 function readBackfill(): string[] {
   return readSource(repoPath(BACKFILL_FILE))
