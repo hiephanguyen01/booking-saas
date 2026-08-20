@@ -229,9 +229,11 @@ describe('ApplyAsPartnerUseCase', () => {
     ]);
   });
 
-  it('rolls the whole application back when the consent is rejected', async () => {
+  it('fails the application, and announces nothing, when the consent is rejected', async () => {
     // Server-side enforcement of the form's required tick, so the guarantee
-    // holds for the API and not only for the browser.
+    // holds for the API and not only for the browser. The rollback itself is
+    // the transaction's job; what is assertable here is that the consent runs
+    // BEFORE the event, so no downstream handler ever sees an unsigned partner.
     const { useCase, events } = harness({ legalError: new Error('LEGAL_CONSENT_REQUIRED') });
 
     await expect(useCase.execute(USER_ID, input(), CTX)).rejects.toThrow(

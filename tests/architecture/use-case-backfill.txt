@@ -6,19 +6,6 @@
 # A NEW use case never belongs here — it ships with its test or it does not merge.
 #
 # Touching one of these? Backfill it in the same change. That is the whole rule.
-apps/api/src/modules/affiliate/application/use-cases/apply-affiliate.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/get-affiliate-memberships.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/get-affiliate-stats.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/get-tenant-affiliate.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/list-affiliate-commissions.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/list-affiliate-links.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/list-affiliate-memberships.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/list-tenant-affiliates.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/require-affiliate-membership.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/require-approved-affiliate.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/set-affiliate-status.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/update-affiliate-payout-info.use-case.ts
-apps/api/src/modules/affiliate/application/use-cases/update-affiliate-rate.use-case.ts
 apps/api/src/modules/catalog/application/use-cases/list-nearby-public-listings.use-case.ts
 apps/api/src/modules/catalog/application/use-cases/search-public-catalog.use-case.ts
 apps/api/src/modules/catalog/application/use-cases/update-listing-type.use-case.ts
