@@ -35,6 +35,13 @@ export interface FakeTenantDbOptions {
    * date in the test, or the two clocks cannot be told apart.
    */
   readonly now?: Date;
+  /**
+   * Called as `forTenant` opens, before the callback runs. Use it when the test
+   * cares that work happened OUTSIDE the transaction — an un-scoped lookup done
+   * inside one holds an interactive transaction open across it, and no
+   * assertion on the result can tell the two orderings apart.
+   */
+  readonly onOpen?: (tenantId: string) => void;
 }
 
 export function fakeTenantDb(options: FakeTenantDbOptions = {}): FakeTenantDb {
@@ -44,6 +51,7 @@ export function fakeTenantDb(options: FakeTenantDbOptions = {}): FakeTenantDb {
   const service = {
     forTenant<T>(tenantId: string, fn: (transaction: PrismaTx) => Promise<T>): Promise<T> {
       openedFor.push(tenantId);
+      options.onOpen?.(tenantId);
       return fn(tx);
     },
     forCurrentTenant<T>(fn: (transaction: PrismaTx) => Promise<T>): Promise<T> {
