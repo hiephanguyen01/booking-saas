@@ -109,6 +109,16 @@ export class RedisAuthChallengeStore implements IAuthChallengeStore {
     return { status: 'invalid', attemptsRemaining: transition.attemptsRemaining };
   }
 
+  async peekCompletion(
+    completionToken: string,
+    purpose: AuthChallengePurpose,
+  ): Promise<AuthChallengePayload | null> {
+    const value = await this.redis.get(this.completionKey(completionToken));
+    if (!value) return null;
+    const payload = JSON.parse(value) as AuthChallengePayload;
+    return payload.purpose === purpose ? payload : null;
+  }
+
   async consumeCompletion(
     completionToken: string,
     purpose: AuthChallengePurpose,
