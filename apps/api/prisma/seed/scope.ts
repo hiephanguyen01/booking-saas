@@ -1,5 +1,13 @@
 export type SeedScope = 'tenants' | 'full';
 
+export type PlatformAdminCredentials = {
+  email: string;
+  password: string;
+};
+
+const DEFAULT_ADMIN_EMAIL = 'admin@bookingos.local';
+const DEFAULT_ADMIN_PASSWORD = 'admin-dev-password';
+
 /**
  * `SEED_SCOPE=tenants` seeds the platform catalogue and both tenants' SETTINGS
  * only — no partners, listings, bookings or promotions. That is the production
@@ -7,6 +15,45 @@ export type SeedScope = 'tenants' | 'full';
  */
 export function seedScope(): SeedScope {
   return process.env.SEED_SCOPE === 'tenants' ? 'tenants' : 'full';
+}
+
+/**
+ * The seeded platform-admin credentials.
+ *
+ * Production-shaped seeds must never fall back to repository-public credentials.
+ * Dev/staging preserve the existing defaults so `pnpm seed` remains one command.
+ */
+export function platformAdminCredentials(scope: SeedScope): PlatformAdminCredentials {
+  const configuredEmail = process.env.SEED_ADMIN_EMAIL?.trim();
+  const configuredPassword = process.env.SEED_ADMIN_PASSWORD;
+
+  if (scope === 'tenants') {
+    if (!configuredEmail) {
+      throw new Error(
+        'SEED_ADMIN_EMAIL is required when SEED_SCOPE=tenants — refusing to seed a production Super Admin with the shared development email.',
+      );
+    }
+    if (!configuredPassword?.trim()) {
+      throw new Error(
+        'SEED_ADMIN_PASSWORD is required when SEED_SCOPE=tenants — refusing to seed a production Super Admin with the shared development password.',
+      );
+    }
+    if (configuredEmail.toLowerCase() === DEFAULT_ADMIN_EMAIL) {
+      throw new Error(
+        `SEED_ADMIN_EMAIL must not use the shared development account ${DEFAULT_ADMIN_EMAIL} when SEED_SCOPE=tenants.`,
+      );
+    }
+    if (configuredPassword === DEFAULT_ADMIN_PASSWORD) {
+      throw new Error(
+        'SEED_ADMIN_PASSWORD must not use the shared development password when SEED_SCOPE=tenants.',
+      );
+    }
+  }
+
+  return {
+    email: configuredEmail || DEFAULT_ADMIN_EMAIL,
+    password: configuredPassword || DEFAULT_ADMIN_PASSWORD,
+  };
 }
 
 /**
