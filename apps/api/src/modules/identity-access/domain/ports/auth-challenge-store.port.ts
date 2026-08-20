@@ -41,6 +41,10 @@ export interface IAuthChallengeStore {
     purpose: AuthChallengePurpose,
     otp: string,
   ): Promise<VerifyChallengeResult>;
+  peekCompletion(
+    completionToken: string,
+    purpose: AuthChallengePurpose,
+  ): Promise<AuthChallengePayload | null>;
   consumeCompletion(
     completionToken: string,
     purpose: AuthChallengePurpose,

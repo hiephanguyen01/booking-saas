@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { PASSWORD_HASHER } from '../../domain/ports/password-hasher.port';
 import { PERMISSION_RESOLVER } from '../../domain/ports/permission-resolver.port';
+import { REGISTRATION_COMPLETION_REPOSITORY } from '../../domain/ports/registration-completion-repository.port';
 import { SESSION_INFO_READER } from '../../domain/ports/session-info-reader.port';
 import { SESSION_STORE } from '../../domain/ports/session-store.port';
 import { USER_REPOSITORY } from '../../domain/ports/user-repository.port';
@@ -41,6 +42,7 @@ import { GetInvitationPreviewUseCase } from '../../application/use-cases/get-inv
 import { AcceptTenantInvitationUseCase } from '../../application/use-cases/accept-tenant-invitation.use-case';
 import { AUTH_CHALLENGE_STORE } from '../../domain/ports/auth-challenge-store.port';
 import { AUTH_EMAIL_SENDER } from '../../domain/ports/auth-email-sender.port';
+import { PrismaRegistrationCompletionRepository } from '../repositories/prisma-registration-completion.repository';
 import { PrismaUserRepository } from '../repositories/prisma-user.repository';
 import { PrismaTenantRoleRepository } from '../repositories/prisma-tenant-role.repository';
 import { PrismaTenantMemberRepository } from '../repositories/prisma-tenant-member.repository';
@@ -71,6 +73,10 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
   providers: [
     { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
+    {
+      provide: REGISTRATION_COMPLETION_REPOSITORY,
+      useClass: PrismaRegistrationCompletionRepository,
+    },
     { provide: SESSION_STORE, useClass: PrismaSessionStore },
     { provide: PERMISSION_RESOLVER, useClass: PermissionResolverService },
     { provide: SESSION_INFO_READER, useClass: PrismaSessionInfoReader },
