@@ -113,16 +113,3 @@ apps/api/src/modules/reviews/application/use-cases/list-public-reviews.use-case.
 apps/api/src/modules/reviews/application/use-cases/list-tenant-reviews.use-case.ts
 apps/api/src/modules/reviews/application/use-cases/reply-review.use-case.ts
 apps/api/src/modules/scheduling/application/use-cases/get-availability.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/apply-legal-readiness.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/check-domain-dns.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/check-domain-tls-allowed.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/check-slug-availability.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/create-tenant.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/get-platform-health.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/get-tenancy-config.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/get-tenant-detail.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/get-tenant.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/list-tenants.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/set-partner-promotions.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/set-tenant-default-cancellation-policy.use-case.ts
-apps/api/src/modules/tenancy/application/use-cases/update-tenant.use-case.ts
