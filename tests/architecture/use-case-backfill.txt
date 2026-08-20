@@ -74,15 +74,10 @@ apps/api/src/modules/legal/application/use-cases/resolve-legal-caller-scope.use-
 apps/api/src/modules/legal/application/use-cases/save-legal-draft.use-case.ts
 apps/api/src/modules/legal/application/use-cases/seed-tenant-legal-drafts.use-case.ts
 apps/api/src/modules/legal/application/use-cases/withdraw-legal-document.use-case.ts
-apps/api/src/modules/listing/application/use-cases/apply-listing-group-update.use-case.ts
 apps/api/src/modules/listing/application/use-cases/apply-listing-update.use-case.ts
-apps/api/src/modules/listing/application/use-cases/create-listing-group.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-partner-pricing-rule-range.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-partner-pricing-rule.use-case.ts
-apps/api/src/modules/listing/application/use-cases/create-pricing-rule.use-case.ts
-apps/api/src/modules/listing/application/use-cases/get-listing-group-detail.use-case.ts
-apps/api/src/modules/listing/application/use-cases/get-public-quote.use-case.ts
 apps/api/src/modules/notification/application/use-cases/count-unread-notifications.use-case.ts
 apps/api/src/modules/notification/application/use-cases/dispatch-booking-event.use-case.ts
 apps/api/src/modules/notification/application/use-cases/dispatch-legal-document-event.use-case.ts
