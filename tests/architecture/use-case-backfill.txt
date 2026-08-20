@@ -90,15 +90,10 @@ apps/api/src/modules/listing/application/use-cases/get-public-quote.use-case.ts
 apps/api/src/modules/listing/application/use-cases/list-partner-listing-feed.use-case.ts
 apps/api/src/modules/listing/application/use-cases/list-partner-pricing-rules.use-case.ts
 apps/api/src/modules/listing/application/use-cases/moderation/hide-listing-group.use-case.ts
-apps/api/src/modules/listing/application/use-cases/moderation/hide-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/moderation/publish-listing-group.use-case.ts
-apps/api/src/modules/listing/application/use-cases/moderation/publish-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/moderation/republish-listing-group.use-case.ts
-apps/api/src/modules/listing/application/use-cases/moderation/republish-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/moderation/review-listing-group.use-case.ts
-apps/api/src/modules/listing/application/use-cases/moderation/review-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/moderation/submit-listing-group.use-case.ts
-apps/api/src/modules/listing/application/use-cases/moderation/submit-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/revisions/approve-listing-revision.use-case.ts
 apps/api/src/modules/listing/application/use-cases/revisions/discard-listing-revision.use-case.ts
 apps/api/src/modules/listing/application/use-cases/revisions/get-listing-group-pending-changes.use-case.ts
