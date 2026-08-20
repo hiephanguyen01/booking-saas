@@ -4,7 +4,7 @@
 
 **Goal:** Make all new partner identity/legal documents authenticated, 5 MiB size-bound, write-once, private at rest, owner-scoped, and readable only through permission-gated short-lived grants while preserving public partner logos and legacy read compatibility.
 
-**Architecture:** Keep S3/MinIO mechanics in the Storage module and move partner-document semantics into the Partner module. New sensitive uploads use canonical owner-scoped private keys, exact signed PUT headers, and `businessInfo` key fields; partner/tenant read endpoints resolve only keys already referenced by the partner and emit audited short-lived private GET grants. Storefront and dashboard use purpose-built private-document transport, while a separate idempotent operational script remediates legacy public URLs.
+**Architecture:** Keep S3/MinIO mechanics in the Storage module and move partner-document semantics into the Partner module. New sensitive uploads use canonical owner-scoped private keys, exact signed PUT headers, and `businessInfo` key fields; partner/tenant read endpoints resolve only keys already referenced by the partner and emit audited short-lived private GET grants. Storefront and dashboard use one shared private-document transport/component from `@booking/ui`, while an idempotent operational script remediates legacy public URLs.
 
 **Tech Stack:** NestJS 11, Prisma 6/PostgreSQL/RLS, AWS SDK for JavaScript v3 S3 presigner, React Router 8 SSR, React 19, Zod contracts, MinIO-compatible disposable storage, pnpm/Turbo.
 
@@ -22,7 +22,7 @@
 - Do not log presigned URLs, raw document bytes, identity numbers, or full private object keys.
 - No Prisma schema migration is required; `businessInfo` remains JSONB.
 - No deploy is part of implementation or review unless separately authorized.
-- At execution time, create/use an isolated implementation branch/worktree named `fix/sec-002-private-partner-documents` from the approved design branch head; refresh against `main` first if `main` has moved.
+- At execution time, create/use isolated branch `fix/sec-002-private-partner-documents` from the approved design branch head. If `main` moved, refresh the implementation branch against current `main` before product-code commits.
 
 ---
 
@@ -31,17 +31,17 @@
 **Files:**
 - Modify: `packages/contracts/src/contracts/partner.ts`
 - Modify: `apps/api/src/modules/storage/infrastructure/services/s3-storage.service.ts`
-- Verify compatibility: `apps/dashboard/app/features/tenant/components/finance/tax-document-upload-field.tsx`
-- Verify compatibility: `apps/api/src/modules/finance/application/use-cases/create-tax-document-upload.use-case.ts`
+- Verify unchanged compatibility: `apps/dashboard/app/features/tenant/components/finance/tax-document-upload-field.tsx`
+- Verify unchanged compatibility: `apps/api/src/modules/finance/application/use-cases/create-tax-document-upload.use-case.ts`
 
 **Interfaces:**
-- Produces `partnerDocumentContentTypeSchema`, `PARTNER_DOCUMENT_UPLOAD_ACCEPT`, `MAX_PARTNER_DOCUMENT_SIZE_BYTES`, `partnerDocumentUploadInputSchema`, `privateDocumentUploadResponseSchema`, `partnerDocumentKindSchema`, and `partnerDocumentReadItemSchema` in `@booking/contracts`.
-- Preserves existing `StoragePort.createPrivatePresignedUpload(CreateUploadInput)` signature.
-- Changes `S3StorageService.createUpload()` so a provided `contentLength` is signed as `content-length`, `content-type` is signed, and `if-none-match` is signed only when `writeOnce === true`.
+- Produces `partnerDocumentContentTypeSchema`, `PARTNER_DOCUMENT_UPLOAD_ACCEPT`, `MAX_PARTNER_DOCUMENT_SIZE_BYTES`, `partnerDocumentUploadInputSchema`, `privateDocumentUploadResponseSchema`, `partnerDocumentKindSchema`, `partnerDocumentReadItemSchema`, and `partnerDocumentReadListSchema` in `@booking/contracts`.
+- Preserves `StoragePort.createPrivatePresignedUpload(CreateUploadInput)`.
+- `S3StorageService.createUpload()` signs `content-type`, signs `content-length` when supplied, and signs `if-none-match` only for write-once grants.
 
-- [ ] **Step 1: Add the canonical partner-document upload contract**
+- [ ] **Step 1: Add canonical upload contracts**
 
-In `packages/contracts/src/contracts/partner.ts`, add these definitions near the partner document inputs:
+In `packages/contracts/src/contracts/partner.ts` add:
 
 ```ts
 export const partnerDocumentContentTypeSchema = z.enum([
@@ -74,9 +74,7 @@ export const privateDocumentUploadResponseSchema = z.object({
 export type PrivateDocumentUploadResponse = z.infer<typeof privateDocumentUploadResponseSchema>;
 ```
 
-- [ ] **Step 2: Add the tagged private/legacy document-read contract**
-
-In the same file add:
+- [ ] **Step 2: Add tagged read contracts**
 
 ```ts
 export const partnerDocumentKindSchema = z.enum([
@@ -106,9 +104,9 @@ export const partnerDocumentReadListSchema = z.array(partnerDocumentReadItemSche
 export type PartnerDocumentReadItem = z.infer<typeof partnerDocumentReadItemSchema>;
 ```
 
-- [ ] **Step 3: Make signed-header intent explicit in the S3 adapter**
+- [ ] **Step 3: Sign exact PUT headers in `S3StorageService`**
 
-In `S3StorageService.createUpload()`, construct the signable set from the actual command inputs:
+Replace the current `getSignedUrl()` options in `createUpload()` with:
 
 ```ts
 const signableHeaders = new Set<string>(['content-type']);
@@ -128,21 +126,19 @@ const uploadUrl = await getSignedUrl(
 );
 ```
 
-Do not use a truthy check for `contentLength`; valid callers already reject zero, and `!== undefined` accurately reflects whether the caller requested a signed length.
+Use `contentLength !== undefined`, not a truthy check.
 
-- [ ] **Step 4: Verify the finance write-once client already sends the headers this change will sign**
+- [ ] **Step 4: Confirm finance compatibility without changing finance**
 
-Read `apps/dashboard/app/features/tenant/components/finance/tax-document-upload-field.tsx` and confirm its PUT still sends:
+`tax-document-upload-field.tsx` must still PUT with:
 
 ```ts
 headers: { 'content-type': file.type, 'if-none-match': '*' }
 ```
 
-Do not change finance unless this invariant has drifted. The tax use case already supplies both `contentLength` and `writeOnce: true`.
+`CreateTaxDocumentUploadUseCase` must still supply `contentLength: input.sizeBytes` and `writeOnce: true`. If either invariant has changed on the implementation branch, stop and reconcile before continuing; the expected current repository state already satisfies both.
 
-- [ ] **Step 5: Run targeted static verification**
-
-Run:
+- [ ] **Step 5: Run targeted verification**
 
 ```bash
 pnpm --filter=@booking/contracts build
@@ -150,11 +146,9 @@ pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api build
 ```
 
-Expected: all commands exit 0; no contract or AWS SDK type errors.
+Expected: exit 0.
 
 - [ ] **Step 6: Commit Task 1**
-
-Stage only the confirmed Task 1 files and commit:
 
 ```bash
 git add packages/contracts/src/contracts/partner.ts \
@@ -164,7 +158,7 @@ git commit -m "fix(storage): enforce signed partner upload headers"
 
 ---
 
-### Task 2: Add canonical partner-document keys and private upload endpoints
+### Task 2: Add canonical owner-scoped keys and private upload endpoints
 
 **Files:**
 - Create: `apps/api/src/modules/partner/domain/partner-document-key.ts`
@@ -178,11 +172,11 @@ git commit -m "fix(storage): enforce signed partner upload headers"
 **Interfaces:**
 - Produces `applicantPartnerDocumentPrefix(userId)`, `partnerDocumentPrefix(partnerId)`, `isApplicantDocumentKeyForUser(userId, key)`, and `isPartnerDocumentKey(partnerId, key)`.
 - Produces `CreateApplicantDocumentUploadUseCase.execute(userId, input)` and `CreatePartnerDocumentUploadUseCase.execute(partnerId, input)` returning `PrivateDocumentUploadResponse`.
-- Adds authenticated API endpoints `POST /partners/application-documents/presign` and `POST /partner/profile/documents/presign`.
+- Adds `POST /partners/application-documents/presign` and `POST /partner/profile/documents/presign`.
 
-- [ ] **Step 1: Define canonical key helpers**
+- [ ] **Step 1: Define strict canonical key helpers**
 
-Create `partner-document-key.ts` with owner-scoped prefix builders and strict generated-key validation:
+Create `partner-document-key.ts`:
 
 ```ts
 const DOCUMENT_FILE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp|avif|gif)$/;
@@ -211,11 +205,11 @@ export function isPartnerDocumentKey(partnerId: string, key: string): boolean {
 }
 ```
 
-Use the repository's actual UUID format if source inspection shows generated keys differ; preserve the invariant that only exactly one generated filename under the expected owner prefix is accepted.
+This matches the current `randomUUID()` filename generation in `S3StorageService`; accept exactly one generated filename under the expected owner prefix.
 
-- [ ] **Step 2: Add DTOs for the dedicated upload contract**
+- [ ] **Step 2: Add DTO wrappers**
 
-In `partner.dto.ts`, add Zod DTO wrappers for `partnerDocumentUploadInputSchema` and `privateDocumentUploadResponseSchema`:
+In `partner.dto.ts`:
 
 ```ts
 export class PartnerDocumentUploadDto extends createZodDto(partnerDocumentUploadInputSchema) {}
@@ -225,8 +219,6 @@ export class PrivateDocumentUploadResponseDto extends createZodDto(
 ```
 
 - [ ] **Step 3: Implement applicant private presign**
-
-Create `CreateApplicantDocumentUploadUseCase`:
 
 ```ts
 @Injectable()
@@ -253,11 +245,11 @@ export class CreateApplicantDocumentUploadUseCase {
 
 - [ ] **Step 4: Implement existing-partner private presign**
 
-Create `CreatePartnerDocumentUploadUseCase` with the same response shape, using `partnerDocumentPrefix(partnerId)`.
+Create `CreatePartnerDocumentUploadUseCase` with the same body, replacing the prefix with `partnerDocumentPrefix(partnerId)`.
 
-- [ ] **Step 5: Add the authenticated applicant endpoint**
+- [ ] **Step 5: Add applicant endpoint**
 
-In `PartnerApplicationController`, inject `CreateApplicantDocumentUploadUseCase` and add:
+In `PartnerApplicationController` add throttling imports and:
 
 ```ts
 @AuthenticatedOnly()
@@ -273,11 +265,9 @@ async presignApplicationDocument(
 }
 ```
 
-Import `Throttle`, `THROTTLE_UPLOAD`, `HttpCode`, and the contract response type using existing repository conventions.
+- [ ] **Step 6: Add existing-partner endpoint**
 
-- [ ] **Step 6: Add the partner-profile private endpoint**
-
-In `PartnerProfileController`, inject `CreatePartnerDocumentUploadUseCase` and add:
+In `PartnerProfileController` add:
 
 ```ts
 @RequirePermissions('partner.profile.manage')
@@ -286,7 +276,9 @@ In `PartnerProfileController`, inject `CreatePartnerDocumentUploadUseCase` and a
 @Post('documents/presign')
 @HttpCode(200)
 @ApiOkResponse({ type: PrivateDocumentUploadResponseDto })
-async presignDocument(@Body() input: PartnerDocumentUploadDto): Promise<PrivateDocumentUploadResponse> {
+async presignDocument(
+  @Body() input: PartnerDocumentUploadDto,
+): Promise<PrivateDocumentUploadResponse> {
   return this.createPartnerDocumentUpload.execute(
     this.tenantContext.partnerIdOrThrow(),
     input,
@@ -294,13 +286,9 @@ async presignDocument(@Body() input: PartnerDocumentUploadDto): Promise<PrivateD
 }
 ```
 
-- [ ] **Step 7: Register both use cases in `PartnerModule`**
+- [ ] **Step 7: Register providers and run API gates**
 
-Add both classes to `providers`; do not import Storage module directly because `StorageModule` is already global and exports `STORAGE_PORT`.
-
-- [ ] **Step 8: Run targeted API verification**
-
-Run:
+Add both use cases to `PartnerModule.providers`, then run:
 
 ```bash
 pnpm check:module-cycles
@@ -311,7 +299,7 @@ pnpm --filter=@booking/api build
 
 Expected: exit 0.
 
-- [ ] **Step 9: Commit Task 2**
+- [ ] **Step 8: Commit Task 2**
 
 ```bash
 git add apps/api/src/modules/partner/domain/partner-document-key.ts \
@@ -326,39 +314,37 @@ git commit -m "feat(partner): add private document upload grants"
 
 ---
 
-### Task 3: Make canonical keys the only new sensitive-document persistence format
+### Task 3: Make private keys the only new sensitive-document persistence format
 
 **Files:**
 - Modify: `packages/contracts/src/contracts/partner.ts`
 - Modify: `apps/api/src/modules/partner/domain/errors/partner-errors.ts`
+- Create: `apps/api/src/modules/partner/domain/partner-document-business-info.ts`
 - Modify: `apps/api/src/modules/partner/domain/entities/partner.entity.ts`
 - Modify: `apps/api/src/modules/partner/application/use-cases/apply-as-partner.use-case.ts`
 - Modify: `apps/api/src/modules/partner/application/use-cases/update-partner-documents.use-case.ts`
-- Create: `apps/api/src/modules/partner/domain/partner-document-business-info.ts`
 - Modify: `apps/api/src/modules/storage/infrastructure/http/upload.controller.ts`
 
 **Interfaces:**
-- `partnerOnboardingProfileSchema` uses `identityCardFrontKey`, `identityCardBackKey`, optional `businessLicenseFrontKey`, and optional `businessLicenseBackKey`.
-- `updatePartnerDocumentsInputSchema` accepts `{ logoUrl?: string; licenseDocumentKeys?: string[] }` and no longer accepts `licenseDocs` for new writes.
-- Produces `InvalidPartnerDocumentReference extends DomainError` with wire code `INVALID_PARTNER_DOCUMENT_REFERENCE`, HTTP 400.
-- Produces pure validators that reject legacy sensitive URL fields on new writes and validate owner prefixes.
+- `partnerRegistrationSchema` and `partnerOnboardingProfileSchema` both use `...Key` names for sensitive documents.
+- `updatePartnerDocumentsInputSchema` accepts `{ logoUrl?: string; licenseDocumentKeys?: string[] }`.
+- Produces `InvalidPartnerDocumentReference` with code `INVALID_PARTNER_DOCUMENT_REFERENCE`, HTTP 400.
+- New writes reject legacy sensitive URL fields.
 
-- [ ] **Step 1: Change new-write contracts from URL fields to key fields**
+- [ ] **Step 1: Rename sensitive fields in both registration contracts**
 
-In `partnerOnboardingProfileSchema`, rename the four sensitive fields and validation paths/messages:
+In both `partnerRegistrationSchema` and `partnerOnboardingProfileSchema`, replace:
 
-```ts
-businessLicenseFrontKey: z.string().min(1).optional(),
-businessLicenseBackKey: z.string().min(1).optional(),
-identityCardFrontKey: z.string().min(1),
-identityCardBackKey: z.string().min(1),
+```text
+businessLicenseFrontUrl -> businessLicenseFrontKey
+businessLicenseBackUrl -> businessLicenseBackKey
+identityCardFrontUrl -> identityCardFrontKey
+identityCardBackUrl -> identityCardBackKey
 ```
 
-Update the company `superRefine` required-field checks to the `...Key` names.
+Use `z.string().min(1)` instead of URL validation for the key fields. Update every `superRefine` path/message reference to the new names.
 
-For the older `partnerRegistrationSchema`, do not allow it to remain a hidden writer of public sensitive URLs: either rename the same sensitive fields to `...Key` if the schema is still consumed, or remove/deprecate the unused sensitive fields after confirming code search has no runtime consumer. Do not leave a supported new-write path that accepts CCCD/GPKD public URLs.
-
-Update `updatePartnerDocumentsInputSchema` to:
+Change `updatePartnerDocumentsInputSchema` to:
 
 ```ts
 export const updatePartnerDocumentsInputSchema = z.object({
@@ -367,9 +353,7 @@ export const updatePartnerDocumentsInputSchema = z.object({
 });
 ```
 
-- [ ] **Step 2: Add the stable domain error**
-
-In `partner-errors.ts`:
+- [ ] **Step 2: Add stable invalid-reference error**
 
 ```ts
 export class InvalidPartnerDocumentReference extends DomainError {
@@ -383,11 +367,11 @@ export class InvalidPartnerDocumentReference extends DomainError {
 }
 ```
 
-Do not include the rejected key in the error message.
+Do not include the rejected key in the message.
 
-- [ ] **Step 3: Add businessInfo document helpers**
+- [ ] **Step 3: Add businessInfo validation helpers**
 
-Create `partner-document-business-info.ts` with two validation helpers and no storage/network calls:
+Create `partner-document-business-info.ts`:
 
 ```ts
 const LEGACY_SENSITIVE_FIELDS = [
@@ -412,7 +396,10 @@ export function assertApplicantDocumentReferences(
     'businessLicenseBackKey',
   ] as const) {
     const value = businessInfo[field];
-    if (value !== undefined && (typeof value !== 'string' || !isApplicantDocumentKeyForUser(userId, value))) {
+    if (
+      value !== undefined &&
+      (typeof value !== 'string' || !isApplicantDocumentKeyForUser(userId, value))
+    ) {
       throw new InvalidPartnerDocumentReference();
     }
   }
@@ -428,20 +415,18 @@ export function assertPartnerDocumentReferences(
 }
 ```
 
-- [ ] **Step 4: Enforce applicant ownership before `Partner.apply()`**
+- [ ] **Step 4: Enforce applicant ownership before persistence**
 
-In `ApplyAsPartnerUseCase.execute()`, before entering the tenant transaction, validate:
+In `ApplyAsPartnerUseCase.execute()` before the tenant transaction:
 
 ```ts
 const businessInfo = input.businessInfo ?? {};
 assertApplicantDocumentReferences(userId, businessInfo);
 ```
 
-Pass the validated `businessInfo` into `Partner.apply()` unchanged. This keeps key validation outside storage and prevents a caller from attaching user B's applicant key.
+Pass this validated `businessInfo` to `Partner.apply()`.
 
-- [ ] **Step 5: Update the Partner aggregate merge intent**
-
-Change `Partner.mergeDocuments()` to:
+- [ ] **Step 5: Change the aggregate's document merge intent**
 
 ```ts
 mergeDocuments(input: {
@@ -459,19 +444,17 @@ mergeDocuments(input: {
 }
 ```
 
-Do not delete legacy fields here; compatibility/migration owns cleanup.
+Do not delete legacy fields here; Task 7 migration owns cleanup.
 
-- [ ] **Step 6: Enforce partner-prefix ownership before profile persistence**
+- [ ] **Step 6: Enforce existing-partner ownership**
 
-In `UpdatePartnerDocumentsUseCase.execute()`, after loading `partnerId` and before calling `mergeDocuments`, validate `input.licenseDocumentKeys ?? []` with `assertPartnerDocumentReferences(partnerId, ...)`.
+In `UpdatePartnerDocumentsUseCase.execute()` validate `input.licenseDocumentKeys ?? []` with `assertPartnerDocumentReferences(partnerId, ...)` before `mergeDocuments()`.
 
-- [ ] **Step 7: Remove the anonymous public partner-document presign endpoint**
+- [ ] **Step 7: Delete the anonymous partner-document presign route**
 
-Delete only `presignPartnerApplication()` from `UploadController` and its now-unused `@Public()` import. Keep authenticated generic `POST /uploads/presign` unchanged for public images/logos.
+Remove `presignPartnerApplication()` from `UploadController` and its unused `@Public()` import. Keep authenticated generic `POST /uploads/presign` unchanged for public media/logo uploads.
 
-- [ ] **Step 8: Run contract/API static verification**
-
-Run:
+- [ ] **Step 8: Run static verification**
 
 ```bash
 pnpm check:no-tests
@@ -482,15 +465,15 @@ pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api build
 ```
 
-Expected: exit 0. Frontend typecheck may now fail because the contract changed; that is expected until Tasks 5-6 and must not be reported as final green yet.
+API/contracts must be green. Frontend typecheck is expected to remain red until Tasks 5-6 consume the renamed contract.
 
 - [ ] **Step 9: Commit Task 3**
 
 ```bash
 git add packages/contracts/src/contracts/partner.ts \
   apps/api/src/modules/partner/domain/errors/partner-errors.ts \
-  apps/api/src/modules/partner/domain/entities/partner.entity.ts \
   apps/api/src/modules/partner/domain/partner-document-business-info.ts \
+  apps/api/src/modules/partner/domain/entities/partner.entity.ts \
   apps/api/src/modules/partner/application/use-cases/apply-as-partner.use-case.ts \
   apps/api/src/modules/partner/application/use-cases/update-partner-documents.use-case.ts \
   apps/api/src/modules/storage/infrastructure/http/upload.controller.ts
@@ -504,21 +487,21 @@ git commit -m "fix(partner): persist sensitive documents as private keys"
 **Files:**
 - Extend: `apps/api/src/modules/partner/domain/partner-document-business-info.ts`
 - Create: `apps/api/src/modules/partner/application/use-cases/list-partner-documents.use-case.ts`
+- Modify: `apps/api/src/modules/partner/infrastructure/http/dto/partner.dto.ts`
 - Modify: `apps/api/src/modules/partner/infrastructure/http/partner-profile.controller.ts`
 - Modify: `apps/api/src/modules/partner/infrastructure/http/tenant-partner.controller.ts`
-- Modify: `apps/api/src/modules/partner/infrastructure/http/dto/partner.dto.ts`
 - Modify: `apps/api/src/modules/partner/infrastructure/http/partner.module.ts`
 
 **Interfaces:**
-- Produces `collectPartnerDocumentReferences(businessInfo)` returning canonical private keys plus legacy public URLs with `PartnerDocumentKind`.
+- Produces `collectPartnerDocumentReferences(businessInfo)`.
 - Produces `ListPartnerDocumentsUseCase.execute(tenantId, partnerId, viewer)` returning `PartnerDocumentReadItem[]`.
-- Adds `GET /partner/profile/documents` (`partner.profile.manage`) and `GET /tenant/partners/:id/documents` (`tenant.partners.read`).
+- Adds `GET /partner/profile/documents` and `GET /tenant/partners/:id/documents`.
 
-- [ ] **Step 1: Define a deterministic reference collector**
+- [ ] **Step 1: Add deterministic reference collection**
 
-Extend `partner-document-business-info.ts` with a pure collector that maps canonical fields:
+Extend `partner-document-business-info.ts` so canonical fields map to kinds:
 
-```ts
+```text
 identityCardFrontKey -> identity_card_front
 identityCardBackKey -> identity_card_back
 businessLicenseFrontKey -> business_license_front
@@ -526,9 +509,9 @@ businessLicenseBackKey -> business_license_back
 licenseDocumentKeys[] -> license_document
 ```
 
-and legacy fields:
+Legacy compatibility maps:
 
-```ts
+```text
 identityCardFrontUrl -> identity_card_front
 identityCardBackUrl -> identity_card_back
 businessLicenseFrontUrl -> business_license_front
@@ -536,13 +519,11 @@ businessLicenseBackUrl -> business_license_back
 licenseDocs[] -> license_document
 ```
 
-Ignore malformed values rather than trying to sign them. Preserve array order for `licenseDocumentKeys`/`licenseDocs`.
+Return only valid non-empty strings; preserve array order. Private refs use `{ storage: 'private', kind, key }`, legacy refs use `{ storage: 'legacy_public', kind, url }` internally before signing.
 
-- [ ] **Step 2: Implement the read use case with audit-before-grant semantics**
+- [ ] **Step 2: Implement audit-before-grant read use case**
 
-Create `ListPartnerDocumentsUseCase` with dependencies on `PARTNER_REPOSITORY`, `TenantDbService`, `STORAGE_PORT`, and `AUDIT_WRITER`.
-
-Use this public interface:
+Use this interface:
 
 ```ts
 export type PartnerDocumentViewer =
@@ -556,24 +537,22 @@ execute(
 ): Promise<PartnerDocumentReadItem[]>
 ```
 
+Dependencies: `PARTNER_REPOSITORY`, `TenantDbService`, `STORAGE_PORT`, `AUDIT_WRITER`.
+
 Inside `tenantDb.forTenant(tenantId, ...)`:
-1. load the partner by ID;
+1. load partner by ID;
 2. throw `PartnerNotFound` if absent;
-3. collect references;
-4. write one audit record with action `partner.private_documents.self_view_requested` for partner viewers or `partner.private_documents.view_requested` for tenant viewers and data `{ partnerId, documentCount: refs.length, viewerType: viewer.actorType }`;
-5. return the collected references only.
+3. collect refs;
+4. write one audit event with action `partner.private_documents.self_view_requested` for partner viewers or `partner.private_documents.view_requested` for tenant viewers;
+5. audit data is exactly `{ partnerId, documentCount: refs.length, viewerType: viewer.actorType }`.
 
-After the transaction, map private refs through `storage.createPrivatePresignedDownload({ key })`; legacy public refs return `{ storage: 'legacy_public', kind, url }` without private signing.
+After the transaction, sign only collected private keys via `createPrivatePresignedDownload({ key })`; pass legacy URLs through as `storage: 'legacy_public'` descriptors. The caller never supplies a key.
 
-Never accept an arbitrary key from the caller.
+- [ ] **Step 3: Add read DTO**
 
-- [ ] **Step 3: Add response DTO**
+Add `PartnerDocumentReadItemDto extends createZodDto(partnerDocumentReadItemSchema)`.
 
-In `partner.dto.ts` add a DTO for one `partnerDocumentReadItemSchema` and use `@ApiOkResponse({ type: ..., isArray: true })` on controllers.
-
-- [ ] **Step 4: Add partner self-read endpoint**
-
-In `PartnerProfileController`:
+- [ ] **Step 4: Add partner self-read route**
 
 ```ts
 @RequirePermissions('partner.profile.manage')
@@ -590,11 +569,9 @@ async documents(
 }
 ```
 
-Do not apply `RequireCurrentAgreementGuard` to this read route; the existing controller deliberately keeps sensitive read routes available while writes are agreement-gated.
+Do not add `RequireCurrentAgreementGuard` to this read route.
 
-- [ ] **Step 5: Add tenant review endpoint**
-
-In `TenantPartnerController`:
+- [ ] **Step 5: Add tenant review route**
 
 ```ts
 @RequirePermissions('tenant.partners.read')
@@ -613,9 +590,7 @@ async documents(
 }
 ```
 
-- [ ] **Step 6: Register the use case and run RLS/static verification**
-
-Run:
+- [ ] **Step 6: Register provider and run API/RLS gates**
 
 ```bash
 pnpm check:module-cycles
@@ -632,35 +607,114 @@ Expected: exit 0.
 ```bash
 git add apps/api/src/modules/partner/domain/partner-document-business-info.ts \
   apps/api/src/modules/partner/application/use-cases/list-partner-documents.use-case.ts \
+  apps/api/src/modules/partner/infrastructure/http/dto/partner.dto.ts \
   apps/api/src/modules/partner/infrastructure/http/partner-profile.controller.ts \
   apps/api/src/modules/partner/infrastructure/http/tenant-partner.controller.ts \
-  apps/api/src/modules/partner/infrastructure/http/dto/partner.dto.ts \
   apps/api/src/modules/partner/infrastructure/http/partner.module.ts
 git commit -m "feat(partner): gate private document reads"
 ```
 
 ---
 
-### Task 5: Move storefront onboarding to authenticated private document transport
+### Task 5: Add one shared private-document uploader and move storefront onboarding to it
 
 **Files:**
+- Modify: `packages/ui/src/lib/upload.ts`
+- Create: `packages/ui/src/components/form/private-document-upload.tsx`
+- Modify: `packages/ui/src/components/form/types.ts`
+- Modify: `packages/ui/src/components/form/field-renderer.tsx`
 - Modify: `apps/storefront/app/constants/api-paths.ts`
 - Modify: `apps/storefront/app/constants/paths.ts`
 - Modify: `apps/storefront/app/routes.ts`
-- Create: `apps/storefront/app/routes/uploads.partner-documents.presign.tsx`
-- Replace/rename behavior: `apps/storefront/app/features/storage/server/partner-upload-presign-route.server.ts`
-- Create: `apps/storefront/app/features/storage/lib/private-document-upload.ts`
+- Modify: `apps/storefront/app/features/storage/server/partner-upload-presign-route.server.ts`
+- Replace route module: `apps/storefront/app/routes/uploads.presign.tsx` only if it is currently dedicated to onboarding; otherwise create `apps/storefront/app/routes/uploads.partner-documents.presign.tsx` and keep generic `/uploads/presign` intact.
 - Modify: `apps/storefront/app/features/partner-onboarding/components/partner-profile-fields.tsx`
 - Modify: `apps/storefront/app/features/partner-onboarding/server/partner-onboarding-domain.ts`
-- Modify shared field support only where required: `packages/ui/src/components/form/types.ts`, `packages/ui/src/components/form/field-renderer.tsx`, `packages/ui/src/components/form/image-upload.tsx`
 
 **Interfaces:**
-- Storefront same-origin route becomes `/uploads/partner-documents/presign`.
-- Backend path becomes `/partners/application-documents/presign`.
-- Browser helper `presignAndPutPrivateDocument(file, options)` returns `{ key: string }` and never returns a public URL.
-- Onboarding form stores `...Key` values.
+- `@booking/ui/lib/upload.ts` produces `presignAndPutPrivateDocument(file, options): Promise<{ key: string }>` without depending on `@booking/contracts`.
+- `PrivateDocumentUpload` is a shared controlled component that stores opaque keys and uses a transient `URL.createObjectURL(file)` preview only while mounted.
+- `FileFieldConfig` gains `uploadMode?: 'public-image' | 'private-document'`, defaulting to `public-image`.
+- Storefront private same-origin route is `/uploads/partner-documents/presign`; backend is `/partners/application-documents/presign`.
 
-- [ ] **Step 1: Add the new backend and same-origin path constants**
+- [ ] **Step 1: Add shared private transport to `@booking/ui/lib/upload.ts`**
+
+Mirror the response shape locally so `@booking/ui` stays self-contained:
+
+```ts
+interface PrivateDocumentPresignGrant {
+  uploadUrl: string;
+  key: string;
+  expiresInSec: number;
+  requiredHeaders: {
+    'content-type': string;
+    'if-none-match': '*';
+  };
+}
+
+export async function presignAndPutPrivateDocument(
+  file: File,
+  {
+    presignEndpoint,
+    signal,
+  }: { presignEndpoint: string; signal?: AbortSignal },
+): Promise<{ key: string }> {
+  const presignRes = await fetch(presignEndpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ contentType: file.type, sizeBytes: file.size }),
+    signal,
+  });
+  if (!presignRes.ok) throw new Error((await safeMessage(presignRes)) ?? 'Không thể tạo liên kết tải lên');
+  const grant = await readPrivateDocumentGrant(presignRes);
+  const putRes = await fetch(grant.uploadUrl, {
+    method: 'PUT',
+    headers: grant.requiredHeaders,
+    body: file,
+    signal,
+  });
+  if (!putRes.ok) throw new Error(`Tải tệp lên thất bại (${putRes.status})`);
+  return { key: grant.key };
+}
+```
+
+`readPrivateDocumentGrant()` must validate non-empty `uploadUrl`/`key`, positive finite `expiresInSec`, matching non-empty `content-type`, and literal `if-none-match === '*'`.
+
+- [ ] **Step 2: Add controlled `PrivateDocumentUpload` component**
+
+Create `packages/ui/src/components/form/private-document-upload.tsx` with props:
+
+```ts
+export interface PrivateDocumentUploadProps {
+  value?: string | null;
+  onChange: (key: string) => void;
+  presignEndpoint: string;
+  accept: readonly string[];
+  maxSizeMb: number;
+  disabled?: boolean;
+  label?: string;
+}
+```
+
+Behavior:
+- reject MIME not in `accept`;
+- reject `file.size <= 0` or `file.size > maxSizeMb * 1024 * 1024`;
+- call `presignAndPutPrivateDocument()`;
+- persist only returned `key` through `onChange`;
+- show a local object URL preview while mounted, revoke the old URL on replacement/unmount;
+- if a persisted key exists but no local preview exists, show a neutral “Tài liệu đã tải lên” state rather than trying to resolve the key publicly.
+
+- [ ] **Step 3: Wire private mode into `FieldRenderer`**
+
+In `FileFieldConfig` add:
+
+```ts
+uploadMode?: 'public-image' | 'private-document';
+```
+
+In `FieldRenderer`, when `field.uploadMode === 'private-document'`, render `PrivateDocumentUpload` and require `field.presignEndpoint`; otherwise render existing `ImageUpload` unchanged. Do not add auth/business semantics to `ImageUpload`.
+
+- [ ] **Step 4: Add storefront path constants**
 
 In `api-paths.ts`:
 
@@ -679,93 +733,69 @@ In `paths.ts` add:
 partnerDocumentUploadPresign: '/uploads/partner-documents/presign',
 ```
 
-- [ ] **Step 2: Replace the public BFF with authenticated phase-aware BFF**
+- [ ] **Step 5: Make the storefront BFF authenticated and phase-aware**
 
-Refactor `partner-upload-presign-route.server.ts` (or rename it consistently) so `handlePartnerDocumentUploadPresignAction(request)`:
-1. requires the current storefront auth session with `requireAuth(...)`;
-2. requires `partner_registration_profile` via `requirePartnerPhase(...)`;
-3. limits JSON body size with the existing `MAX_PRESIGN_REQUEST_BYTES` helper;
+Refactor `partner-upload-presign-route.server.ts` so its handler:
+1. calls `requirePartnerPhase(request, 'partner_registration_profile', locale)` using the existing onboarding flow conventions;
+2. obtains the current session with `requireAuth(...)`;
+3. body-limits with `MAX_PRESIGN_REQUEST_BYTES`;
 4. parses `partnerDocumentUploadInputSchema`;
-5. calls `apiPost<PrivateDocumentUploadResponse>(..., auth.session.accessToken, { schema: privateDocumentUploadResponseSchema })` against `apiPaths.partner.applicationDocumentPresign`;
-6. validates the returned storage origin with `allowedStorageUploadUrl()`;
-7. returns no `publicUrl`.
+5. calls authenticated `apiPost<PrivateDocumentUploadResponse>` with `auth.session.accessToken` to `apiPaths.partner.applicationDocumentPresign` and validates `privateDocumentUploadResponseSchema`;
+6. validates returned `uploadUrl` with `allowedStorageUploadUrl()`;
+7. returns the private grant with no `publicUrl`.
 
-Do not use `publicPost` for this route.
+Do not use `publicPost`.
 
-- [ ] **Step 3: Add the thin React Router resource route and register it**
+- [ ] **Step 6: Register a dedicated same-origin resource route**
 
-Create `routes/uploads.partner-documents.presign.tsx` as a thin `action` delegating to the server handler. In `routes.ts`, replace the old onboarding use of generic `/uploads/presign` only where appropriate; keep generic public-image routes for avatars/other media.
-
-- [ ] **Step 4: Add a private document browser helper**
-
-Create `features/storage/lib/private-document-upload.ts` with:
+Create `routes/uploads.partner-documents.presign.tsx` as a thin action calling the handler and register:
 
 ```ts
-export async function presignAndPutPrivateDocument(
-  file: File,
-  { presignEndpoint, signal }: { presignEndpoint: string; signal?: AbortSignal },
-): Promise<{ key: string }> {
-  // validate against PARTNER_DOCUMENT_UPLOAD_ACCEPT and MAX_PARTNER_DOCUMENT_SIZE_BYTES
-  // POST { contentType: file.type, sizeBytes: file.size }
-  // parse privateDocumentUploadResponseSchema
-  // PUT file with grant.requiredHeaders
-  // return { key: grant.key }
-}
+route('uploads/partner-documents/presign', 'routes/uploads.partner-documents.presign.tsx'),
 ```
 
-The PUT must use exactly:
+Keep existing generic `/uploads/presign` for public media.
 
-```ts
-headers: grant.requiredHeaders
-```
+- [ ] **Step 7: Change onboarding fields and payload mapping**
 
-and `body: file`. Do not manually set `content-length` in browser code.
+In `partner-profile-fields.tsx`, use:
 
-- [ ] **Step 5: Give the shared file field an explicit private-document mode without making it own auth**
-
-Add one explicit field config discriminator rather than overloading the generic public image path. For example:
-
-```ts
-uploadMode?: 'public-image' | 'private-document';
-```
-
-Default remains `public-image`. In `FieldRenderer`/`ImageUpload`, when `uploadMode === 'private-document'`, call `presignAndPutPrivateDocument` through a provided callback/helper boundary and persist the returned key as the field value. Keep existing image preview behavior local-only (object URL) for private documents.
-
-If importing the storefront feature helper into `@booking/ui` would violate package boundaries, keep the low-level private uploader in `@booking/ui/lib` using only contract-shaped local types, or create a small injected `upload(file)` callback on `FileFieldConfig`; choose the option that preserves current package dependency rules and `check:frontend-structure`.
-
-- [ ] **Step 6: Change onboarding fields and payload mapping to key names**
-
-In `partner-profile-fields.tsx`, change document field names to:
-
-```ts
+```text
 businessLicenseFrontKey
 businessLicenseBackKey
 identityCardFrontKey
 identityCardBackKey
 ```
 
-Set `presignEndpoint: storefrontPaths.partnerDocumentUploadPresign` and the private-document mode.
+Set each document field to:
 
-In `partner-onboarding-domain.ts`, build `businessInfo` with the same `...Key` names; do not emit legacy `...Url` fields.
+```ts
+uploadMode: 'private-document',
+presignEndpoint: storefrontPaths.partnerDocumentUploadPresign,
+accept: PARTNER_DOCUMENT_UPLOAD_ACCEPT,
+maxSizeMb: MAX_PARTNER_DOCUMENT_SIZE_BYTES / (1024 * 1024),
+variant: 'document',
+```
 
-- [ ] **Step 7: Run storefront/package verification**
+In `partner-onboarding-domain.ts`, write the same `...Key` names into `businessInfo`; emit no legacy sensitive URL fields.
 
-Run:
+- [ ] **Step 8: Run UI/storefront gates**
 
 ```bash
+pnpm --filter=@booking/ui lint
+pnpm --filter=@booking/ui typecheck
 pnpm check:frontend-structure
 pnpm --filter=@booking/storefront security
 pnpm --filter=@booking/storefront lint
 pnpm --filter=@booking/storefront typecheck
 pnpm --filter=@booking/storefront build
-pnpm --filter=@booking/ui typecheck
 ```
 
-Use the repository's actual `@booking/ui` verification command if that package has no standalone `typecheck`; do not invent a script.
+Expected: exit 0.
 
-- [ ] **Step 8: Commit Task 5**
+- [ ] **Step 9: Commit Task 5**
 
-Stage only the storefront/UI files touched by this task and commit:
+Stage only Task 5 files and commit:
 
 ```bash
 git commit -m "fix(storefront): upload partner documents privately"
@@ -773,28 +803,28 @@ git commit -m "fix(storefront): upload partner documents privately"
 
 ---
 
-### Task 6: Split dashboard logo upload from private legal documents and consume read grants
+### Task 6: Split dashboard logo/public media from private legal documents
 
 **Files:**
+- Reuse: `packages/ui/src/components/form/private-document-upload.tsx`
 - Modify: `apps/dashboard/app/constants/api-paths.ts`
 - Modify: `apps/dashboard/app/constants/paths.ts`
 - Modify: `apps/dashboard/app/routes.ts`
 - Create: `apps/dashboard/app/routes/uploads.partner-documents.presign.tsx`
-- Create: `apps/dashboard/app/features/partner/components/profile/private-document-upload.tsx`
 - Modify: `apps/dashboard/app/features/partner/components/profile/profile-documents-card.tsx`
 - Modify: `apps/dashboard/app/features/partner/server/profile-actions.server.ts`
 - Modify: `apps/dashboard/app/routes/partner/profile.tsx`
 - Modify: `apps/dashboard/app/features/tenant/lib/partner-business-info.ts`
 - Modify: `apps/dashboard/app/routes/tenant/partners/detail.tsx`
-- Modify the tenant document display component(s) that currently receive `identityPhotos` / `licensePhotos`.
+- Modify: tenant partner document display component(s) currently fed from `identityPhotos` / `licensePhotos`.
 
 **Interfaces:**
-- Dashboard same-origin private presign route calls backend `POST /partner/profile/documents/presign`.
-- Partner profile loader fetches `GET /partner/profile/documents` as `PartnerDocumentReadItem[]`.
-- Tenant detail loader fetches `GET /tenant/partners/:id/documents` as `PartnerDocumentReadItem[]`.
-- `logoUrl` stays on the existing generic `/uploads/presign` public path; only `licenseDocumentKeys` use private upload.
+- Dashboard private same-origin route proxies to `POST /partner/profile/documents/presign`.
+- Partner profile loader consumes `GET /partner/profile/documents`.
+- Tenant detail loader consumes `GET /tenant/partners/:id/documents`.
+- Logo remains on existing generic public `/uploads/presign`.
 
-- [ ] **Step 1: Add dashboard API path constants**
+- [ ] **Step 1: Add unambiguous dashboard API constants**
 
 Add:
 
@@ -802,7 +832,7 @@ Add:
 partner: {
   ...,
   profileDocumentPresign: partnerPath('/profile/documents/presign'),
-  profileDocuments: partnerPath('/profile/documents'),
+  profileDocumentList: partnerPath('/profile/documents'),
 },
 tenant: {
   ...,
@@ -810,45 +840,48 @@ tenant: {
 },
 ```
 
-Keep existing `profileDocuments` PATCH path semantics by naming the read constant unambiguously if necessary (for example `profileDocumentList`) so GET and PATCH call sites are obvious.
+Keep the existing PATCH constant for `/partner/profile/documents` under its current name or rename it to `profileDocumentsPatch`; GET and PATCH call sites must be distinguishable by constant name.
 
-- [ ] **Step 2: Add a same-origin partner private-presign route**
+- [ ] **Step 2: Add same-origin private-presign route**
 
-Use `requirePartner(request)` and `apiPost` to proxy `partnerDocumentUploadInputSchema` to `apiPaths.partner.profileDocumentPresign`. Return a response validated by `privateDocumentUploadResponseSchema`.
+Create `routes/uploads.partner-documents.presign.tsx`. Its action calls `requirePartner(request)`, parses `partnerDocumentUploadInputSchema`, posts to `apiPaths.partner.profileDocumentPresign`, validates `privateDocumentUploadResponseSchema`, and returns the grant.
 
-- [ ] **Step 3: Add a purpose-built private document uploader component**
+Register a dashboard route such as:
 
-Create a small component used only by the partner profile document card. It validates MIME/size, requests the private grant, PUTs with `requiredHeaders`, and returns the opaque `key`. It must not reuse `PhotoStrip` with a persisted public URL for newly uploaded private documents.
+```ts
+route('uploads/partner-documents/presign', 'routes/uploads.partner-documents.presign.tsx'),
+```
 
-- [ ] **Step 4: Split the partner profile card**
+and add the matching `dashboardPaths` constant used by the component.
 
-Keep the logo field using the existing generic `file`/`target: 'partners'` public uploader. Replace the `licenseDocs` GenericForm field with the private uploader and submit new keys as `licenseDocumentKeys`.
+- [ ] **Step 3: Split partner document card**
 
-Existing documents shown on the card come from loader-provided `PartnerDocumentReadItem[]`:
-- `private` entries display their temporary `downloadUrl`;
-- `legacy_public` entries display their legacy `url` during compatibility.
+In `ProfileDocumentsCard`:
+- keep `logoUrl` in the existing generic `FileFieldConfig` with `target: 'partners'`;
+- replace the `licenseDocs` public file field with shared `PrivateDocumentUpload`;
+- submit newly uploaded private keys as `licenseDocumentKeys`;
+- display existing `PartnerDocumentReadItem[]` from loader data: `downloadUrl` for `private`, `url` for `legacy_public`;
+- never persist either display URL.
 
-Do not persist either display URL back to `businessInfo`.
+- [ ] **Step 4: Update append/delete actions to canonical keys**
 
-- [ ] **Step 5: Update profile actions to append/delete keys, not URLs**
+In `profile-actions.server.ts`:
+- parse `licenseDocumentKeys` from `updatePartnerDocumentsInputSchema`;
+- append to existing `businessInfo.licenseDocumentKeys`, cap at 20;
+- for private deletion, post a hidden opaque `key` and filter only canonical `licenseDocumentKeys`;
+- keep legacy URL deletion as compatibility-only behavior using legacy `licenseDocs` until Task 7 removes those fields from deployed data.
 
-For `intent === 'documents'`, append parsed `licenseDocumentKeys` to existing canonical keys from `PartnerResponse.businessInfo.licenseDocumentKeys`, capped at 20.
+- [ ] **Step 5: Load partner self-read descriptors**
 
-For delete, post a hidden opaque `key` for private entries and update the array by key. Legacy URL deletion remains compatibility-only if the existing UI exposes it; do not turn a legacy URL into a new key.
+In `routes/partner/profile.tsx`, fetch `PartnerDocumentReadItem[]` from `apiPaths.partner.profileDocumentList` in the existing loader parallelism. Pass descriptors to `ProfileDocumentsCard`. A document-list failure should degrade only the document section; do not fail the core profile load.
 
-- [ ] **Step 6: Load private read descriptors for partner self-service**
+- [ ] **Step 6: Load tenant review descriptors**
 
-In `routes/partner/profile.tsx`, fetch `apiPaths.partner.profileDocumentList` in the existing `Promise.all` and pass the result to `ProfileDocumentsCard`. If the document-list request fails, show a localized document-section error without exposing storage internals; do not fail the entire profile page if the core partner profile loaded.
+In `routes/tenant/partners/detail.tsx`, fetch `PartnerDocumentReadItem[]` from `apiPaths.tenant.partnerDocuments(params.partnerId)` under existing `tenant.partners.read` auth and pass them to the identity/legal cards.
 
-- [ ] **Step 7: Load private read descriptors for tenant review**
+Refactor `partner-business-info.ts` so it reads non-document legal text/logo only. Sensitive document display must come from the gated document endpoint, not direct raw `businessInfo` URLs.
 
-In `routes/tenant/partners/detail.tsx`, include `apiGet<PartnerDocumentReadItem[]>(apiPaths.tenant.partnerDocuments(params.partnerId), auth)` in the loader's parallel reads and pass descriptors to the identity/legal document cards.
-
-Refactor `partner-business-info.ts` so it remains responsible only for non-document legal text and logo compatibility. Stop treating raw `businessInfo` sensitive URLs as the primary document display source; document display comes from the gated endpoint.
-
-- [ ] **Step 8: Run dashboard verification**
-
-Run:
+- [ ] **Step 7: Run dashboard gates**
 
 ```bash
 pnpm check:frontend-structure
@@ -859,9 +892,9 @@ pnpm --filter=@booking/dashboard build
 
 Expected: exit 0.
 
-- [ ] **Step 9: Commit Task 6**
+- [ ] **Step 8: Commit Task 6**
 
-Stage only dashboard files touched by Task 6 and commit:
+Stage only dashboard files touched by this task and commit:
 
 ```bash
 git commit -m "fix(dashboard): consume private partner document grants"
@@ -874,20 +907,19 @@ git commit -m "fix(dashboard): consume private partner document grants"
 **Files:**
 - Create: `apps/api/scripts/migrate-private-partner-documents.ts`
 - Modify: `apps/api/package.json`
-- Extend as needed: `apps/api/src/modules/storage/infrastructure/services/s3-storage.service.ts` and/or `apps/api/src/modules/storage/domain/ports/storage.port.ts` only if the script cannot safely reuse existing S3 primitives without business leakage.
 
 **Interfaces:**
-- Adds `pnpm --filter=@booking/api migrate:partner-documents -- --dry-run` for audit-only mode.
-- Adds `pnpm --filter=@booking/api migrate:partner-documents -- --apply` for explicit mutation mode.
-- Script only migrates URLs under the configured BookingOS public storage/CDN origin and never fetches arbitrary external URLs.
+- Adds `pnpm --filter=@booking/api migrate:partner-documents -- --dry-run` and `--apply`.
+- Script imports `s3ConfigFromEnv()` and uses AWS SDK commands directly for operational copy/head/delete; it does not widen `StoragePort`.
+- It never fetches arbitrary external URLs.
 
-- [ ] **Step 1: Inspect existing operational script conventions**
+- [ ] **Step 1: Follow existing script lifecycle conventions**
 
-Follow `apps/api/scripts/bootstrap-storage.ts`, `check-rls.ts`, and tax audit/verify scripts for env loading, Prisma lifecycle, logging, and exit-code conventions. Reuse helpers rather than introducing a new CLI framework.
+Mirror env/exit/Prisma cleanup style from `apps/api/scripts/bootstrap-storage.ts`, `check-rls.ts`, and tax operational scripts. Do not add a CLI dependency.
 
-- [ ] **Step 2: Implement dry-run discovery**
+- [ ] **Step 2: Build dry-run discovery**
 
-The script must enumerate partner rows containing any legacy field:
+Enumerate partner rows whose `businessInfo` contains any legacy field:
 
 ```text
 identityCardFrontUrl
@@ -897,52 +929,70 @@ businessLicenseBackUrl
 licenseDocs
 ```
 
-For each candidate, parse only URLs whose origin/path matches configured `S3_PUBLIC_URL` / public bucket mapping. Record counters only: `eligible`, `external_url`, `missing`, `oversized`, `already_migrated`, `failed`.
+Default invocation and explicit `--dry-run` both perform no writes. Count only:
 
-Default mode is dry-run. Running without `--apply` must perform no object copy, DB update, or deletion.
+```text
+eligible
+external_url
+missing
+oversized
+already_migrated
+migrated
+delete_pending
+failed
+```
 
-- [ ] **Step 3: Implement deterministic destination keys and safe copy**
+- [ ] **Step 3: Restrict source URL resolution to BookingOS storage origin**
 
-Destination prefix is:
+Use configured `S3_PUBLIC_URL` plus `S3_BUCKET`/endpoint semantics to resolve a source key only when the legacy URL belongs to BookingOS-managed public storage. External URLs are reported `external_url` and never requested.
+
+- [ ] **Step 4: Use deterministic private destination keys**
+
+Destination prefix:
 
 ```text
 partner-documents/legacy/<partnerId>/
 ```
 
-Use a deterministic destination filename derived from the source object key identity (for example a SHA-256 digest plus the validated image extension) so reruns converge on the same destination instead of creating duplicates.
+Filename: SHA-256 hex digest of the normalized source object key plus the validated original image extension. This guarantees reruns choose the same destination.
 
-Before copy:
-- verify source exists;
-- verify allowed image content type;
-- verify size `<= MAX_PARTNER_DOCUMENT_SIZE_BYTES`.
+Use AWS SDK `HeadObjectCommand` to verify source existence, allowed image content type, and `ContentLength <= MAX_PARTNER_DOCUMENT_SIZE_BYTES`; use `CopyObjectCommand` to copy from public bucket to private bucket.
 
-- [ ] **Step 4: Update `businessInfo` inside the tenant-scoped DB boundary**
+- [ ] **Step 5: Update JSONB through tenant-scoped DB access**
 
-For each successfully copied object, map legacy fields to canonical key fields. Update only that partner's JSON inside `TenantDbService.forTenant(tenantId, ...)` / equivalent script-safe RLS boundary; preserve unrelated keys.
+After a successful copy, update only that partner's `businessInfo` canonical field inside the normal tenant-scoped DB transaction. Preserve unrelated fields. If the canonical key already matches the deterministic destination, treat it as idempotent success.
 
-If canonical destination fields already contain the deterministic key, treat as idempotent success.
+Legacy mapping is exact:
 
-- [ ] **Step 5: Delete the old public object only after DB success**
+```text
+identityCardFrontUrl -> identityCardFrontKey
+identityCardBackUrl -> identityCardBackKey
+businessLicenseFrontUrl -> businessLicenseFrontKey
+businessLicenseBackUrl -> businessLicenseBackKey
+licenseDocs[] -> licenseDocumentKeys[]
+```
 
-After the DB update commits, delete the source public object. If deletion fails, report `delete_pending` and make the next `--apply` run retry deletion without reverting the canonical DB key.
+- [ ] **Step 6: Delete public source only after DB commit**
 
-Never log full document URL query strings, signed URLs, or private destination keys. Partner ID and status counters are sufficient.
+Use `DeleteObjectCommand` on the public bucket after the DB update commits. On deletion failure, report `delete_pending`; a subsequent `--apply` must detect canonical DB state and retry source deletion without recopying or corrupting keys.
 
-- [ ] **Step 6: Add package script**
+Do not log full source URLs, destination keys, or document bytes.
 
-In `apps/api/package.json`:
+- [ ] **Step 7: Add package script**
 
 ```json
 "migrate:partner-documents": "node --env-file-if-exists=../../.env ./node_modules/ts-node/dist/bin.js --transpile-only scripts/migrate-private-partner-documents.ts"
 ```
 
-- [ ] **Step 7: Verify dry-run against disposable seeded data only**
+- [ ] **Step 8: Verify dry-run/apply/idempotence on disposable data**
 
-Use disposable Postgres/MinIO data with one valid legacy object, one external URL, one oversized object, and one missing object. Run dry-run and verify no DB/object changes. Then run `--apply`, verify canonical keys + private copies + public deletion, and run `--apply` a second time to verify idempotence.
+Disposable data must contain exactly these categories: one valid BookingOS legacy image, one external URL, one oversized BookingOS object, one missing BookingOS object. Verify:
+1. dry-run changes nothing;
+2. first `--apply` migrates only the valid object;
+3. canonical DB key exists and public source is deleted;
+4. second `--apply` produces no duplicate object/key changes.
 
-Do not point this command at staging/production during implementation.
-
-- [ ] **Step 8: Commit Task 7**
+- [ ] **Step 9: Commit Task 7**
 
 ```bash
 git add apps/api/scripts/migrate-private-partner-documents.ts apps/api/package.json
@@ -951,104 +1001,99 @@ git commit -m "feat(ops): add legacy partner document migration"
 
 ---
 
-### Task 8: Run focused disposable security/runtime smoke
+### Task 8: Run disposable end-to-end security/runtime smoke
 
 **Files:**
-- Temporary only if needed: `.github/workflows/sec-002-private-partner-documents-smoke.yml`
+- Create temporarily: `.github/workflows/sec-002-private-partner-documents-smoke.yml`
+- Delete before final CI: `.github/workflows/sec-002-private-partner-documents-smoke.yml`
 - No permanent test files.
 
 **Interfaces:**
-- Verifies the 16 acceptance cases from the approved spec using disposable PostgreSQL, Redis, API, and MinIO/S3-compatible buckets.
-- Temporary workflow must be removed before final source-only CI.
+- In this execution environment, use a temporary GitHub Actions workflow because the working session does not have the full local service stack.
+- Workflow uses disposable PostgreSQL, Redis, and MinIO/S3-compatible buckets only.
+- It verifies all 16 acceptance cases from the approved spec.
 
-- [ ] **Step 1: Prepare isolated runtime services**
+- [ ] **Step 1: Create disposable services and build the app**
 
-Use only disposable service containers/resources. Create separate public and private MinIO buckets matching `S3_BUCKET` and `S3_PRIVATE_BUCKET`; ensure they are distinct. Configure the public origin only for the public bucket.
+The temporary workflow starts PostgreSQL, Redis, and MinIO; creates distinct public/private buckets; runs Prisma migrate/generate; builds contracts/API/frontends as needed; boots API/storefront/dashboard only against disposable services.
 
-- [ ] **Step 2: Verify authentication and size rejection**
-
-Assert:
-1. unauthenticated `POST /partners/application-documents/presign` returns 401;
-2. authenticated request with `sizeBytes = 5 * 1024 * 1024 + 1` returns 400 and no usable grant;
-3. valid request returns no `publicUrl`, returns `requiredHeaders`, and the key starts with the authenticated user's applicant prefix.
-
-- [ ] **Step 3: Verify signed exact-length and write-once behavior**
-
-With a valid grant:
-1. PUT exact bytes with `content-type` and `if-none-match: *` succeeds;
-2. obtain a fresh grant for a known different declared length and PUT a body whose size does not match; assert storage rejects it;
-3. reuse the first successful grant/key for a second PUT and assert the `If-None-Match: *` condition rejects overwrite.
-
-Capture HTTP status and S3 error code only; do not print presigned query strings.
-
-- [ ] **Step 4: Verify private-bucket isolation**
-
-Assert the uploaded object exists in the private bucket and the equivalent public-bucket/public-origin path does not return the object.
-
-- [ ] **Step 5: Verify applicant attach ownership**
-
-Create user A and user B. Upload under A, then attempt partner application as B with A's key; assert `INVALID_PARTNER_DOCUMENT_REFERENCE` / 400 and no partner is created. Apply as A with A's key and assert the partner persists the canonical key.
-
-- [ ] **Step 6: Verify gated read grants and cross-tenant protection**
+- [ ] **Step 2: Verify auth and size rejection**
 
 Assert:
-- authorized tenant reviewer can `GET /tenant/partners/:id/documents` and the returned private download URL works;
-- unauthenticated/unauthorized caller cannot obtain a read grant;
-- tenant B cannot read tenant A's partner through existing RLS/not-found behavior;
-- `GET /public/partners/:slug` (or the canonical public partner endpoint) exposes neither private keys nor download grants.
+1. unauthenticated applicant presign -> 401;
+2. authenticated `sizeBytes = 5 * 1024 * 1024 + 1` -> 400;
+3. valid grant has no `publicUrl`, includes required headers, and key starts with the caller's applicant prefix.
 
-- [ ] **Step 7: Verify existing-partner self-service ownership**
+- [ ] **Step 3: Verify exact signed length and write-once**
 
-As partner A, upload and attach a partner-scoped key and read it back through `GET /partner/profile/documents`. Attempt to attach partner B's key and assert 400.
+Assert:
+1. exact-size PUT with returned headers succeeds;
+2. fresh grant declared for one byte length rejects a body of a different length;
+3. second PUT to an already-created key using the same write-once grant fails.
+
+Log status/error code only, never the presigned URL.
+
+- [ ] **Step 4: Verify private bucket isolation**
+
+Confirm object exists in private bucket and the equivalent public bucket/public origin cannot return it.
+
+- [ ] **Step 5: Verify applicant ownership**
+
+User A uploads. User B applies with A's key -> 400 `INVALID_PARTNER_DOCUMENT_REFERENCE` and no partner row. User A applies with A's key -> canonical key persisted.
+
+- [ ] **Step 6: Verify tenant and public read boundaries**
+
+Assert:
+- authorized tenant reviewer obtains working short-lived private grant;
+- unauthorized caller cannot obtain it;
+- cross-tenant partner lookup remains blocked by existing RLS/not-found behavior;
+- public partner endpoint exposes neither private keys nor private grants.
+
+- [ ] **Step 7: Verify partner self-service ownership**
+
+Partner A uploads/attaches/reads own private document. Attaching Partner B's key -> 400.
 
 - [ ] **Step 8: Verify public logo regression**
 
-Use existing public logo upload path and confirm it still returns/serves a public URL. This must not use the private bucket.
+Existing generic partner logo upload still returns a public URL and writes to the public bucket.
 
-- [ ] **Step 9: Verify legacy compatibility and migration script**
+- [ ] **Step 9: Verify legacy compatibility and migration**
 
-Seed one partner with legacy public fields. Confirm authorized partner/tenant document reads return `storage: 'legacy_public'`; then run disposable migration and confirm the read changes to `storage: 'private'`, the DB contains canonical keys, and the public original is gone.
+Seed one legacy URL record. Before migration, authorized read returns `storage: 'legacy_public'`. Run disposable migration; afterward read returns `storage: 'private'`, canonical DB key exists, and public source is gone.
 
 - [ ] **Step 10: Verify finance regression**
 
-Run the existing tax-document upload path with its PDF client/header shape. Confirm exact-length write-once upload still succeeds after the generic S3 signing change.
+Run existing tax PDF presign/PUT flow with `content-type` and `if-none-match: *`; exact-length upload must still succeed under the new generic signed-header behavior.
 
-- [ ] **Step 11: Remove temporary workflow/harness changes**
+- [ ] **Step 11: Remove temporary workflow**
 
-Delete `.github/workflows/sec-002-private-partner-documents-smoke.yml` and any temporary fault-injection/debug files. Final source diff must contain only product/docs/ops changes intended for merge.
+Delete the smoke workflow and verify final diff contains no temporary fault-injection/debug artifacts.
 
-- [ ] **Step 12: Record runtime evidence in the eventual PR body**
+- [ ] **Step 12: Record evidence**
 
-Record concise PASS/FAIL results by case, workflow run ID if GitHub Actions was used, and exact source head SHA. Do not include secrets, presigned URLs, or object keys.
+Record workflow run ID, exact source head SHA, and PASS/FAIL for each acceptance case for the PR body. Do not record secrets, private keys, or presigned URLs.
 
 ---
 
-### Task 9: Run final repository gates, review the diff, and prepare merge-ready branch
+### Task 9: Run final repository gates and prepare a reviewable source-only head
 
 **Files:**
 - No new product files expected.
-- Update docs/comments only if static review finds stale statements such as “public partner documents” or “no server-side cap exists yet”.
+- Update stale docs/comments only where they incorrectly describe current behavior after Tasks 1-8.
 
 **Interfaces:**
-- Produces a source-only feature head with no temporary workflow, all required CI/static gates green, and runtime smoke evidence tied to that exact head or to a merge-ref that contains it plus current `main`.
+- Produces a source-only head with all static/CI gates green and runtime evidence already captured.
 
 - [ ] **Step 1: Search for stale public-document semantics**
-
-Run searches equivalent to:
 
 ```bash
 rg "partner-applications/presign|identityCardFrontUrl|identityCardBackUrl|businessLicenseFrontUrl|businessLicenseBackUrl|licenseDocs|no server-side cap exists yet" \
   apps packages docs TONG-QUAN.md
 ```
 
-Classify every remaining hit as one of:
-- deliberate legacy compatibility/migration code;
-- historical documentation intentionally describing old state;
-- stale new-write code/comment that must be fixed before completion.
+Every remaining hit must be classified as deliberate legacy compatibility/migration code or historical documentation. Fix any active new-write code/comment that still treats sensitive partner documents as public URLs.
 
-- [ ] **Step 2: Run the full repository verification required by the spec**
-
-Run:
+- [ ] **Step 2: Run full required verification**
 
 ```bash
 pnpm check:no-tests
@@ -1062,27 +1107,27 @@ pnpm typecheck
 pnpm build
 ```
 
-Also ensure normal CI includes and passes storefront security, frontend-structure, tenant-surface/theme gates, and any other repository-required checks.
+Also require normal CI's storefront security, frontend-structure, tenant-surface/theme, and other repository checks to pass.
 
-- [ ] **Step 3: Inspect the final diff for scope and secret leakage**
+- [ ] **Step 3: Review final diff for security/scope**
 
 Confirm:
-- no test files/runners were added;
-- no workflow smoke file remains;
-- no credentials, presigned URLs, real PII, or object keys appear in committed fixtures/docs;
-- public logo behavior is unchanged;
-- public partner response contract still excludes `businessInfo`/private document data;
-- no sensitive new-write route accepts legacy public URL fields.
+- no automated test files/runners added;
+- no temporary workflow remains;
+- no credentials, real PII, presigned URLs, or full private keys committed;
+- logo upload remains public;
+- public partner contracts expose no `businessInfo`, private key, or private grant;
+- no new-write route accepts legacy sensitive URL fields.
 
-- [ ] **Step 4: Perform code review against the approved spec**
+- [ ] **Step 4: Review against every spec section**
 
-Review each spec section against the final diff: private storage, signed size/MIME/write-once, owner-scoped attach, partner/tenant read authorization, audit logging, storefront/dashboard behavior, legacy migration, and completion criteria. Fix any mismatch before declaring the branch ready.
+Check private storage, signed MIME/length/write-once, owner-scoped attach, partner/tenant authorization, audit logging, storefront/dashboard behavior, legacy migration, and completion criteria. Fix every mismatch before readiness claim.
 
-- [ ] **Step 5: Run final CI on the source-only head after all fixes**
+- [ ] **Step 5: Run final normal CI on the exact final source-only head**
 
-The final normal CI run must target the exact final head SHA after temporary workflow removal and review fixes. Do not rely on an older green run.
+Do not rely on a green run from before temporary workflow deletion or review fixes.
 
-- [ ] **Step 6: Prepare the PR only after explicit PR-creation authorization**
+- [ ] **Step 6: Prepare PR only after separate explicit PR-creation authorization**
 
 Suggested title:
 
@@ -1090,13 +1135,6 @@ Suggested title:
 fix(partner): keep verification documents private
 ```
 
-PR body must include:
-- SEC-002 root cause;
-- public-PII blocker discovered during analysis;
-- architecture summary;
-- exact static/CI evidence;
-- disposable runtime smoke cases and run ID;
-- explicit statement that no deploy was performed;
-- operational note: privacy blocker remains open until legacy-field audit/migration is completed in the deployed environment.
+PR body includes root cause, public-PII blocker, architecture summary, exact CI/runtime evidence, no-deploy statement, and the operational caveat that privacy closure requires the deployed-environment legacy audit/migration.
 
 Do not merge without separate explicit merge authorization.
