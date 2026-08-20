@@ -44,7 +44,7 @@ export class CompleteRegistrationUseCase {
     // context, by design — users is a global (non-tenant) table and RLS does not
     // apply to identity data. identity-access also cannot import legal directly:
     // legal already imports identity-access's guards/decorators, so the reverse
-    // edge would close a module cycle that `pnpm check:module-cycles` forbids.
+    // edge would close a module cycle that the module-cycle guard forbids.
     // The outbox is the sanctioned way this write-path side effect crosses the
     // module line (AGENTS.md); legal's RecordRegistrationConsentUseCase is a
     // registered handler for `user.registration_consent` and tolerates

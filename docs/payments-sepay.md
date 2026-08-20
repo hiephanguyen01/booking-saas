@@ -139,7 +139,7 @@ does not mark the service booking or settlement refunded.
 Both screens paginate and filter BookingOS's normalized `payments` rows. They do not expose raw IPN
 payloads, card data or credentials.
 
-## Verification (no test files)
+## Verification
 
 Use SePay Payment Gateway Sandbox to exercise success, cancel/error redirect, valid/invalid
 `X-Secret-Key`, duplicate IPN, unknown invoice number, amount mismatch and lost-IPN reconciliation.

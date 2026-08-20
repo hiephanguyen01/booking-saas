@@ -11,7 +11,7 @@
  * Cache Storage.
  *
  * It lives in `public/` rather than `app/` for two reasons: the registration scope
- * has to be the origin root, and `scripts/architecture/check-storefront-security.mjs`
+ * has to be the origin root, and the storefront-security guard in `pnpm test`
  * bans `fetch(` under `apps/storefront/app` (a worker with no fetch handler is not
  * installable).
  *

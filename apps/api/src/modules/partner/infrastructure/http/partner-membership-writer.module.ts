@@ -20,7 +20,7 @@ import { PartnerRoleReaderAdapter } from '../services/partner-role-reader.adapte
  * directly, AND transitively via `administrative-division`, `legal` and
  * `tenancy` (all three import identity-access for guards/decorators), so one
  * `identity-access → partner` edge produces four cycles at once.
- * `pnpm check:module-cycles` is a static scan of import statements — it has no
+ * The module-cycle guard is a static scan of import statements — it has no
  * notion of Nest's runtime DI graph, so wrapping the import in `forwardRef()`
  * does not remove the statement the scanner flags; its own failure text says
  * "Do not add forwardRef()".

@@ -1,9 +1,10 @@
 /**
  * Payment / tax / refund / settlement lifecycle auditor.
  *
- * Replaces the integration tests that would otherwise cover the money lifecycle,
- * removed with the no-tests policy (ADR 0005) — same role as `check-rls.ts`, but
- * this one reads the live database instead of the migration SQL.
+ * Covers what the money lifecycle would otherwise need an integration suite for —
+ * still forbidden under ADR 0009, which allows only use-case unit tests and the
+ * architecture guards. Same role as the RLS coverage guard, but this one reads the
+ * live database instead of the migration SQL.
  *
  * It asserts that the four lifecycles stayed separate and that the tax audit
  * trail reconciles:

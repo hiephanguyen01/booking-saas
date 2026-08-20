@@ -14,7 +14,7 @@
 //   - Every tenant-scoped table carries `tenant_id`. Top-level aggregates
 //     declare a Prisma relation back to Tenant; deep child tables keep
 //     `tenant_id` as a plain indexed RLS column (their FK to the aggregate
-//     already cascades the tenant), so `check:rls` still sees the column.
+//     already cascades the tenant), so the RLS coverage guard still sees the column.
 //   - tstzrange columns (timeslot, blocked_period) are Unsupported() — bookings
 //     are written via raw SQL so the GiST exclusion constraint applies.
 

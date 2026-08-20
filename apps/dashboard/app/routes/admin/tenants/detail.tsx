@@ -78,7 +78,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       apiGet<PlanResponse[]>(apiPaths.admin.plans, auth),
       // Read from finance, not the tenant-detail response: `finance` already
       // imports `TenancyModule`, so having tenancy read commission rules back
-      // would close a module cycle the API's check:module-cycles rejects.
+      // would close a module cycle the API's module-cycle guard rejects.
       apiGet<CommissionRuleResponse[]>(apiPaths.platform.tenantCommissionRules(id), auth),
     ]);
   if (!tenantRes.ok || !tenantRes.data) {
