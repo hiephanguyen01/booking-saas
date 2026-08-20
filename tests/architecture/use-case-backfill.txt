@@ -82,10 +82,7 @@ apps/api/src/modules/listing/application/use-cases/create-partner-pricing-rule-r
 apps/api/src/modules/listing/application/use-cases/create-partner-pricing-rule.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-pricing-rule.use-case.ts
 apps/api/src/modules/listing/application/use-cases/get-listing-group-detail.use-case.ts
-apps/api/src/modules/listing/application/use-cases/get-public-listing-group.use-case.ts
 apps/api/src/modules/listing/application/use-cases/get-public-quote.use-case.ts
-apps/api/src/modules/listing/application/use-cases/list-partner-listing-feed.use-case.ts
-apps/api/src/modules/listing/application/use-cases/revisions/get-listing-group-pending-changes.use-case.ts
 apps/api/src/modules/notification/application/use-cases/count-unread-notifications.use-case.ts
 apps/api/src/modules/notification/application/use-cases/dispatch-booking-event.use-case.ts
 apps/api/src/modules/notification/application/use-cases/dispatch-legal-document-event.use-case.ts
