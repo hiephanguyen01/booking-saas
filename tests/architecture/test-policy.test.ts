@@ -1,3 +1,4 @@
+import { dirname } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { displayPath, exists, readSource, repoPath, walk } from './support/repo';
 
@@ -37,6 +38,16 @@ const FORBIDDEN_RUNNER_PACKAGES = new Set([
 ]);
 const FORBIDDEN_RUNNER_COMMAND =
   /(?:^|\s)(?:node\s+--test|jest|playwright|cypress|mocha|ava|tap)(?:\s|$)/;
+
+/**
+ * A repository file named as an argument in a package script — `tsx scripts/x.ts`,
+ * `tsc -p tsconfig.build.json`. The lookbehind keeps the inner segments of a longer
+ * path from matching on their own, so a package specifier like `@react-router/dev`
+ * is never mistaken for a file.
+ */
+const SCRIPT_FILE_ARGUMENT = /(?<![\w@/-])\.?\/?(?:[\w.-]+\/)*[\w.-]+\.(?:[cm]?[jt]sx?|json)\b/g;
+/** Installed or generated, so absence is normal rather than rot. */
+const IGNORED_SCRIPT_PATH = /^(?:node_modules|dist|build|out|coverage)\//;
 
 /** Vitest is the one runner, and it is wired up in exactly these two manifests. */
 const VITEST_MANIFESTS = new Set(['package.json', 'apps/api/package.json']);
@@ -149,6 +160,29 @@ describe('tests policy (ADR 0009)', () => {
               `${manifest.path}: script "${name}" runs root script "${target}", which does not exist`,
             );
           }
+        }
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it('leaves no package script pointing at a deleted file', () => {
+    // The check above catches a script calling a root script that is gone; this
+    // catches the other half of the same rot, and the half ADR 0009 created: it
+    // deleted six `scripts/architecture/check-*.mjs` files and
+    // `apps/api/scripts/check-rls.ts`, and a script still naming one of them fails
+    // only for whoever runs it, months later.
+    const failures: string[] = [];
+    for (const manifest of manifests) {
+      const directory = manifest.path === 'package.json' ? '' : dirname(manifest.path);
+      for (const [name, command] of Object.entries(manifest.scripts)) {
+        for (const match of command.matchAll(SCRIPT_FILE_ARGUMENT)) {
+          const target = match[0].replace(/^\.\//, '');
+          if (IGNORED_SCRIPT_PATH.test(target)) continue;
+          if (exists(repoPath(directory, target))) continue;
+          failures.push(
+            `${manifest.path}: script "${name}" runs "${target}", which does not exist`,
+          );
         }
       }
     }
