@@ -85,7 +85,7 @@ If durable state already exists because a prior request committed but failed bef
 
 ### Auth challenge store
 
-Extend `IAuthChallengeStore` with a non-destructive completion read for registration completion. The exact name may be `peekCompletion()` or equivalent, but its contract must be explicit:
+Extend `IAuthChallengeStore` with this exact non-destructive completion-read operation:
 
 ```ts
 peekCompletion(
@@ -94,11 +94,11 @@ peekCompletion(
 ): Promise<AuthChallengePayload | null>;
 ```
 
-`RedisAuthChallengeStore` implements this with `GET` against the hashed completion key. It validates the stored payload purpose before returning it.
+`RedisAuthChallengeStore.peekCompletion()` uses `GET` against the existing hashed completion key and validates the stored payload purpose before returning it.
 
 `consumeCompletion()` remains available and continues to use `GETDEL`. Password-reset completion continues to call it exactly as before.
 
-Registration completion uses `peekCompletion()` first and calls `consumeCompletion()` only after durable completion or successful reconciliation.
+Registration completion calls `peekCompletion()` first and calls `consumeCompletion()` only after durable completion or successful reconciliation.
 
 The token TTL remains the existing `COMPLETION_TTL_SEC`; no new Redis keys are introduced.
 
@@ -106,37 +106,53 @@ The token TTL remains the existing `COMPLETION_TTL_SEC`; no new Redis keys are i
 
 Introduce an identity-access-owned port dedicated to the durable registration boundary. The use case must not reach into Prisma directly.
 
-Representative shape:
+Use this contract shape:
 
 ```ts
 export const REGISTRATION_COMPLETION_REPOSITORY = Symbol('REGISTRATION_COMPLETION_REPOSITORY');
 
-export interface RegistrationCompletionInput {
-  user: NewUserAccount;
-  consent?: {
-    tenantId: string;
-    acceptedVersionIds: readonly string[];
-    acceptedLocale: Locale;
-    ip: string | null;
-  };
+export interface RegistrationConsentEventInput {
+  tenantId: string;
+  userId: string;
+  acceptedVersionIds: readonly string[];
+  acceptedLocale: Locale;
+  ip: string | null;
 }
 
+export interface RegistrationCompletionInput {
+  user: NewUserAccount;
+  consent?: Omit<RegistrationConsentEventInput, 'userId'>;
+}
+
+export type RegistrationCompletionCreateResult =
+  | { status: 'created'; user: UserRecord }
+  | { status: 'email_conflict' };
+
 export interface IRegistrationCompletionRepository {
-  create(input: RegistrationCompletionInput): Promise<UserRecord>;
+  create(input: RegistrationCompletionInput): Promise<RegistrationCompletionCreateResult>;
+  emitConsent(input: RegistrationConsentEventInput): Promise<void>;
 }
 ```
 
-The exact type names may follow existing repository naming conventions, but the responsibility is fixed: atomically create the user and, when supplied, the consent outbox row.
+The responsibility is fixed:
+
+- `create()` atomically creates the user and, when supplied, the consent outbox row;
+- `create()` translates only a unique-email race into `{ status: 'email_conflict' }`; unrelated database errors still throw;
+- `emitConsent()` writes a recovery `user.registration_consent` outbox row for an already durable, successfully reconciled user before the Redis completion token is consumed.
 
 ### Prisma adapter
 
 Add a Prisma adapter in `identity-access/infrastructure/repositories` backed by `PrismaService.admin.$transaction()`.
 
-Within that transaction:
+Within `create()`'s transaction:
 
 1. create the global `users` row;
 2. if consent is present, call `OutboxService.emit(tx, ...)` with `eventType: 'user.registration_consent'`, `tenantId`, and the same payload currently emitted by `CompleteRegistrationUseCase`;
 3. return the created user record.
+
+If Prisma reports the `users.email` uniqueness conflict, the transaction is rolled back and the adapter returns `{ status: 'email_conflict' }`. It must not convert other Prisma errors into that status.
+
+`emitConsent()` opens an admin-pool transaction and inserts only the tenant-tagged outbox event for the already persisted user. This method exists solely for retry reconciliation after durable account state has already been proven.
 
 Using the admin transaction is intentional:
 
@@ -152,17 +168,18 @@ The adapter must not import legal infrastructure or call legal application code.
 
 The use case becomes an orchestration layer with this sequence:
 
-1. Non-destructively read the registration completion payload.
+1. Non-destructively read the registration completion payload with `peekCompletion()`.
 2. Reject expired/missing/wrong-purpose payload exactly as today.
 3. Require `fullName` as today.
 4. Look up the email.
 5. If no user exists:
    - hash the submitted password;
    - build `UserAccount.register(...)`;
-   - call the registration-completion repository to atomically create user + consent outbox event;
-   - if a unique-email race occurs, enter retry reconciliation instead of immediately surfacing a generic failure.
-6. If a user already exists, or the create lost a unique race, run retry reconciliation.
-7. After durable creation or successful reconciliation, consume the same completion token.
+   - call `registrationCompletion.create(...)`;
+   - if status is `created`, continue to token cleanup;
+   - if status is `email_conflict`, re-read the account and enter retry reconciliation.
+6. If a user already exists before create, enter retry reconciliation directly.
+7. After durable creation or successful reconciliation, call `consumeCompletion()` for cleanup.
 8. Return `{ success: true }`.
 
 A failed durable create must leave the token untouched.
@@ -184,15 +201,17 @@ The verified password match is the possession proof that the retry belongs to th
 
 ### Consent during reconciliation
 
-If the payload is not tenant-scoped, reconciliation can consume the token immediately after the account match.
+If the payload is not tenant-scoped, reconciliation can proceed directly to token cleanup after the account match.
 
-If the payload includes `tenantId` and accepted versions, reconciliation must ensure a `user.registration_consent` event exists before consuming the token.
+If the payload includes `tenantId` and accepted versions, reconciliation calls `registrationCompletion.emitConsent(...)` before token cleanup.
 
-Because the previous request may have committed both user and event atomically, and the process may simply have crashed before Redis cleanup, the simplest safe recovery is to emit another registration-consent outbox event in a tenant-tagged admin transaction before consuming the token.
+Because the previous request may have committed both user and event atomically and then crashed before Redis cleanup, this can deliberately create another registration-consent outbox event.
 
 Duplicate events are acceptable under the existing at-least-once design: `RecordRegistrationConsentUseCase` explicitly tolerates redelivery, and duplicate acceptance rows are permitted by ADR 0008/D9.
 
-This avoids needing a new outbox dedupe schema or querying another module for legal acceptance state.
+This avoids a new outbox-dedupe schema and avoids querying another module for legal acceptance state.
+
+If recovery consent emission fails, the completion token remains untouched and the request fails. The caller can retry.
 
 ## Concurrency semantics
 
@@ -200,7 +219,7 @@ This avoids needing a new outbox dedupe schema or querying another module for le
 
 Both can peek the same token and both can observe no existing user.
 
-The database email uniqueness constraint is the final arbiter. One transaction creates the user and event. The other receives a unique-email conflict, re-reads the account, verifies the submitted password against the committed hash, emits the recovery consent event when required, then treats the request as an idempotent success.
+The database email uniqueness constraint is the final arbiter. One transaction creates the user and event. The other receives `{ status: 'email_conflict' }`, re-reads the committed account, verifies the submitted password against the committed hash, emits the recovery consent event when required, then treats the request as an idempotent success.
 
 Neither request overwrites account state.
 
@@ -208,9 +227,7 @@ Neither request overwrites account state.
 
 Token consumption is intentionally after durable work. A concurrent request that already peeked the payload can continue. If it reaches reconciliation after the first commit, it validates the existing account as above.
 
-The final `consumeCompletion()` call may return null because another request already deleted the key. That must not convert a durable success into an error. Once this request has independently proved durable completion/reconciliation from the payload it legitimately peeked while the token was valid, token deletion is cleanup rather than the commit decision.
-
-The use case should still call `consumeCompletion()` best-effort and not re-open the flow if the key is already gone.
+The final `consumeCompletion()` call may return null because another request already deleted the key. That must not convert a durable success into an error. Once this request has independently proved durable completion/reconciliation from a payload it legitimately peeked while the token was valid, token deletion is cleanup rather than the commit decision.
 
 ### Completion token expires during database work
 
@@ -225,6 +242,7 @@ A request that successfully peeked a valid completion payload may finish after R
 | User insert fails | Transaction rolls back; no outbox row; token remains |
 | Outbox insert fails | User insert rolls back in same transaction; token remains |
 | DB commit succeeds, process crashes before token consume | User + event durable; token remains until TTL; retry reconciles to success |
+| Recovery consent emit fails during reconciliation | Token remains; safe retry |
 | Token consume succeeds, response is lost | Client retry with same token gets expired; durable registration is already correct. A fresh login is the recovery path; this is not a partial-state bug |
 | Two concurrent creates | One wins uniqueness; loser reconciles only after password verification |
 | Existing unrelated account | `EmailTaken`; no password overwrite; no false success |
@@ -237,11 +255,13 @@ Continue using the current auth challenge expiry error for missing/invalid compl
 
 Continue using `EmailTaken` when an existing account cannot be proven to be the same completed registration.
 
-A Prisma unique-email conflict during create is not exposed immediately; it triggers one reconciliation read. If reconciliation fails, surface `EmailTaken`.
+A unique-email conflict during create is not exposed immediately; it triggers one reconciliation read. If reconciliation fails, surface `EmailTaken`.
 
-Unexpected database, Redis, Argon2, or outbox errors propagate normally. Critically, database-side errors occur before token consumption.
+Unexpected database, Redis, Argon2, or outbox errors propagate normally before durable success.
 
-If final Redis token cleanup fails after durable registration succeeds, the API should still return success. The remaining token is bounded by TTL and any retry must still pass account/password reconciliation. Token cleanup failure should be logged by the existing application logging path if available; this change should not add a new logging subsystem.
+Final Redis token cleanup is different: once durable registration/reconciliation has succeeded, a cleanup failure must not turn the request into a failed registration. `CompleteRegistrationUseCase` catches cleanup errors, logs a warning through Nest's `Logger` without logging the raw completion token or password, and still returns `{ success: true }`. The token remains bounded by its existing TTL, and any retry must still pass account/password reconciliation.
+
+A null return from `consumeCompletion()` after durable success is also treated as successful cleanup because another concurrent request may already have removed the key.
 
 ## Module boundaries
 
@@ -257,13 +277,13 @@ The design preserves the existing DAG:
 
 ## Expected code changes
 
-Likely files:
+Expected files:
 
 - `apps/api/src/modules/identity-access/domain/ports/auth-challenge-store.port.ts`
+- `apps/api/src/modules/identity-access/domain/ports/registration-completion-repository.port.ts` (new)
 - `apps/api/src/modules/identity-access/infrastructure/services/redis-auth-challenge.store.ts`
+- `apps/api/src/modules/identity-access/infrastructure/repositories/prisma-registration-completion.repository.ts` (new)
 - `apps/api/src/modules/identity-access/application/use-cases/complete-registration.use-case.ts`
-- new identity-access registration-completion persistence port
-- new Prisma registration-completion repository/adapter
 - `apps/api/src/modules/identity-access/infrastructure/http/identity-access.module.ts`
 
 `PrismaUserRepository` remains the general user repository. Registration atomicity is deliberately isolated behind the new completion-specific port instead of changing every user create call site.
@@ -288,7 +308,7 @@ Run the repository-prescribed checks, at minimum:
 
 Use disposable data and record exact evidence for each case:
 
-1. **Outbox failure rollback** — force the outbox insert to fail inside the transaction; confirm no user row commits and the same completion token remains usable.
+1. **Outbox failure rollback** — force the outbox insert to fail inside `create()`; confirm no user row commits and the same completion token remains usable.
 2. **Retry after failed transaction** — restore DB behavior and repeat the same completion request; confirm one user and one durable consent event are created.
 3. **Crash-after-commit simulation** — complete the DB transaction but intentionally skip token cleanup; repeat completion with the same token and password; confirm success without a second user and with acceptable at-least-once consent events.
 4. **Concurrent completion** — issue two completion requests with the same token/password concurrently; confirm one user, no password overwrite, and both requests resolve consistently according to the reconciliation contract.
@@ -296,6 +316,7 @@ Use disposable data and record exact evidence for each case:
 6. **Non-tenant registration** — confirm account creation succeeds without a consent event and retry reconciliation still works.
 7. **Password reset regression** — confirm password-reset completion still consumes its token destructively and retains current behavior.
 8. **Legal delivery** — allow the outbox relay to process the event and confirm the registration acceptance is ultimately recorded for the expected tenant/version/locale.
+9. **Redis cleanup failure after DB success** — force `consumeCompletion()` cleanup to fail after durable completion; confirm the API still returns success, emits a warning without secrets, and a later retry can only reconcile the same account rather than mutate it.
 
 No claim of full correctness is made until the runtime cases that require PostgreSQL/Redis have actually been executed.
 
@@ -303,13 +324,14 @@ No claim of full correctness is made until the runtime cases that require Postgr
 
 DATA-001 is complete when:
 
-- the registration completion payload is read non-destructively before durable work;
+- the registration completion payload is read non-destructively through `peekCompletion()` before durable work;
 - user creation and registration-consent outbox insertion share one PostgreSQL transaction;
 - failed durable work leaves the completion token retryable;
 - post-commit retry is idempotently reconciled using verified account/password evidence;
+- reconciliation of tenant-scoped registration emits a recovery consent event before token cleanup;
 - concurrent completion cannot create duplicate users or overwrite credentials;
 - unrelated existing accounts still fail as `EmailTaken`;
-- token cleanup occurs only after durable success/reconciliation and cleanup absence does not undo durable success;
+- token cleanup occurs only after durable success/reconciliation and cleanup absence/failure does not undo durable success;
 - password-reset completion behavior is unchanged;
 - module-cycle and no-tests policies remain satisfied;
 - static CI passes; and
