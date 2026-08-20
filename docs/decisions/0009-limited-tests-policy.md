@@ -24,9 +24,9 @@ tests in everything but name, and re-implementing `expect` was the only thing th
 Tests are allowed in exactly two shapes. Everything else remains forbidden.
 
 **1. One use case, one unit test.** `apps/api/src/**/*.use-case.spec.ts`, beside the use case it covers.
-Required for every new use case. The 341 that predate this ADR are listed in
-`tests/architecture/use-case-backfill.txt`; that list may only shrink, and touching a listed use case
-means backfilling its test in the same change.
+Required for every use case. The 341 that predated this ADR were backfilled over the following
+weeks; the allowlist reached zero on 2026-08-20 and was deleted, so the guard now admits no
+exceptions at all.
 
 **2. Architecture guards.** `tests/architecture/*.test.ts`, one file per rule, each reading files and
 asserting. These are the seven former scripts, converted rather than rewritten.

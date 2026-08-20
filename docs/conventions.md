@@ -408,10 +408,8 @@ bookings GiST exclusion constraint. See [ADR 0004](./decisions/0004-hand-written
 Two kinds of test exist and no others:
 
 1. **One use case, one unit test** — `apps/api/src/**/*.use-case.spec.ts`, beside the use case.
-   Required for every new use case. Construct the class over fakes from `~testing`
-   (`fakeTenantDb`, `fakePort`); never boot Nest, Prisma or Redis. Use cases written before this
-   policy are listed in `tests/architecture/use-case-backfill.txt` — write the test and delete the
-   line when you touch one. The list may only shrink.
+   Required for every use case, with no allowlist and no exemption. Construct the class over fakes
+   from `~testing` (`fakeTenantDb`, `fakePort`); never boot Nest, Prisma or Redis.
 2. **Architecture guards** — `tests/architecture/*.test.ts`, one file per rule, each reading files
    and asserting.
 

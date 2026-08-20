@@ -144,10 +144,9 @@ the module-cycle guard green (see `PARTNER_MEMBERSHIP_WRITER` / `PartnerMembersh
 ## Use-case unit tests ([ADR 0009](../../docs/decisions/0009-limited-tests-policy.md))
 
 Every use case carries **one** unit test beside it: `xxx.use-case.ts` → `xxx.use-case.spec.ts`. It is
-required for a new use case, and `tests/architecture/use-case-unit-tests.test.ts` fails the build
-without it. The 341 use cases that predate the policy are listed in
-`tests/architecture/use-case-backfill.txt`; write the test and delete the line when you touch one.
-That list may only shrink — a new use case never belongs in it.
+required for every use case, and `tests/architecture/use-case-unit-tests.test.ts` fails the build
+for any that lacks one. There is no allowlist: the backfill list this policy shipped with reached
+zero on 2026-08-20 and was deleted with it.
 
 Construct the class directly, never through the Nest container:
 
