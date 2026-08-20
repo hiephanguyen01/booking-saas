@@ -6,37 +6,44 @@ import {
 import { prisma } from './client';
 import type { PlatformAdminCredentials } from './scope';
 
-const LEGACY_ADMIN_EMAIL = 'admin@bookingos.local';
 const LEGACY_ADMIN_PASSWORD = 'admin-dev-password';
 
-async function rotateKnownDefaultPassword(input: {
-  userId: string;
-  passwordHash: string | null;
+async function rotateKnownDefaultSuperAdmins(input: {
   superAdminRoleId: string;
   replacementPassword: string;
-}): Promise<boolean> {
-  if (!input.passwordHash || input.replacementPassword === LEGACY_ADMIN_PASSWORD) return false;
+}): Promise<number> {
+  if (input.replacementPassword === LEGACY_ADMIN_PASSWORD) return 0;
 
-  const assignment = await prisma.roleAssignment.findFirst({
+  const assignments = await prisma.roleAssignment.findMany({
     where: {
-      userId: input.userId,
       roleId: input.superAdminRoleId,
       tenantId: null,
       partnerId: null,
     },
+    select: { userId: true },
   });
-  if (!assignment) return false;
+  if (assignments.length === 0) return 0;
 
-  const usesKnownDefault = await argon2.verify(input.passwordHash, LEGACY_ADMIN_PASSWORD);
-  if (!usesKnownDefault) return false;
-
-  await prisma.user.update({
-    where: { id: input.userId },
-    data: {
-      passwordHash: await argon2.hash(input.replacementPassword, { type: argon2.argon2id }),
-    },
+  const users = await prisma.user.findMany({
+    where: { id: { in: assignments.map((assignment) => assignment.userId) } },
   });
-  return true;
+
+  let rotated = 0;
+  for (const user of users) {
+    if (!user.passwordHash) continue;
+    const usesKnownDefault = await argon2.verify(user.passwordHash, LEGACY_ADMIN_PASSWORD);
+    if (!usesKnownDefault) continue;
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: await argon2.hash(input.replacementPassword, { type: argon2.argon2id }),
+      },
+    });
+    rotated += 1;
+  }
+
+  return rotated;
 }
 
 /**
@@ -89,30 +96,17 @@ export async function seedPlatform(credentials: PlatformAdminCredentials): Promi
     });
   }
 
-  const rotatedConfiguredAdmin = await rotateKnownDefaultPassword({
-    userId: admin.id,
-    passwordHash: admin.passwordHash,
+  const rotatedAdminCount = await rotateKnownDefaultSuperAdmins({
     superAdminRoleId: superAdminRole.id,
     replacementPassword: credentials.password,
   });
 
-  let rotatedLegacyAdmin = false;
-  if (credentials.email.toLowerCase() !== LEGACY_ADMIN_EMAIL) {
-    const legacyAdmin = await prisma.user.findUnique({ where: { email: LEGACY_ADMIN_EMAIL } });
-    if (legacyAdmin) {
-      rotatedLegacyAdmin = await rotateKnownDefaultPassword({
-        userId: legacyAdmin.id,
-        passwordHash: legacyAdmin.passwordHash,
-        superAdminRoleId: superAdminRole.id,
-        replacementPassword: credentials.password,
-      });
-    }
-  }
-
   console.log(
     `Seeded ${PERMISSION_CATALOG.length} permissions, ${SYSTEM_ROLES.length} system roles, admin ${credentials.email}`,
   );
-  if (rotatedConfiguredAdmin || rotatedLegacyAdmin) {
-    console.log('Rotated a Super Admin account away from the shared development password.');
+  if (rotatedAdminCount > 0) {
+    console.log(
+      `Rotated ${rotatedAdminCount} Super Admin account(s) away from the shared development password.`,
+    );
   }
 }
