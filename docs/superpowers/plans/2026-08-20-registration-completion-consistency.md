@@ -15,7 +15,7 @@
 - Follow ADR 0003: inter-module write-path side effects cross module boundaries through the transactional outbox.
 - Preserve the `identity-access -> legal` DAG; do not import legal application/infrastructure code and do not introduce `forwardRef()`.
 - Follow ADR 0005: do not add `*.test.*`, `*.spec.*`, Jest, Vitest, Playwright, test scripts, or CI test steps.
-- Preserve password-reset completion semantics: it must continue using destructive `consumeCompletion()` exactly as before.
+- Preserve password-reset completion semantics: it continues using destructive `consumeCompletion()` exactly as before.
 - Do not add a Prisma schema migration or a durable registration-attempt table.
 - Do not overwrite an existing user's password during retry reconciliation.
 - Treat duplicate `user.registration_consent` delivery as acceptable at-least-once behavior; do not add an outbox dedupe schema for this fix.
@@ -28,15 +28,15 @@
 
 **Create**
 
-- `apps/api/src/modules/identity-access/domain/ports/registration-completion-repository.port.ts` — owns the durable registration-completion interface and result types.
-- `apps/api/src/modules/identity-access/infrastructure/repositories/prisma-registration-completion.repository.ts` — implements atomic user + consent-event persistence and recovery consent emission on the admin pool.
+- `apps/api/src/modules/identity-access/domain/ports/registration-completion-repository.port.ts` — durable registration-completion interface and result types.
+- `apps/api/src/modules/identity-access/infrastructure/repositories/prisma-registration-completion.repository.ts` — atomic user + consent-event persistence and recovery consent emission on the admin pool.
 
 **Modify**
 
-- `apps/api/src/modules/identity-access/domain/ports/auth-challenge-store.port.ts` — add the non-destructive `peekCompletion()` contract.
-- `apps/api/src/modules/identity-access/infrastructure/services/redis-auth-challenge.store.ts` — implement `peekCompletion()` using Redis `GET` without changing `consumeCompletion()`.
-- `apps/api/src/modules/identity-access/application/use-cases/complete-registration.use-case.ts` — orchestrate durable create, retry reconciliation, cleanup, and cleanup-error logging.
-- `apps/api/src/modules/identity-access/infrastructure/http/identity-access.module.ts` — bind the new persistence port to its Prisma adapter.
+- `apps/api/src/modules/identity-access/domain/ports/auth-challenge-store.port.ts` — add `peekCompletion()`.
+- `apps/api/src/modules/identity-access/infrastructure/services/redis-auth-challenge.store.ts` — implement `peekCompletion()` with Redis `GET`.
+- `apps/api/src/modules/identity-access/application/use-cases/complete-registration.use-case.ts` — durable create, reconciliation, and best-effort token cleanup.
+- `apps/api/src/modules/identity-access/infrastructure/http/identity-access.module.ts` — bind the new port to its Prisma adapter.
 
 **Intentionally unchanged**
 
@@ -54,7 +54,7 @@
 - Modify: `apps/api/src/modules/identity-access/infrastructure/services/redis-auth-challenge.store.ts`
 
 **Interfaces:**
-- Consumes: existing `AuthChallengePayload`, `AuthChallengePurpose`, and completion-key hashing behavior.
+- Consumes: existing `AuthChallengePayload`, `AuthChallengePurpose`, and completion-key hashing.
 - Produces:
 
 ```ts
@@ -66,7 +66,7 @@ peekCompletion(
 
 - [ ] **Step 1: Add `peekCompletion()` to `IAuthChallengeStore`.**
 
-Insert the method immediately before `consumeCompletion()` so the interface documents the two semantics together:
+Put it immediately before `consumeCompletion()`:
 
 ```ts
 peekCompletion(
@@ -79,11 +79,11 @@ consumeCompletion(
 ): Promise<AuthChallengePayload | null>;
 ```
 
-Keep every existing method and type unchanged.
+Keep every existing method unchanged.
 
 - [ ] **Step 2: Implement `RedisAuthChallengeStore.peekCompletion()`.**
 
-Place it directly above `consumeCompletion()` and reuse the existing `completionKey()` helper:
+Put this directly above `consumeCompletion()`:
 
 ```ts
 async peekCompletion(
@@ -99,30 +99,33 @@ async peekCompletion(
 
 Do not extend TTL and do not create a second Redis key.
 
-- [ ] **Step 3: Verify destructive password-reset behavior was not modified.**
+- [ ] **Step 3: Verify password-reset destructive consumption remains untouched.**
 
-Confirm `consumeCompletion()` still uses:
+Confirm `consumeCompletion()` still contains:
 
 ```ts
 const value = await this.redis.getdel(this.completionKey(completionToken));
 ```
 
-and `CompletePasswordResetUseCase` still calls `consumeCompletion(..., 'password_reset')`.
+and `CompletePasswordResetUseCase` still calls:
 
-- [ ] **Step 4: Run focused static verification.**
+```ts
+this.challenges.consumeCompletion(input.completionToken, 'password_reset')
+```
 
-Run:
+- [ ] **Step 4: Run focused verification.**
 
 ```bash
 pnpm --filter=@booking/api typecheck
 ```
 
-Expected: exit code `0`. If this fails because later consumers have not yet been updated, fix only type errors caused by this task; do not implement later orchestration early.
+Expected: exit `0`.
 
 - [ ] **Step 5: Commit only Task 1 files.**
 
 ```bash
-git add -- apps/api/src/modules/identity-access/domain/ports/auth-challenge-store.port.ts \
+git add -- \
+  apps/api/src/modules/identity-access/domain/ports/auth-challenge-store.port.ts \
   apps/api/src/modules/identity-access/infrastructure/services/redis-auth-challenge.store.ts
 git diff --cached --check
 git diff --cached
@@ -131,7 +134,7 @@ git commit -m "fix(auth): add recoverable completion token read"
 
 ---
 
-### Task 2: Introduce the atomic registration-completion persistence boundary
+### Task 2: Add the atomic registration-completion persistence boundary
 
 **Files:**
 - Create: `apps/api/src/modules/identity-access/domain/ports/registration-completion-repository.port.ts`
@@ -167,7 +170,7 @@ export interface IRegistrationCompletionRepository {
 }
 ```
 
-- [ ] **Step 1: Create the domain port exactly around the durable operation.**
+- [ ] **Step 1: Create the identity-access port.**
 
 Create `registration-completion-repository.port.ts` with:
 
@@ -201,11 +204,11 @@ export interface IRegistrationCompletionRepository {
 }
 ```
 
-Do not expose Prisma types through this port.
+No Prisma types leave the infrastructure layer.
 
-- [ ] **Step 2: Create the Prisma adapter and local user mapper.**
+- [ ] **Step 2: Create the Prisma adapter skeleton and mapper.**
 
-Start `prisma-registration-completion.repository.ts` with these dependencies:
+Create `prisma-registration-completion.repository.ts` starting with:
 
 ```ts
 import { Injectable } from '@nestjs/common';
@@ -219,11 +222,7 @@ import type {
   RegistrationConsentEventInput,
 } from '../../domain/ports/registration-completion-repository.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';
-```
 
-Add a private file-local mapper rather than exporting internals from `PrismaUserRepository`:
-
-```ts
 function toUserRecord(row: User): UserRecord {
   return {
     id: row.id,
@@ -239,11 +238,32 @@ function toUserRecord(row: User): UserRecord {
     emailVerifiedAt: row.emailVerifiedAt,
   };
 }
+
+function isUserEmailConflict(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+    return false;
+  }
+  const target = error.meta?.target;
+  if (Array.isArray(target)) return target.some((field) => String(field) === 'email');
+  return String(target ?? '').includes('email');
+}
+
+@Injectable()
+export class PrismaRegistrationCompletionRepository
+  implements IRegistrationCompletionRepository
+{
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly outbox: OutboxService,
+  ) {}
+}
 ```
 
-- [ ] **Step 3: Implement a single helper for consent-event shape.**
+The `P2002` guard must identify the user email constraint specifically; a future unrelated unique failure must still throw.
 
-Inside the adapter, add:
+- [ ] **Step 3: Add one helper that emits the consent event inside a supplied transaction.**
+
+Inside the class:
 
 ```ts
 private emitConsentInTx(
@@ -263,11 +283,9 @@ private emitConsentInTx(
 }
 ```
 
-This keeps the event payload identical between first-time creation and retry recovery.
+Use this helper for both initial create and recovery emission so payload shapes cannot drift.
 
-- [ ] **Step 4: Implement `create()` as one admin-pool transaction.**
-
-Use this structure:
+- [ ] **Step 4: Implement `create()` as a single admin-pool transaction.**
 
 ```ts
 async create(input: RegistrationCompletionInput): Promise<RegistrationCompletionCreateResult> {
@@ -286,15 +304,13 @@ async create(input: RegistrationCompletionInput): Promise<RegistrationCompletion
       return { status: 'created', user } as const;
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return { status: 'email_conflict' };
-    }
+    if (isUserEmailConflict(error)) return { status: 'email_conflict' };
     throw error;
   }
 }
 ```
 
-The only translated database error is `P2002`; all other errors rethrow.
+An outbox failure must abort the same transaction and therefore roll back the user insert.
 
 - [ ] **Step 5: Implement recovery consent emission.**
 
@@ -304,9 +320,9 @@ async emitConsent(input: RegistrationConsentEventInput): Promise<void> {
 }
 ```
 
-Do not query legal acceptance state and do not attempt outbox deduplication.
+Do not query legal state and do not dedupe the event.
 
-- [ ] **Step 6: Run focused static verification.**
+- [ ] **Step 6: Run focused verification.**
 
 ```bash
 pnpm --filter=@booking/api typecheck
@@ -334,50 +350,46 @@ git commit -m "fix(auth): make registration persistence atomic"
 - Modify: `apps/api/src/modules/identity-access/application/use-cases/complete-registration.use-case.ts`
 
 **Interfaces:**
-- Consumes:
-  - `IAuthChallengeStore.peekCompletion()` and `consumeCompletion()` from Task 1.
-  - `IRegistrationCompletionRepository.create()` and `emitConsent()` from Task 2.
-  - existing `IUserRepository.findByEmail()`.
-  - existing `IPasswordHasher.hash()` and `verify()`.
-- Produces: unchanged `Promise<AuthFlowCompleteResponse>` API contract.
+- Consumes `peekCompletion()`/`consumeCompletion()`, `IRegistrationCompletionRepository`, `IUserRepository`, and `IPasswordHasher`.
+- Produces the existing `Promise<AuthFlowCompleteResponse>` contract unchanged.
 
-- [ ] **Step 1: Replace tenant-transaction dependencies with the new persistence port.**
+- [ ] **Step 1: Replace the old transaction/outbox dependencies with the new port.**
 
-Remove these imports and constructor dependencies:
+Change the Nest import to:
 
 ```ts
-OutboxService
-TenantDbService
+import { Inject, Injectable, Logger } from '@nestjs/common';
 ```
 
-Add:
+Remove imports for `TenantDbService` and `OutboxService`.
+
+Add these imports:
 
 ```ts
-import { Logger } from '@nestjs/common';
+import type { AuthChallengePayload } from '../../domain/ports/auth-challenge-store.port';
 import {
   REGISTRATION_COMPLETION_REPOSITORY,
   type IRegistrationCompletionRepository,
+  type RegistrationCompletionInput,
 } from '../../domain/ports/registration-completion-repository.port';
 ```
 
-Keep the existing `USER_REPOSITORY` and `PASSWORD_HASHER` dependencies.
+Keep the existing auth challenge store, user repository, password hasher, `UserAccount`, and `expired` imports.
 
-Add:
+Inside the class add:
 
 ```ts
 private readonly logger = new Logger(CompleteRegistrationUseCase.name);
 ```
 
-Inject:
+Replace the `TenantDbService`/`OutboxService` constructor parameters with:
 
 ```ts
 @Inject(REGISTRATION_COMPLETION_REPOSITORY)
 private readonly registrationCompletion: IRegistrationCompletionRepository,
 ```
 
-- [ ] **Step 2: Add a helper that derives optional consent input from the verified payload.**
-
-Inside the class, add a private helper returning exactly the creation-port shape without a `userId`:
+- [ ] **Step 2: Add deterministic consent derivation.**
 
 ```ts
 private consentFromPayload(
@@ -394,68 +406,60 @@ private consentFromPayload(
 }
 ```
 
-Import the required port/input types rather than duplicating them.
-
-- [ ] **Step 3: Add conservative retry reconciliation.**
-
-Add a private method with this contract:
+- [ ] **Step 3: Add conservative existing-account reconciliation.**
 
 ```ts
 private async reconcileExisting(
   existing: UserAccount | null,
   password: string,
   consent: RegistrationCompletionInput['consent'],
-): Promise<boolean>
-```
+): Promise<boolean> {
+  if (!existing?.emailVerifiedAt || !existing.passwordHash) return false;
+  if (!(await this.hasher.verify(existing.passwordHash, password))) return false;
 
-Implement these exact gates in order:
+  if (consent) {
+    await this.registrationCompletion.emitConsent({
+      ...consent,
+      userId: existing.id,
+    });
+  }
 
-```ts
-if (!existing) return false;
-if (!existing.emailVerifiedAt || !existing.passwordHash) return false;
-if (!(await this.hasher.verify(existing.passwordHash, password))) return false;
-
-if (consent) {
-  await this.registrationCompletion.emitConsent({
-    ...consent,
-    userId: existing.id,
-  });
+  return true;
 }
-
-return true;
 ```
 
-The method must not call `setPassword()` or mutate the user.
+This method never calls `setPassword()` and never mutates the existing user.
 
-- [ ] **Step 4: Change completion-token handling from destructive-first to peek-first.**
-
-At the beginning of `execute()`, replace:
+- [ ] **Step 4: Add post-durable best-effort Redis cleanup.**
 
 ```ts
-const payload = await this.challenges.consumeCompletion(input.completionToken, 'registration');
+private async cleanupCompletion(completionToken: string): Promise<void> {
+  try {
+    await this.challenges.consumeCompletion(completionToken, 'registration');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    this.logger.warn(
+      `registration completed durably but completion-token cleanup failed: ${message}`,
+    );
+  }
+}
 ```
 
-with:
+Do not include `completionToken`, password, OTP, or password hash in the log. A `null` return from `consumeCompletion()` is acceptable after durable success and requires no warning.
+
+- [ ] **Step 5: Switch `execute()` to non-destructive token read.**
+
+Start with:
 
 ```ts
 const payload = await this.challenges.peekCompletion(input.completionToken, 'registration');
-```
-
-Keep:
-
-```ts
 if (!payload?.fullName) expired();
-```
-
-Compute once:
-
-```ts
 const consent = this.consentFromPayload(payload, meta.ip ?? null);
 ```
 
-- [ ] **Step 5: Handle a pre-existing user only through verified reconciliation.**
+Do not call `consumeCompletion()` before durable persistence/reconciliation.
 
-Replace the current immediate `UserAccount.assertEmailAvailable(existing)` path with:
+- [ ] **Step 6: Reconcile a pre-existing account instead of blindly rejecting it.**
 
 ```ts
 const existing = await this.users.findByEmail(payload.email);
@@ -467,11 +471,11 @@ if (existing) {
 }
 ```
 
-This deliberately preserves `EmailTaken` for unrelated accounts while allowing crash/retry recovery.
+`UserAccount.assertEmailAvailable(existing)` preserves the existing `EmailTaken` domain error when ownership cannot be proven.
 
-- [ ] **Step 6: Persist a new account through the atomic repository.**
+- [ ] **Step 7: Persist a new account through the atomic repository.**
 
-Keep current password hashing and `UserAccount.register(...)` construction, then call:
+Keep the existing password hash and `UserAccount.register(...)` construction, then replace direct `users.create()` with:
 
 ```ts
 const result = await this.registrationCompletion.create({
@@ -480,51 +484,39 @@ const result = await this.registrationCompletion.create({
 });
 ```
 
-For `result.status === 'created'`, proceed directly to cleanup and success.
+If `result.status === 'created'`, run cleanup and return success.
 
-For `result.status === 'email_conflict'`, re-read by email once:
+- [ ] **Step 8: Reconcile exactly one unique-email race.**
+
+For `email_conflict`:
 
 ```ts
 const racedUser = await this.users.findByEmail(payload.email);
+if (!racedUser) {
+  throw new Error('Registration email conflict could not be reconciled');
+}
+
 const reconciled = await this.reconcileExisting(racedUser, input.password, consent);
 if (!reconciled) UserAccount.assertEmailAvailable(racedUser);
+
+await this.cleanupCompletion(input.completionToken);
+return { success: true };
 ```
 
-Do not loop indefinitely and do not retry the create operation.
+Do not retry create in a loop. If the row disappears after PostgreSQL reported an email conflict, surface an internal error rather than incorrectly returning success.
 
-- [ ] **Step 7: Add best-effort completion-token cleanup after durable success only.**
+- [ ] **Step 9: Remove the old separate tenant outbox transaction and stale explanatory comment.**
 
-Add:
-
-```ts
-private async cleanupCompletion(completionToken: string): Promise<void> {
-  try {
-    await this.challenges.consumeCompletion(completionToken, 'registration');
-  } catch (error) {
-    this.logger.warn(
-      { err: error instanceof Error ? error.message : String(error) },
-      'Registration completed durably but completion-token cleanup failed',
-    );
-  }
-}
-```
-
-If the repository uses the standard Nest `Logger` overload differently under current typings, use the repo-supported `Logger.warn(message, context?)` form, but log only a sanitized error message and never the completion token.
-
-A `null` return from `consumeCompletion()` is not an error after durable completion.
-
-- [ ] **Step 8: Remove the old non-atomic outbox block and its explanatory comment.**
-
-Delete the block that calls:
+Delete the old block using:
 
 ```ts
 this.tenantDb.forTenant(...)
 this.outbox.emit(...)
 ```
 
-Replace it with a concise comment only if needed to explain that the new repository owns the atomic user + outbox commit boundary. Do not keep stale documentation describing the old bug as current behavior.
+No direct legal call replaces it; the new persistence adapter owns the atomic outbox write.
 
-- [ ] **Step 9: Run focused static verification.**
+- [ ] **Step 10: Run focused verification.**
 
 ```bash
 pnpm --filter=@booking/api typecheck
@@ -533,7 +525,7 @@ pnpm check:module-cycles
 
 Expected: both exit `0`.
 
-- [ ] **Step 10: Commit only the use-case file.**
+- [ ] **Step 11: Commit only the use-case file.**
 
 ```bash
 git add -- apps/api/src/modules/identity-access/application/use-cases/complete-registration.use-case.ts
@@ -544,27 +536,23 @@ git commit -m "fix(auth): recover registration completion retries"
 
 ---
 
-### Task 4: Wire the registration-completion repository into Nest
+### Task 4: Wire the new repository and run static repository gates
 
 **Files:**
 - Modify: `apps/api/src/modules/identity-access/infrastructure/http/identity-access.module.ts`
 
 **Interfaces:**
-- Consumes: `REGISTRATION_COMPLETION_REPOSITORY`, `PrismaRegistrationCompletionRepository`.
-- Produces: injectable binding used by `CompleteRegistrationUseCase`.
+- Consumes `REGISTRATION_COMPLETION_REPOSITORY` and `PrismaRegistrationCompletionRepository`.
+- Produces the Nest binding required by `CompleteRegistrationUseCase`.
 
-- [ ] **Step 1: Add the port and adapter imports.**
-
-Add:
+- [ ] **Step 1: Add imports.**
 
 ```ts
 import { REGISTRATION_COMPLETION_REPOSITORY } from '../../domain/ports/registration-completion-repository.port';
 import { PrismaRegistrationCompletionRepository } from '../repositories/prisma-registration-completion.repository';
 ```
 
-- [ ] **Step 2: Register the provider next to the other identity persistence bindings.**
-
-Add to `providers`:
+- [ ] **Step 2: Register the provider beside the other identity persistence bindings.**
 
 ```ts
 {
@@ -573,19 +561,38 @@ Add to `providers`:
 },
 ```
 
-Do not export the new port because no other module needs it.
+Do not export it; no other module consumes this port.
 
-- [ ] **Step 3: Run module/container static gates.**
+- [ ] **Step 3: Run the repository-prescribed static gates.**
 
 ```bash
-pnpm --filter=@booking/api typecheck
-pnpm check:module-cycles
 pnpm check:no-tests
+pnpm check:module-cycles
+pnpm check:frontend-structure
+pnpm check:theme-tokens
+pnpm check:tenant-surfaces
+pnpm --filter=@booking/api lint
+pnpm --filter=@booking/api typecheck
+pnpm --filter=@booking/api build
+pnpm --filter=@booking/api check:rls
+pnpm lint
+pnpm typecheck
+pnpm build
 ```
 
-Expected: all exit `0`.
+Expected: every command exits `0`. Record the exact failing command and output if one does not; do not claim later gates passed if they were not run.
 
-- [ ] **Step 4: Commit only the module wiring.**
+- [ ] **Step 4: Confirm implementation scope before committing.**
+
+```bash
+git status --short
+git diff --check
+git diff --stat
+```
+
+Expected implementation scope: exactly the six DATA-001 source files listed in this plan; docs are already present on the branch.
+
+- [ ] **Step 5: Commit only module wiring.**
 
 ```bash
 git add -- apps/api/src/modules/identity-access/infrastructure/http/identity-access.module.ts
@@ -596,121 +603,35 @@ git commit -m "fix(auth): wire registration completion repository"
 
 ---
 
-### Task 5: Run full repository verification before runtime smoke
+### Task 5: Run focused real PostgreSQL/Redis smoke and final review
 
 **Files:**
-- No committed file changes expected.
+- No committed source changes expected.
+- Temporary fault-injection state is permitted only in a disposable local PostgreSQL/Redis environment and must be reverted in the same session.
 
 **Interfaces:**
-- Consumes: implementation from Tasks 1-4.
-- Produces: static evidence required before runtime fault injection.
-
-- [ ] **Step 1: Confirm the diff is scoped exactly to the six implementation files plus the approved docs.**
-
-```bash
-git status --short
-git diff main...HEAD --stat
-git diff main...HEAD -- \
-  apps/api/src/modules/identity-access/domain/ports/auth-challenge-store.port.ts \
-  apps/api/src/modules/identity-access/domain/ports/registration-completion-repository.port.ts \
-  apps/api/src/modules/identity-access/infrastructure/services/redis-auth-challenge.store.ts \
-  apps/api/src/modules/identity-access/infrastructure/repositories/prisma-registration-completion.repository.ts \
-  apps/api/src/modules/identity-access/application/use-cases/complete-registration.use-case.ts \
-  apps/api/src/modules/identity-access/infrastructure/http/identity-access.module.ts
-```
-
-Expected: no unrelated application files.
-
-- [ ] **Step 2: Run the repository's no-tests and architecture gates.**
-
-```bash
-pnpm check:no-tests
-pnpm check:module-cycles
-pnpm check:frontend-structure
-pnpm check:theme-tokens
-pnpm check:tenant-surfaces
-```
-
-Expected: all exit `0`.
-
-- [ ] **Step 3: Run API lint, typecheck, build, and static RLS coverage.**
-
-```bash
-pnpm --filter=@booking/api lint
-pnpm --filter=@booking/api typecheck
-pnpm --filter=@booking/api build
-pnpm --filter=@booking/api check:rls
-```
-
-Expected: all exit `0`.
-
-- [ ] **Step 4: Run the same frontend gates CI exercises to prove shared changes did not regress workspace builds.**
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm build
-```
-
-Expected: all exit `0`.
-
-- [ ] **Step 5: Record the exact command outputs/exit codes in the PR description or implementation handoff.**
-
-Do not create a test-results file in the repository. If any command fails, stop and fix only the demonstrated failure before proceeding to runtime smoke.
-
----
-
-### Task 6: Run focused real PostgreSQL/Redis registration smoke
-
-**Files:**
-- No committed file changes.
-- Temporary disposable DB trigger and Redis ACL changes are allowed only in a local/disposable environment and must be reverted in the same smoke session.
-
-**Interfaces:**
-- HTTP endpoint: `POST /auth/registration/complete`
-- Request shape:
+- Endpoint: `POST /auth/registration/complete`.
+- Completion Redis key: `identity:auth-completion:${sha256(completionToken)}`.
+- Request:
 
 ```json
 {
-  "completionToken": "a-token-at-least-32-characters-long",
+  "completionToken": "data001-completion-token-at-least-32-chars",
   "password": "SmokePass123"
 }
 ```
 
-- Redis completion key: `identity:auth-completion:${sha256(completionToken)}`.
-- Registration payload JSON shape:
-
-```json
-{
-  "purpose": "registration",
-  "email": "data001-smoke@example.com",
-  "fullName": "DATA001 Smoke",
-  "locale": "vi"
-}
-```
-
-For tenant-scoped cases add `tenantId`, `acceptedVersionIds`, and `acceptedLocale` from a disposable tenant with published legal versions.
-
-- [ ] **Step 1: Start a disposable API/Postgres/Redis environment and export local helpers.**
-
-Use the repo's normal local stack; do not point these steps at staging or production.
+- [ ] **Step 1: Start only a disposable local environment and export helpers.**
 
 ```bash
 export API_BASE="http://localhost:3000"
 export DATA001_PASSWORD="SmokePass123"
-```
-
-Confirm both database and Redis targets are local/disposable before fault injection:
-
-```bash
 printf '%s\n' "$MIGRATE_DATABASE_URL" "$REDIS_URL"
 ```
 
-Stop if either value identifies a shared/staging/production service.
+Stop if either connection points at a shared, staging, or production service.
 
-- [ ] **Step 2: Define a shell helper that writes a verified completion payload directly to Redis.**
-
-This bypasses OTP/email delivery and tests only the completion boundary under audit:
+- [ ] **Step 2: Define a helper that creates a verified completion payload directly in Redis.**
 
 ```bash
 seed_completion() {
@@ -723,9 +644,9 @@ seed_completion() {
 }
 ```
 
-Every smoke token must be at least 32 characters to satisfy the HTTP contract.
+This bypasses OTP/email and isolates the completion boundary under audit.
 
-- [ ] **Step 3: Verify non-tenant happy path and token cleanup.**
+- [ ] **Step 3: Non-tenant happy path.**
 
 ```bash
 export REG_EMAIL="data001-happy-$(date +%s)@example.com"
@@ -736,16 +657,26 @@ export REG_DIGEST="$(seed_completion "$REG_TOKEN" "$REG_PAYLOAD")"
 curl -i -sS -X POST "$API_BASE/auth/registration/complete" \
   -H 'content-type: application/json' \
   --data "{\"completionToken\":\"${REG_TOKEN}\",\"password\":\"${DATA001_PASSWORD}\"}"
-
 redis-cli -u "$REDIS_URL" EXISTS "identity:auth-completion:${REG_DIGEST}"
 psql "$MIGRATE_DATABASE_URL" -Atc "select count(*) from users where email='${REG_EMAIL}';"
 ```
 
-Expected: HTTP `200`, Redis `EXISTS` returns `0`, user count is `1`.
+Expected: HTTP `200`, Redis `EXISTS` is `0`, user count is `1`.
 
-- [ ] **Step 4: Force consent-outbox failure and prove user rollback + token retention.**
+- [ ] **Step 4: Prepare one valid tenant-scoped completion payload from the disposable DB.**
 
-Pick one local tenant and current customer-facing legal versions from the disposable DB. Record the IDs in shell variables `TENANT_ID` and `VERSION_IDS_JSON`; do not invent UUIDs. Then install a temporary trigger that fails only registration-consent inserts:
+Query an existing local tenant and its currently published customer-facing legal version IDs. Use those real UUIDs to set:
+
+```bash
+export TENANT_ID="...local tenant UUID from the query..."
+export VERSION_IDS_JSON='["...published customer terms UUID...","...published privacy UUID..."]'
+```
+
+Before continuing, verify both version rows belong to `TENANT_ID` and are published. These values are runtime observations, not committed constants.
+
+- [ ] **Step 5: Force outbox failure and prove atomic rollback plus token retention.**
+
+On the disposable DB only, install:
 
 ```sql
 CREATE OR REPLACE FUNCTION smoke_fail_registration_consent()
@@ -766,80 +697,50 @@ BEFORE INSERT ON outbox_events
 FOR EACH ROW EXECUTE FUNCTION smoke_fail_registration_consent();
 ```
 
-Create a tenant-scoped Redis payload with:
+Seed a tenant-scoped Redis payload containing `tenantId`, `acceptedVersionIds`, and `acceptedLocale: "vi"`, then call `/auth/registration/complete`.
 
-```json
-{
-  "purpose": "registration",
-  "email": "a fresh smoke email",
-  "fullName": "DATA001 Rollback",
-  "locale": "vi",
-  "tenantId": "the selected tenant UUID",
-  "acceptedVersionIds": ["the selected published version UUIDs"],
-  "acceptedLocale": "vi"
-}
-```
+Expected: HTTP failure, matching `users` count `0`, completion Redis key still exists.
 
-Call `/auth/registration/complete`, then verify:
-
-```bash
-psql "$MIGRATE_DATABASE_URL" -Atc "select count(*) from users where email='${ROLLBACK_EMAIL}';"
-redis-cli -u "$REDIS_URL" EXISTS "identity:auth-completion:${ROLLBACK_DIGEST}"
-```
-
-Expected: HTTP failure, user count `0`, Redis `EXISTS` `1`.
-
-Immediately remove the fault injection:
+Immediately remove the fault:
 
 ```sql
 DROP TRIGGER IF EXISTS smoke_fail_registration_consent ON outbox_events;
 DROP FUNCTION IF EXISTS smoke_fail_registration_consent();
 ```
 
-Repeat the exact same completion request. Expected: HTTP `200`, user count `1`, token removed, and a `user.registration_consent` outbox row exists or has already been processed.
+Repeat the same completion request. Expected: HTTP `200`, exactly one user, token removed, and the consent outbox event is durable or already processed.
 
-- [ ] **Step 5: Simulate post-commit Redis cleanup failure and prove same-token reconciliation.**
+- [ ] **Step 6: Simulate post-commit Redis cleanup failure and prove same-token reconciliation.**
 
-On disposable Redis only, deny `GETDEL` while leaving `GET` allowed:
+On disposable Redis only:
 
 ```bash
 redis-cli -u "$REDIS_URL" ACL SETUSER default -getdel
 ```
 
-Seed a fresh tenant-scoped completion token and call `/auth/registration/complete`.
+Seed a fresh tenant-scoped token and complete registration.
 
-Expected after implementation: HTTP `200` because PostgreSQL committed; logs contain the sanitized cleanup warning; user exists; consent outbox event exists; Redis completion key still exists.
+Expected: HTTP `200`; user and consent event are durable; completion key remains; API logs one sanitized cleanup warning.
 
-Restore Redis immediately:
+Restore immediately:
 
 ```bash
 redis-cli -u "$REDIS_URL" ACL SETUSER default +getdel
 ```
 
-Call the same completion request again with the same password.
+Repeat the same completion request with the same password. Expected: HTTP `200`, still exactly one user, token removed, password unchanged. An extra consent event/acceptance is allowed by the at-least-once contract.
 
-Expected: HTTP `200`, still exactly one user, token now removed, password unchanged, and at-least-once consent means an additional consent event/acceptance is allowed.
+If the local Redis user cannot change ACLs, record this case as `NEEDS VERIFICATION` rather than touching any shared Redis service.
 
-If the disposable Redis configuration does not permit ACL changes, do not alter production-like Redis. Record this case as `NEEDS VERIFICATION` and use a disposable Redis instance where command ACL can be changed.
+- [ ] **Step 7: Prove unrelated existing accounts still fail.**
 
-- [ ] **Step 6: Verify a conflicting existing account is not treated as a retry.**
+Create an account with a fresh email via the existing `/auth/register` endpoint using password `ExistingPass123`. Seed a registration completion token for that same email and submit `DifferentPass123` to `/auth/registration/complete`.
 
-Create a fresh password account through the existing legacy registration endpoint:
+Expected: the API returns the existing `EmailTaken` domain result; login with `ExistingPass123` still works; no password mutation occurs; no recovery consent event is emitted for the conflicting completion.
 
-```bash
-export CONFLICT_EMAIL="data001-conflict-$(date +%s)@example.com"
-curl -i -sS -X POST "$API_BASE/auth/register" \
-  -H 'content-type: application/json' \
-  --data "{\"email\":\"${CONFLICT_EMAIL}\",\"password\":\"ExistingPass123\",\"fullName\":\"Existing Account\",\"locale\":\"vi\"}"
-```
+- [ ] **Step 8: Exercise concurrent completion.**
 
-Seed a registration completion token for the same email but submit `DifferentPass123` to `/auth/registration/complete`.
-
-Expected: domain/API error corresponding to `EmailTaken`; the existing account remains login-capable with `ExistingPass123`; no recovery consent event is emitted for the conflicting request.
-
-- [ ] **Step 7: Exercise the concurrent same-token path.**
-
-Seed one fresh completion token, then start two requests simultaneously:
+Seed one fresh token and launch two completion requests in parallel:
 
 ```bash
 for i in 1 2; do
@@ -849,77 +750,32 @@ for i in 1 2; do
     --data "{\"completionToken\":\"${CONCURRENT_TOKEN}\",\"password\":\"${DATA001_PASSWORD}\"}" &
 done
 wait
-cat /tmp/data001-concurrent-1.out
-cat /tmp/data001-concurrent-2.out
 ```
 
-Then verify exactly one `users` row exists for `CONCURRENT_EMAIL`. If both requests peeked before cleanup, both should reconcile successfully; if one reached Redis only after the other deleted the token, that request may receive the normal expired-token response. In all cases, duplicate users and credential mutation are forbidden.
+Expected invariant: exactly one `users` row for the email and no credential mutation. If both requests peek before token deletion, both may return success through reconciliation; if one reaches Redis after deletion, the normal expired-token response is acceptable.
 
-Delete the temporary `/tmp/data001-concurrent-*.out` files after inspection.
+Remove `/tmp/data001-concurrent-*.out` after inspection.
 
-- [ ] **Step 8: Verify password-reset behavior is unchanged.**
+- [ ] **Step 9: Verify password-reset regression boundary.**
 
-Use the normal password-reset start/verify/complete flow in the disposable environment or seed a `password_reset` completion payload with a valid existing `userId`. Complete it once, then call the same completion token again.
+Run the existing password-reset completion flow in the disposable environment and submit the same completion token twice.
 
-Expected: first completion follows current behavior; second attempt is expired because password reset still uses destructive `consumeCompletion()`.
+Expected: first completion follows existing behavior; second attempt is expired because password reset still uses `GETDEL` through `consumeCompletion()`.
 
-- [ ] **Step 9: Verify eventual legal-consent delivery for one tenant-scoped success.**
+- [ ] **Step 10: Verify eventual legal delivery.**
 
-Allow the normal outbox relay to run. Query the local DB for the smoke user's `agreement_acceptances` rows and confirm the expected tenant, accepted version IDs, and accepted locale are present. Duplicate acceptance rows are allowed by the current ADR 0008 contract; missing acceptance after the relay retry window is a failure requiring investigation.
+Allow the normal outbox relay to process one tenant-scoped smoke registration. Query `agreement_acceptances` for that user and confirm the expected tenant, accepted version IDs, and accepted locale are present. Duplicate rows are acceptable; missing acceptance after relay retries is a failure.
 
-- [ ] **Step 10: Confirm all fault injection was reverted and record evidence.**
-
-Verify no smoke trigger/function remains and Redis `GETDEL` is enabled:
+- [ ] **Step 11: Prove all fault injection was reverted.**
 
 ```bash
 psql "$MIGRATE_DATABASE_URL" -Atc "select tgname from pg_trigger where tgname='smoke_fail_registration_consent';"
 redis-cli -u "$REDIS_URL" ACL GETUSER default
 ```
 
-Record HTTP statuses, SQL counts, Redis key checks, and any intentionally duplicated consent rows in the PR/handoff. Do not commit credentials, tokens, local DB dumps, or smoke-output files.
+Expected: no smoke trigger; `GETDEL` permission restored.
 
----
-
-### Task 7: Final review and PR preparation
-
-**Files:**
-- No new application files expected.
-- Modify docs only if implementation discovers a design mismatch that must be documented before merge.
-
-**Interfaces:**
-- Consumes: all implementation and verification evidence.
-- Produces: reviewable branch ready for a draft PR; merge remains a separate explicit action.
-
-- [ ] **Step 1: Re-read the design acceptance criteria line by line against the final diff.**
-
-Confirm each of these has concrete evidence:
-
-- non-destructive registration token read;
-- atomic user + consent event transaction;
-- failed DB work keeps token retryable;
-- post-commit retry reconciliation verifies account ownership by password;
-- no password overwrite;
-- unique-email race reconciles once;
-- unrelated existing account still fails;
-- cleanup runs after durable success and cleanup failure does not reverse success;
-- password-reset semantics unchanged;
-- no legal module import/cycle;
-- no schema migration/test artifacts;
-- static verification passed;
-- real DB/Redis smoke evidence is recorded or explicitly marked `NEEDS VERIFICATION`.
-
-- [ ] **Step 2: Inspect final branch state.**
-
-```bash
-git status --short
-git log --oneline --decorate main..HEAD
-git diff --check main...HEAD
-git diff --stat main...HEAD
-```
-
-Expected: clean worktree, no whitespace errors, only approved DATA-001 docs/implementation files.
-
-- [ ] **Step 3: Run one fresh final verification pass before any completion claim.**
+- [ ] **Step 12: Run one fresh final verification pass.**
 
 ```bash
 pnpm check:no-tests \
@@ -930,17 +786,15 @@ pnpm check:no-tests \
   && pnpm --filter=@booking/api check:rls
 ```
 
-Expected: exit code `0` for the combined command.
+Expected: combined exit `0`.
 
-- [ ] **Step 4: Prepare the PR summary without claiming unexecuted smoke cases passed.**
+- [ ] **Step 13: Review final branch scope and prepare handoff.**
 
-The PR body should state:
+```bash
+git status --short
+git log --oneline --decorate main..HEAD
+git diff --check main...HEAD
+git diff --stat main...HEAD
+```
 
-- root cause: destructive Redis token consumption plus split PostgreSQL durability boundary;
-- solution: `peekCompletion` + atomic registration repository + conservative retry reconciliation + post-commit cleanup;
-- changed files and no-migration/no-test-artifact scope;
-- exact static checks that passed;
-- each runtime smoke result with evidence;
-- any case not run as `NEEDS VERIFICATION`.
-
-Do not merge or deploy as part of this plan without a separate explicit instruction.
+Record exact static-check results and runtime smoke evidence in the PR/handoff. Mark any unexecuted runtime case `NEEDS VERIFICATION`. Do not merge or deploy without separate explicit authorization.
