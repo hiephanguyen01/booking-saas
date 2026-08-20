@@ -6,7 +6,7 @@ import { seedWithholdingRates } from './seed/withholding-rates';
 import { seedTaxThresholdRules } from './seed/tax-threshold-rules';
 import { seedPlatform } from './seed/platform';
 import { seedPlans } from './seed/plans';
-import { seedScope } from './seed/scope';
+import { ownerPassword, platformAdminCredentials, seedScope } from './seed/scope';
 import { seedStudioHub } from './seed/tenants/studiohub';
 import { seedBookingStad } from './seed/tenants/booking-stad';
 import { seedStudioDemo } from './seed/demo/studio-demo';
@@ -18,7 +18,8 @@ import { seedSportDemo } from './seed/demo/sport-demo';
  * - `SEED_SCOPE=tenants` — the PRODUCTION shape: permission catalogue, system
  *   roles, admin, subscription plans, and both tenants' settings (domains, theme,
  *   subscription, owner, cancellation policy, commission rules, listing types).
- *   No partners, listings, bookings or promotions. Requires SEED_OWNER_PASSWORD.
+ *   No partners, listings, bookings or promotions. Requires explicit production
+ *   admin credentials and SEED_OWNER_PASSWORD.
  * - default — everything above PLUS the dev/staging demo data.
  *
  * Idempotent in both scopes. Runs on the migrate connection, which bypasses RLS,
@@ -26,11 +27,17 @@ import { seedSportDemo } from './seed/demo/sport-demo';
  */
 async function main() {
   const scope = seedScope();
+
+  // Validate every credential needed by the production-shaped seed before the
+  // first database write. A failed preflight must leave no partial bootstrap data.
+  const adminCredentials = platformAdminCredentials(scope);
+  await ownerPassword(scope);
+
   await seedAdministrativeDivisions(prisma);
   await seedTaxRates(prisma);
   await seedWithholdingRates(prisma);
   await seedTaxThresholdRules(prisma);
-  await seedPlatform();
+  await seedPlatform(adminCredentials);
   const plan = await seedPlans();
 
   const day = 24 * 60 * 60 * 1000;
