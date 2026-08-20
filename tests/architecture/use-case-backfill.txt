@@ -76,18 +76,14 @@ apps/api/src/modules/legal/application/use-cases/seed-tenant-legal-drafts.use-ca
 apps/api/src/modules/legal/application/use-cases/withdraw-legal-document.use-case.ts
 apps/api/src/modules/listing/application/use-cases/apply-listing-group-update.use-case.ts
 apps/api/src/modules/listing/application/use-cases/apply-listing-update.use-case.ts
-apps/api/src/modules/listing/application/use-cases/assert-listing-deposit-coverage.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-listing-group.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-partner-pricing-rule-range.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-partner-pricing-rule.use-case.ts
 apps/api/src/modules/listing/application/use-cases/create-pricing-rule.use-case.ts
-apps/api/src/modules/listing/application/use-cases/create-resource.use-case.ts
 apps/api/src/modules/listing/application/use-cases/delete-listing-group.use-case.ts
 apps/api/src/modules/listing/application/use-cases/delete-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/delete-partner-pricing-rule.use-case.ts
-apps/api/src/modules/listing/application/use-cases/delete-pricing-rule.use-case.ts
-apps/api/src/modules/listing/application/use-cases/get-listing-deposit-requirement.use-case.ts
 apps/api/src/modules/listing/application/use-cases/get-listing-group-detail.use-case.ts
 apps/api/src/modules/listing/application/use-cases/get-public-listing-group.use-case.ts
 apps/api/src/modules/listing/application/use-cases/get-public-quote.use-case.ts
@@ -103,7 +99,6 @@ apps/api/src/modules/listing/application/use-cases/moderation/review-listing-gro
 apps/api/src/modules/listing/application/use-cases/moderation/review-listing.use-case.ts
 apps/api/src/modules/listing/application/use-cases/moderation/submit-listing-group.use-case.ts
 apps/api/src/modules/listing/application/use-cases/moderation/submit-listing.use-case.ts
-apps/api/src/modules/listing/application/use-cases/project-review-aggregates.use-case.ts
 apps/api/src/modules/listing/application/use-cases/revisions/approve-listing-revision.use-case.ts
 apps/api/src/modules/listing/application/use-cases/revisions/discard-listing-revision.use-case.ts
 apps/api/src/modules/listing/application/use-cases/revisions/get-listing-group-pending-changes.use-case.ts
@@ -112,8 +107,6 @@ apps/api/src/modules/listing/application/use-cases/revisions/list-pending-revisi
 apps/api/src/modules/listing/application/use-cases/revisions/reject-listing-revision.use-case.ts
 apps/api/src/modules/listing/application/use-cases/save-listing-edit.use-case.ts
 apps/api/src/modules/listing/application/use-cases/save-listing-group-edit.use-case.ts
-apps/api/src/modules/listing/application/use-cases/update-listing-group.use-case.ts
-apps/api/src/modules/listing/application/use-cases/update-listing.use-case.ts
 apps/api/src/modules/notification/application/use-cases/count-unread-notifications.use-case.ts
 apps/api/src/modules/notification/application/use-cases/dispatch-booking-event.use-case.ts
 apps/api/src/modules/notification/application/use-cases/dispatch-legal-document-event.use-case.ts
