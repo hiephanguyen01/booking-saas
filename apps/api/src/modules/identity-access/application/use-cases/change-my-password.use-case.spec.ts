@@ -14,7 +14,7 @@ import type { ISessionStore } from '../../domain/ports/session-store.port';
 import type { IUserRepository, UserRecord } from '../../domain/ports/user-repository.port';
 import { ChangeMyPasswordUseCase } from './change-my-password.use-case';
 
-const CURRENT = 'mat-khau-cu';
+const CURRENT = 'demo-password-current';
 const HASH = `hashed:${CURRENT}`;
 const PRINCIPAL = { userId: 'user-1', sessionId: 'session-1' };
 
@@ -65,7 +65,7 @@ function harness(user: UserAccount | null = account()) {
 }
 
 const input = (overrides: Partial<ChangeMyPasswordInput> = {}) =>
-  ({ currentPassword: CURRENT, newPassword: 'mat-khau-moi', ...overrides }) as ChangeMyPasswordInput;
+  ({ currentPassword: CURRENT, newPassword: 'demo-password-new', ...overrides }) as ChangeMyPasswordInput;
 
 describe('ChangeMyPasswordUseCase', () => {
   it('answers not-found when the session points at a deleted user', async () => {
@@ -94,7 +94,7 @@ describe('ChangeMyPasswordUseCase', () => {
     const { useCase, written } = harness();
 
     await expect(
-      useCase.execute(PRINCIPAL, input({ currentPassword: 'doan-mo' })),
+      useCase.execute(PRINCIPAL, input({ currentPassword: 'demo-password-wrong' })),
     ).rejects.toBeInstanceOf(InvalidCurrentPassword);
     expect(written).toEqual([]);
   });
@@ -113,9 +113,9 @@ describe('ChangeMyPasswordUseCase', () => {
   it('stores the hash of the new password', async () => {
     const { useCase, written } = harness();
 
-    await useCase.execute(PRINCIPAL, input({ newPassword: 'mat-khau-moi' }));
+    await useCase.execute(PRINCIPAL, input({ newPassword: 'demo-password-new' }));
 
-    expect(written).toEqual([{ userId: 'user-1', passwordHash: 'hashed:mat-khau-moi' }]);
+    expect(written).toEqual([{ userId: 'user-1', passwordHash: 'hashed:demo-password-new' }]);
   });
 
   it('signs the OTHER devices out while keeping the calling tab alive', async () => {

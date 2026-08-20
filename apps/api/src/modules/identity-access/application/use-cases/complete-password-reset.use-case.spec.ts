@@ -54,7 +54,7 @@ function harness(consumed: AuthChallengePayload | null = payload()) {
 
 const input = {
   completionToken: 'completion-1',
-  password: 'mat-khau-moi',
+  password: 'demo-password-new',
 } as AuthPasswordCompleteInput;
 
 describe('CompletePasswordResetUseCase', () => {
@@ -90,7 +90,7 @@ describe('CompletePasswordResetUseCase', () => {
 
     await useCase.execute(input);
 
-    expect(written).toEqual([{ userId: 'user-1', passwordHash: 'hashed:mat-khau-moi' }]);
+    expect(written).toEqual([{ userId: 'user-1', passwordHash: 'hashed:demo-password-new' }]);
   });
 
   it('signs EVERY device out after the reset', async () => {
