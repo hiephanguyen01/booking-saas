@@ -25,7 +25,7 @@ tickets only; [`TONG-QUAN.md`](./TONG-QUAN.md) §21 carries the current shipped-
 ## ⛔ Hard rules (override everything — specs, tickets, skills, older snippets)
 
 1. **Exactly two kinds of test exist; anything else is forbidden.**
-   **(a) One use case = one unit test**, `*.use-case.spec.ts` beside it — all 343 have one, and
+   **(a) One use case = one unit test**, `*.use-case.spec.ts` beside it — every one of them has one, and
    `tests/architecture/use-case-unit-tests.test.ts` fails the build for any use case that does not.
    **(b) Architecture guards** in `tests/architecture/*.test.ts`.
    Never add an integration/e2e suite, a browser driver, a frontend or contracts test, a test for a

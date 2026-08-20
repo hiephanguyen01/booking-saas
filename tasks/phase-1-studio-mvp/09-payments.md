@@ -29,4 +29,5 @@ Plug-in payment architecture with SePay live and a mock gateway for local develo
 - `pnpm test`
 - `pnpm --filter=@booking/dashboard typecheck`
 - Run one SePay sandbox payment and verify `held → dispute_window → released → payout` using the
-  runbook. Automated tests are intentionally prohibited by ADR 0005.
+  runbook. Beyond the unit test beside each use case, automated tests are prohibited by
+  [ADR 0009](../../docs/decisions/0009-limited-tests-policy.md).
