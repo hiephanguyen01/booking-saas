@@ -42,6 +42,14 @@ export interface FakeTenantDbOptions {
    * assertion on the result can tell the two orderings apart.
    */
   readonly onOpen?: (tenantId: string) => void;
+  /**
+   * Called as `forTenant` returns, whether the callback resolved or threw. Pair
+   * it with `onOpen` when the test cares that work happened AFTER the
+   * transaction closed — invalidating a cache inside the transaction lets a
+   * concurrent request refill it with the state this write has not committed
+   * yet, and only the ordering shows the difference.
+   */
+  readonly onClose?: (tenantId: string) => void;
 }
 
 export function fakeTenantDb(options: FakeTenantDbOptions = {}): FakeTenantDb {
@@ -52,7 +60,7 @@ export function fakeTenantDb(options: FakeTenantDbOptions = {}): FakeTenantDb {
     forTenant<T>(tenantId: string, fn: (transaction: PrismaTx) => Promise<T>): Promise<T> {
       openedFor.push(tenantId);
       options.onOpen?.(tenantId);
-      return fn(tx);
+      return fn(tx).finally(() => options.onClose?.(tenantId));
     },
     forCurrentTenant<T>(fn: (transaction: PrismaTx) => Promise<T>): Promise<T> {
       return fn(tx);
