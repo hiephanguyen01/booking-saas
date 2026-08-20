@@ -80,7 +80,7 @@ Applicant documents are allowed to stay under the applicant prefix after the Par
 
 Existing-partner document uploads use the partner-scoped prefix. `UpdatePartnerDocumentsUseCase` accepts only keys under the current `partnerId` prefix.
 
-Download authorization never trusts a prefix alone. The requested object must also be referenced by the target Partner's canonical document fields.
+Download authorization never trusts a prefix alone. The object must also be referenced by the target Partner's canonical document fields.
 
 ## Canonical `businessInfo` fields
 
@@ -118,11 +118,22 @@ No Prisma schema migration is required because `businessInfo` is already JSONB.
 
 Add a dedicated private partner-document upload contract rather than reusing `presignUploadInputSchema`, because a private grant has different security requirements and must not expose `publicUrl`.
 
+Introduce one canonical document MIME schema and derive the corresponding client accept list from it:
+
 ```ts
+export const partnerDocumentContentTypeSchema = z.enum([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+]);
+
+export const PARTNER_DOCUMENT_UPLOAD_ACCEPT = partnerDocumentContentTypeSchema.options;
 export const MAX_PARTNER_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024;
 
 export const partnerDocumentUploadInputSchema = z.object({
-  contentType: photoUploadContentTypeSchema,
+  contentType: partnerDocumentContentTypeSchema,
   sizeBytes: z.number().int().min(1).max(MAX_PARTNER_DOCUMENT_SIZE_BYTES),
 });
 
@@ -131,13 +142,13 @@ export const privateDocumentUploadResponseSchema = z.object({
   key: z.string().min(1),
   expiresInSec: z.number().int().positive(),
   requiredHeaders: z.object({
-    'content-type': photoUploadContentTypeSchema,
+    'content-type': partnerDocumentContentTypeSchema,
     'if-none-match': z.literal('*'),
   }),
 });
 ```
 
-`photoUploadContentTypeSchema` is the existing photo/image allowlist without favicon-only ICO types. The client sends `sizeBytes = file.size` and the API independently rejects anything above 5 MiB.
+The allowed formats intentionally match the existing normal photo formats and exclude favicon-only ICO types. The client sends `sizeBytes = file.size`, and the API independently rejects anything above 5 MiB.
 
 The browser cannot set `Content-Length` directly; the browser/network stack computes it from the request body. The grant therefore returns only headers the browser must explicitly provide.
 
@@ -223,27 +234,44 @@ Authorization:
 - partner self-service: `partner.profile.manage`;
 - tenant review: `tenant.partners.read` and normal tenant scoping/RLS.
 
-Each endpoint loads the Partner record, collects the canonical private document keys actually referenced by that record, and returns short-lived download grants produced by `createPrivatePresignedDownload()`.
+Each endpoint loads the Partner record, collects only documents actually referenced by that record, and returns read descriptors.
 
-A response item carries a stable document kind plus the temporary read URL:
+Use an explicit tagged union so private keys are never confused with legacy public URLs:
 
 ```ts
-{
-  kind:
-    | 'identity_card_front'
-    | 'identity_card_back'
-    | 'business_license_front'
-    | 'business_license_back'
-    | 'license_document';
-  key: string;
-  downloadUrl: string;
-  expiresInSec: number;
-}
+type PartnerDocumentReadItem =
+  | {
+      storage: 'private';
+      kind: PartnerDocumentKind;
+      key: string;
+      downloadUrl: string;
+      expiresInSec: number;
+    }
+  | {
+      storage: 'legacy_public';
+      kind: PartnerDocumentKind;
+      url: string;
+    };
 ```
 
-The endpoints may also return legacy public document entries during the compatibility period, clearly marked as `storage: 'legacy_public'`, so existing records remain reviewable while migration is pending. New private entries are marked `storage: 'private'`.
+`PartnerDocumentKind` is:
+
+```ts
+type PartnerDocumentKind =
+  | 'identity_card_front'
+  | 'identity_card_back'
+  | 'business_license_front'
+  | 'business_license_back'
+  | 'license_document';
+```
+
+For `storage: 'private'`, `downloadUrl` comes from `createPrivatePresignedDownload()`. Legacy public entries exist only during the compatibility period.
 
 Private keys must never be resolved by a generic unauthenticated storage endpoint.
+
+### Public API invariant
+
+`PublicPartnerProfileResponse` remains unchanged and must not expose `businessInfo`, private object keys, or private download grants. Any future public partner response must preserve this invariant.
 
 ## Attach validation
 
@@ -263,7 +291,7 @@ isPartnerDocumentKey(partnerId, key)
 
 It keeps `logoUrl` as a public URL but does not accept new sensitive-document URLs.
 
-The download-list use case resolves only keys already referenced by the Partner record. A caller cannot supply an arbitrary private key and obtain a signed GET URL.
+The document-read use cases resolve only keys already referenced by the Partner record. A caller cannot supply an arbitrary private key and obtain a signed GET URL.
 
 ## Frontend/BFF changes
 
@@ -327,11 +355,12 @@ If rows exist, use an idempotent administrative migration with a dry-run mode:
 1. identify only URLs under the configured BookingOS public storage/CDN origin; never fetch arbitrary external URLs;
 2. resolve the source object key and verify it is an allowed image object;
 3. reject/flag objects above the new 5 MiB limit for manual handling;
-4. copy the object into `S3_PRIVATE_BUCKET` under a deterministic partner legacy prefix;
+4. copy the object into `S3_PRIVATE_BUCKET` under a deterministic `partner-documents/legacy/<partnerId>/...` destination;
 5. update that Partner's `businessInfo` to the canonical `...Key` fields inside the normal tenant-scoped DB boundary;
 6. only after the DB update succeeds, delete the old public object;
 7. make reruns safe when a destination copy or DB update already exists;
-8. report every migrated, skipped, oversized, missing, and failed object without logging document bytes or sensitive query data.
+8. if source deletion fails after the DB update, record the migration as incomplete and keep retrying deletion until the public object is gone;
+9. report every migrated, skipped, oversized, missing, and failed object without logging document bytes or sensitive query data.
 
 The compatibility reader stays in place for one release after successful migration so rollback does not make historical records unreadable. New writes remain key-only throughout.
 
@@ -391,8 +420,9 @@ Required acceptance cases:
 11. partner self-service cannot attach a key from another partner prefix;
 12. partner self-service can upload, attach, and read its own private document;
 13. public partner-logo upload remains unchanged;
-14. legacy URL fields remain readable by authorized review UI during the compatibility period;
-15. normal CI passes on the final source-only head after any temporary verification workflow is removed.
+14. public partner-profile endpoints expose neither private keys nor private download grants;
+15. legacy URL fields remain readable by authorized review UI during the compatibility period;
+16. normal CI passes on the final source-only head after any temporary verification workflow is removed.
 
 ## Rollout and completion criteria
 
