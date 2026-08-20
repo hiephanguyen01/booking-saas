@@ -90,11 +90,7 @@ apps/api/src/modules/listing/application/use-cases/get-public-quote.use-case.ts
 apps/api/src/modules/listing/application/use-cases/list-partner-listing-feed.use-case.ts
 apps/api/src/modules/listing/application/use-cases/list-partner-pricing-rules.use-case.ts
 apps/api/src/modules/listing/application/use-cases/revisions/approve-listing-revision.use-case.ts
-apps/api/src/modules/listing/application/use-cases/revisions/discard-listing-revision.use-case.ts
 apps/api/src/modules/listing/application/use-cases/revisions/get-listing-group-pending-changes.use-case.ts
-apps/api/src/modules/listing/application/use-cases/revisions/get-listing-revision.use-case.ts
-apps/api/src/modules/listing/application/use-cases/revisions/list-pending-revisions.use-case.ts
-apps/api/src/modules/listing/application/use-cases/revisions/reject-listing-revision.use-case.ts
 apps/api/src/modules/listing/application/use-cases/save-listing-edit.use-case.ts
 apps/api/src/modules/listing/application/use-cases/save-listing-group-edit.use-case.ts
 apps/api/src/modules/notification/application/use-cases/count-unread-notifications.use-case.ts
