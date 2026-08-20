@@ -28,10 +28,10 @@ jobs:
       # constructs the class over fake ports.
       - name: Tests
         run: pnpm test
-      - name: API typecheck
+      - name: API lint and typecheck
         # Run through Turbo so workspace dependencies such as contracts are
         # built once and reused by the frontend checks below.
-        run: pnpm turbo run typecheck --filter=@booking/api
+        run: pnpm turbo run lint typecheck --filter=@booking/api
       - name: Frontend lint and typecheck
         run: pnpm turbo run lint typecheck --filter=@booking/storefront --filter=@booking/dashboard
       - name: Frontend production builds
