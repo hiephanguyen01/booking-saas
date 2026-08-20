@@ -9,17 +9,4 @@
 apps/api/src/modules/catalog/application/use-cases/list-nearby-public-listings.use-case.ts
 apps/api/src/modules/catalog/application/use-cases/search-public-catalog.use-case.ts
 apps/api/src/modules/catalog/application/use-cases/update-listing-type.use-case.ts
-apps/api/src/modules/legal/application/use-cases/get-public-legal-document.use-case.ts
-apps/api/src/modules/legal/application/use-cases/get-tenant-legal.use-case.ts
-apps/api/src/modules/legal/application/use-cases/list-my-acceptances.use-case.ts
-apps/api/src/modules/legal/application/use-cases/list-partner-acceptances.use-case.ts
-apps/api/src/modules/legal/application/use-cases/list-pending-acceptances.use-case.ts
-apps/api/src/modules/legal/application/use-cases/list-public-legal-documents.use-case.ts
-apps/api/src/modules/legal/application/use-cases/publish-legal-document.use-case.ts
-apps/api/src/modules/legal/application/use-cases/record-legal-acceptance.use-case.ts
-apps/api/src/modules/legal/application/use-cases/record-registration-consent.use-case.ts
-apps/api/src/modules/legal/application/use-cases/resolve-legal-caller-scope.use-case.ts
-apps/api/src/modules/legal/application/use-cases/save-legal-draft.use-case.ts
-apps/api/src/modules/legal/application/use-cases/seed-tenant-legal-drafts.use-case.ts
-apps/api/src/modules/legal/application/use-cases/withdraw-legal-document.use-case.ts
 apps/api/src/modules/scheduling/application/use-cases/get-availability.use-case.ts
