@@ -2,56 +2,31 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make tenant-owned MoMo checkout/refund production-safe with DB-first initiation, provider idempotency, correct IPN/query handling, safe refund uncertainty recovery, and no checkout behavior changes for SePay/PayOS/ZaloPay/mock.
+**Goal:** Make tenant-owned MoMo checkout/refund production-safe with DB-first initiation, correct idempotency/IPN/query handling, and safe refund recovery while preserving SePay/PayOS/ZaloPay/mock checkout behavior.
 
-**Architecture:** MoMo opts into an optional `persist_first` checkout capability while all existing gateways default to provider-first. The payment row and stable MoMo order reference are committed before the create-payment network call, MoMo IPN remains the primary source of truth, reconciliation repairs lost/uncertain payment state, and refund attempts use stable per-attempt identities with query-before-retry. Existing RLS, outbox, repository CAS transitions, ledger/settlement behavior, and tenant credential storage remain intact.
+**Architecture:** MoMo alone opts into an optional `persist_first` checkout capability. BookingOS commits a pending payment + stable MoMo order reference before the provider create call, keeps IPN as primary truth, uses reconciliation for lost/uncertain payment state, and uses stable per-attempt refund identities plus refund-query before retry/manual fallback.
 
-**Tech Stack:** Node.js >= 22.22.0, TypeScript, NestJS 11, Prisma/PostgreSQL + RLS/advisory locks, BullMQ outbox/reconciliation workers, React Router 8 dashboard, pnpm 10.13.1, MoMo AIOv2 REST APIs.
+**Tech Stack:** Node.js >= 22.22.0, TypeScript, NestJS 11, Prisma/PostgreSQL + RLS/advisory locks, BullMQ outbox/reconciliation, React Router 8 dashboard, pnpm 10.13.1, MoMo AIOv2 REST APIs.
 
 **Spec:** `docs/superpowers/specs/2026-08-21-momo-production-hardening-design.md`
 
 ## Global Constraints
 
-- Repository hard rule: **NO TEST FILES**. Do not add `*.spec.*`, `*.test.*`, e2e, Jest/Vitest/Playwright config, test scripts, or CI test steps.
-- Verification is static checks + running the application + MoMo sandbox/production UAT.
-- Backend flow remains `controller -> use-case -> repository-port -> repository`; do not add application service classes.
-- Exactly one exported `@Injectable XxxUseCase` with one public `execute()` per use-case file.
-- Tenant data must remain inside `TenantDbService.forTenant(tenantId, tx => ...)`; never hold an RLS transaction open across provider network calls.
+- **NO TEST FILES**: no `*.spec.*`, `*.test.*`, e2e, Jest/Vitest/Playwright config, test scripts, or CI test steps.
+- Verification = static checks + running the app + MoMo sandbox/production UAT.
+- Backend remains `controller -> use-case -> repository-port -> repository`; no application services.
+- Tenant data remains inside `TenantDbService.forTenant(...)`; never keep an RLS transaction open across provider I/O.
 - Cross-module side effects remain outbox events.
-- Money remains `bigint` VND; convert to `number` only after integer/range guards.
-- MoMo IPN, not browser redirect, confirms payment.
-- MoMo production base URL is `https://payment.momo.vn`; sandbox is `https://test-payment.momo.vn`.
-- MoMo create/query/refund calls use a network timeout of at least 30 seconds.
-- Create retries reuse the same MoMo `orderId` + `requestId`; payment/refund query requests use fresh `requestId` values so status can advance.
-- Existing SePay, PayOS, ZaloPay, and mock checkout lifecycle stays unchanged.
-- Prefer no schema migration. If implementation proves a new durable field is required, stop and revise the design before adding one.
+- Money remains `bigint` VND.
+- MoMo IPN/query, never browser redirect, establishes payment truth.
+- Create retries reuse the same MoMo `orderId/requestId`; payment/refund **query** calls use fresh request IDs.
+- MoMo create/query/refund use a 30-second timeout.
+- Existing SePay/PayOS/ZaloPay/mock checkout lifecycle remains provider-first.
+- No schema migration is planned. If a durable field becomes unavoidable, stop and revise the design first.
 
 ---
 
-## File Structure Map
-
-**Create**
-- `apps/api/src/modules/payments/infrastructure/gateways/momo-result-code.ts` — pure MoMo result-code classification shared by create/query/IPN/refund logic.
-
-**Modify**
-- `apps/api/src/modules/payments/domain/ports/payment-gateway.port.ts` — optional persist-first/reconciliation capabilities plus refund retry metadata.
-- `apps/api/src/modules/payments/domain/ports/payment-repository.port.ts` — pending-checkout state, checkout lock, destination persistence.
-- `apps/api/src/modules/payments/domain/entities/payment.entity.ts` — pending webhook event is an ignore/no-transition decision.
-- `apps/api/src/modules/payments/infrastructure/repositories/prisma-payment.repository.ts` — advisory lock, pending checkout without destination, destination update.
-- `apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts` — provider-first path preserved; MoMo persist-first path moved outside provider network transaction.
-- `apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.ts` — timeouts, current result mapping, production IPN URL guard, constant-time IPN verification, unique query request IDs, refund query/retry.
-- `apps/api/src/modules/payments/infrastructure/http/webhook.controller.ts` — MoMo 204/no-body acknowledgement.
-- `apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts` — apply `failed` only for gateways opting into terminal-failure reconciliation.
-- `apps/api/src/shared/outbox/outbox.service.ts` — optional `availableAt` for a durable delayed retry event; default behavior unchanged.
-- `apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.ts` — seed automatic refund attempt ordinal `0` in outbox payload.
-- `apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts` — handle pending and scheduled retry outcomes without premature manual fallback.
-- `apps/api/src/modules/payments/infrastructure/http/payments.module.ts` — pass refund attempt ordinal from outbox event to automatic-refund use case.
-- `apps/dashboard/app/features/tenant/components/settings/momo-gateway-card.tsx` — production HTTPS/IPN acknowledgement guidance.
-- Relevant payment/deployment docs only if existing prose becomes incorrect after code changes.
-
----
-
-### Task 1: Define MoMo-safe gateway contracts and result-code classification
+### Task 1: Add lifecycle/result contracts
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/domain/ports/payment-gateway.port.ts`
@@ -59,19 +34,16 @@
 - Create: `apps/api/src/modules/payments/infrastructure/gateways/momo-result-code.ts`
 
 **Interfaces:**
-- Produces: `CheckoutInitiation = 'provider_first' | 'persist_first'`.
-- Produces: optional `PaymentGatewayPort.checkoutInitiation` and `PaymentGatewayPort.reconcileFailedAsTerminal` capabilities.
-- Produces: `WebhookEvent` includes `pending`.
-- Produces: `RefundInput.attempt?: number`.
-- Produces: `RefundResult.pending?: boolean` and `RefundResult.retryAfterSec?: number` while preserving `supported` for all existing adapters.
-- Produces: `mapMomoPaymentResultCode(code)` and refund code helpers for Task 4/6.
+- Produces: optional checkout/reconciliation capabilities.
+- Produces: `WebhookEvent` with `pending`.
+- Produces: refund attempt/pending/retry metadata.
+- Produces: pure MoMo payment/refund result helpers.
 
-- [ ] **Step 1: Extend the gateway port without forcing existing gateway adapters to change behavior**
+- [ ] **Step 1: Extend `PaymentGatewayPort` with optional capabilities**
 
-Update the relevant declarations to this shape:
+Use these declarations:
 
 ```ts
-export type GatewayKey = 'sepay' | 'payos' | 'momo' | 'zalopay' | 'mock';
 export type CheckoutInitiation = 'provider_first' | 'persist_first';
 export type WebhookEvent = 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
 
@@ -80,71 +52,50 @@ export interface RefundInput {
   gatewayOrderRef: string;
   amountVnd: bigint;
   reason: string;
-  /** Provider-attempt ordinal; defaults to 0. Same ordinal must reuse the same provider request id. */
   attempt?: number;
 }
 
 export interface RefundResult {
-  /** false means a final provider/business outcome requires the existing manual workflow. */
   supported: boolean;
   refundId?: string;
-  /** true means provider state is not final; redeliver the same attempt identity. */
   pending?: boolean;
-  /** final retryable attempt; schedule a NEW attempt identity after this delay. */
   retryAfterSec?: number;
 }
 
 export interface PaymentGatewayPort {
   readonly key: GatewayKey;
-  /** Omitted means provider_first so existing adapters preserve behavior. */
   readonly checkoutInitiation?: CheckoutInitiation;
-  /** Omitted means reconciliation must not newly terminalize provider-reported `failed`. */
   readonly reconcileFailedAsTerminal?: boolean;
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   providerPaymentMethod(method: CustomerPaymentMethod): string;
   peekReference(rawBody: Buffer): string | null;
   verifyWebhook(rawBody: Buffer, headers: Record<string, string>): WebhookVerification;
   refund(input: RefundInput): Promise<RefundResult>;
-  queryPaymentStatus(gatewayTxnId: string): Promise<PaymentStatusResult>;
+  queryPaymentStatus(reference: string): Promise<PaymentStatusResult>;
 }
 ```
 
-- [ ] **Step 2: Make pending webhook notifications a no-op transition**
+Omitted capabilities mean current behavior, so existing adapters need no lifecycle change.
 
-In `Payment.decideWebhookTransition`, preserve refunded behavior and explicitly ignore pending:
+- [ ] **Step 2: Ignore pending webhook events in the payment aggregate**
+
+Change the first branch of `Payment.decideWebhookTransition` to:
 
 ```ts
 if (event === 'refunded' || event === 'pending') return { action: 'ignore' };
-if (event !== 'succeeded') {
-  return { action: 'terminal', to: event === 'expired' ? 'expired' : 'failed' };
-}
-return { action: 'try_succeed' };
 ```
 
-This prevents MoMo `1000`/`7000`/`7002` IPNs from being incorrectly marked failed.
+Keep the existing terminal/succeeded branches unchanged after it.
 
-- [ ] **Step 3: Add the pure MoMo result-code mapper**
-
-Create `momo-result-code.ts` with no Nest/Prisma dependencies:
+- [ ] **Step 3: Add `momo-result-code.ts`**
 
 ```ts
 import type { PaymentStatusResult } from '../../domain/ports/payment-gateway.port';
 
 const FINAL_PAYMENT_FAILURE_CODES = new Set([
-  98,
-  99,
-  1001,
-  1002,
-  1003,
-  1004,
-  1006,
-  1007,
-  1017,
-  1026,
-  2019,
-  4001,
-  4002,
-  4100,
+  98, 99,
+  1001, 1002, 1003, 1004, 1006, 1007, 1017, 1026,
+  2019, 4001, 4002, 4100,
 ]);
 
 export function mapMomoPaymentResultCode(
@@ -157,59 +108,38 @@ export function mapMomoPaymentResultCode(
   return 'pending';
 }
 
-export function isMomoRefundPending(code: number | undefined): boolean {
-  return code === 1000 || code === 7000 || code === 7002;
-}
+export const isMomoRefundPending = (code: number | undefined): boolean =>
+  code === 1000 || code === 7000 || code === 7002;
 
-export function isMomoRefundRetryableFailure(code: number | undefined): boolean {
-  return code === 1080;
-}
+export const isMomoRefundRetryableFailure = (code: number | undefined): boolean => code === 1080;
 
-export function isMomoRefundManualFailure(code: number | undefined): boolean {
-  return code === 1081 || code === 1088;
-}
+export const isMomoRefundManualFailure = (code: number | undefined): boolean =>
+  code === 1081 || code === 1088;
 ```
 
-Unknown/non-final integration/system codes deliberately stay non-terminal instead of being collapsed to expired/manual.
-
-- [ ] **Step 4: Run compile/static policy checks for this contract task**
-
-Run:
+- [ ] **Step 4: Verify and commit**
 
 ```bash
 pnpm check:no-tests
 pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api lint
-```
-
-Expected: all commands exit 0; no existing adapter is forced to opt into a new lifecycle.
-
-- [ ] **Step 5: Commit Task 1**
-
-```bash
-git add -- apps/api/src/modules/payments/domain/ports/payment-gateway.port.ts \
-  apps/api/src/modules/payments/domain/entities/payment.entity.ts \
-  apps/api/src/modules/payments/infrastructure/gateways/momo-result-code.ts
+git add -- apps/api/src/modules/payments/domain/ports/payment-gateway.port.ts apps/api/src/modules/payments/domain/entities/payment.entity.ts apps/api/src/modules/payments/infrastructure/gateways/momo-result-code.ts
 git commit -m "refactor(payments): model MoMo lifecycle capabilities"
 ```
 
 ---
 
-### Task 2: Add DB-first checkout repository primitives
+### Task 2: Add persist-first payment repository primitives
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/domain/ports/payment-repository.port.ts`
 - Modify: `apps/api/src/modules/payments/infrastructure/repositories/prisma-payment.repository.ts`
 
 **Interfaces:**
-- Produces: `PendingCheckoutRecord` with nullable destination and provider reference.
-- Produces: `IPaymentRepository.lockCheckout(tx, bookingId, paymentMethod)`.
-- Produces: `IPaymentRepository.saveCheckoutDestination(tx, paymentId, destination)`.
-- Task 3 consumes all three.
+- Produces: `PendingCheckoutRecord`.
+- Produces: `lockCheckout(...)` and `saveCheckoutDestination(...)`.
 
-- [ ] **Step 1: Replace the old destination-only pending-checkout return type**
-
-Add:
+- [ ] **Step 1: Extend the repository port**
 
 ```ts
 export interface PendingCheckoutRecord {
@@ -217,11 +147,7 @@ export interface PendingCheckoutRecord {
   gatewayOrderRef: string | null;
   destination: CheckoutDestination | null;
 }
-```
 
-Change the repository contract to:
-
-```ts
 lockCheckout(tx: PrismaTx, bookingId: string, paymentMethod: string): Promise<void>;
 findPendingCheckout(
   tx: PrismaTx,
@@ -235,9 +161,7 @@ saveCheckoutDestination(
 ): Promise<void>;
 ```
 
-- [ ] **Step 2: Implement the transaction-level checkout advisory lock**
-
-In `PrismaPaymentRepository`:
+- [ ] **Step 2: Implement the checkout advisory lock**
 
 ```ts
 async lockCheckout(tx: PrismaTx, bookingId: string, paymentMethod: string): Promise<void> {
@@ -247,43 +171,23 @@ async lockCheckout(tx: PrismaTx, bookingId: string, paymentMethod: string): Prom
 }
 ```
 
-Use the existing refund-repository advisory-lock convention; do not add application-level mutexes.
+This follows the existing `PrismaRefundRepository.lockForBooking` pattern.
 
-- [ ] **Step 3: Return pending rows even when provider destination is absent**
+- [ ] **Step 3: Return pending rows even without a destination**
 
-Keep the current destination parser, but return `null` destination instead of dropping the row:
+Select `id`, `gatewayOrderRef`, and `gatewayPayload`. Keep the current destination parsing logic, but return:
 
 ```ts
-async findPendingCheckout(
-  tx: PrismaTx,
-  bookingId: string,
-  paymentMethod: string,
-): Promise<PendingCheckoutRecord | null> {
-  const payment = await tx.payment.findFirst({
-    where: { bookingId, status: 'pending', paymentMethod },
-    select: { id: true, gatewayOrderRef: true, gatewayPayload: true },
-    orderBy: { createdAt: 'desc' },
-  });
-  if (!payment) return null;
-
-  const payload = payment.gatewayPayload;
-  const candidate =
-    payload && typeof payload === 'object' && !Array.isArray(payload) && 'destination' in payload
-      ? payload.destination
-      : payload && typeof payload === 'object' && !Array.isArray(payload) && 'paymentUrl' in payload
-        ? { type: 'redirect', paymentUrl: payload.paymentUrl }
-        : null;
-  const parsed = checkoutDestinationSchema.safeParse(candidate);
-
-  return {
-    id: payment.id,
-    gatewayOrderRef: payment.gatewayOrderRef,
-    destination: parsed.success ? parsed.data : null,
-  };
-}
+return {
+  id: payment.id,
+  gatewayOrderRef: payment.gatewayOrderRef,
+  destination: parsed.success ? parsed.data : null,
+};
 ```
 
-- [ ] **Step 4: Add a guarded handoff persistence method**
+Do not return `null` merely because `gatewayPayload.destination` is absent.
+
+- [ ] **Step 4: Persist the provider handoff in a short guarded transaction**
 
 ```ts
 async saveCheckoutDestination(
@@ -293,49 +197,35 @@ async saveCheckoutDestination(
 ): Promise<void> {
   await tx.payment.updateMany({
     where: { id: paymentId, status: 'pending' },
-    data: {
-      gatewayPayload: { destination } as Prisma.InputJsonObject,
-    },
+    data: { gatewayPayload: { destination } as Prisma.InputJsonObject },
   });
 }
 ```
 
-The caller may still return the just-created destination even if a concurrent terminal transition makes the guarded write a no-op.
-
-- [ ] **Step 5: Verify repository types**
-
-Run:
+- [ ] **Step 5: Verify and commit**
 
 ```bash
 pnpm check:no-tests
 pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api lint
-```
-
-Expected: exit 0.
-
-- [ ] **Step 6: Commit Task 2**
-
-```bash
-git add -- apps/api/src/modules/payments/domain/ports/payment-repository.port.ts \
-  apps/api/src/modules/payments/infrastructure/repositories/prisma-payment.repository.ts
+git add -- apps/api/src/modules/payments/domain/ports/payment-repository.port.ts apps/api/src/modules/payments/infrastructure/repositories/prisma-payment.repository.ts
 git commit -m "feat(payments): add persist-first checkout repository flow"
 ```
 
 ---
 
-### Task 3: Refactor CheckoutUseCase so only MoMo is DB-first
+### Task 3: Make `CheckoutUseCase` DB-first only for MoMo
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts`
 
 **Interfaces:**
-- Consumes: `gateway.checkoutInitiation`, checkout advisory lock, nullable `PendingCheckoutRecord`, `saveCheckoutDestination`.
-- Produces: existing `CheckoutResponse`; no public controller/contract change.
+- Consumes Task 1 capability + Task 2 repository methods.
+- Public output remains `CheckoutResponse`.
 
-- [ ] **Step 1: Keep the provider-first path semantically identical**
+- [ ] **Step 1: Preserve provider-first behavior**
 
-Inside the tenant transaction, resolve booking/config/gateway as today. Treat omitted capability as provider-first:
+Inside the tenant transaction:
 
 ```ts
 const initiation = gateway.checkoutInitiation ?? 'provider_first';
@@ -343,56 +233,57 @@ const existing = await this.payments.findPendingCheckout(tx, bookingId, provider
 
 if (initiation === 'provider_first') {
   if (existing?.destination) {
-    return { kind: 'response' as const, response: { paymentId: existing.id, destination: existing.destination } };
+    return {
+      kind: 'response' as const,
+      response: { paymentId: existing.id, destination: existing.destination },
+    };
   }
-  // Keep the current provider create -> payment create sequence for existing gateways.
+  // Keep the current gateway.createPayment(...) -> payments.create(...) sequence here.
 }
 ```
 
-Do not move SePay/PayOS/ZaloPay/mock to DB-first in this task.
+Do not move SePay/PayOS/ZaloPay/mock network behavior.
 
-- [ ] **Step 2: For persist-first, lock before the pending lookup/create decision**
+- [ ] **Step 2: Serialize and create/reuse a persist-first row**
 
-For the MoMo capability branch:
+For `persist_first`:
 
 ```ts
 await this.payments.lockCheckout(tx, bookingId, providerPaymentMethod);
 const pending = await this.payments.findPendingCheckout(tx, bookingId, providerPaymentMethod);
+
 if (pending?.destination) {
-  return { kind: 'response' as const, response: { paymentId: pending.id, destination: pending.destination } };
+  return {
+    kind: 'response' as const,
+    response: { paymentId: pending.id, destination: pending.destination },
+  };
 }
-```
 
-The lookup must happen after lock acquisition so two concurrent requests cannot both pass the missing-row check.
-
-- [ ] **Step 3: Create or reuse the stable MoMo row before the provider call**
-
-Generate a new reference only when no pending row exists:
-
-```ts
-const orderRef = pending?.gatewayOrderRef ?? `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
 if (pending && !pending.gatewayOrderRef) {
   throw new Error('Pending persist-first payment is missing gatewayOrderRef');
 }
 
-const payment = pending
-  ? { id: pending.id }
-  : await this.payments.create(tx, tenant.id, {
-      bookingId,
-      gateway: gateway.key,
-      kind,
-      amount,
-      gatewayOrderRef: orderRef,
-      paymentMethod: providerPaymentMethod,
-      idempotencyKey: `checkout:${bookingId}:${paymentMethod}:${orderRef}`,
-    });
+const orderRef =
+  pending?.gatewayOrderRef ?? `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
+
+const paymentId = pending
+  ? pending.id
+  : (
+      await this.payments.create(tx, tenant.id, {
+        bookingId,
+        gateway: gateway.key,
+        kind,
+        amount,
+        gatewayOrderRef: orderRef,
+        paymentMethod: providerPaymentMethod,
+        idempotencyKey: `checkout:${bookingId}:${paymentMethod}:${orderRef}`,
+      })
+    ).id;
 ```
 
-Return a private discriminated object from the transaction containing the gateway instance, payment id, orderRef, amount, description, URLs, expiration, and customer method.
+Return a private discriminated object containing `gateway`, `tenantId`, `paymentId`, `orderRef`, amount, description, URLs, expiration, and selected payment method.
 
-- [ ] **Step 4: Call MoMo only after the first tenant transaction commits**
-
-After `forTenant(...)` returns:
+- [ ] **Step 3: Call MoMo after the first transaction commits**
 
 ```ts
 if (prepared.kind === 'response') return prepared.response;
@@ -415,80 +306,48 @@ await this.tenantDb.forTenant(prepared.tenantId, (tx) =>
 return { paymentId: prepared.paymentId, destination: created.destination };
 ```
 
-Do not catch-and-generate a new order reference on provider timeout/error. Let the request fail; the next storefront retry finds the same pending row and reuses the same orderRef.
+On timeout/error, propagate the error. Never mint a replacement orderRef; the next checkout request reuses the pending row.
 
-- [ ] **Step 5: Add safe operational logging around the persist-first provider call**
+- [ ] **Step 4: Add identifier-only logging for persist-first create failures**
 
-Use Nest `Logger` in `CheckoutUseCase` and log identifiers only:
+Add `Logger` and log only `tenantId`, `paymentId`, `gateway`, `gatewayOrderRef`, and error message. Do not log credentials/signatures.
 
-```ts
-private readonly logger = new Logger(CheckoutUseCase.name);
-```
-
-On provider failure:
-
-```ts
-this.logger.warn({
-  event: 'payment.persist_first_create_failed',
-  tenantId: prepared.tenantId,
-  paymentId: prepared.paymentId,
-  gateway: prepared.gateway.key,
-  gatewayOrderRef: prepared.orderRef,
-  error: error instanceof Error ? error.message : String(error),
-});
-```
-
-Never log credentials/signatures.
-
-- [ ] **Step 6: Verify checkout compilation and policy**
-
-Run:
+- [ ] **Step 5: Verify and commit**
 
 ```bash
 pnpm check:no-tests
+pnpm check:module-cycles
 pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api lint
-pnpm check:module-cycles
-```
-
-Expected: exit 0.
-
-- [ ] **Step 7: Commit Task 3**
-
-```bash
 git add -- apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts
 git commit -m "feat(payments): persist MoMo checkout before provider create"
 ```
 
 ---
 
-### Task 4: Harden MoMo create/query/IPN behavior
+### Task 4: Harden MoMo create/query/IPN
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.ts`
-- Uses: `apps/api/src/modules/payments/infrastructure/gateways/momo-result-code.ts`
 
 **Interfaces:**
 - Produces: `checkoutInitiation = 'persist_first'`.
 - Produces: `reconcileFailedAsTerminal = true`.
-- Produces: safe `createPayment`, `verifyWebhook`, `queryPaymentStatus` semantics.
+- Uses Task 1 result helpers.
 
-- [ ] **Step 1: Add capabilities and cryptographic helpers**
-
-Use:
+- [ ] **Step 1: Add capabilities, fresh query IDs, and constant-time signature comparison**
 
 ```ts
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { mapMomoPaymentResultCode } from './momo-result-code';
 
-readonly key: GatewayKey = 'momo';
 readonly checkoutInitiation = 'persist_first' as const;
 readonly reconcileFailedAsTerminal = true;
-```
 
-Add constant-time comparison:
+function queryRequestId(prefix: 'PQ' | 'RQ'): string {
+  return `${prefix}${randomUUID().replaceAll('-', '')}`.slice(0, 50);
+}
 
-```ts
 function sameHex(expected: string, actual: string): boolean {
   if (!/^[0-9a-f]+$/i.test(expected) || !/^[0-9a-f]+$/i.test(actual)) return false;
   const left = Buffer.from(expected, 'hex');
@@ -497,55 +356,23 @@ function sameHex(expected: string, actual: string): boolean {
 }
 ```
 
-- [ ] **Step 2: Make MoMo query request IDs fresh per query**
+- [ ] **Step 2: Reject an invalid production callback origin**
 
-Add a <=50-character request-id helper:
+`ipnUrl()` must parse `PUBLIC_API_URL` and, in production, reject non-HTTPS plus `localhost`, `127.0.0.1`, and `[::1]`. Return `${origin}/webhooks/momo` with trailing slash normalized.
 
-```ts
-function queryRequestId(prefix: 'PQ' | 'RQ'): string {
-  return `${prefix}${randomUUID().replaceAll('-', '')}`.slice(0, 50);
-}
-```
+- [ ] **Step 3: Harden create-payment**
 
-`queryPaymentStatus(reference)` must use `queryRequestId('PQ')`, not a deterministic hash of `reference`. The stable identifier being queried is still `orderId = reference`; only the query request's own id is fresh.
-
-- [ ] **Step 3: Enforce a valid public HTTPS IPN URL in production**
-
-Implement production validation in `ipnUrl()`:
-
-```ts
-private ipnUrl(): string {
-  const rawOrigin = process.env.PUBLIC_API_URL ?? 'http://localhost:3000';
-  const origin = new URL(rawOrigin);
-  if (this.creds.environment === 'production') {
-    const localHostnames = new Set(['localhost', '127.0.0.1', '[::1]']);
-    if (origin.protocol !== 'https:' || localHostnames.has(origin.hostname)) {
-      throw new Error('MoMo production requires PUBLIC_API_URL to be a public HTTPS origin');
-    }
-  }
-  return `${origin.toString().replace(/\/+$/, '')}/webhooks/momo`;
-}
-```
-
-A malformed `PUBLIC_API_URL` should fail before sending a production payment request.
-
-- [ ] **Step 4: Add 30-second timeout and explicit HTTP handling to create**
-
-The create fetch must include:
+Keep `captureWallet`, `autoCapture: true`, and `orderId = requestId = input.orderCode`. Add:
 
 ```ts
 signal: AbortSignal.timeout(30_000),
 ```
 
-Check `res.ok` before trusting JSON. Keep `orderId = requestId = input.orderCode`. For any non-success/uncertain response, throw without changing the order reference; Task 3 guarantees retry uses the same pending payment/reference.
+Check `res.ok`. A non-success/uncertain result throws without changing the stable reference. Sandbox validation in Task 8 decides whether the undocumented `orderExpireTime` field stays.
 
-Keep `captureWallet` and `autoCapture: true`. Do not make correctness depend on `orderExpireTime`; retain it only if sandbox accepts it during Task 8 UAT.
+- [ ] **Step 4: Harden IPN parsing and verification**
 
-- [ ] **Step 5: Harden IPN parsing and verification**
-
-`verifyWebhook` must never throw on malformed JSON. Return a safe invalid verification object when parsing fails.
-
-For valid JSON, build the documented raw signature exactly as today, then require all of:
+Malformed JSON must return an invalid verification object instead of throwing. For parsed input require:
 
 ```ts
 const signatureValid = sameHex(this.sign(raw), s('signature'));
@@ -562,23 +389,11 @@ const event: WebhookEvent =
         : 'pending';
 ```
 
-Return `valid: signatureValid && partnerValid && referenceValid`. Amount remains checked against the stored payment by the existing `HandleWebhookUseCase`/`Payment.assertAmountCovers` path.
+Return `valid: signatureValid && partnerValid && referenceValid`. Keep amount in `bigint`; the existing use case compares it with the stored payment amount.
 
-- [ ] **Step 6: Fix payment query status mapping and timeout**
+- [ ] **Step 5: Fix payment query**
 
-Use a fresh query request id and 30-second timeout:
-
-```ts
-const requestId = queryRequestId('PQ');
-const res = await fetch(`${this.base}/v2/gateway/api/query`, {
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ partnerCode, requestId, orderId: reference, lang: 'vi', signature }),
-  signal: AbortSignal.timeout(30_000),
-});
-```
-
-Return:
+Use `queryRequestId('PQ')`, retain `orderId = reference`, add 30-second timeout, and return:
 
 ```ts
 return {
@@ -588,50 +403,29 @@ return {
 };
 ```
 
-Do not map every unknown non-zero code to expired.
+A query request ID must be fresh each call so status can advance; only the queried `orderId` stays stable.
 
-- [ ] **Step 7: Verify adapter compilation**
-
-Run:
+- [ ] **Step 6: Verify and commit**
 
 ```bash
 pnpm check:no-tests
 pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api lint
-```
-
-Expected: exit 0.
-
-- [ ] **Step 8: Commit Task 4**
-
-```bash
-git add -- apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.ts \
-  apps/api/src/modules/payments/infrastructure/gateways/momo-result-code.ts
+git add -- apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.ts
 git commit -m "fix(payments): harden MoMo create query and IPN"
 ```
 
 ---
 
-### Task 5: Return MoMo 204 and reconcile final MoMo failures safely
+### Task 5: Return MoMo 204 and reconcile MoMo final failures
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/infrastructure/http/webhook.controller.ts`
 - Modify: `apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts`
 
-**Interfaces:**
-- Consumes: `gateway.reconcileFailedAsTerminal`.
-- Produces: `/webhooks/momo` HTTP 204 with no body; other gateway acknowledgement behavior unchanged.
+- [ ] **Step 1: Return HTTP 204/no body for MoMo only**
 
-- [ ] **Step 1: Make the webhook controller able to set a per-gateway status**
-
-Import Express response and Nest response decorator:
-
-```ts
-import { Controller, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
-import type { Request, Response } from 'express';
-```
-
-Use passthrough response injection:
+Inject passthrough Express response:
 
 ```ts
 @Res({ passthrough: true }) res: Response,
@@ -649,13 +443,11 @@ return gateway === 'zalopay'
   : { success: true };
 ```
 
-Change the return type to `Promise<WebhookAcknowledgementResponse | void>`.
+Use return type `Promise<WebhookAcknowledgementResponse | void>` and add Swagger `ApiNoContentResponse`. Preserve existing 200 payloads for other gateways.
 
-Add Swagger `ApiNoContentResponse` for MoMo while retaining existing 200 response documentation for generic/ZaloPay responses.
+- [ ] **Step 2: Let only opted-in gateways terminalize queried `failed`**
 
-- [ ] **Step 2: Apply queried `failed` only for gateways that explicitly opt in**
-
-Inside reconciliation's tenant transaction, before the succeeded branch:
+Inside reconciliation, after `queryPaymentStatus` and before succeeded handling:
 
 ```ts
 if (status.status === 'expired') {
@@ -669,32 +461,22 @@ if (status.status === 'failed' && gateway.reconcileFailedAsTerminal === true) {
 if (status.status !== 'succeeded') return false;
 ```
 
-Because only MoMo opts in in this change, SePay/PayOS/ZaloPay/mock reconciliation behavior remains unchanged.
+Only MoMo opts in in this branch; existing gateway reconciliation semantics stay unchanged.
 
-- [ ] **Step 3: Verify controller/worker compilation**
-
-Run:
+- [ ] **Step 3: Verify and commit**
 
 ```bash
 pnpm check:no-tests
+pnpm check:module-cycles
 pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api lint
-pnpm check:module-cycles
-```
-
-Expected: exit 0.
-
-- [ ] **Step 4: Commit Task 5**
-
-```bash
-git add -- apps/api/src/modules/payments/infrastructure/http/webhook.controller.ts \
-  apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts
+git add -- apps/api/src/modules/payments/infrastructure/http/webhook.controller.ts apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts
 git commit -m "fix(payments): acknowledge and reconcile MoMo correctly"
 ```
 
 ---
 
-### Task 6: Make MoMo refunds query-before-retry and schedule one safe 1080 retry
+### Task 6: Make MoMo refund uncertainty durable and retry-safe
 
 **Files:**
 - Modify: `apps/api/src/shared/outbox/outbox.service.ts`
@@ -703,14 +485,7 @@ git commit -m "fix(payments): acknowledge and reconcile MoMo correctly"
 - Modify: `apps/api/src/modules/payments/infrastructure/http/payments.module.ts`
 - Modify: `apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.ts`
 
-**Interfaces:**
-- Consumes: `RefundInput.attempt`, `RefundResult.pending`, `RefundResult.retryAfterSec`.
-- Produces: optional `OutboxService.emit(... availableAt)` scheduling used only for MoMo retryable refund finality.
-- Preserves: other gateways' existing refund behavior because all new fields are optional.
-
-- [ ] **Step 1: Allow outbox events to be created with a future `availableAt`**
-
-Extend the optional emit contract:
+- [ ] **Step 1: Allow an outbox event to be scheduled**
 
 ```ts
 export interface EmitOptions {
@@ -721,92 +496,51 @@ export interface EmitOptions {
 }
 ```
 
-Persist only when provided:
+Persist:
 
 ```ts
-data: {
-  tenantId: options.tenantId,
-  eventType: options.eventType,
-  payload: options.payload,
-  ...(options.availableAt ? { availableAt: options.availableAt } : {}),
-},
+...(options.availableAt ? { availableAt: options.availableAt } : {}),
 ```
 
-All existing callers keep current `now()` default behavior.
+Existing callers remain immediate because the field is optional.
 
-- [ ] **Step 2: Put automatic refund attempt ordinal in the durable event payload**
+- [ ] **Step 2: Put automatic refund attempt ordinal in the event**
 
-In `ExecuteRefundUseCase`, when emitting `refund.execution_requested`, include:
+When `ExecuteRefundUseCase` emits `refund.execution_requested`, include `attempt: 0` in that payload. Keep manual `refund.requested` payload behavior unchanged.
 
-```ts
-payload: {
-  refundId: refund.id,
-  paymentId: payment.id,
-  bookingId,
-  amount: amount.toString(),
-  reason,
-  affectsBookingStatus,
-  ...(planned.executionMode === 'automatic' ? { attempt: 0 } : {}),
-},
-```
-
-- [ ] **Step 3: Pass attempt ordinal through the payments outbox handler**
-
-Change the handler payload and call:
+In `PaymentsModule`:
 
 ```ts
 const p = event.payload as { refundId: string; attempt?: number };
 return this.automaticRefunds.execute(tenantId, p.refundId, p.attempt ?? 0);
 ```
 
-- [ ] **Step 4: Extend ExecuteAutomaticRefundUseCase with non-terminal outcomes**
+- [ ] **Step 3: Teach the automatic refund use case three provider outcomes**
 
-Change the signature:
+Change signature:
 
 ```ts
 async execute(tenantId: string, refundId: string, attempt = 0): Promise<void>
 ```
 
-Pass the ordinal:
+Pass `attempt` into `gateway.refund(...)`.
+
+If `result.pending === true`, throw so the same outbox event/attempt ordinal is redelivered.
+
+If `result.retryAfterSec !== undefined`, re-open a short tenant transaction, lock the booking refund, confirm it is still automatic/pending, and emit:
 
 ```ts
-let result = await prepared.gateway.refund({
-  gatewayTxnId: prepared.payment.gatewayTxnId ?? reference,
-  gatewayOrderRef: reference,
-  amountVnd: prepared.refund.amount,
-  reason: prepared.refund.reason ?? 'booking_cancellation',
-  attempt,
+await this.outbox.emit(tx, {
+  tenantId,
+  eventType: 'refund.execution_requested',
+  payload: { refundId, attempt: attempt + 1 },
+  availableAt: new Date(Date.now() + result.retryAfterSec * 1_000),
 });
 ```
 
-Immediately after provider call:
+Then return without marking manual. Keep the current success and final-manual paths after those two branches.
 
-```ts
-if (result.pending) {
-  throw new Error(`Gateway refund attempt ${attempt} is still pending`);
-}
-
-if (result.retryAfterSec !== undefined) {
-  await this.tenantDb.forTenant(tenantId, async (tx) => {
-    await this.refunds.lockForBooking(tx, prepared.refund.bookingId);
-    const current = await this.refunds.findById(tx, refundId);
-    if (!current || !Refund.rehydrate(current).canExecuteAutomatically()) return;
-    await this.outbox.emit(tx, {
-      tenantId,
-      eventType: 'refund.execution_requested',
-      payload: { refundId, attempt: attempt + 1 },
-      availableAt: new Date(Date.now() + result.retryAfterSec * 1_000),
-    });
-  });
-  return;
-}
-```
-
-Then retain the existing success/manual-fallback logic. A pending result throws so the **same outbox event payload/attempt ordinal** is retried; a confirmed `1080` schedules a **new attempt ordinal** instead.
-
-- [ ] **Step 5: Derive stable MoMo refund request identity from logical refund + attempt ordinal**
-
-Change the helper to:
+- [ ] **Step 4: Make refund request identity stable per attempt**
 
 ```ts
 function momoRefundId(idempotencyKey: string, attempt: number): string {
@@ -817,55 +551,23 @@ function momoRefundId(idempotencyKey: string, attempt: number): string {
 }
 ```
 
-In `refund(input)`, use:
+Use `attempt = input.attempt ?? 0` and derive from `${input.gatewayOrderRef}:${input.reason}`. Same attempt ordinal always reuses the same MoMo refund `orderId/requestId`.
+
+- [ ] **Step 5: Query the refund attempt before POSTing another refund**
+
+Add `queryRefundAttempt(orderId)` using:
 
 ```ts
-const attempt = input.attempt ?? 0;
-const id = momoRefundId(`${input.gatewayOrderRef}:${input.reason}`, attempt);
+const requestId = queryRequestId('RQ');
+const raw =
+  `accessKey=${accessKey}&orderId=${orderId}&partnerCode=${partnerCode}&requestId=${requestId}`;
 ```
 
-Same ordinal always reuses the same MoMo `orderId` + `requestId`.
+POST `/v2/gateway/api/refund/query` with a 30-second timeout. Parse `resultCode` plus `refundTrans[]` (`orderId`, `amount`, `resultCode`, `transId`).
 
-- [ ] **Step 6: Add a MoMo refund-query helper before every refund POST**
-
-Use a fresh query request id each time:
+Interpret a matching prior attempt as follows:
 
 ```ts
-private async queryRefundAttempt(orderId: string): Promise<{
-  resultCode?: number;
-  refundTrans?: Array<{ orderId?: string; amount?: number; resultCode?: number; transId?: number }>;
-}> {
-  const { partnerCode, accessKey } = this.creds;
-  const requestId = queryRequestId('RQ');
-  const raw =
-    `accessKey=${accessKey}&orderId=${orderId}&partnerCode=${partnerCode}&requestId=${requestId}`;
-  const res = await fetch(`${this.base}/v2/gateway/api/refund/query`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      partnerCode,
-      requestId,
-      orderId,
-      lang: 'vi',
-      signature: this.sign(raw),
-    }),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) throw new Error(`MoMo refund query failed with ${res.status}`);
-  return (await res.json()) as {
-    resultCode?: number;
-    refundTrans?: Array<{ orderId?: string; amount?: number; resultCode?: number; transId?: number }>;
-  };
-}
-```
-
-Before POSTing `/refund`, query the same attempt id. Interpret the matching `refundTrans` row when present:
-
-```ts
-const prior = await this.queryRefundAttempt(id);
-const priorAttempt = prior.refundTrans?.find((item) => item.orderId === id);
-const priorCode = priorAttempt?.resultCode ?? prior.resultCode;
-
 if (priorCode === 0 && priorAttempt) {
   return {
     supported: true,
@@ -881,11 +583,11 @@ if (isMomoRefundRetryableFailure(priorCode)) {
 if (isMomoRefundManualFailure(priorCode)) return { supported: false };
 ```
 
-If the query is inconclusive/not-found, POST the **same attempt id**; MoMo idempotency still prevents a duplicate if query visibility lagged.
+If query is inconclusive/not-found, POST the same attempt ID; provider idempotency protects a lost response.
 
-- [ ] **Step 7: Interpret refund POST result without premature manual fallback**
+- [ ] **Step 6: Interpret the refund POST with the same rules**
 
-Keep the 30-second timeout. After JSON:
+Keep the existing 30-second timeout, then:
 
 ```ts
 if (json.resultCode === 0) {
@@ -903,53 +605,34 @@ if (isMomoRefundManualFailure(json.resultCode)) return { supported: false };
 throw new Error(`MoMo refund uncertain (${json.resultCode})`);
 ```
 
-This gives one automatic retry after the documented preferred one-hour delay for confirmed code `1080`; if that second provider attempt also reaches a final retryable failure, use the existing manual workflow instead of retrying forever.
+Thus confirmed `1080` gets exactly one new provider attempt after one hour; second `1080`, `1081`, or `1088` goes through the existing manual workflow.
 
-- [ ] **Step 8: Preserve existing transaction-status fallback only for final unsupported outcomes**
+- [ ] **Step 7: Log refund pending/retry decisions without secrets**
 
-Keep the existing `queryPaymentStatus(reference)` fallback after `supported: false`; if the original payment is already reported `refunded`, reconcile it to success as today. Do not run that fallback for `pending` or scheduled-retry results.
+Add a `Logger` to `ExecuteAutomaticRefundUseCase` and log `tenantId`, `refundId`, `paymentId`, gateway, orderRef, attempt, and retry delay only.
 
-- [ ] **Step 9: Verify refund/outbox compilation**
-
-Run:
+- [ ] **Step 8: Verify and commit**
 
 ```bash
 pnpm check:no-tests
+pnpm check:module-cycles
 pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api lint
-pnpm check:module-cycles
-```
-
-Expected: exit 0.
-
-- [ ] **Step 10: Commit Task 6**
-
-```bash
-git add -- apps/api/src/shared/outbox/outbox.service.ts \
-  apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.ts \
-  apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts \
-  apps/api/src/modules/payments/infrastructure/http/payments.module.ts \
-  apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.ts
+git add -- apps/api/src/shared/outbox/outbox.service.ts apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.ts apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts apps/api/src/modules/payments/infrastructure/http/payments.module.ts apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.ts
 git commit -m "fix(payments): make MoMo refunds retry-safe"
 ```
 
 ---
 
-### Task 7: Update MoMo production guidance and operational logging
+### Task 7: Update production guidance and verify the branch
 
 **Files:**
 - Modify: `apps/dashboard/app/features/tenant/components/settings/momo-gateway-card.tsx`
-- Modify: `apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts`
-- Modify: `apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts` only if Task 3 logging needs final adjustment.
-- Modify: payment/deployment documentation only where current text contradicts implemented behavior.
+- Modify: authoritative docs only if current prose conflicts with implemented behavior.
 
-**Interfaces:**
-- No API/DB contract changes.
-- Produces: operator-visible guidance and identifier-only structured logs.
+- [ ] **Step 1: Update dashboard MoMo setup notes**
 
-- [ ] **Step 1: Make dashboard production setup instructions explicit**
-
-Update the MoMo setup steps to communicate:
+Use copy equivalent to:
 
 ```tsx
 steps={[
@@ -965,88 +648,15 @@ steps={[
 
 Keep the existing encrypted-secret footnote.
 
-- [ ] **Step 2: Log refund uncertainty without credentials**
-
-Add a Nest `Logger` to `ExecuteAutomaticRefundUseCase`. Before throwing/scheduling:
-
-```ts
-this.logger.warn({
-  event: result.pending ? 'refund.provider_pending' : 'refund.provider_retry_scheduled',
-  tenantId,
-  refundId,
-  paymentId: prepared.payment.id,
-  gateway: prepared.payment.gateway,
-  gatewayOrderRef: reference,
-  attempt,
-  retryAfterSec: result.retryAfterSec,
-});
-```
-
-Do not include accessKey, secretKey, signatures, raw credential blobs, or full webhook payloads.
-
-- [ ] **Step 3: Update stale docs only if implementation changed documented behavior**
-
-Search:
+- [ ] **Step 2: Search authoritative docs for stale MoMo behavior**
 
 ```bash
-rg -n "MoMo|webhooks/momo|refund/query|captureWallet|resultCode" docs AGENTS.md tasks apps/api/README.md
+rg -n "MoMo|webhooks/momo|refund/query|captureWallet|resultCode" docs AGENTS.md apps/api tasks
 ```
 
-If an authoritative doc states behavior contradicted by the implementation, update that specific prose. Do not revive stale task checkboxes or add test requirements forbidden by `AGENTS.md`.
+Update only exact files whose statements are now false. Do not alter stale task checkboxes merely to make them look complete.
 
-- [ ] **Step 4: Verify dashboard/API compilation**
-
-Run:
-
-```bash
-pnpm check:no-tests
-pnpm --filter=@booking/api typecheck
-pnpm --filter=@booking/dashboard typecheck
-pnpm --filter=@booking/api lint
-pnpm --filter=@booking/dashboard lint
-```
-
-Expected: exit 0.
-
-- [ ] **Step 5: Commit Task 7**
-
-Stage only files actually changed:
-
-```bash
-git add -- apps/dashboard/app/features/tenant/components/settings/momo-gateway-card.tsx \
-  apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts \
-  apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts \
-  docs
-git commit -m "docs(payments): clarify MoMo production operations"
-```
-
-If no docs outside the dashboard changed, omit `docs` from `git add`.
-
----
-
-### Task 8: Full static verification and MoMo runtime UAT
-
-**Files:**
-- No new test files.
-- Modify only code/docs needed to fix concrete verification failures; keep fixes within this plan's scope.
-
-**Interfaces:**
-- Validates all prior tasks against repository policy and the approved spec.
-
-- [ ] **Step 1: Confirm no prohibited test artifacts were introduced**
-
-Run:
-
-```bash
-pnpm check:no-tests
-git diff --name-only main...HEAD | rg '\.(spec|test)\.' && exit 1 || true
-```
-
-Expected: `pnpm check:no-tests` exits 0 and the diff scan finds no test files.
-
-- [ ] **Step 2: Run the repository's full required static verification**
-
-Run exactly:
+- [ ] **Step 3: Run the full repository static check**
 
 ```bash
 pnpm check:no-tests && \
@@ -1059,104 +669,112 @@ pnpm turbo lint typecheck build && \
 pnpm --filter=@booking/api check:rls
 ```
 
-Expected: every command exits 0. Fix only failures caused by this branch; do not absorb unrelated refactors.
+Expected: every command exits 0.
 
-- [ ] **Step 3: Start the local/staging stack using the repository runbook**
+- [ ] **Step 4: Commit dashboard/docs changes with exact paths**
 
-Use the documented environment rather than inventing credentials:
+First inspect changed paths:
 
 ```bash
-docker compose up -d
-pnpm --filter=@booking/api prisma:deploy
-pnpm dev
+git diff --name-only -- apps/dashboard/app/features/tenant/components/settings/momo-gateway-card.tsx docs AGENTS.md apps/api tasks
 ```
 
-Configure a tenant's MoMo **sandbox** credentials through the existing tenant dashboard. Ensure `PUBLIC_API_URL` is a public HTTPS tunnel/staging origin that MoMo can reach for IPN; do not use localhost for provider callbacks.
+Always stage the dashboard file if changed:
 
-- [ ] **Step 4: Execute the sandbox payment matrix**
+```bash
+git add -- apps/dashboard/app/features/tenant/components/settings/momo-gateway-card.tsx
+```
 
-For one sandbox-configured tenant, verify in runtime logs + DB-visible application screens:
+For each authoritative documentation file actually edited, run a separate exact-path command such as:
 
-1. successful MoMo wallet checkout redirects and later reaches `succeeded` only via IPN/query;
-2. customer cancellation/rejection becomes final failure, not success;
-3. expiration becomes `expired`;
-4. double-click/concurrent checkout returns/reuses one pending BookingOS payment and one `gatewayOrderRef`;
-5. a create timeout/error leaves the payment pending without a destination and the next request reuses the same `orderId/requestId`;
+```bash
+git add -- docs/deployment.md
+git add -- docs/architecture.md
+```
+
+Run only the exact-path commands corresponding to files shown by `git diff --name-only`; do not stage an entire directory. Then:
+
+```bash
+git commit -m "docs(payments): clarify MoMo production operations"
+```
+
+If no dashboard/docs file changed, skip this commit.
+
+- [ ] **Step 5: Execute MoMo sandbox UAT**
+
+Using real tenant sandbox credentials and a public HTTPS `PUBLIC_API_URL`, verify:
+
+1. successful checkout redirects and reaches `succeeded` through IPN/query;
+2. cancellation/rejection reaches final failure;
+3. expiry reaches `expired`;
+4. concurrent/double-click checkout reuses one pending payment + one orderRef;
+5. create timeout/error leaves that row pending and next request reuses the same orderId/requestId;
 6. duplicate/in-flight create (`422`/`7000`) does not create a second payment row;
-7. losing the browser return does not prevent IPN confirmation;
-8. delaying/blocking IPN allows reconciliation query to converge the payment;
-9. invalid signature/partner/reference/amount does not transition payment;
-10. MoMo webhook responds 204/no body.
+7. delayed/lost IPN converges through reconciliation;
+8. invalid signature/partner/reference/amount does not transition payment;
+9. `/webhooks/momo` responds 204 with no body;
+10. automatic refund succeeds;
+11. uncertain refund reuses/query-checks the same attempt instead of double-refunding;
+12. confirmed `1080` schedules attempt 1 one hour later;
+13. second `1080`, `1081`, or `1088` enters the existing manual workflow;
+14. payment/refund downstream booking + settlement projections converge.
 
-Do not fabricate a sandbox pass if real sandbox credentials/network reachability are unavailable; report UAT as blocked while still reporting static verification separately.
+If real sandbox credentials or public callback reachability are unavailable, report runtime UAT as blocked; do not fabricate a pass.
 
-- [ ] **Step 5: Execute the sandbox refund matrix**
+- [ ] **Step 6: Sandbox-validate `orderExpireTime`**
 
-Verify:
+If `captureWallet` accepts the existing field and expiry behavior is correct, retain it. If the current sandbox rejects it incompatibly, remove only that field from the create body and rerun the full static check plus affected sandbox cases.
 
-1. successful automatic refund completes one refund row;
-2. uncertain `7000/7002` remains pending and redrives the same attempt identity;
-3. a lost refund response is queried before another POST, so no double-refund occurs;
-4. confirmed `1080` schedules attempt `1` at +3600 seconds and does not mark manual immediately;
-5. a second confirmed `1080`, `1081`, or `1088` reaches the existing manual-required workflow;
-6. successful refund completion still emits `refund.completed` and downstream booking/settlement projections converge.
+- [ ] **Step 7: Run one-tenant production pilot only after sandbox passes**
 
-- [ ] **Step 6: Sandbox-validate `orderExpireTime` with `captureWallet`**
+For one tenant with real production credentials:
 
-Inspect the real MoMo sandbox create response with the current request field. If accepted and expiry behavior is correct, retain it. If MoMo rejects/ignores it incompatibly, remove `orderExpireTime` from the `captureWallet` body and rely on BookingOS stale reconciliation plus provider finality. Re-run Steps 2, 4, and 5 after any change.
+1. confirm `PUBLIC_API_URL` is public HTTPS;
+2. make one small real payment;
+3. verify IPN -> payment -> booking -> settlement convergence;
+4. make one real refund;
+5. verify provider + BookingOS refund convergence;
+6. inspect logs for invalid signatures, duplicate payment rows, prolonged pending state, or refund uncertainty before enabling another tenant.
 
-- [ ] **Step 7: Pilot production only when credentials and public HTTPS IPN are available**
+Never place production secrets in source, docs, commits, or copied command output.
 
-For exactly one tenant:
-
-1. switch tenant config to production credentials;
-2. perform a small real payment;
-3. verify MoMo IPN -> payment -> booking -> settlement convergence;
-4. perform one real refund and verify provider + BookingOS convergence;
-5. inspect logs for invalid signatures, long pending state, duplicate payment rows, or refund uncertainty before enabling another tenant.
-
-Never place production credentials in source, docs, commits, shell history copied into docs, or chat output.
-
-- [ ] **Step 8: Final branch review and commit any verification-only fixes**
-
-Review:
+- [ ] **Step 8: Final branch review**
 
 ```bash
 git status --short
 git diff --stat main...HEAD
-git diff main...HEAD -- apps/api/src/modules/payments apps/api/src/shared/outbox apps/dashboard/app/features/tenant/components/settings docs
+git diff --name-only main...HEAD
 ```
 
-Stage only confirmed MoMo-scope fixes, then commit if necessary:
+If verification exposed a MoMo-scope defect, edit only the affected file(s), rerun the full static check, then stage each exact changed path individually and commit:
 
 ```bash
-git add -- <only-the-confirmed-files>
 git commit -m "fix(payments): address MoMo verification findings"
 ```
 
-If there are no fixes, do not create an empty commit.
+Do not create an empty commit.
 
 ---
 
-## Final Acceptance Checklist
+## Acceptance Checklist
 
-- [ ] One stable BookingOS pending payment/reference exists before MoMo create.
+- [ ] MoMo has one stable pending payment/reference before provider create.
 - [ ] Concurrent/retried MoMo checkout reuses that row/reference.
-- [ ] SePay, PayOS, ZaloPay, and mock checkout behavior remains provider-first and unchanged.
-- [ ] MoMo create uses stable `orderId/requestId`; MoMo payment/refund queries use fresh request IDs.
-- [ ] Create/query/refund use 30-second timeouts.
-- [ ] Production MoMo refuses a non-public/non-HTTPS callback origin.
-- [ ] MoMo IPN uses constant-time signature comparison and checks partner + request/order identity + amount through existing application guard.
-- [ ] Pending MoMo IPNs do not terminalize a payment.
-- [ ] `/webhooks/momo` responds 204/no body.
-- [ ] Query result mapping handles `0`, `9000`, `1000`, `1005`, `7000`, `7002`, and documented final failures correctly.
-- [ ] Lost IPN/uncertain payment state converges through reconciliation without changing other gateways' reconciliation semantics.
-- [ ] Refund query runs before retry/manual fallback for uncertain MoMo refund state.
-- [ ] Same refund attempt reuses the same provider identity; confirmed `1080` schedules one new attempt identity after one hour.
-- [ ] Terminal refund failure falls into the existing manual workflow without double-refund.
-- [ ] Tenant secrets remain encrypted and are never logged or returned to the UI.
-- [ ] No schema migration was needed; if one becomes necessary, implementation stops for design revision.
-- [ ] No test files/config/scripts were introduced.
-- [ ] Full repository static verification passes.
-- [ ] Sandbox UAT passes when real credentials/reachability are available.
+- [ ] Other gateways remain provider-first.
+- [ ] MoMo create uses stable `orderId/requestId`; payment/refund queries use fresh request IDs.
+- [ ] Create/query/refund timeouts are 30 seconds.
+- [ ] Production callback origin must be public HTTPS.
+- [ ] MoMo IPN verifies HMAC in constant time plus configured partner and request/order identity.
+- [ ] Existing amount guard still blocks amount mismatch.
+- [ ] Pending IPNs do not terminalize payment.
+- [ ] MoMo webhook returns 204/no body.
+- [ ] Result mapping handles `0`, `9000`, `1000`, `1005`, `7000`, `7002`, and documented final failures.
+- [ ] Lost/uncertain payments converge through reconciliation without changing other gateway reconciliation semantics.
+- [ ] Refund uncertainty is queried before retry/manual fallback.
+- [ ] Same refund attempt reuses one provider identity.
+- [ ] Confirmed `1080` schedules one new attempt after one hour; second final retry failure becomes manual.
+- [ ] Tenant secrets remain encrypted and never logged.
+- [ ] No migration and no test artifacts are added.
+- [ ] Full static verification passes.
+- [ ] Sandbox UAT passes when credentials/reachability exist.
 - [ ] One-tenant production pilot passes before wider rollout.
