@@ -6,26 +6,19 @@
  * the API through an SSR loader or action (`AGENTS.md`: frontends never fetch the
  * backend from the browser), so the API sees ONE source address — the storefront
  * or dashboard container on the compose network — for every visitor on the site.
- * `req.ip` is the socket peer (there is no `trust proxy`, and `@booking/api-client`
- * forwards no `x-forwarded-for`), so ThrottlerGuard buckets the entire site
- * together. The same reasoning is already written down for the on-demand-TLS
- * `ask` endpoint, which carries `@SkipThrottle()` for exactly this reason.
+ * `req.ip` is the socket peer (there is no global `trust proxy`), so the default
+ * ThrottlerGuard buckets the entire site together.
  *
  * The consequence is what these numbers are sized against: one page render costs
  * a handful of API calls, so a single visitor browsing normally spends dozens of
- * calls a minute. The previous values read as per-user (100/min global, 5/min to
- * start a registration) but were spent collectively — a few real users on the
- * site at once locked everyone out with 429, and two people signing up in the
- * same minute was already over the limit.
+ * calls a minute. Treat these as a CAPACITY CEILING, not a client abuse control.
  *
- * So treat these as a CAPACITY CEILING, not an abuse control. Per-user limiting
- * has to happen where the real client IP still exists: at the edge (Caddy),
- * or by forwarding the client IP from the frontends and teaching ThrottlerGuard
- * to key on it. Neither exists yet. Until one does, raising a number here costs
- * nothing in real protection, and lowering one locks out real users first.
- *
- * Credential-guessing is not defended here in any case — that belongs on the
- * account and the OTP challenge (attempt counters), not on a shared IP bucket.
+ * `/auth/login` has its own dedicated abuse control: Caddy overwrites a canonical
+ * client-IP header, the BFF validates/forwards one literal IP, and the API applies
+ * Redis-backed pair/IP sliding-window limits keyed from that trusted source. Do
+ * not lower the shared Nest throttle expecting it to provide equivalent login
+ * protection; it would rate-limit the frontend containers before individual
+ * abusive clients.
  */
 
 const MINUTE = 60_000;
