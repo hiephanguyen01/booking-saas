@@ -76,9 +76,10 @@ export class ExecuteAutomaticRefundUseCase {
       throw new Error(`Gateway refund attempt ${attempt} is still pending`);
     }
 
-    if (result.retryAfterSec !== undefined) {
+    const retryAfterSec = result.retryAfterSec;
+    if (retryAfterSec !== undefined) {
       this.logger.warn(
-        `refund retry scheduled tenant=${tenantId} refund=${refundId} payment=${prepared.payment.id} gateway=${prepared.payment.gateway} orderRef=${reference} attempt=${attempt} delaySec=${result.retryAfterSec}`,
+        `refund retry scheduled tenant=${tenantId} refund=${refundId} payment=${prepared.payment.id} gateway=${prepared.payment.gateway} orderRef=${reference} attempt=${attempt} delaySec=${retryAfterSec}`,
       );
       await this.tenantDb.forTenant(tenantId, async (tx) => {
         await this.refunds.lockForBooking(tx, prepared.refund.bookingId);
@@ -88,7 +89,7 @@ export class ExecuteAutomaticRefundUseCase {
           tenantId,
           eventType: 'refund.execution_requested',
           payload: { refundId, attempt: attempt + 1 },
-          availableAt: new Date(Date.now() + result.retryAfterSec * 1_000),
+          availableAt: new Date(Date.now() + retryAfterSec * 1_000),
         });
       });
       return;
