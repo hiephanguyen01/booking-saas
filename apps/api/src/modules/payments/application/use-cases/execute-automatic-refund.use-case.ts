@@ -20,6 +20,8 @@ import {
 } from '../../domain/ports/gateway-config-repository.port';
 import { Refund } from '../../domain/entities/refund.entity';
 
+const PROVIDER_PENDING_RETRY_SEC = 300;
+
 /** Executes the provider call after the refund intent is durably committed. */
 @Injectable()
 export class ExecuteAutomaticRefundUseCase {
@@ -69,11 +71,24 @@ export class ExecuteAutomaticRefundUseCase {
 
     if (result.pending) {
       this.logger.warn(
-        `refund pending tenant=${tenantId} refund=${refundId} payment=${prepared.payment.id} gateway=${prepared.payment.gateway} orderRef=${reference} attempt=${attempt}`,
+        `refund pending tenant=${tenantId} refund=${refundId} payment=${prepared.payment.id} gateway=${prepared.payment.gateway} orderRef=${reference} attempt=${attempt} delaySec=${PROVIDER_PENDING_RETRY_SEC}`,
       );
-      // The same durable outbox event is retried, so the provider attempt identity
-      // stays unchanged until MoMo reports a final result.
-      throw new Error(`Gateway refund attempt ${attempt} is still pending`);
+      // Provider-level pending is not an application failure. Schedule a fresh
+      // outbox event with the SAME attempt identity instead of throwing: the relay
+      // has a finite retry budget, so repeated 7000/7002 must not dead-letter a
+      // refund that is still legitimately processing at the provider.
+      await this.tenantDb.forTenant(tenantId, async (tx) => {
+        await this.refunds.lockForBooking(tx, prepared.refund.bookingId);
+        const current = await this.refunds.findById(tx, refundId);
+        if (!current || !Refund.rehydrate(current).canExecuteAutomatically()) return;
+        await this.outbox.emit(tx, {
+          tenantId,
+          eventType: 'refund.execution_requested',
+          payload: { refundId, attempt },
+          availableAt: new Date(Date.now() + PROVIDER_PENDING_RETRY_SEC * 1_000),
+        });
+      });
+      return;
     }
 
     const retryAfterSec = result.retryAfterSec;
