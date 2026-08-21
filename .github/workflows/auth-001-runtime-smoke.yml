@@ -211,7 +211,7 @@ jobs:
           for i in $(seq 1 31); do s=$(login '' "missing-$i@example.test" "$BAD" /tmp/a.json); eq 401 "$s" "case11/missing$i"; done
           malformed='198.51.100.1, 198.51.100.2'
           for i in $(seq 1 6); do s=$(login "$malformed" "$A" "$BAD" /tmp/a.json); eq 401 "$s" "case11/malformed$i"; done
-          logs=$(tail -n +"$mark" /tmp/api.log); echo "$logs" | grep -q auth.login.client_ip_unavailable || fail 'case11 missing telemetry'
+          logs=$(tail -n +"$mark" /tmp/api.log); grep -q auth.login.client_ip_unavailable <<<"$logs" || fail 'case11 missing telemetry'
           [[ "$(echo "$logs" | grep auth.login.client_ip_unavailable | tail -1)" != *"$malformed"* ]] || fail 'case11 leaked malformed raw header'
           restart_api
 
