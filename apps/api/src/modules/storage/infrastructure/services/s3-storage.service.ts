@@ -105,17 +105,26 @@ export class S3StorageService implements StoragePort {
         message: 'Invalid storage object key',
       });
     }
-    const fileName = (input.fileName ?? 'document.pdf')
-      .replace(/[\r\n"\\/]/g, '-')
-      .replace(/[^a-z0-9._-]/gi, '-')
-      .slice(0, 180);
+
+    const responseOverrides = input.fileName
+      ? (() => {
+          const fileName = input.fileName
+            .replace(/[\r\n"\\/]/g, '-')
+            .replace(/[^a-z0-9._-]/gi, '-')
+            .slice(0, 180);
+          return {
+            ResponseContentType: 'application/pdf',
+            ResponseContentDisposition: `inline; filename="${fileName || 'document.pdf'}"`,
+          };
+        })()
+      : {};
+
     const downloadUrl = await getSignedUrl(
       this.client,
       new GetObjectCommand({
         Bucket: this.config.privateBucket,
         Key: key,
-        ResponseContentType: 'application/pdf',
-        ResponseContentDisposition: `inline; filename="${fileName || 'document.pdf'}"`,
+        ...responseOverrides,
       }),
       { expiresIn: this.config.presignExpiresSec },
     );
@@ -211,16 +220,20 @@ export class S3StorageService implements StoragePort {
       input.keyPrefix.replace(/[^a-z0-9/_-]/gi, '').replace(/^\/+|\/+$/g, '') || 'uploads';
     const key = `${prefix}/${randomUUID()}.${ext}`;
 
+    const signableHeaders = new Set<string>(['content-type']);
+    if (input.contentLength !== undefined) signableHeaders.add('content-length');
+    if (input.writeOnce) signableHeaders.add('if-none-match');
+
     const uploadUrl = await getSignedUrl(
       this.client,
       new PutObjectCommand({
         Bucket: bucket,
         Key: key,
         ContentType: input.contentType,
-        ...(input.contentLength ? { ContentLength: input.contentLength } : {}),
+        ...(input.contentLength !== undefined ? { ContentLength: input.contentLength } : {}),
         ...(input.writeOnce ? { IfNoneMatch: '*' } : {}),
       }),
-      { expiresIn: this.config.presignExpiresSec },
+      { expiresIn: this.config.presignExpiresSec, signableHeaders },
     );
 
     return {

@@ -1,6 +1,7 @@
 import { CircleAlert } from 'lucide-react';
 import type {
   PartnerAgreementResponse,
+  PartnerDocumentReadItem,
   PartnerResponse,
   PartnerTaxAssessmentResponse,
 } from '@booking/contracts';
@@ -37,13 +38,13 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request);
   const canManage = can('partner.profile.manage');
-  // GET /partner/profile is guarded by `partner.profile.manage` (it exposes the
-  // payout account + ID number). Only fetch when the caller holds it.
   if (!canManage) {
     return {
       canManage: false as const,
       partner: null,
       agreements: [] as PartnerAgreementResponse[],
+      documents: [] as PartnerDocumentReadItem[],
+      documentLoadError: null as string | null,
       taxAssessment: null as PartnerTaxAssessmentResponse | null,
       loadError: null as string | null,
     };
@@ -52,8 +53,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const household =
     res.data?.taxStatus === 'household_below_threshold' ||
     res.data?.taxStatus === 'household_declaring';
-  const [agreementRes, taxRes] = await Promise.all([
+  const [agreementRes, documentRes, taxRes] = await Promise.all([
     apiGet<PartnerAgreementResponse[]>(apiPaths.partner.profileAgreements, auth),
+    apiGet<PartnerDocumentReadItem[]>(apiPaths.partner.profileDocumentList, auth),
     household
       ? apiGet<PartnerTaxAssessmentResponse>(apiPaths.partner.profileTaxAssessment, auth)
       : Promise.resolve(null),
@@ -62,6 +64,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     canManage: true as const,
     partner: res.ok && res.data ? res.data : null,
     agreements: agreementRes.ok && agreementRes.data ? agreementRes.data : [],
+    documents: documentRes.ok && documentRes.data ? documentRes.data : [],
+    documentLoadError: documentRes.ok
+      ? null
+      : (documentRes.error ?? 'Không tải được danh sách giấy tờ riêng tư.'),
     taxAssessment: taxRes?.ok ? (taxRes.data ?? null) : null,
     loadError: res.ok ? null : (res.error ?? 'Không tải được hồ sơ đối tác.'),
   };
@@ -73,7 +79,15 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function PartnerProfile({ loaderData, actionData }: Route.ComponentProps) {
-  const { canManage, partner, agreements, taxAssessment, loadError } = loaderData;
+  const {
+    canManage,
+    partner,
+    agreements,
+    documents,
+    documentLoadError,
+    taxAssessment,
+    loadError,
+  } = loaderData;
 
   const resultFor = (intent: PartnerProfileIntent): PartnerProfileActionResult | null =>
     actionData && actionData.intent === intent ? actionData : null;
@@ -194,7 +208,12 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
       <FormSurface>
         <ProfileIdentityCard partner={partner} result={resultFor('identity')} />
         <ProfilePayoutCard partner={partner} result={resultFor('payout')} />
-        <ProfileDocumentsCard partner={partner} result={resultFor('documents')} />
+        <ProfileDocumentsCard
+          partner={partner}
+          documents={documents}
+          documentLoadError={documentLoadError}
+          result={resultFor('documents')}
+        />
         <Section
           title="Thỏa thuận"
           description="Các phiên bản điều khoản đã được hệ thống ghi nhận."

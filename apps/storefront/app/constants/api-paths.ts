@@ -55,7 +55,7 @@ export const apiPaths = {
 
   partner: {
     apply: '/partners/apply',
-    uploadPresign: '/uploads/partner-applications/presign',
+    applicationDocumentPresign: '/partners/application-documents/presign',
   },
 
   /** The generic authenticated upload grant; the target picks the storage album. */

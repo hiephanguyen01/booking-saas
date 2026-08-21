@@ -1,14 +1,10 @@
 /**
- * Direct-to-storage image upload helper (TONG-QUAN.md §4.2).
+ * Direct-to-storage upload helpers (TONG-QUAN.md §4.2).
  *
- * The backend exposes `POST /uploads/presign` (auth-only); a browser can't call it
- * directly (the auth token lives in an httpOnly cookie), so each frontend app
- * proxies it through a same-origin resource-route `action` that replays the cookie
- * server-side. This helper POSTs that proxy for a presigned PUT URL, then PUTs the
- * bytes straight to MinIO/S3 — the API never proxies file bytes.
- *
- * Kept dependency-free of `@booking/contracts` so `@booking/ui` stays self-contained;
- * the response shape mirrors `PresignUploadResponse` in that package.
+ * Browser code posts to a same-origin BFF resource route, receives a presigned
+ * storage grant, then PUTs file bytes directly to MinIO/S3. The API never proxies
+ * file bytes. This package deliberately stays dependency-free of
+ * `@booking/contracts`; response interfaces below mirror the wire contracts.
  */
 
 /** Storage album the object belongs to (mirrors `PresignUploadInput['target']`). */
@@ -22,10 +18,26 @@ export interface PresignGrant {
   expiresInSec: number
 }
 
+/** Mirrors the dedicated private partner-document grant. */
+interface PrivateDocumentPresignGrant {
+  uploadUrl: string
+  key: string
+  expiresInSec: number
+  requiredHeaders: {
+    "content-type": string
+    "if-none-match": "*"
+  }
+}
+
 export interface PresignAndPutOptions {
   /** Same-origin resource route proxying `POST /uploads/presign` (default `/uploads/presign`). */
   presignEndpoint?: string
   target: UploadTarget
+  signal?: AbortSignal
+}
+
+export interface PrivateDocumentUploadOptions {
+  presignEndpoint: string
   signal?: AbortSignal
 }
 
@@ -40,15 +52,18 @@ export interface UploadedReviewMedia {
   key: string
 }
 
+export interface UploadedPrivateDocument {
+  /** Opaque private object key. Persist this, never the presigned URL. */
+  key: string
+}
+
 /**
- * Presign then PUT a single file, returning the public URL to persist. Throws a
- * Vietnamese-message `Error` on any failure (surfaced by the uploader UI).
+ * Presign then PUT a single public file, returning the public URL to persist.
  */
 export async function presignAndPut(
   file: File,
   { presignEndpoint = "/uploads/presign", target, signal }: PresignAndPutOptions,
 ): Promise<UploadedImage> {
-  // 1) Ask our BFF (which holds the auth cookie) for a presigned PUT grant.
   const presignRes = await fetch(presignEndpoint, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
@@ -62,7 +77,6 @@ export async function presignAndPut(
   }
   const grant = await readPresignGrant(presignRes)
 
-  // 2) PUT the bytes directly to storage — the URL is pre-signed, so no auth here.
   const putRes = await fetch(grant.uploadUrl, {
     method: "PUT",
     headers: { "content-type": file.type },
@@ -74,6 +88,46 @@ export async function presignAndPut(
   }
 
   return { publicUrl: grant.publicUrl, key: grant.key }
+}
+
+/**
+ * Presign and PUT one private partner identity/legal document. The caller persists
+ * only the returned object key. `Content-Length` is intentionally absent here:
+ * browsers own that header and compute it from the exact `File` body; the server
+ * signs the expected byte count supplied in the presign request.
+ */
+export async function presignAndPutPrivateDocument(
+  file: File,
+  { presignEndpoint, signal }: PrivateDocumentUploadOptions,
+): Promise<UploadedPrivateDocument> {
+  const presignRes = await fetch(presignEndpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({ contentType: file.type, sizeBytes: file.size }),
+    signal,
+  })
+  if (!presignRes.ok) {
+    throw new Error(
+      (await safeMessage(presignRes)) ?? `Không thể tạo liên kết tải lên (${presignRes.status})`,
+    )
+  }
+
+  const grant = await readPrivateDocumentGrant(presignRes)
+  if (grant.requiredHeaders["content-type"] !== file.type) {
+    throw new Error("Phản hồi tải tài liệu không khớp loại tệp")
+  }
+
+  const putRes = await fetch(grant.uploadUrl, {
+    method: "PUT",
+    headers: grant.requiredHeaders,
+    body: file,
+    signal,
+  })
+  if (!putRes.ok) {
+    throw new Error(`Tải tài liệu lên thất bại (${putRes.status})`)
+  }
+
+  return { key: grant.key }
 }
 
 /**
@@ -110,25 +164,12 @@ export async function presignAndPutReviewMedia(
 }
 
 async function readPresignGrant(res: Response): Promise<PresignGrant> {
-  let value: unknown
-  try {
-    value = await res.json()
-  } catch {
-    throw new Error("Phản hồi liên kết tải lên không hợp lệ")
-  }
-
-  if (!value || typeof value !== "object") {
-    throw new Error("Phản hồi liên kết tải lên không hợp lệ")
-  }
-
-  const grant = value as Record<string, unknown>
+  const grant = await readObject(res)
   if (
     !isNonEmptyString(grant.uploadUrl) ||
     !isNonEmptyString(grant.key) ||
     !isNonEmptyString(grant.publicUrl) ||
-    typeof grant.expiresInSec !== "number" ||
-    !Number.isFinite(grant.expiresInSec) ||
-    grant.expiresInSec <= 0
+    !isPositiveFiniteNumber(grant.expiresInSec)
   ) {
     throw new Error("Phản hồi liên kết tải lên không hợp lệ")
   }
@@ -141,8 +182,57 @@ async function readPresignGrant(res: Response): Promise<PresignGrant> {
   }
 }
 
+async function readPrivateDocumentGrant(res: Response): Promise<PrivateDocumentPresignGrant> {
+  const grant = await readObject(res)
+  const headers = grant.requiredHeaders
+  if (
+    !isNonEmptyString(grant.uploadUrl) ||
+    !isNonEmptyString(grant.key) ||
+    !isPositiveFiniteNumber(grant.expiresInSec) ||
+    !headers ||
+    typeof headers !== "object"
+  ) {
+    throw new Error("Phản hồi tải tài liệu không hợp lệ")
+  }
+
+  const requiredHeaders = headers as Record<string, unknown>
+  if (
+    !isNonEmptyString(requiredHeaders["content-type"]) ||
+    requiredHeaders["if-none-match"] !== "*"
+  ) {
+    throw new Error("Phản hồi tải tài liệu không hợp lệ")
+  }
+
+  return {
+    uploadUrl: grant.uploadUrl,
+    key: grant.key,
+    expiresInSec: grant.expiresInSec,
+    requiredHeaders: {
+      "content-type": requiredHeaders["content-type"],
+      "if-none-match": "*",
+    },
+  }
+}
+
+async function readObject(res: Response): Promise<Record<string, unknown>> {
+  let value: unknown
+  try {
+    value = await res.json()
+  } catch {
+    throw new Error("Phản hồi liên kết tải lên không hợp lệ")
+  }
+  if (!value || typeof value !== "object") {
+    throw new Error("Phản hồi liên kết tải lên không hợp lệ")
+  }
+  return value as Record<string, unknown>
+}
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
 }
 
 async function safeMessage(res: Response): Promise<string | undefined> {

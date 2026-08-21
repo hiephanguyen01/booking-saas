@@ -48,15 +48,15 @@ export function partnerApplyPayloadFor(
   const businessInfo: Record<string, unknown> = {
     representativeName: value.representativeName,
     identityNumber: value.identityNumber,
-    identityCardFrontUrl: value.identityCardFrontUrl,
-    identityCardBackUrl: value.identityCardBackUrl,
+    identityCardFrontKey: value.identityCardFrontKey,
+    identityCardBackKey: value.identityCardBackKey,
   };
   if (value.partnerType === 'company') {
     businessInfo.legalName = value.companyName;
     businessInfo.businessRegistrationNo = value.businessRegistrationNo;
     businessInfo.taxId = value.businessRegistrationNo;
-    businessInfo.businessLicenseFrontUrl = value.businessLicenseFrontUrl;
-    businessInfo.businessLicenseBackUrl = value.businessLicenseBackUrl;
+    businessInfo.businessLicenseFrontKey = value.businessLicenseFrontKey;
+    businessInfo.businessLicenseBackKey = value.businessLicenseBackKey;
   }
   return {
     tenantId,

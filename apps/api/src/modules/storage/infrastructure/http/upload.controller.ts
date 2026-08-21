@@ -1,10 +1,7 @@
 import { type PresignUploadResponse } from '@booking/contracts';
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
-import { THROTTLE_UPLOAD } from '../../../../shared/http/throttle-limits';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
-import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { CreatePresignedUploadUseCase } from '../../application/use-cases/create-presigned-upload.use-case';
 import { PresignUploadDto, PresignUploadResponseDto } from './dto/upload.dto';
 
@@ -26,25 +23,6 @@ export class UploadController {
   async presign(@Body() input: PresignUploadDto): Promise<PresignUploadResponse> {
     return this.createPresignedUpload.execute({
       target: input.target,
-      contentType: input.contentType,
-    });
-  }
-
-  /**
-   * Partner applicants upload their verification documents before an account
-   * session exists. Keep this grant public but narrowly scoped: callers cannot
-   * choose another storage prefix, MIME validation still comes from the DTO,
-   * and throttling limits anonymous object creation.
-   */
-  @Public()
-  @Throttle(THROTTLE_UPLOAD)
-  @Post('partner-applications/presign')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Mint a partner-application document upload URL' })
-  @ApiOkResponse({ type: PresignUploadResponseDto })
-  async presignPartnerApplication(@Body() input: PresignUploadDto): Promise<PresignUploadResponse> {
-    return this.createPresignedUpload.execute({
-      target: 'partners',
       contentType: input.contentType,
     });
   }
