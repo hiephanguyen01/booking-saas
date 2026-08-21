@@ -5,6 +5,7 @@ import {
   listPartnersQuerySchema,
   partnerApplyInputSchema,
   partnerAgreementListResponseSchema,
+  partnerDocumentReadItemSchema,
   partnerDocumentUploadInputSchema,
   partnerResponseSchema,
   partnerTaxAssessmentResponseSchema,
@@ -46,6 +47,7 @@ export class PartnerResponseDto extends createZodDto(partnerResponseSchema) {}
 export class PrivateDocumentUploadResponseDto extends createZodDto(
   privateDocumentUploadResponseSchema,
 ) {}
+export class PartnerDocumentReadItemDto extends createZodDto(partnerDocumentReadItemSchema) {}
 export class PartnerTaxAssessmentResponseDto extends createZodDto(
   partnerTaxAssessmentResponseSchema,
 ) {}
