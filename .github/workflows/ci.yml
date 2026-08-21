@@ -39,5 +39,7 @@ jobs:
         # Keep this separate from typecheck: React Router typegen and build both
         # write generated route files and should not race within the same app.
         run: pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
+      - name: Full workspace lint typecheck build
+        run: pnpm turbo lint typecheck build
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
