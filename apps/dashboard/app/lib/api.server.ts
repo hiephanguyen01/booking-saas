@@ -14,6 +14,7 @@ import {
   type ApiResult,
   type Auth,
 } from '@booking/api-client';
+import { trustedClientIpHeaders } from './trusted-client-ip.server';
 
 export type {
   ApiAuth,
@@ -86,8 +87,15 @@ export function unwrapApiResult<T>(result: ApiResult<T>, fallbackMessage: string
   return result.data;
 }
 
-export function backendLogin(credentials: { email: string; password: string }) {
-  return client().login(credentials);
+export function backendLogin(
+  request: Request,
+  credentials: { email: string; password: string },
+) {
+  return client().login(credentials, {
+    signal: request.signal,
+    requestId: request.headers.get('x-request-id') ?? undefined,
+    headers: trustedClientIpHeaders(request),
+  });
 }
 
 export function backendSessionInfo(accessToken: string) {
