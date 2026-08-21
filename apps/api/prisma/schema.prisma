@@ -351,6 +351,14 @@ enum PaymentStatus {
   @@map("payment_status")
 }
 
+enum PaymentCheckoutState {
+  creating
+  ready
+  create_failed
+
+  @@map("payment_checkout_state")
+}
+
 /// `manual_required`: gateway has no refund API → tenant transfers by hand (§11.3).
 enum RefundStatus {
   pending
@@ -1852,33 +1860,38 @@ model CancellationPolicy {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Payment {
-  id              String         @id @default(uuid(7)) @db.Uuid
-  tenantId        String         @map("tenant_id") @db.Uuid
-  bookingId       String         @map("booking_id") @db.Uuid
-  gateway         PaymentGateway
-  kind            PaymentKind
-  amount          BigInt
-  status          PaymentStatus  @default(pending)
-  gatewayOrderRef String?        @map("gateway_order_ref")
-  gatewayOrderId  String?        @map("gateway_order_id")
-  gatewayTxnId    String?        @map("gateway_txn_id")
-  paymentMethod   String?        @map("payment_method")
-  gatewayPayload  Json?          @map("gateway_payload")
-  idempotencyKey  String         @unique @map("idempotency_key")
-  paidAt          DateTime?      @map("paid_at") @db.Timestamptz(6)
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                      String                @id @default(uuid(7)) @db.Uuid
+  tenantId                String                @map("tenant_id") @db.Uuid
+  bookingId               String                @map("booking_id") @db.Uuid
+  gateway                 PaymentGateway
+  kind                    PaymentKind
+  amount                  BigInt
+  capturedAmount          BigInt?               @map("captured_amount")
+  status                  PaymentStatus         @default(pending)
+  checkoutState           PaymentCheckoutState? @map("checkout_state")
+  gatewayConfigRevisionId String?               @map("gateway_config_revision_id") @db.Uuid
+  gatewayOrderRef         String?               @map("gateway_order_ref")
+  gatewayOrderId          String?               @map("gateway_order_id")
+  gatewayTxnId            String?               @map("gateway_txn_id")
+  paymentMethod           String?               @map("payment_method")
+  gatewayPayload          Json?                 @map("gateway_payload")
+  idempotencyKey          String                @unique @map("idempotency_key")
+  paidAt                  DateTime?             @map("paid_at") @db.Timestamptz(6)
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  booking       Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  refunds       Refund[]
-  ledgerEntries LedgerEntry[]
-  settlement    BookingSettlement?
+  tenant                Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking               Booking              @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  gatewayConfigRevision TenantGatewayConfig? @relation(fields: [gatewayConfigRevisionId], references: [id], onDelete: Restrict)
+  refunds               Refund[]
+  ledgerEntries         LedgerEntry[]
+  settlement            BookingSettlement?
 
   @@unique([gateway, gatewayTxnId])
   @@unique([gateway, gatewayOrderRef])
   @@index([tenantId])
   @@index([bookingId])
+  @@index([gatewayConfigRevisionId])
   @@map("payments")
 }
 
@@ -1923,10 +1936,11 @@ model TenantGatewayConfig {
   createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payments Payment[]
 
-  @@unique([tenantId, gateway, environment])
   @@index([tenantId])
+  @@index([tenantId, gateway, environment])
   @@map("tenant_gateway_configs")
 }
 
@@ -2295,7 +2309,7 @@ model Promotion {
   appliesTo             PromotionAppliesTo    @default(all) @map("applies_to")
   /// the target id matching applies_to (listing/type/category/partner/group).
   appliesToId           String?               @map("applies_to_id") @db.Uuid
-  minOrderAmount        BigInt?               @map("min_order_amount")
+  minOrderAmount        BigInt?                @map("min_order_amount")
   firstBookingOnly      Boolean               @default(false) @map("first_booking_only")
   usageLimitTotal       Int?                  @map("usage_limit_total")
   usageLimitPerCustomer Int?                  @map("usage_limit_per_customer")
@@ -2440,8 +2454,8 @@ model Staff {
   partnerId   String   @map("partner_id") @db.Uuid
   userId      String?  @map("user_id") @db.Uuid
   displayName String   @map("display_name")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   partner      Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
