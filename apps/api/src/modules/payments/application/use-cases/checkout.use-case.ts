@@ -219,6 +219,7 @@ export class CheckoutUseCase {
 
     if (prepared.kind === 'response') return prepared.response;
 
+    const startedAt = Date.now();
     try {
       const created = await prepared.gateway.createPayment({
         amountVnd: prepared.amount,
@@ -235,10 +236,15 @@ export class CheckoutUseCase {
         this.payments.saveCheckoutDestination(tx, prepared.paymentId, created.destination),
       );
 
+      if (prepared.gatewayKey === 'momo') {
+        this.logger.log(
+          `momo checkout created tenant=${prepared.tenantId} payment=${prepared.paymentId} orderRef=${prepared.orderRef} latencyMs=${Date.now() - startedAt}`,
+        );
+      }
       return { paymentId: prepared.paymentId, destination: created.destination };
     } catch (error) {
       this.logger.warn(
-        `persist-first checkout create failed tenant=${prepared.tenantId} payment=${prepared.paymentId} gateway=${prepared.gatewayKey} orderRef=${prepared.orderRef}: ${error instanceof Error ? error.message : String(error)}`,
+        `persist-first checkout create failed tenant=${prepared.tenantId} payment=${prepared.paymentId} gateway=${prepared.gatewayKey} orderRef=${prepared.orderRef} latencyMs=${Date.now() - startedAt}: ${error instanceof Error ? error.message : String(error)}`,
       );
       throw error;
     }
