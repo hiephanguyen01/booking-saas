@@ -43,7 +43,11 @@ const prettyLogs =
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
-        redact: ['req.headers.cookie', 'req.headers.authorization'],
+        redact: [
+          'req.headers.cookie',
+          'req.headers.authorization',
+          'req.headers["x-bookingos-client-ip"]',
+        ],
         customSuccessMessage: (req, res, responseTime) =>
           `${req.method} ${req.url} → ${res.statusCode} (${responseTime}ms)`,
         customErrorMessage: (req, res, error) =>
