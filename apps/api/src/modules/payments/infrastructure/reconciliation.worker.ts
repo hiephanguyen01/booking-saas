@@ -59,12 +59,12 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       const reference = p.gatewayOrderRef ?? p.gatewayTxnId;
       if (!reference) continue;
       try {
-        // Decrypt/configure the adapter in a short RLS transaction, then release
-        // the DB connection before the provider network call.
-        const gateway = await this.tenantDb.forTenant(p.tenantId, (tx) =>
-          this.registry.resolveForTenant(tx, p.tenantId, p.gateway),
+        // Resolve the exact payment revision in a short RLS transaction, then
+        // release the DB connection before the provider network call.
+        const resolved = await this.tenantDb.forTenant(p.tenantId, (tx) =>
+          this.registry.resolveForPayment(tx, p),
         );
-        const status = await gateway.queryPaymentStatus(reference);
+        const status = await resolved.gateway.queryPaymentStatus(reference);
 
         // Record the provider result durably in its own short transaction.
         const flipped = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
@@ -86,9 +86,12 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
             tx,
             p.id,
             { reconciled: true },
-            // Persist the provider txn id when the status query exposes it (MoMo),
-            // so a payment recovered without an IPN stays refundable.
-            status.gatewayTxnId ? { gatewayTxnId: status.gatewayTxnId } : undefined,
+            {
+              capturedAmount: status.amountVnd,
+              // Persist the provider txn id when the status query exposes it (MoMo),
+              // so a payment recovered without an IPN stays refundable.
+              gatewayTxnId: status.gatewayTxnId,
+            },
           );
           if (succeeded) {
             await this.outbox.emit(tx, {
