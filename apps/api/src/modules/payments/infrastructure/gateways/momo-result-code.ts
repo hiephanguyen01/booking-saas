@@ -17,6 +17,13 @@ const FINAL_PAYMENT_FAILURE_CODES = new Set([
   4100,
 ]);
 
+const FINAL_REFUND_FAILURE_CODES = new Set([
+  ...FINAL_PAYMENT_FAILURE_CODES,
+  1005,
+  1081,
+  1088,
+]);
+
 export function mapMomoPaymentResultCode(
   code: number | undefined,
 ): PaymentStatusResult['status'] {
@@ -32,5 +39,10 @@ export const isMomoRefundPending = (code: number | undefined): boolean =>
 
 export const isMomoRefundRetryableFailure = (code: number | undefined): boolean => code === 1080;
 
+/**
+ * A refund attempt that MoMo marks final must not be re-posted under the same
+ * provider identity. `1080` is intentionally excluded because MoMo explicitly
+ * recommends retrying that failure later with a new refund attempt.
+ */
 export const isMomoRefundManualFailure = (code: number | undefined): boolean =>
-  code === 1081 || code === 1088;
+  code !== undefined && FINAL_REFUND_FAILURE_CODES.has(code);
