@@ -38,7 +38,7 @@ This design does not add VNPay, Apple Pay, Google Pay, ShopeePay, an internal wa
 
 ## 4. Durable checkout
 
-The existing checkout flow calls the provider before persisting the local payment while still inside a tenant transaction. The new flow uses the existing `payments` table as the durable checkout intent instead of introducing a separate heavy `PaymentIntent` subsystem.
+The existing checkout flow calls the provider before persisting the local payment while still inside a tenant transaction. The new flow uses the existing `payments` table as the durable checkout intent instead of introducing a separate `PaymentIntent` subsystem.
 
 ### Phase A: short database transaction
 
@@ -50,32 +50,48 @@ The existing checkout flow calls the provider before persisting the local paymen
 - create or claim one pending `Payment`
 - persist a stable idempotency key before any provider call
 - persist `gatewayConfigRevisionId`
+- persist `checkoutState = creating`
 - commit
 
 ### Phase B: provider call outside transaction
 
 - resolve the adapter from the selected config revision
 - call `createPayment()` with stable payment identity
-- provider adapter derives provider-specific request/order identifiers deterministically from the persisted payment/attempt identity
+- provider adapter derives provider-specific request/order identifiers deterministically from the persisted payment identity
 
 ### Phase C: short database transaction
 
+On provider handoff success:
+
 - attach provider order/transaction references
 - attach checkout destination / payment URL / QR handoff
-- mark checkout handoff ready
+- set `checkoutState = ready`
 - commit
 
-If a provider times out after accepting the request, the local payment still exists. Retry reuses the same payment and stable provider request identity instead of creating a second provider order.
+On a final provider-create rejection:
 
-Financial payment status remains `pending | succeeded | failed | expired`. Provider-handoff lifecycle may be stored separately as checkout metadata/state such as `creating | ready | create_failed`; it must not be conflated with the financial status machine.
+- set `checkoutState = create_failed`
+- keep financial `Payment.status` separate from the create lifecycle
+
+On a retryable timeout/network error, leave `checkoutState = creating`; retry the same persisted payment identity.
+
+Financial payment status remains `pending | succeeded | failed | expired`. Checkout handoff lifecycle is a separate persisted enum:
+
+- `creating`
+- `ready`
+- `create_failed`
+
+The two state machines must not be conflated.
 
 ## 5. Stable checkout idempotency
 
 The idempotency key must exist before the provider call. It must not be derived from a randomly generated provider result.
 
-A stable key is scoped to the booking payment attempt, payment kind, and customer payment method. The implementation may use the persisted payment ID or an attempt identifier, but retries of the same logical checkout must preserve the same key.
+A stable key is scoped to the persisted booking payment attempt. The payment ID is the canonical attempt identity unless implementation constraints require an explicit attempt ID. Retrying the same logical checkout reuses the same persisted payment row and therefore the same provider request identity.
 
-Provider adapters use this stable identity to derive their own request identifiers.
+A new payment row is created only after the previous attempt is terminal or when the user intentionally starts a distinct legal payment attempt.
+
+Provider adapters use the persisted payment identity to derive their own request identifiers.
 
 ## 6. Immutable gateway configuration revisions
 
@@ -99,12 +115,13 @@ Add to `payments`:
 
 - `gatewayConfigRevisionId UUID NULL`
 - `capturedAmount BIGINT NULL`
+- `checkoutState` with `creating | ready | create_failed`
 
 Add a foreign key from `payments.gatewayConfigRevisionId` to `tenant_gateway_configs.id`.
 
 The revision field is nullable only for backward compatibility with existing payments.
 
-Remove the uniqueness rule that prevents multiple rows for the same `(tenant, gateway, environment)` revision history. Replace it with normal lookup indexes and enforce one active revision using repository locking plus an appropriate PostgreSQL partial unique index where applicable.
+Remove the uniqueness rule that prevents multiple rows for the same `(tenant, gateway, environment)` revision history. Keep lookup indexes for `(tenant_id, gateway, environment)` and add a PostgreSQL partial unique index on `(tenant_id, gateway)` where `is_active = true` so one gateway cannot have two active revisions. The existing business rule that at most one base gateway is active across the base-gateway group remains enforced by repository transaction/locking logic.
 
 ## 7. Gateway resolution boundaries
 
@@ -115,7 +132,7 @@ Gateway resolution is split into two explicit paths.
 `resolveActiveForCheckout(...)`
 
 - reads the active revision for a new checkout
-- returns both adapter/config identity needed to persist the payment revision reference
+- returns adapter/config identity needed to persist the payment revision reference
 
 ### Existing payment
 
@@ -161,7 +178,7 @@ The core must not pass a generic `BKF-UUID` reference and require every provider
 
 ### Numeric order code
 
-payOS requires a numeric `orderCode`. The adapter must derive a deterministic numeric provider order code from the persisted payment identity. Retrying the same payment must reuse the same `orderCode`.
+payOS requires a numeric `orderCode`. The adapter derives a deterministic numeric provider order code from the persisted payment identity and validates that it satisfies payOS numeric constraints. Retrying the same payment reuses the same `orderCode`.
 
 The current pattern of converting a `BKF-*` string to `Number(...)` is removed.
 
@@ -223,7 +240,7 @@ For the fixed checkout flows in this phase, successful settlement requires exact
 
 `capturedAmount === amount`
 
-Underpayment or overpayment must not silently confirm the booking. Mismatches remain for reconciliation/operator handling.
+Underpayment or overpayment must not silently confirm the booking. Mismatches remain pending for reconciliation/operator handling and must be observable; they are not converted to normal success.
 
 The current `paid >= expected` rule is replaced for these fixed-amount provider checkouts.
 
@@ -236,7 +253,7 @@ A booking can legitimately have multiple successful payment transactions, for ex
 
 Therefore a booking-level cancellation refund cannot assume the latest successful payment represents all collected money.
 
-Refund planning becomes two-level:
+Refund planning becomes two-level.
 
 ### RefundBatch
 
@@ -248,6 +265,15 @@ Represents one business refund decision for a booking:
 - `requestedAmount`
 - `reason`
 - `status`
+
+Persisted batch status is:
+
+- `processing` — at least one allocation is not complete
+- `manual_required` — at least one allocation requires manual completion
+- `completed` — successful child refund amount equals `requestedAmount`
+- `failed` — all remaining work is terminally failed and cannot complete automatically/manual workflow has failed
+
+A batch begins as `processing`. `manual_required` may later transition back to `processing` when an operator records/continues manual work, then to `completed`.
 
 ### Refund rows / allocations
 
@@ -290,7 +316,7 @@ Cancellation/service refund allocation and security-deposit return are separate 
 
 Each refund allocation independently resolves its source payment, historical gateway config revision, and provider adapter.
 
-Normalized provider refund states are:
+Normalized provider refund results are:
 
 - `succeeded`
 - `pending`
@@ -299,7 +325,7 @@ Normalized provider refund states are:
 
 `unsupported` moves into the existing manual-refund lifecycle. `pending` is reconciled through `queryRefundStatus()`.
 
-A refund batch is complete only when successful allocation amounts equal the requested amount. A batch with some successful and some pending/manual allocations remains processing/partially completed.
+A refund batch becomes `completed` only when the sum of succeeded child refunds equals `requestedAmount`. If any child requires manual handling, the batch is `manual_required`; otherwise incomplete automatic work remains `processing`. A batch becomes `failed` only when remaining incomplete work is terminal and no successful/manual completion path remains.
 
 Existing outbox patterns are retained. Do not create unnecessary new event types if aggregation can be implemented using the current event model.
 
@@ -340,6 +366,7 @@ Balance-payment success UI is based on the relevant payment attempt and/or captu
 - additive schema migration
 - immutable gateway config revisions
 - `gatewayConfigRevisionId`
+- checkout lifecycle field
 - active vs historical gateway resolver
 - legacy fallback and observability
 
