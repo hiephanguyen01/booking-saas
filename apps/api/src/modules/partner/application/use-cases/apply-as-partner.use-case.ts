@@ -16,6 +16,7 @@ import {
 } from '../../domain/ports/partner-repository.port';
 import { PARTNER_ROLES, type IPartnerRoles } from '../../domain/ports/partner-roles.port';
 import { Partner } from '../../domain/entities/partner.entity';
+import { assertApplicantDocumentReferences } from '../../domain/partner-document-business-info';
 import { RecordLegalAcceptanceUseCase } from '../../../legal/application/use-cases/record-legal-acceptance.use-case';
 
 export interface ApplyContext {
@@ -55,6 +56,9 @@ export class ApplyAsPartnerUseCase {
     if (!tenant) throw new TenantNotFound();
     Partner.assertTenantAcceptingApplications(tenant.status);
 
+    const businessInfo = input.businessInfo ?? {};
+    assertApplicantDocumentReferences(userId, businessInfo);
+
     const location = await this.resolveAdministrativeAddress.execute(
       input.contactInfo.provinceCode,
       input.contactInfo.wardCode,
@@ -76,7 +80,7 @@ export class ApplyAsPartnerUseCase {
         slug: input.slug,
         description: input.description ?? null,
         partnerType: input.partnerType,
-        businessInfo: input.businessInfo,
+        businessInfo,
         contactInfo: {
           phone: input.contactInfo.phone,
           provinceCode: location.province.code,
