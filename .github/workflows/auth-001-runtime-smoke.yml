@@ -170,7 +170,7 @@ jobs:
             -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
           docker run --rm -e ACME_EMAIL=ops@example.invalid -e DASHBOARD_HOST=admin.example.invalid -e API_HOST=api.example.invalid -e PLATFORM_BASE_DOMAIN=example.invalid \
             -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy adapt --pretty --config /etc/caddy/Caddyfile >/tmp/caddy.json
-          [ "$(grep -c 'X-BookingOS-Client-IP' /tmp/caddy.json)" -ge 5 ] || fail 'case10 adapted config missing canonical header'
+          [ "$(grep -ci 'X-BookingOS-Client-IP' /tmp/caddy.json)" -ge 5 ] || fail 'case10 adapted config missing canonical header'
           cat >/tmp/echo.Caddyfile <<'EOF'
           :8080 { respond "{http.request.header.X-BookingOS-Client-IP}" 200 }
           EOF
