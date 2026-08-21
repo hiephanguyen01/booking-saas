@@ -211,16 +211,20 @@ export class S3StorageService implements StoragePort {
       input.keyPrefix.replace(/[^a-z0-9/_-]/gi, '').replace(/^\/+|\/+$/g, '') || 'uploads';
     const key = `${prefix}/${randomUUID()}.${ext}`;
 
+    const signableHeaders = new Set<string>(['content-type']);
+    if (input.contentLength !== undefined) signableHeaders.add('content-length');
+    if (input.writeOnce) signableHeaders.add('if-none-match');
+
     const uploadUrl = await getSignedUrl(
       this.client,
       new PutObjectCommand({
         Bucket: bucket,
         Key: key,
         ContentType: input.contentType,
-        ...(input.contentLength ? { ContentLength: input.contentLength } : {}),
+        ...(input.contentLength !== undefined ? { ContentLength: input.contentLength } : {}),
         ...(input.writeOnce ? { IfNoneMatch: '*' } : {}),
       }),
-      { expiresIn: this.config.presignExpiresSec },
+      { expiresIn: this.config.presignExpiresSec, signableHeaders },
     );
 
     return {
