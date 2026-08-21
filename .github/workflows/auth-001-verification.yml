@@ -33,6 +33,8 @@ jobs:
       - run: pnpm --filter=@booking/storefront security
       - run: pnpm --filter=@booking/contracts build
       - run: pnpm --filter=@booking/i18n typecheck
+      - run: pnpm --filter=@booking/i18n build
+      - run: pnpm --filter=@booking/api-client build
       - run: pnpm --filter=@booking/api lint
       - run: pnpm --filter=@booking/api typecheck
       - run: pnpm --filter=@booking/api build
