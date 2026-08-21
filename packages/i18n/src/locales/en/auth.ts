@@ -160,7 +160,6 @@ export const enAuth = {
     invalidOtp: 'The verification code is incorrect.',
     expired: 'Your verification session expired. Please start again.',
     passwordMismatch: 'Passwords do not match.',
-    accountLocked:
-      'Your account is temporarily locked after too many failed attempts. Try again later.',
+    rateLimited: 'Too many login attempts. Please try again later.',
   },
 } satisfies TranslationShape<typeof viAuth>;
