@@ -2,9 +2,12 @@ import type {
   PartnerAgreementResponse,
   PartnerResponse,
   PartnerTaxAssessmentResponse,
+  PrivateDocumentUploadResponse,
 } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_UPLOAD } from '../../../../shared/http/throttle-limits';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -12,6 +15,7 @@ import type { SessionPrincipal } from '../../../identity-access/domain/ports/ses
 import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { ListPartnerAcceptancesUseCase } from '../../../legal/application/use-cases/list-partner-acceptances.use-case';
 import { toPartnerResponse } from '../../application/partner.mapper';
+import { CreatePartnerDocumentUploadUseCase } from '../../application/use-cases/create-partner-document-upload.use-case';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
 import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-partner-default-cancellation-policy.use-case';
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
@@ -26,6 +30,8 @@ import {
   PartnerTaxYearQueryDto,
   RecordPartnerTaxDeclarationDto,
   PartnerAgreementListResponseDto,
+  PartnerDocumentUploadDto,
+  PrivateDocumentUploadResponseDto,
   SetDefaultCancellationPolicyDto,
   SubmitIdentityDto,
   UpdatePartnerDocumentsDto,
@@ -50,6 +56,7 @@ export class PartnerProfileController {
   constructor(
     private readonly getProfile: GetPartnerProfileUseCase,
     private readonly listAgreements: ListPartnerAcceptancesUseCase,
+    private readonly createPartnerDocumentUpload: CreatePartnerDocumentUploadUseCase,
     private readonly updatePayoutInfo: UpdatePayoutInfoUseCase,
     private readonly updateDocuments: UpdatePartnerDocumentsUseCase,
     private readonly submitIdentity: SubmitIdentityUseCase,
@@ -124,6 +131,22 @@ export class PartnerProfileController {
   async payout(@Body() input: UpdatePayoutInfoDto): Promise<PartnerResponse> {
     const partnerId = this.tenantContext.partnerIdOrThrow();
     return toPartnerResponse(await this.updatePayoutInfo.execute(partnerId, input));
+  }
+
+  @RequirePermissions('partner.profile.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
+  @Throttle(THROTTLE_UPLOAD)
+  @Post('documents/presign')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mint a private partner document upload URL' })
+  @ApiOkResponse({ type: PrivateDocumentUploadResponseDto })
+  async presignDocument(
+    @Body() input: PartnerDocumentUploadDto,
+  ): Promise<PrivateDocumentUploadResponse> {
+    return this.createPartnerDocumentUpload.execute(
+      this.tenantContext.partnerIdOrThrow(),
+      input,
+    );
   }
 
   @RequirePermissions('partner.profile.manage')
