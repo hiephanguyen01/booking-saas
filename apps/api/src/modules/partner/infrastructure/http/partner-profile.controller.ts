@@ -1,5 +1,6 @@
 import type {
   PartnerAgreementResponse,
+  PartnerDocumentReadItem,
   PartnerResponse,
   PartnerTaxAssessmentResponse,
   PrivateDocumentUploadResponse,
@@ -17,6 +18,7 @@ import { ListPartnerAcceptancesUseCase } from '../../../legal/application/use-ca
 import { toPartnerResponse } from '../../application/partner.mapper';
 import { CreatePartnerDocumentUploadUseCase } from '../../application/use-cases/create-partner-document-upload.use-case';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
+import { ListPartnerDocumentsUseCase } from '../../application/use-cases/list-partner-documents.use-case';
 import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-partner-default-cancellation-policy.use-case';
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
 import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/update-partner-documents.use-case';
@@ -30,6 +32,7 @@ import {
   PartnerTaxYearQueryDto,
   RecordPartnerTaxDeclarationDto,
   PartnerAgreementListResponseDto,
+  PartnerDocumentReadItemDto,
   PartnerDocumentUploadDto,
   PrivateDocumentUploadResponseDto,
   SetDefaultCancellationPolicyDto,
@@ -56,6 +59,7 @@ export class PartnerProfileController {
   constructor(
     private readonly getProfile: GetPartnerProfileUseCase,
     private readonly listAgreements: ListPartnerAcceptancesUseCase,
+    private readonly listDocuments: ListPartnerDocumentsUseCase,
     private readonly createPartnerDocumentUpload: CreatePartnerDocumentUploadUseCase,
     private readonly updatePayoutInfo: UpdatePayoutInfoUseCase,
     private readonly updateDocuments: UpdatePartnerDocumentsUseCase,
@@ -86,6 +90,20 @@ export class PartnerProfileController {
     return this.listAgreements.execute(
       this.tenantContext.tenantIdOrThrow(),
       this.tenantContext.partnerIdOrThrow(),
+    );
+  }
+
+  @RequirePermissions('partner.profile.manage')
+  @Get('documents')
+  @ApiOperation({ summary: "List the calling partner's private document read grants" })
+  @ApiOkResponse({ type: PartnerDocumentReadItemDto, isArray: true })
+  async documentReads(
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<PartnerDocumentReadItem[]> {
+    return this.listDocuments.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      this.tenantContext.partnerIdOrThrow(),
+      { actorType: 'partner', actorId: principal.userId },
     );
   }
 
