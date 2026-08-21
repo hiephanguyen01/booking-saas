@@ -202,8 +202,9 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
     const signatureValid = sameHex(this.sign(raw), s('signature'));
     const partnerValid = s('partnerCode') === this.creds.partnerCode;
     const referenceValid = s('orderId').length > 0 && s('requestId') === s('orderId');
-    const resultCode = Number(s('resultCode'));
-    const status = mapMomoPaymentResultCode(Number.isFinite(resultCode) ? resultCode : undefined);
+    const resultCodeRaw = s('resultCode');
+    const resultCode = /^-?\d+$/.test(resultCodeRaw) ? Number(resultCodeRaw) : undefined;
+    const status = mapMomoPaymentResultCode(resultCode);
     const event: WebhookEvent =
       status === 'succeeded'
         ? 'succeeded'
@@ -213,10 +214,16 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
             ? 'failed'
             : 'pending';
     const amountRaw = s('amount');
-    const amountVnd = /^\d+$/.test(amountRaw) ? BigInt(amountRaw) : 0n;
+    const amountValid = /^\d+$/.test(amountRaw);
+    const amountVnd = amountValid ? BigInt(amountRaw) : 0n;
 
     return {
-      valid: signatureValid && partnerValid && referenceValid && /^\d+$/.test(amountRaw),
+      valid:
+        signatureValid &&
+        partnerValid &&
+        referenceValid &&
+        resultCode !== undefined &&
+        amountValid,
       event,
       gatewayTxnId: s('transId'),
       gatewayOrderRef: s('orderId'),
@@ -346,13 +353,16 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
       refundTrans?: Array<{ amount?: number; resultCode?: number }>;
     };
     const amountVnd = BigInt(json.amount ?? 0);
-    const refundedVnd = (json.refundTrans ?? []).reduce(
-      (sum, refund) =>
-        refund.resultCode === 0 && Number.isFinite(refund.amount)
-          ? sum + BigInt(refund.amount ?? 0)
-          : sum,
-      0n,
-    );
+    const refundedVnd = (json.refundTrans ?? []).reduce((sum, refund) => {
+      if (
+        refund.resultCode !== 0 ||
+        typeof refund.amount !== 'number' ||
+        !Number.isFinite(refund.amount)
+      ) {
+        return sum;
+      }
+      return sum + BigInt(refund.amount);
+    }, 0n);
     const mapped = mapMomoPaymentResultCode(json.resultCode);
     const status: PaymentStatusResult['status'] =
       mapped === 'succeeded' && amountVnd > 0n && refundedVnd >= amountVnd ? 'refunded' : mapped;
