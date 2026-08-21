@@ -123,6 +123,61 @@ export const verifyIdentityInputSchema = z.object({
 });
 export type VerifyIdentityInput = z.infer<typeof verifyIdentityInputSchema>;
 
+export const partnerDocumentContentTypeSchema = z.enum([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+]);
+export type PartnerDocumentContentType = z.infer<typeof partnerDocumentContentTypeSchema>;
+
+export const PARTNER_DOCUMENT_UPLOAD_ACCEPT = partnerDocumentContentTypeSchema.options;
+export const MAX_PARTNER_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024;
+
+export const partnerDocumentUploadInputSchema = z.object({
+  contentType: partnerDocumentContentTypeSchema,
+  sizeBytes: z.number().int().min(1).max(MAX_PARTNER_DOCUMENT_SIZE_BYTES),
+});
+export type PartnerDocumentUploadInput = z.infer<typeof partnerDocumentUploadInputSchema>;
+
+export const privateDocumentUploadResponseSchema = z.object({
+  uploadUrl: z.string().url(),
+  key: z.string().min(1),
+  expiresInSec: z.number().int().positive(),
+  requiredHeaders: z.object({
+    'content-type': partnerDocumentContentTypeSchema,
+    'if-none-match': z.literal('*'),
+  }),
+});
+export type PrivateDocumentUploadResponse = z.infer<typeof privateDocumentUploadResponseSchema>;
+
+export const partnerDocumentKindSchema = z.enum([
+  'identity_card_front',
+  'identity_card_back',
+  'business_license_front',
+  'business_license_back',
+  'license_document',
+]);
+export type PartnerDocumentKind = z.infer<typeof partnerDocumentKindSchema>;
+
+export const partnerDocumentReadItemSchema = z.discriminatedUnion('storage', [
+  z.object({
+    storage: z.literal('private'),
+    kind: partnerDocumentKindSchema,
+    key: z.string().min(1),
+    downloadUrl: z.string().url(),
+    expiresInSec: z.number().int().positive(),
+  }),
+  z.object({
+    storage: z.literal('legacy_public'),
+    kind: partnerDocumentKindSchema,
+    url: z.string().url(),
+  }),
+]);
+export const partnerDocumentReadListSchema = z.array(partnerDocumentReadItemSchema);
+export type PartnerDocumentReadItem = z.infer<typeof partnerDocumentReadItemSchema>;
+
 /**
  * Post-registration document upload (§7.3). A partner registers with plain fields,
  * then — once authenticated — uploads a logo + license/business documents on the
