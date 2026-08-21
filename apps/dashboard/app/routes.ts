@@ -26,8 +26,10 @@ export default [
   // `/tenant` would make the invitation unusable for everyone it's meant for.
   route('invitations/:token', 'routes/invitations/accept.tsx'),
 
-  // Presign proxy for direct-to-storage image uploads (§4.2) — any logged-in user.
+  // Presign proxy for direct-to-storage public image uploads (§4.2) — any logged-in user.
   route('uploads/presign', 'routes/uploads.presign.tsx'),
+  // Private partner identity/legal documents use a partner-scoped resource route.
+  route('uploads/partner-documents/presign', 'routes/uploads.partner-documents.presign.tsx'),
   // The bell's poll target (Task 9) — any logged-in user, not tenant-gated.
   route('notifications', 'routes/notifications.tsx'),
   route('administrative-divisions/provinces', 'routes/administrative-provinces.tsx'),

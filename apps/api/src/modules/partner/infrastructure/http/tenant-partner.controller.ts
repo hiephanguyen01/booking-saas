@@ -3,6 +3,7 @@ import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestj
 import {
   uuidSchema,
   type PaginatedWithCounts,
+  type PartnerDocumentReadItem,
   type PartnerResponse,
   type PartnerTaxAssessmentResponse,
 } from '@booking/contracts';
@@ -25,12 +26,14 @@ import { SuspendPartnerUseCase } from '../../application/use-cases/suspend-partn
 import { UpdatePartnerTaxStatusUseCase } from '../../application/use-cases/update-partner-tax-status.use-case';
 import { GetPartnerTaxAssessmentUseCase } from '../../application/use-cases/get-partner-tax-assessment.use-case';
 import { RecordPartnerTaxDeclarationUseCase } from '../../application/use-cases/record-partner-tax-declaration.use-case';
+import { ListPartnerDocumentsUseCase } from '../../application/use-cases/list-partner-documents.use-case';
 import { toPartnerResponse } from '../../application/partner.mapper';
 import { toPartnerTaxAssessmentResponse } from '../../application/partner-tax.mapper';
 import {
   ApprovePartnerDto,
   CreateHousePartnerDto,
   ListPartnersQueryDto,
+  PartnerDocumentReadItemDto,
   PartnerResponseDto,
   PartnerTaxAssessmentResponseDto,
   PartnerTaxYearQueryDto,
@@ -46,6 +49,7 @@ export class TenantPartnerController {
   constructor(
     private readonly listPartners: ListPartnersUseCase,
     private readonly getPartner: GetPartnerUseCase,
+    private readonly listDocuments: ListPartnerDocumentsUseCase,
     private readonly createHousePartner: CreateHousePartnerUseCase,
     private readonly approvePartner: ApprovePartnerUseCase,
     private readonly verifyIdentity: VerifyIdentityUseCase,
@@ -75,6 +79,22 @@ export class TenantPartnerController {
   async createHouse(@Body() input: CreateHousePartnerDto): Promise<PartnerResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return toPartnerResponse(await this.createHousePartner.execute(tenantId, input));
+  }
+
+  @RequirePermissions('tenant.partners.read')
+  @Get(':id/documents')
+  @ApiOperation({ summary: "List a partner's private document read grants" })
+  @UuidParam()
+  @ApiOkResponse({ type: PartnerDocumentReadItemDto, isArray: true })
+  async documents(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<PartnerDocumentReadItem[]> {
+    return this.listDocuments.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+      { actorType: 'tenant', actorId: principal.userId },
+    );
   }
 
   @RequirePermissions('tenant.partners.read')

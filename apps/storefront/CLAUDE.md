@@ -41,8 +41,8 @@ route-config/navigation exceptions; storefront currently has no equivalent excep
 - Browser-reachable modules may only `import type` from `*.server` files (never a runtime import).
 - Route URLs come from `~/constants/paths` (`storefrontPaths.account.booking(code)` …), never
   string-built. The same-origin presign proxies (`storefrontPaths.uploadPresign`,
-  `reviewUploadPresign`) live there too: the upload widget requests them directly, so they are
-  storefront routes, not backend endpoints.
+  `reviewUploadPresign`, `partnerDocumentUploadPresign`) live there too: upload widgets request them
+  directly, so they are storefront routes, not backend endpoints.
 - **Backend endpoints come from `~/constants/api-paths`** (`apiPaths.public.listing(slug)` …). Only
   `*.server.ts` modules consume it. Builders encode their params — do not wrap arguments in
   `encodeURIComponent`. Never append a query string to a path: pass the helper's `query` option, which
@@ -184,9 +184,13 @@ when the API, Redis, session secret, dashboard URL or payment-origin allowlist i
 Unsafe HTTP methods pass through the root same-origin guard before auth; `/healthz` and `/readyz` are
 exact operational exceptions and must never resolve a tenant or session.
 
-Image upload works: `app/routes/uploads.presign.tsx` is a same-origin presign proxy that replays the
-auth cookie to the backend `POST /uploads/presign`, then the browser PUTs bytes straight to MinIO/S3.
-(The dashboard has its own presign route; the storefront's is real — older docs claimed it had none.)
+Public image upload uses `app/routes/uploads.presign.tsx`: the same-origin BFF replays the auth cookie
+to backend `POST /uploads/presign`, then the browser PUTs bytes directly to the public storage bucket.
+Partner-onboarding identity/legal documents are different: `app/routes/uploads.partner-documents.presign.tsx`
+requires the onboarding session and calls authenticated `POST /partners/application-documents/presign`.
+Those grants have no public URL, target the private bucket under the current user namespace, and sign
+the declared content length plus `content-type` and `if-none-match: *` before the browser PUTs bytes.
+Never route partner identity/legal documents through the generic public image-upload path.
 
 ## Verification
 

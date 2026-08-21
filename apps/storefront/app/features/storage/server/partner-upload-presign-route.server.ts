@@ -1,20 +1,31 @@
 import {
-  presignUploadInputSchema,
-  presignUploadResponseSchema,
-  type PresignUploadResponse,
+  partnerDocumentUploadInputSchema,
+  privateDocumentUploadResponseSchema,
+  type PrivateDocumentUploadResponse,
 } from '@booking/contracts';
-import { requestBodyFailureStatus } from '~/lib/server/request-body.server';
-import { apiFailureStatus, publicPost } from '~/lib/server/api.server';
-import { readJsonRequestBody } from '~/lib/server/json-request.server';
-import { allowedStorageUploadUrl } from '~/features/storage/server/upload-origin.server';
-import { MAX_PRESIGN_REQUEST_BYTES, uploadRouteJson } from './upload-route-response.server';
 import { apiPaths } from '~/constants/api-paths';
+import { storefrontPaths } from '~/constants/paths';
+import { requirePartnerPhase } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
+import { allowedStorageUploadUrl } from '~/features/storage/server/upload-origin.server';
+import { apiFailureStatus, apiPost } from '~/lib/server/api.server';
+import { requireAuth } from '~/lib/server/auth.server';
+import { resolveLocale } from '~/lib/server/i18n.server';
+import { readJsonRequestBody } from '~/lib/server/json-request.server';
+import { requestBodyFailureStatus } from '~/lib/server/request-body.server';
+import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
+import { MAX_PRESIGN_REQUEST_BYTES, uploadRouteJson } from './upload-route-response.server';
 
 /**
- * Public partner-application upload proxy. Applicants have no dashboard
- * session, so this calls the API endpoint hard-scoped to `partners`.
+ * Authenticated partner-onboarding document upload proxy. The browser never sees
+ * the backend access token; it receives only a short-lived private-bucket PUT
+ * grant and persists the opaque object key returned after upload.
  */
 export async function handlePartnerUploadPresignAction(request: Request): Promise<Response> {
+  const tenant = getCurrentStorefrontTenant();
+  const locale = resolveLocale(request, tenant.defaultLocale);
+  await requirePartnerPhase(request, 'partner_registration_profile', locale);
+  const auth = requireAuth(storefrontPaths.becomePartner(locale));
+
   const body = await readJsonRequestBody(request, MAX_PRESIGN_REQUEST_BYTES);
   if (!body.ok) {
     return uploadRouteJson(
@@ -29,19 +40,20 @@ export async function handlePartnerUploadPresignAction(request: Request): Promis
     );
   }
 
-  const parsed = presignUploadInputSchema.safeParse(body.value);
-  if (!parsed.success || parsed.data.target !== 'partners') {
+  const parsed = partnerDocumentUploadInputSchema.safeParse(body.value);
+  if (!parsed.success) {
     return uploadRouteJson(
       { code: 'INVALID_UPLOAD_REQUEST', message: 'Yêu cầu tải lên không hợp lệ.' },
       400,
     );
   }
 
-  const result = await publicPost<PresignUploadResponse>(
+  const result = await apiPost<PrivateDocumentUploadResponse>(
     request,
-    apiPaths.partner.uploadPresign,
+    apiPaths.partner.applicationDocumentPresign,
     parsed.data,
-    { schema: presignUploadResponseSchema, timeoutMs: 10_000 },
+    auth.session.accessToken,
+    { schema: privateDocumentUploadResponseSchema, timeoutMs: 10_000 },
   );
   if (!result.ok || !result.data) {
     const status = apiFailureStatus(result);

@@ -1,4 +1,4 @@
-import type { PartnerResponse } from '@booking/contracts';
+import type { PartnerDocumentReadItem, PartnerResponse } from '@booking/contracts';
 import {
   Card,
   CardContent,
@@ -16,18 +16,30 @@ import { EnumValue } from '~/components/enum-value';
 import { PhotoStrip } from '~/components/photo-strip';
 import type { BusinessInfoView } from '~/features/tenant/lib/partner-business-info';
 
+function documentUrl(document: PartnerDocumentReadItem): string {
+  return document.storage === 'private' ? document.downloadUrl : document.url;
+}
+
 /**
  * Identity review card — the metadata to reconcile against the submitted ID
- * scans, plus the scans themselves and any prior review note.
+ * scans, plus permission-gated scan descriptors and any prior review note.
  */
 export function PartnerIdentityCard({
   partner,
   business,
+  documents,
 }: {
   partner: PartnerResponse;
   business: BusinessInfoView;
+  documents: PartnerDocumentReadItem[];
 }) {
   const identity = partner.identityInfo;
+  const identityPhotos = documents
+    .filter(
+      (document) =>
+        document.kind === 'identity_card_front' || document.kind === 'identity_card_back',
+    )
+    .map(documentUrl);
 
   return (
     <Card>
@@ -81,8 +93,8 @@ export function PartnerIdentityCard({
           title="Ảnh giấy tờ tuỳ thân"
           emptyMessage="Đối tác chưa tải ảnh giấy tờ tuỳ thân."
         >
-          {business.identityPhotos.length > 0 ? (
-            <PhotoStrip photos={business.identityPhotos} alt="Giấy tờ tuỳ thân" />
+          {identityPhotos.length > 0 ? (
+            <PhotoStrip photos={identityPhotos} alt="Giấy tờ tuỳ thân" />
           ) : null}
         </DetailSection>
       </CardContent>

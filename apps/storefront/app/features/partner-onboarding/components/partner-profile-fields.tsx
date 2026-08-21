@@ -1,7 +1,18 @@
-import type { PartnerOnboardingProfileInput } from '@booking/contracts';
-import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
+import {
+  MAX_PARTNER_DOCUMENT_SIZE_BYTES,
+  PARTNER_DOCUMENT_UPLOAD_ACCEPT,
+  type PartnerOnboardingProfileInput,
+} from '@booking/contracts';
+import { PrivateDocumentUpload } from '@booking/ui/components/form/private-document-upload';
 import type { FieldConfig } from '@booking/ui/components/form/types';
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@booking/ui/components/ui/form';
 import type { Path } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import type { NsI18n, ScopedI18n, ScopedTranslationKey } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 
@@ -31,10 +42,10 @@ export const PARTNER_PROFILE_DEFAULTS: PartnerOnboardingProfileInput = {
   bank: '',
   bankAccountNumber: '',
   bankAccountHolder: '',
-  businessLicenseFrontUrl: '',
-  businessLicenseBackUrl: '',
-  identityCardFrontUrl: '',
-  identityCardBackUrl: '',
+  businessLicenseFrontKey: '',
+  businessLicenseBackKey: '',
+  identityCardFrontKey: '',
+  identityCardBackKey: '',
   acceptedTerms: false,
   // Placeholders — `usePartnerProfilePageController` overrides both from the
   // loader's `legalConsent` (the tenant's current document versions) before
@@ -65,40 +76,66 @@ export const partnerProfileTextField = (
   placeholder: t('auth:partner.enterPlaceholder'),
 });
 
-const partnerDocumentField = (
-  name: Path<PartnerOnboardingProfileInput>,
-  label: string,
-): FieldConfig<PartnerOnboardingProfileInput> => ({
+const DOCUMENT_MAX_SIZE_MB = MAX_PARTNER_DOCUMENT_SIZE_BYTES / (1024 * 1024);
+
+type PartnerDocumentFieldName =
+  | 'businessLicenseFrontKey'
+  | 'businessLicenseBackKey'
+  | 'identityCardFrontKey'
+  | 'identityCardBackKey';
+
+function PartnerPrivateDocumentField({
   name,
   label,
-  type: 'file',
-  required: true,
-  target: 'partners',
-  presignEndpoint: storefrontPaths.uploadPresign,
-  variant: 'document',
-});
+}: {
+  name: PartnerDocumentFieldName;
+  label: string;
+}) {
+  const { control } = useFormContext<PartnerOnboardingProfileInput>();
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>
+            {label}
+            <span aria-hidden="true" className="mr-1 text-destructive">
+              *
+            </span>
+          </FormLabel>
+          <PrivateDocumentUpload
+            value={typeof field.value === 'string' ? field.value : ''}
+            onChange={field.onChange}
+            presignEndpoint={storefrontPaths.partnerDocumentUploadPresign}
+            accept={PARTNER_DOCUMENT_UPLOAD_ACCEPT}
+            maxSizeMb={DOCUMENT_MAX_SIZE_MB}
+            label={label}
+          />
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
 
 export function PartnerDocumentPair({ company, t }: { company: boolean; t: PartnerProfileI18n }) {
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <FieldRenderer
-        field={partnerDocumentField(
-          company ? 'businessLicenseFrontUrl' : 'identityCardFrontUrl',
-          t(
-            company
-              ? 'common:becomePartner.businessLicenseFront'
-              : 'common:becomePartner.identityDocumentFront',
-          ),
+      <PartnerPrivateDocumentField
+        name={company ? 'businessLicenseFrontKey' : 'identityCardFrontKey'}
+        label={t(
+          company
+            ? 'common:becomePartner.businessLicenseFront'
+            : 'common:becomePartner.identityDocumentFront',
         )}
       />
-      <FieldRenderer
-        field={partnerDocumentField(
-          company ? 'businessLicenseBackUrl' : 'identityCardBackUrl',
-          t(
-            company
-              ? 'common:becomePartner.businessLicenseBack'
-              : 'common:becomePartner.identityDocumentBack',
-          ),
+      <PartnerPrivateDocumentField
+        name={company ? 'businessLicenseBackKey' : 'identityCardBackKey'}
+        label={t(
+          company
+            ? 'common:becomePartner.businessLicenseBack'
+            : 'common:becomePartner.identityDocumentBack',
         )}
       />
     </div>
