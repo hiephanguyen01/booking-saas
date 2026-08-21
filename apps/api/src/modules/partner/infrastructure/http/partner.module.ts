@@ -17,6 +17,8 @@ import { PrismaPartnerStaffRepository } from '../repositories/prisma-partner-sta
 import { PrismaPartnerRoles } from '../services/prisma-partner-roles';
 import { PartnerMembershipWriterModule } from './partner-membership-writer.module';
 import { ApplyAsPartnerUseCase } from '../../application/use-cases/apply-as-partner.use-case';
+import { CreateApplicantDocumentUploadUseCase } from '../../application/use-cases/create-applicant-document-upload.use-case';
+import { CreatePartnerDocumentUploadUseCase } from '../../application/use-cases/create-partner-document-upload.use-case';
 import { CreateHousePartnerUseCase } from '../../application/use-cases/create-house-partner.use-case';
 import { ApprovePartnerUseCase } from '../../application/use-cases/approve-partner.use-case';
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
@@ -81,6 +83,8 @@ import { PartnerRoleController } from './partner-role.controller';
     { provide: PARTNER_STAFF_REPOSITORY, useClass: PrismaPartnerStaffRepository },
     { provide: PUBLIC_PARTNER_REPOSITORY, useClass: PrismaPublicPartnerRepository },
     ApplyAsPartnerUseCase,
+    CreateApplicantDocumentUploadUseCase,
+    CreatePartnerDocumentUploadUseCase,
     CreateHousePartnerUseCase,
     ApprovePartnerUseCase,
     SubmitIdentityUseCase,
