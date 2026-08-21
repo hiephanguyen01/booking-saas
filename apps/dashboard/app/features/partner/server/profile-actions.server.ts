@@ -44,10 +44,13 @@ function readStringArray(value: unknown): string[] {
     : [];
 }
 
+function appendUnique(existing: string[], added: string[], max: number): string[] {
+  return Array.from(new Set([...existing, ...added])).slice(0, max);
+}
+
 /**
  * The partner-profile action dispatch: `payout` / `identity` / `documents`
- * arrive as GenericForm JSON with an `intent` discriminator; `deleteDoc` is a
- * plain form post.
+ * arrive as JSON with an `intent` discriminator; `deleteDoc` is a plain form post.
  */
 export async function runPartnerProfileAction(
   request: Request,
@@ -84,15 +87,13 @@ export async function runPartnerProfileAction(
       if (!parsed.success) {
         return fail(intent, null, parsed.error.flatten().fieldErrors);
       }
-      // Only forward set keys, and APPEND new license docs onto the existing set
-      // (the PATCH replaces the array — appending here keeps previous documents).
       const payload: UpdatePartnerDocumentsInput = {};
-      if (parsed.data.logoUrl) payload.logoUrl = parsed.data.logoUrl;
-      if (parsed.data.licenseDocs && parsed.data.licenseDocs.length > 0) {
+      if (parsed.data.logoUrl !== undefined) payload.logoUrl = parsed.data.logoUrl;
+      if (parsed.data.licenseDocumentKeys && parsed.data.licenseDocumentKeys.length > 0) {
         const current = await apiGet<PartnerResponse>(apiPaths.partner.profile, auth);
-        const existing =
-          current.ok && current.data ? readStringArray(current.data.businessInfo.licenseDocs) : [];
-        payload.licenseDocs = [...existing, ...parsed.data.licenseDocs].slice(0, 20);
+        if (!current.ok || !current.data) return fail(intent, 'Không tải được hồ sơ.');
+        const existing = readStringArray(current.data.businessInfo.licenseDocumentKeys);
+        payload.licenseDocumentKeys = appendUnique(existing, parsed.data.licenseDocumentKeys, 20);
       }
       const res = await apiPatch(apiPaths.partner.profileDocuments, payload, auth);
       if (!res.ok) return fail(intent, res.error ?? 'Không lưu được giấy tờ.');
@@ -102,7 +103,6 @@ export async function runPartnerProfileAction(
     return fail('', actionMessages.invalidIntent);
   }
 
-  // Plain form posts: deleting a single license document.
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
   if (intent === 'declare-tax-revenue') {
@@ -117,13 +117,16 @@ export async function runPartnerProfileAction(
     return succeed(intent);
   }
   if (intent === 'deleteDoc') {
-    const url = String(form.get('url') ?? '');
+    const key = String(form.get('key') ?? '');
+    if (!key) return fail(intent, 'Tham chiếu giấy tờ không hợp lệ.');
     const current = await apiGet<PartnerResponse>(apiPaths.partner.profile, auth);
     if (!current.ok || !current.data) {
       return fail(intent, 'Không tải được hồ sơ.');
     }
-    const next = readStringArray(current.data.businessInfo.licenseDocs).filter((d) => d !== url);
-    const res = await apiPatch(apiPaths.partner.profileDocuments, { licenseDocs: next }, auth);
+    const next = readStringArray(current.data.businessInfo.licenseDocumentKeys).filter(
+      (documentKey) => documentKey !== key,
+    );
+    const res = await apiPatch(apiPaths.partner.profileDocuments, { licenseDocumentKeys: next }, auth);
     if (!res.ok) return fail(intent, res.error ?? 'Không xoá được giấy tờ.');
     return succeed(intent);
   }
