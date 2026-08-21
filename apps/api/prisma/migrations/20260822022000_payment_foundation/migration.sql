@@ -16,6 +16,26 @@ DROP INDEX "tenant_gateway_configs_tenant_id_gateway_environment_key";
 CREATE INDEX "tenant_gateway_configs_tenant_id_gateway_environment_idx"
   ON "tenant_gateway_configs"("tenant_id", "gateway", "environment");
 
+-- The old schema allowed one active sandbox row and one active production row for
+-- the same gateway at the database level. The application already treated that as
+-- invalid, but normalize any historical drift deterministically before tightening
+-- the DB invariant so deploy cannot fail on legacy data. Keep the newest revision.
+WITH ranked_active AS (
+  SELECT id,
+         row_number() OVER (
+           PARTITION BY tenant_id, gateway
+           ORDER BY updated_at DESC, created_at DESC, id DESC
+         ) AS active_rank
+  FROM tenant_gateway_configs
+  WHERE is_active = true
+)
+UPDATE tenant_gateway_configs AS config
+SET is_active = false,
+    updated_at = now()
+FROM ranked_active
+WHERE config.id = ranked_active.id
+  AND ranked_active.active_rank > 1;
+
 -- One active revision per exact gateway. Base-gateway group exclusivity remains
 -- enforced transactionally by PrismaGatewayConfigRepository under a tenant lock.
 CREATE UNIQUE INDEX "tenant_gateway_configs_one_active_revision_per_gateway"
