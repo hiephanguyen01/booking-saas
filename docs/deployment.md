@@ -86,6 +86,38 @@ Both frontends reach the API over the compose network (`INTERNAL_API_URL=http://
 public URL — that is the "frontends never fetch the backend from the browser" rule (`AGENTS.md`)
 holding at the infrastructure level too.
 
+### Login abuse trusted client IP and HMAC key
+
+Password-login abuse protection deliberately does **not** use Express/Nest `req.ip` or generic
+forwarded headers. Caddy is the public trust boundary and overwrites `X-BookingOS-Client-IP` on every
+public API/storefront/dashboard reverse proxy. The two SSR apps validate that value as exactly one
+IPv4/IPv6 literal and forward it only on login; the API applies Redis-backed pair/IP limits from that
+canonical value. A client-supplied value must never survive the public edge unchanged.
+
+If a CDN, reverse proxy, or cloud load balancer is ever inserted **before Caddy**, this assumption must
+be redesigned before rollout. Caddy would otherwise see the intermediary's address in `{remote_host}`
+and every user behind that intermediary would share one abuse bucket. Do not work around that by
+turning on global `trust proxy` or by accepting `X-Forwarded-For` in the application; establish a new,
+explicitly trusted edge contract instead.
+
+The API also requires `AUTH_RATE_LIMIT_HMAC_KEY` in staging/production. Generate one independently per
+environment:
+
+```bash
+openssl rand -hex 32
+```
+
+Use the **same value on every API replica in that environment** so the HMAC-derived Redis identifiers
+are stable across requests and replicas. Do not reuse `SESSION_SECRET_CURRENT`, `PAYMENTS_ENC_KEY`,
+gateway credentials, or any other application secret. `docker-compose.deploy.yml` fails fast when the
+variable is missing, and the limiter provider also rejects weak/dev/`CHANGE_ME` values in
+`NODE_ENV=production`.
+
+Rotating `AUTH_RATE_LIMIT_HMAC_KEY` does not alter accounts or sessions, but it changes every derived
+Redis identifier. Existing login-abuse history then becomes unreachable until its bounded TTL expires,
+so rotation temporarily resets the active abuse windows. Coordinate rotation across all API replicas
+at once; running mixed old/new keys fragments the limiter state and weakens enforcement.
+
 ### TLS — Caddy on-demand, one certificate per hostname
 
 **Caddy owns public 80/443** — the `caddy` service in `docker-compose.deploy.yml`, the only service
