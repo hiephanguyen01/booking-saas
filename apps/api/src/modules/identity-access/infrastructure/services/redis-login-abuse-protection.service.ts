@@ -20,55 +20,44 @@ const COMMAND_TIMEOUT_MS = 750;
 const DEV_HMAC_KEY = 'dev-auth-rate-limit-hmac-key-not-for-production';
 
 const PRECHECK_SCRIPT = `
-local cutoff = tonumber(ARGV[1])
-local pairLimit = tonumber(ARGV[2])
-local ipLimit = tonumber(ARGV[3])
+local t = redis.call('TIME')
+local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
+local cutoff = now - tonumber(ARGV[1])
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', cutoff)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', cutoff)
 local pairCount = redis.call('ZCARD', KEYS[1])
 local ipCount = redis.call('ZCARD', KEYS[2])
-if pairCount >= pairLimit then return 1 end
-if ipCount >= ipLimit then return 2 end
+if pairCount >= tonumber(ARGV[2]) then return 1 end
+if ipCount >= tonumber(ARGV[3]) then return 2 end
 return 0
 `;
 
 const RECORD_BLOCKING_FAILURE_SCRIPT = `
-local now = tonumber(ARGV[1])
-local cutoff = tonumber(ARGV[2])
-local member = ARGV[3]
-local ttl = tonumber(ARGV[4])
+local t = redis.call('TIME')
+local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
+local cutoff = now - tonumber(ARGV[1])
+local member = tostring(now) .. ':' .. ARGV[2]
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', cutoff)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', cutoff)
 redis.call('ZADD', KEYS[1], now, member)
 redis.call('ZADD', KEYS[2], now, member)
-redis.call('PEXPIRE', KEYS[1], ttl)
-redis.call('PEXPIRE', KEYS[2], ttl)
+redis.call('PEXPIRE', KEYS[1], tonumber(ARGV[3]))
+redis.call('PEXPIRE', KEYS[2], tonumber(ARGV[3]))
 return { redis.call('ZCARD', KEYS[1]), redis.call('ZCARD', KEYS[2]) }
 `;
 
 const RECORD_OBSERVATION_SCRIPT = `
-local now = tonumber(ARGV[1])
-local cutoff = tonumber(ARGV[2])
-local member = ARGV[3]
-local ttl = tonumber(ARGV[4])
-local threshold = tonumber(ARGV[5])
+local t = redis.call('TIME')
+local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
+local cutoff = now - tonumber(ARGV[1])
+local eventMember = tostring(now) .. ':' .. ARGV[2]
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', cutoff)
-redis.call('ZADD', KEYS[1], now, member)
-redis.call('PEXPIRE', KEYS[1], ttl)
-local active = redis.call('ZCARD', KEYS[1])
-if active < threshold then return { active, 0 } end
-local members = redis.call('ZRANGE', KEYS[1], 0, -1)
-local sources = {}
-local distinct = 0
-for _, value in ipairs(members) do
-  local separator = string.find(value, ':', 1, true)
-  local source = separator and string.sub(value, 1, separator - 1) or value
-  if not sources[source] then
-    sources[source] = true
-    distinct = distinct + 1
-  end
-end
-return { active, distinct }
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', cutoff)
+redis.call('ZADD', KEYS[1], now, eventMember)
+redis.call('ZADD', KEYS[2], now, ARGV[3])
+redis.call('PEXPIRE', KEYS[1], tonumber(ARGV[4]))
+redis.call('PEXPIRE', KEYS[2], tonumber(ARGV[4]))
+return { redis.call('ZCARD', KEYS[1]), redis.call('ZCARD', KEYS[2]) }
 `;
 
 function loadHmacKey(): string {
@@ -117,13 +106,12 @@ export class RedisLoginAbuseProtectionService
     clientIp: string;
   }): Promise<LoginAbusePrecheckResult> {
     const identifiers = this.identifiers(input);
-    const now = Date.now();
     const result = await this.redis.eval(
       PRECHECK_SCRIPT,
       2,
       this.pairKey(identifiers.pairId),
       this.ipKey(identifiers.ipId),
-      String(now - WINDOW_MS),
+      String(WINDOW_MS),
       String(PAIR_FAILURE_LIMIT),
       String(IP_FAILURE_LIMIT),
     );
@@ -139,18 +127,14 @@ export class RedisLoginAbuseProtectionService
     clientIp: string;
   }): Promise<LoginAbuseFailureResult> {
     const identifiers = this.identifiers(input);
-    const now = Date.now();
-    const cutoff = now - WINDOW_MS;
-    const member = `${now}:${randomUUID()}`;
 
     const blockingResult = await this.redis.eval(
       RECORD_BLOCKING_FAILURE_SCRIPT,
       2,
       this.pairKey(identifiers.pairId),
       this.ipKey(identifiers.ipId),
-      String(now),
-      String(cutoff),
-      member,
+      String(WINDOW_MS),
+      randomUUID(),
       String(KEY_TTL_MS),
     );
     if (!Array.isArray(blockingResult) || blockingResult.length !== 2) {
@@ -160,16 +144,15 @@ export class RedisLoginAbuseProtectionService
     toNumber(blockingResult[1], 'login abuse ip failure recording');
 
     try {
-      const observationMember = `${identifiers.ipId}:${randomUUID()}`;
       const observationResult = await this.redis.eval(
         RECORD_OBSERVATION_SCRIPT,
-        1,
-        this.accountObservationKey(identifiers.accountId),
-        String(now),
-        String(cutoff),
-        observationMember,
+        2,
+        this.accountObservationEventsKey(identifiers.accountId),
+        this.accountObservationSourcesKey(identifiers.accountId),
+        String(WINDOW_MS),
+        randomUUID(),
+        identifiers.ipId,
         String(KEY_TTL_MS),
-        String(ACCOUNT_OBSERVE_LIMIT),
       );
       if (!Array.isArray(observationResult) || observationResult.length !== 2) {
         throw new Error('Invalid Redis result for login account observation');
@@ -225,7 +208,11 @@ export class RedisLoginAbuseProtectionService
     return `auth:login:ip:${ipId}`;
   }
 
-  private accountObservationKey(accountId: string): string {
-    return `auth:login:account-observe:${accountId}`;
+  private accountObservationEventsKey(accountId: string): string {
+    return `auth:login:account-observe:${accountId}:events`;
+  }
+
+  private accountObservationSourcesKey(accountId: string): string {
+    return `auth:login:account-observe:${accountId}:sources`;
   }
 }
