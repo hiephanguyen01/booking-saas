@@ -22,6 +22,16 @@ export class InvalidPartnerState extends DomainError {
   }
 }
 
+export class InvalidPartnerDocumentReference extends DomainError {
+  constructor() {
+    super(
+      'INVALID_PARTNER_DOCUMENT_REFERENCE',
+      400,
+      'Partner document reference is invalid or belongs to another owner',
+    );
+  }
+}
+
 export class PartnerHasActiveBookings extends DomainError {
   constructor() {
     super('PARTNER_HAS_ACTIVE_BOOKINGS', 409, 'Cannot suspend a partner with active bookings');
