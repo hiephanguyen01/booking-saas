@@ -47,7 +47,12 @@ export class PartnerResponseDto extends createZodDto(partnerResponseSchema) {}
 export class PrivateDocumentUploadResponseDto extends createZodDto(
   privateDocumentUploadResponseSchema,
 ) {}
-export class PartnerDocumentReadItemDto extends createZodDto(partnerDocumentReadItemSchema) {}
+export class PrivatePartnerDocumentReadItemDto extends createZodDto(
+  partnerDocumentReadItemSchema.options[0],
+) {}
+export class LegacyPublicPartnerDocumentReadItemDto extends createZodDto(
+  partnerDocumentReadItemSchema.options[1],
+) {}
 export class PartnerTaxAssessmentResponseDto extends createZodDto(
   partnerTaxAssessmentResponseSchema,
 ) {}
