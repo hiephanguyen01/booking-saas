@@ -4,6 +4,7 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { Partner } from '../../domain/entities/partner.entity';
 import { PartnerNotFound } from '../../domain/errors/partner-errors';
+import { assertPartnerDocumentReferences } from '../../domain/partner-document-business-info';
 import { PARTNER_READER, type IPartnerReader } from '../../domain/ports/partner-reader.port';
 import {
   PARTNER_REPOSITORY,
@@ -12,10 +13,10 @@ import {
 } from '../../domain/ports/partner-repository.port';
 
 /**
- * A partner uploads its logo + license/business documents after registering
- * (§7.3 — the "register first, then upload" flow). Images are stored via the
- * presign flow; only their URLs land here, merged into `businessInfo` JSON so the
- * existing tax/registration fields are preserved. Only the provided keys change.
+ * A partner uploads its logo + private license/business documents after registering
+ * (§7.3 — the "register first, then upload" flow). The public logo URL and private
+ * document keys are merged into `businessInfo` JSON so existing tax/registration
+ * fields and legacy read-only document fields remain untouched until migration.
  */
 @Injectable()
 export class UpdatePartnerDocumentsUseCase {
@@ -27,6 +28,8 @@ export class UpdatePartnerDocumentsUseCase {
   ) {}
 
   async execute(partnerId: string, input: UpdatePartnerDocumentsInput): Promise<PartnerRecord> {
+    assertPartnerDocumentReferences(partnerId, input.licenseDocumentKeys ?? []);
+
     const tenantId = await this.partnerReader.tenantIdOfPartner(partnerId);
     if (!tenantId) throw new PartnerNotFound();
 
