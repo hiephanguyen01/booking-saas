@@ -5,6 +5,7 @@ import {
   updatePartnerTaxStatusInputSchema,
   recordPartnerTaxDeclarationInputSchema,
   type CommissionRuleResponse,
+  type PartnerDocumentReadItem,
   type PartnerResponse,
   type PartnerTaxAssessmentResponse,
 } from '@booking/contracts';
@@ -58,10 +59,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const household =
     res.data.taxStatus === 'household_below_threshold' ||
     res.data.taxStatus === 'household_declaring';
-  const [rulesRes, taxRes] = await Promise.all([
+  const [rulesRes, documentRes, taxRes] = await Promise.all([
     canCommissions
       ? apiGet<CommissionRuleResponse[]>(apiPaths.tenant.commissionRules, auth)
       : Promise.resolve(null),
+    apiGet<PartnerDocumentReadItem[]>(apiPaths.tenant.partnerDocuments(params.partnerId), auth),
     household
       ? apiGet<PartnerTaxAssessmentResponse>(
           apiPaths.tenant.partnerTaxAssessment(params.partnerId),
@@ -72,6 +74,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const rules = rulesRes?.ok ? (rulesRes.data ?? []) : [];
   return {
     partner: res.data,
+    documents: documentRes.ok && documentRes.data ? documentRes.data : [],
+    documentLoadError: documentRes.ok
+      ? null
+      : (documentRes.error ?? 'Không tải được giấy tờ đối tác.'),
     canApprove: can('tenant.partners.approve'),
     canManage: can('tenant.partners.manage'),
     canCommissions,
@@ -240,6 +246,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 export default function PartnerDetail({ loaderData, actionData }: Route.ComponentProps) {
   const {
     partner,
+    documents,
+    documentLoadError,
     canApprove,
     canManage,
     canCommissions,
@@ -275,6 +283,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
       />
 
       <ErrorBanner error={error} />
+      <ErrorBanner error={documentLoadError} />
       <SuccessBanner message={success ? successMessage(success) : null} />
 
       {/* Contact snapshot — who to reach and where the partner operates. */}
@@ -303,7 +312,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
         </CardContent>
       </Card>
 
-      <PartnerIdentityCard partner={partner} business={business} />
+      <PartnerIdentityCard partner={partner} business={business} documents={documents} />
       {taxAssessment ? (
         <PartnerTaxAssessmentCard assessment={taxAssessment} canDeclare={canManage && !readOnly} />
       ) : null}
@@ -320,7 +329,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
           readOnly={readOnly}
         />
       ) : null}
-      <PartnerLegalCard partner={partner} business={business} />
+      <PartnerLegalCard partner={partner} business={business} documents={documents} />
 
       {/* Timestamps. */}
       <Card>
