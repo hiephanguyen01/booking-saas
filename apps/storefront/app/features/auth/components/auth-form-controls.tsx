@@ -23,7 +23,7 @@ function messageFor(
   if (error === 'INVALID_CREDENTIALS' || error === 'ACCOUNT_NOT_FOUND') {
     return t('errors.invalidCredentials');
   }
-  if (error === 'ACCOUNT_LOCKED') return t('errors.accountLocked');
+  if (error === 'AUTH_RATE_LIMITED') return t('errors.rateLimited');
   if (error === 'EMAIL_TAKEN') return t('errors.emailTaken');
   if (error === 'OTP_INVALID') return t('errors.invalidOtp');
   if (error === 'CHALLENGE_EXPIRED' || error === 'OTP_ATTEMPTS_EXCEEDED') {
