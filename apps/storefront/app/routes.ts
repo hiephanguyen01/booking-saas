@@ -3,7 +3,7 @@ import { index, layout, route, type RouteConfig } from '@react-router/dev/routes
 export default [
   route('healthz', 'routes/healthz.ts'),
   route('readyz', 'routes/readyz.ts'),
-  route('uploads/presign', 'routes/uploads.presign.tsx'),
+  route('uploads/partner-documents/presign', 'routes/uploads.partner-documents.presign.tsx'),
   route('uploads/reviews/presign', 'routes/uploads.reviews.presign.tsx'),
   route('uploads/avatar/presign', 'routes/uploads.avatar.presign.tsx'),
   route('administrative-divisions/wards', 'routes/administrative-wards.tsx'),
