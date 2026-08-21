@@ -222,7 +222,7 @@ jobs:
             const {LoginUseCase}=require('./apps/api/dist/modules/identity-access/application/use-cases/login.use-case.js');
             const {UserAccount}=require('./apps/api/dist/modules/identity-access/domain/entities/user-account.entity.js');
             const {InvalidCredentials}=require('./apps/api/dist/modules/identity-access/domain/errors/identity-access-errors.js');
-            const IORedis=require('ioredis'); const Redis=IORedis.default??IORedis;
+            const IORedis=require('./apps/api/node_modules/ioredis'); const Redis=IORedis.default??IORedis;
             const {RedisLoginAbuseProtectionService}=require('./apps/api/dist/modules/identity-access/infrastructure/services/redis-login-abuse-protection.service.js');
             const user=UserAccount.rehydrate({id:'11111111-1111-4111-8111-111111111111',email:'fail-open@example.test',passwordHash:'hash',fullName:'Fail Open',phone:null,avatarUrl:null,locale:'vi',status:'active',failedLoginCount:4,lockedUntil:new Date(Date.now()+60000),emailVerifiedAt:new Date()});
             let created=0;
@@ -255,7 +255,7 @@ jobs:
           # Production secret guard.
           node <<'NODE'
           (async () => {
-            const assert=require('node:assert/strict'); const IORedis=require('ioredis'); const Redis=IORedis.default??IORedis;
+            const assert=require('node:assert/strict'); const IORedis=require('./apps/api/node_modules/ioredis'); const Redis=IORedis.default??IORedis;
             const {RedisLoginAbuseProtectionService}=require('./apps/api/dist/modules/identity-access/infrastructure/services/redis-login-abuse-protection.service.js');
             const shared=new Redis(process.env.REDIS_URL); await shared.ping(); const n=process.env.NODE_ENV,k=process.env.AUTH_RATE_LIMIT_HMAC_KEY; process.env.NODE_ENV='production';
             for(const key of [undefined,'short','dev-auth-rate-limit-hmac-key-not-for-production','CHANGE_ME_generate_with_openssl_rand_hex_32']){if(key===undefined)delete process.env.AUTH_RATE_LIMIT_HMAC_KEY;else process.env.AUTH_RATE_LIMIT_HMAC_KEY=key;assert.throws(()=>new RedisLoginAbuseProtectionService(shared));}
