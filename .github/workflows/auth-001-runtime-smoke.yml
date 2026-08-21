@@ -171,9 +171,13 @@ jobs:
           docker run --rm -e ACME_EMAIL=ops@example.invalid -e DASHBOARD_HOST=admin.example.invalid -e API_HOST=api.example.invalid -e PLATFORM_BASE_DOMAIN=example.invalid \
             -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy adapt --pretty --config /etc/caddy/Caddyfile >/tmp/caddy.json
           [ "$(grep -ci 'X-BookingOS-Client-IP' /tmp/caddy.json)" -ge 5 ] || fail 'case10 adapted config missing canonical header'
-          cat >/tmp/echo.Caddyfile <<'EOF'
-          :8080 { respond "{http.request.header.X-BookingOS-Client-IP}" 200 }
-          EOF
+          cat >/tmp/echo.mjs <<'NODE'
+          import http from 'node:http';
+          http.createServer((req, res) => {
+            res.writeHead(200, {'content-type': 'text/plain'});
+            res.end(req.headers['x-bookingos-client-ip'] ?? '');
+          }).listen(8080, '0.0.0.0');
+          NODE
           cat >/tmp/edge.Caddyfile <<'EOF'
           :8081 {
             reverse_proxy auth001-echo:8080 {
@@ -182,7 +186,7 @@ jobs:
           }
           EOF
           docker network create auth001-net >/dev/null
-          docker run -d --name auth001-echo --network auth001-net -v /tmp/echo.Caddyfile:/etc/caddy/Caddyfile:ro caddy:2-alpine >/dev/null
+          docker run -d --name auth001-echo --network auth001-net -v /tmp/echo.mjs:/tmp/echo.mjs:ro node:22-alpine node /tmp/echo.mjs >/dev/null
           docker run -d --name auth001-edge --network auth001-net -p 18081:8081 -v /tmp/edge.Caddyfile:/etc/caddy/Caddyfile:ro caddy:2-alpine >/dev/null
           for _ in $(seq 1 30); do curl -fsS -H 'X-BookingOS-Client-IP: 8.8.8.8' http://127.0.0.1:18081 >/tmp/seen 2>/dev/null && break; sleep 1; done
           seen=$(cat /tmp/seen); [ -n "$seen" ] || fail 'case7 empty upstream canonical IP'; [ "$seen" != 8.8.8.8 ] || fail 'case7 spoof survived Caddy'
