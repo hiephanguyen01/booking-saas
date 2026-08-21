@@ -1,4 +1,4 @@
-import type { PartnerResponse } from '@booking/contracts';
+import type { PartnerDocumentReadItem, PartnerResponse } from '@booking/contracts';
 import {
   Card,
   CardContent,
@@ -12,18 +12,33 @@ import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { PhotoStrip } from '~/components/photo-strip';
 import type { BusinessInfoView } from '~/features/tenant/lib/partner-business-info';
 
+function documentUrl(document: PartnerDocumentReadItem): string {
+  return document.storage === 'private' ? document.downloadUrl : document.url;
+}
+
 /**
- * Legal profile card — business registration details + license documents.
- * Hidden for house partners (they have no external legal profile to review).
+ * Legal profile card — business registration details + permission-gated legal
+ * document descriptors. Hidden for house partners.
  */
 export function PartnerLegalCard({
   partner,
   business,
+  documents,
 }: {
   partner: PartnerResponse;
   business: BusinessInfoView;
+  documents: PartnerDocumentReadItem[];
 }) {
   if (partner.isHouse) return null;
+
+  const licensePhotos = documents
+    .filter(
+      (document) =>
+        document.kind === 'business_license_front' ||
+        document.kind === 'business_license_back' ||
+        document.kind === 'license_document',
+    )
+    .map(documentUrl);
 
   return (
     <Card>
@@ -64,8 +79,8 @@ export function PartnerLegalCard({
           title="Giấy phép kinh doanh"
           emptyMessage="Đối tác chưa cung cấp giấy phép kinh doanh."
         >
-          {business.licensePhotos.length > 0 ? (
-            <PhotoStrip photos={business.licensePhotos} alt="Giấy phép" />
+          {licensePhotos.length > 0 ? (
+            <PhotoStrip photos={licensePhotos} alt="Giấy phép" />
           ) : null}
         </DetailSection>
       </CardContent>
