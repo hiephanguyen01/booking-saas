@@ -33,6 +33,7 @@ import { RecordPartnerTaxRevenueUseCase } from '../../application/use-cases/reco
 import { ReassessPartnerTaxThresholdUseCase } from '../../application/use-cases/reassess-partner-tax-threshold.use-case';
 import { PartnerTaxReassessmentWorker } from '../partner-tax-reassessment.worker';
 import { ListPartnersUseCase } from '../../application/use-cases/list-partners.use-case';
+import { ListPartnerDocumentsUseCase } from '../../application/use-cases/list-partner-documents.use-case';
 import { GetPartnerUseCase } from '../../application/use-cases/get-partner.use-case';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
 import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-partner-default-cancellation-policy.use-case';
@@ -99,6 +100,7 @@ import { PartnerRoleController } from './partner-role.controller';
     ReassessPartnerTaxThresholdUseCase,
     PartnerTaxReassessmentWorker,
     ListPartnersUseCase,
+    ListPartnerDocumentsUseCase,
     GetPartnerUseCase,
     GetPartnerProfileUseCase,
     SetPartnerDefaultCancellationPolicyUseCase,
