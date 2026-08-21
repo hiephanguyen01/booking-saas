@@ -23,6 +23,7 @@ export type PartnerApplyPayload = PartnerApplyInput;
 
 /** A message code the route maps with `useTranslation(NsI18n.Common)`. */
 export type PartnerErrorCode =
+  | 'AUTH_RATE_LIMITED'
   | 'emailTakenWrongPassword'
   | 'slugTaken'
   | 'planLimit'
@@ -52,6 +53,9 @@ export async function registerOrLogin(
     password: creds.password,
   });
   if (!login.ok && login.failure === 'http') {
+    if (login.code === 'AUTH_RATE_LIMITED') {
+      return { ok: false, code: 'AUTH_RATE_LIMITED', status: login.status };
+    }
     return { ok: false, code: 'emailTakenWrongPassword', status: login.status };
   }
   if (!login.ok) return { ok: false, code: 'generic', status: login.status };

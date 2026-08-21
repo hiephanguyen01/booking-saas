@@ -10,6 +10,7 @@ import { TENANT_ROLE_REPOSITORY } from '../../domain/ports/tenant-role-repositor
 import { TENANT_MEMBER_REPOSITORY } from '../../domain/ports/tenant-member-repository.port';
 import { TENANT_INVITATION_REPOSITORY } from '../../domain/ports/tenant-invitation-repository.port';
 import { INVITATION_TOKEN } from '../../domain/ports/invitation-token.port';
+import { LOGIN_ABUSE_PROTECTION } from '../../domain/ports/login-abuse-protection.port';
 import { ChangeMyPasswordUseCase } from '../../application/use-cases/change-my-password.use-case';
 import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
 import { UpdateMyProfileUseCase } from '../../application/use-cases/update-my-profile.use-case';
@@ -52,6 +53,7 @@ import { PermissionResolverService } from '../services/permission-resolver.servi
 import { PrismaSessionInfoReader } from '../services/prisma-session-info.reader';
 import { PrismaSessionStore } from '../services/prisma-session.store';
 import { RedisAuthChallengeStore } from '../services/redis-auth-challenge.store';
+import { RedisLoginAbuseProtectionService } from '../services/redis-login-abuse-protection.service';
 import { SmtpAuthEmailSender } from '../services/smtp-auth-email.sender';
 import { Sha256InvitationTokenService } from '../services/sha256-invitation-token.service';
 import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
@@ -82,6 +84,7 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     { provide: SESSION_INFO_READER, useClass: PrismaSessionInfoReader },
     { provide: AUTH_CHALLENGE_STORE, useClass: RedisAuthChallengeStore },
     { provide: AUTH_EMAIL_SENDER, useClass: SmtpAuthEmailSender },
+    { provide: LOGIN_ABUSE_PROTECTION, useClass: RedisLoginAbuseProtectionService },
     // All three bound here even though Task 6 only wires the role + member
     // endpoints — Tasks 7-8 (invitations, accept) rely on this wiring existing.
     { provide: TENANT_ROLE_REPOSITORY, useClass: PrismaTenantRoleRepository },

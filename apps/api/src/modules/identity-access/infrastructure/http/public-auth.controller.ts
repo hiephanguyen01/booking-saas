@@ -41,6 +41,10 @@ import { AuthenticatedOnly } from './decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from './decorators/current-principal.decorator';
 import { Public } from './decorators/public.decorator';
 import {
+  BOOKINGOS_CLIENT_IP_HEADER,
+  parseTrustedClientIpHeader,
+} from './trusted-client-ip';
+import {
   AuthSessionResponseDto,
   AuthChallengeDto,
   AuthChallengeResponseDto,
@@ -230,10 +234,10 @@ export class PublicAuthController {
     @Body() input: LoginDto,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
-    @Ip() ip: string,
   ): Promise<AuthSessionResponse> {
+    const clientIp = parseTrustedClientIpHeader(req.headers[BOOKINGOS_CLIENT_IP_HEADER]);
     const { user, tokens } = await this.loginUseCase.execute(input, {
-      ip,
+      ip: clientIp,
       userAgent: req.headers['user-agent'],
     });
     setSessionCookies(res, tokens);

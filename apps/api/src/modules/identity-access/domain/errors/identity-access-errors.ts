@@ -44,6 +44,12 @@ export class InvalidCredentials extends DomainError {
   }
 }
 
+export class AuthRateLimited extends DomainError {
+  constructor() {
+    super('AUTH_RATE_LIMITED', 429, 'Too many login attempts. Please try again later.');
+  }
+}
+
 export class AccountLocked extends DomainError {
   constructor() {
     super('ACCOUNT_LOCKED', 403, 'Account temporarily locked after too many failed attempts');

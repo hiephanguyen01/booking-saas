@@ -9,6 +9,7 @@ import { storefrontEnv } from './env.server';
 import { authReadKey, memoizedRead, queryKey } from './api-read-cache.server';
 import {
   storefrontAuthOptions,
+  storefrontLoginOptions,
   storefrontRequestOptions,
   type NullableReadOptions,
   type StorefrontJsonOptions,
@@ -112,7 +113,7 @@ export async function apiPatch<T>(
 }
 
 export const backendLogin = (request: Request, credentials: { email: string; password: string }) =>
-  apiClient.login(credentials, storefrontAuthOptions(request));
+  apiClient.login(credentials, storefrontLoginOptions(request));
 export const backendRegister = (request: Request, credentials: BackendRegisterCredentials) =>
   apiClient.register(credentials, storefrontAuthOptions(request));
 export const backendRefresh = (request: Request, refreshToken: string) =>

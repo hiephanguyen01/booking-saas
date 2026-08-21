@@ -8,6 +8,7 @@ import type { loader as rootLoader } from '~/root';
 import type { LegalConsentBundle } from '~/features/legal/server/legal.server';
 
 const APPLY_ERRORS = {
+  AUTH_RATE_LIMITED: 'auth:errors.rateLimited',
   emailTakenWrongPassword: 'common:becomePartner.errors.emailTakenWrongPassword',
   TENANT_INACTIVE: 'auth:affiliate.errors.tenantInactive',
 } as const satisfies Record<string, ScopedTranslationKey<[NsI18n.Auth, NsI18n.Common]>>;

@@ -1,5 +1,6 @@
-import type { ApiRequestOptions } from '@booking/api-client';
+import type { ApiRequestOptions, AuthRequestOptions } from '@booking/api-client';
 import type { ZodType, ZodTypeDef } from 'zod';
+import { trustedClientIpHeaders } from './trusted-client-ip.server';
 
 const INVALID_HOST_DELIMITER_RE = /[\\/?#@]/;
 const MAX_FORWARDED_HOST_LENGTH = 255;
@@ -76,5 +77,16 @@ export function storefrontAuthOptions(request: Request) {
     signal: request.signal,
     requestId: request.headers.get('x-request-id') ?? undefined,
     headers: { 'x-forwarded-host': forwardedHost(request) },
+  };
+}
+
+export function storefrontLoginOptions(request: Request): AuthRequestOptions {
+  const base = storefrontAuthOptions(request);
+  return {
+    ...base,
+    headers: {
+      ...base.headers,
+      ...trustedClientIpHeaders(request),
+    },
   };
 }

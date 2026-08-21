@@ -50,11 +50,11 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const result = await backendLogin(parsed.data);
+  const result = await backendLogin(request, parsed.data);
   if (!result.ok || !result.tokens || !result.user) {
     const message =
-      result.code === 'ACCOUNT_LOCKED'
-        ? 'Tài khoản tạm thời bị khoá do đăng nhập sai nhiều lần. Vui lòng thử lại sau ít phút.'
+      result.code === 'AUTH_RATE_LIMITED'
+        ? 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.'
         : result.status === 503
           ? 'Không kết nối được máy chủ. Vui lòng thử lại.'
           : 'Email hoặc mật khẩu không đúng.';

@@ -55,16 +55,21 @@
 #
 # `reverse_proxy` passes the ORIGINAL Host through untouched, which is what the
 # whole multi-tenancy rests on — the app resolves its tenant from it. It also sets
-# X-Forwarded-For / -Proto / -Host itself, so the apps still emit Secure cookies
-# and absolute https URLs with nothing stated here.
+# X-Forwarded-For / -Proto / -Host itself. AUTH-001 additionally overwrites the
+# application-specific login client-IP header from the direct public peer; app
+# code never trusts a browser-supplied value for that header.
 {$DASHBOARD_HOST} {
 	import common
-	reverse_proxy dashboard:3000
+	reverse_proxy dashboard:3000 {
+		header_up X-BookingOS-Client-IP {remote_host}
+	}
 }
 
 {$API_HOST} {
 	import common
-	reverse_proxy api:3000
+	reverse_proxy api:3000 {
+		header_up X-BookingOS-Client-IP {remote_host}
+	}
 }
 
 # First-party platform landing. This must be explicit so Caddy obtains its
@@ -73,7 +78,9 @@
 # BookingOS landing and deliberately does not resolve a tenant.
 {$PLATFORM_BASE_DOMAIN} {
 	import common
-	reverse_proxy storefront:3000
+	reverse_proxy storefront:3000 {
+		header_up X-BookingOS-Client-IP {remote_host}
+	}
 }
 
 # THE DEFAULT ROUTE — deliberately last and catch-all, for EVERY other hostname:
@@ -93,10 +100,14 @@ https:// {
 	}
 	@dashboard header_regexp Host (?i)^admin\.
 	handle @dashboard {
-		reverse_proxy dashboard:3000
+		reverse_proxy dashboard:3000 {
+			header_up X-BookingOS-Client-IP {remote_host}
+		}
 	}
 	handle {
-		reverse_proxy storefront:3000
+		reverse_proxy storefront:3000 {
+			header_up X-BookingOS-Client-IP {remote_host}
+		}
 	}
 }
 
