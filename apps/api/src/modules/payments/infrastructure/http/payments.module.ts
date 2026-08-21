@@ -86,8 +86,8 @@ export class PaymentsModule implements OnModuleInit {
     this.registry.register('refund.execution_requested', (event) => {
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);
       if (!tenantId) return Promise.resolve();
-      const p = event.payload as { refundId: string };
-      return this.automaticRefunds.execute(tenantId, p.refundId);
+      const p = event.payload as { refundId: string; attempt?: number };
+      return this.automaticRefunds.execute(tenantId, p.refundId, p.attempt ?? 0);
     });
     // Execute refunds when a booking is cancelled (policy refund) or an inventory
     // rental is returned (deposit refund). Ledger entries are Task 1.10.
