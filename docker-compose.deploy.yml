@@ -51,6 +51,7 @@ services:
       ADMIN_DATABASE_URL: ${ADMIN_DATABASE_URL:?ADMIN_DATABASE_URL is required}
       MIGRATE_DATABASE_URL: ${MIGRATE_DATABASE_URL:?MIGRATE_DATABASE_URL is required}
       REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      AUTH_RATE_LIMIT_HMAC_KEY: ${AUTH_RATE_LIMIT_HMAC_KEY:?AUTH_RATE_LIMIT_HMAC_KEY is required}
       PLATFORM_BASE_DOMAIN: ${PLATFORM_BASE_DOMAIN:?PLATFORM_BASE_DOMAIN is required}
       # Where a tenant points a custom domain. Served to the dashboard so it can
       # show the tenant the exact records — never hardcoded in a frontend.
