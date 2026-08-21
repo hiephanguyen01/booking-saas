@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make storefront payment state correctly distinguish balance-payment attempts from an already-confirmed booking, and stop creating new standalone `napas_qr` checkouts while preserving legacy contracts/data compatibility.
+**Goal:** Make storefront payment state correctly distinguish balance-payment attempts from an already-confirmed booking, and stop creating new standalone `napas_qr` checkouts while preserving legacy data/contracts.
 
-**Architecture:** Extend the normalized payment-status response with the latest payment kind, derive UI state from the actual attempt instead of booking status alone, and keep booking confirmation only as a fallback for non-balance initial payment flows. Deprecate `napas_qr` at new-checkout boundaries (public options, direct checkout, tenant settings UI) without removing the enum, SePay legacy provider code, or stored historical rows.
+**Architecture:** Extend normalized payment status with latest payment kind, derive UI state from the current attempt instead of booking status alone, and keep booking-confirmed fallback only for non-balance flows. Deprecate `napas_qr` at public options/direct checkout/settings boundaries without removing the legacy enum, stored values, or SePay provider mapping.
 
 **Tech Stack:** `@booking/contracts` + Zod, NestJS 11, React Router 8 SSR, React 19, i18next, dashboard/storefront TypeScript.
 
@@ -12,55 +12,45 @@
 
 ## Global Constraints
 
-- ADR 0005 forbids automated tests. Do not add `*.test.*`, `*.spec.*`, e2e files, test runners, test scripts, or CI test steps.
-- API response shape changes start in `@booking/contracts`, then DTO/use-case, then every frontend consumer.
-- Frontends remain BFF-only; do not add browser-to-API fetches.
-- `booking.status === 'confirmed'` must not imply the current balance payment attempt succeeded.
-- Webhook/provider status remains payment source of truth; query-string return markers never mark success.
-- Keep `napas_qr` in `customerPaymentMethodSchema` during this migration window so legacy payloads/settings/history remain parseable.
-- Do not remove `NAPAS_BANK_TRANSFER` from SePay adapter/contracts in this PR.
-- Do not add the future international-card provider in this PR.
-- ZaloPay stays optional/dormant; no feature work beyond compatibility.
-- New public `napas_qr` checkout must be rejected even if a caller bypasses the storefront UI.
-- Existing historical payment rows/settings containing `napas_qr` remain readable.
+- ADR 0005 forbids automated tests. Do not add test files/runners/scripts/CI test steps.
+- API response changes start in `@booking/contracts`, then API DTO/use-case, then frontend consumers.
+- Frontends remain BFF-only.
+- `booking.status === 'confirmed'` must not imply the current balance payment succeeded.
+- Query-string return markers never create payment success; provider/webhook state remains truth.
+- Keep `napas_qr` in `customerPaymentMethodSchema` during migration so legacy rows/settings parse.
+- Keep SePay `NAPAS_BANK_TRANSFER` compatibility mapping in this PR.
+- Do not add the future international-card provider.
+- New direct/public `napas_qr` checkout must be rejected even when a client bypasses the UI.
 
 ## File Map
 
-**Shared payment contract**
-- Modify `packages/contracts/src/contracts/payment.ts` — add `paymentKind` to `PaymentStatusResponse`; define supported-new-checkout method policy while retaining legacy enum.
+**Contracts/API**
+- Modify `packages/contracts/src/contracts/payment.ts`.
+- Modify `apps/api/src/modules/payments/application/use-cases/get-payment-status.use-case.ts`.
+- Modify `apps/api/src/modules/payments/infrastructure/http/dto/payments.dto.ts`.
+- Modify `apps/api/src/modules/payments/application/use-cases/get-public-payment-options.use-case.ts`.
+- Modify `apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts`.
 
-**API**
-- Modify `apps/api/src/modules/payments/application/use-cases/get-payment-status.use-case.ts` — include latest payment kind.
-- Modify `apps/api/src/modules/payments/infrastructure/http/dto/payments.dto.ts` — OpenAPI field.
-- Modify `apps/api/src/modules/payments/application/use-cases/get-public-payment-options.use-case.ts` — filter deprecated standalone method.
-- Modify `apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts` — reject `napas_qr` for a new checkout.
+**Storefront**
+- Modify `apps/storefront/app/features/booking/lib/booking-payment-state.ts`.
+- Modify `apps/storefront/app/features/booking/hooks/use-booking-detail-controller.ts`.
+- Modify `apps/storefront/app/features/booking/components/booking-payment-view.tsx`.
+- Modify `apps/storefront/app/features/booking/components/booking-success-view.tsx`.
+- Inspect `apps/storefront/app/features/booking/server/booking-payment-status.server.ts`; change only if required by the exact rules below.
+- Keep legacy renderer coverage in `apps/storefront/app/features/checkout/hooks/use-checkout-form-controller.ts` unless total typing permits removal later.
 
-**Storefront payment-state/UI**
-- Modify `apps/storefront/app/features/booking/lib/booking-payment-state.ts` — balance-aware success/pending/polling.
-- Modify `apps/storefront/app/features/booking/hooks/use-booking-detail-controller.ts` — expose `isBalancePayment` to view.
-- Modify `apps/storefront/app/features/booking/components/booking-payment-view.tsx` — balance-specific pending/failed/success routing/copy.
-- Modify `apps/storefront/app/features/booking/components/booking-success-view.tsx` — balance success copy without pretending a new booking was just created.
-- Modify `apps/storefront/app/features/booking/server/booking-payment-status.server.ts` only if flow-cookie cleanup/retry behavior needs the new payment kind.
-- Keep legacy `napas_qr` entry in `apps/storefront/app/features/checkout/hooks/use-checkout-form-controller.ts`; it becomes unreachable from new public options but remains a safe renderer for legacy data.
-
-**Tenant dashboard**
-- Modify `apps/dashboard/app/features/tenant/components/settings/payment-method-settings-card.tsx` — hide/remove `napas_qr` from selectable new methods.
-
-**Copy**
+**Dashboard/copy**
+- Modify `apps/dashboard/app/features/tenant/components/settings/payment-method-settings-card.tsx`.
 - Modify `packages/i18n/src/locales/vi/booking.ts`.
 - Modify `packages/i18n/src/locales/en/booking.ts`.
-- Modify checkout locale files only if removing obsolete standalone Napas customer-facing labels does not break the typed namespace; otherwise retain legacy keys for compatibility.
 
 ---
 
-### Task 1: Extend payment-status contract with latest payment kind
+### Task 1: Expose latest payment kind in payment-status response
 
-**Files:**
-- Modify: `packages/contracts/src/contracts/payment.ts`
-- Modify: `apps/api/src/modules/payments/application/use-cases/get-payment-status.use-case.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/http/dto/payments.dto.ts`
+**Files:** contract, API use case, DTO.
 
-**Produces:**
+Use the existing `paymentKindSchema` in the response:
 
 ```ts
 export const paymentStatusResponseSchema = z.object({
@@ -72,7 +62,9 @@ export const paymentStatusResponseSchema = z.object({
 });
 ```
 
-`GetPaymentStatusUseCase` returns:
+If `paymentKindSchema` is declared later in the file, move that declaration above `paymentStatusResponseSchema`; do not duplicate the enum.
+
+API return:
 
 ```ts
 return {
@@ -84,13 +76,9 @@ return {
 };
 ```
 
-The latest payment row remains the relevant attempt because checkout creates/reuses the active attempt and status polling is attempt-oriented. Do not infer kind from booking amounts in the frontend.
-
-- [ ] **Step 1: Move/declare `paymentKindSchema` before `paymentStatusResponseSchema` if necessary so the schema can reuse it without duplication.**
-- [ ] **Step 2: Add `paymentKind: paymentKindSchema.nullable()` to the response schema.** This is an additive wire change.
-- [ ] **Step 3: Return latest `payment.kind` from `GetPaymentStatusUseCase`.**
-- [ ] **Step 4: Add the OpenAPI DTO property with nullable enum values `deposit | balance | full | security_deposit`.**
-- [ ] **Step 5: Rebuild contracts, then typecheck API/storefront.**
+- [ ] Add the contract field and DTO property (`deposit | balance | full | security_deposit | null`).
+- [ ] Return `payment.kind` from `GetPaymentStatusUseCase`.
+- [ ] Rebuild/typecheck:
 
 ```bash
 pnpm --filter=@booking/contracts build
@@ -98,7 +86,7 @@ pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/storefront typecheck
 ```
 
-- [ ] **Step 6: Commit.**
+- [ ] Commit:
 
 ```bash
 git add packages/contracts/src/contracts/payment.ts \
@@ -109,13 +97,11 @@ git commit -m "feat(payments): expose latest payment kind"
 
 ---
 
-### Task 2: Make payment-state derivation balance-aware
+### Task 2: Derive balance-payment state from the current attempt
 
-**Files:**
-- Modify: `apps/storefront/app/features/booking/lib/booking-payment-state.ts`
-- Modify: `apps/storefront/app/features/booking/hooks/use-booking-detail-controller.ts`
+**Files:** `booking-payment-state.ts`, `use-booking-detail-controller.ts`.
 
-**Produces:**
+Extend state:
 
 ```ts
 export interface BookingPaymentState {
@@ -128,13 +114,12 @@ export interface BookingPaymentState {
 }
 ```
 
-Use these exact rules:
+Implement these exact rules:
 
 ```ts
 const isBalancePayment = status.paymentKind === 'balance';
 const providerSucceeded = status.paymentStatus === 'succeeded';
 const bookingSucceeded = bookingStatus !== null && SUCCESS.has(bookingStatus);
-
 const isSuccess = providerSucceeded || (!isBalancePayment && bookingSucceeded);
 
 const serverFailed =
@@ -144,7 +129,6 @@ const serverFailed =
   bookingStatus === 'rejected';
 
 const paymentFailed = !isSuccess && (serverFailed || redirectFailed);
-
 const isBalancePending = isBalancePayment && status.paymentStatus === 'pending';
 const initialPending =
   !isBalancePayment && bookingStatus !== null && PENDING.has(bookingStatus);
@@ -154,25 +138,24 @@ const shouldPoll =
   !isSuccess && !serverFailed && (isBalancePending || initialPending);
 ```
 
-Important edge cases:
-- confirmed booking + latest balance pending -> pending, poll;
-- confirmed booking + latest balance failed -> failed, not success;
-- confirmed booking + latest balance succeeded -> success;
-- confirmed booking + latest deposit/full succeeded -> success;
-- confirmed booking with no payment kind (legacy state) -> retain booking-confirmed fallback;
-- query `?payment=success` never affects `isSuccess`; it only remains informational navigation state.
+Required cases:
+- confirmed + balance pending -> pending + poll;
+- confirmed + balance failed/expired -> failed, never success;
+- confirmed + balance succeeded -> success;
+- confirmed + deposit/full succeeded -> success;
+- `paymentKind=null` legacy confirmed state retains old booking-status fallback;
+- `?payment=success` never affects `isSuccess`.
 
-- [ ] **Step 1: Implement the exact rules above in `deriveBookingPaymentState()`.**
-- [ ] **Step 2: Return `isBalancePayment`.**
-- [ ] **Step 3: Thread the flag through `useBookingDetailController().viewProps`.**
-- [ ] **Step 4: Verify TypeScript.**
+- [ ] Implement exact derivation and return `isBalancePayment`.
+- [ ] Thread it through controller `viewProps`.
+- [ ] Verify:
 
 ```bash
 pnpm --filter=@booking/storefront lint
 pnpm --filter=@booking/storefront typecheck
 ```
 
-- [ ] **Step 5: Commit.**
+- [ ] Commit:
 
 ```bash
 git add apps/storefront/app/features/booking/lib/booking-payment-state.ts \
@@ -182,62 +165,48 @@ git commit -m "fix(storefront): derive balance payment state from attempt"
 
 ---
 
-### Task 3: Render balance-specific payment outcome copy
+### Task 3: Render balance-specific outcome copy
 
-**Files:**
-- Modify: `apps/storefront/app/features/booking/components/booking-payment-view.tsx`
-- Modify: `apps/storefront/app/features/booking/components/booking-success-view.tsx`
-- Modify: `packages/i18n/src/locales/vi/booking.ts`
-- Modify: `packages/i18n/src/locales/en/booking.ts`
+**Files:** payment view, success view, VI/EN booking locales.
 
-**New booking i18n keys:**
+Add keys.
 
 Vietnamese:
 
 ```ts
-payment: {
-  // existing keys...
-  balanceTitle: 'Thanh toán số tiền còn lại',
-  balanceChecking: 'Đang kiểm tra trạng thái thanh toán số tiền còn lại…',
-  balanceSucceeded: 'Đã thanh toán số tiền còn lại',
-  balanceSucceededNote: 'Khoản thanh toán đã được xác nhận cho đặt chỗ này.',
-  balanceFailedTitle: 'Thanh toán số tiền còn lại chưa hoàn tất',
-  balanceFailedNote: 'Khoản thanh toán chưa được xác nhận. Bạn có thể thử lại từ chi tiết đặt chỗ.',
-}
+balanceTitle: 'Thanh toán số tiền còn lại',
+balanceChecking: 'Đang kiểm tra trạng thái thanh toán số tiền còn lại…',
+balanceSucceeded: 'Đã thanh toán số tiền còn lại',
+balanceSucceededNote: 'Khoản thanh toán đã được xác nhận cho đặt chỗ này.',
+balanceFailedTitle: 'Thanh toán số tiền còn lại chưa hoàn tất',
+balanceFailedNote: 'Khoản thanh toán chưa được xác nhận. Bạn có thể thử lại từ chi tiết đặt chỗ.',
 ```
 
 English:
 
 ```ts
-payment: {
-  // existing keys...
-  balanceTitle: 'Pay remaining balance',
-  balanceChecking: 'Checking the remaining-balance payment status…',
-  balanceSucceeded: 'Remaining balance paid',
-  balanceSucceededNote: 'The payment has been confirmed for this booking.',
-  balanceFailedTitle: 'Remaining balance payment not completed',
-  balanceFailedNote: 'The payment has not been confirmed. You can retry from the booking details.',
-}
+balanceTitle: 'Pay remaining balance',
+balanceChecking: 'Checking the remaining-balance payment status…',
+balanceSucceeded: 'Remaining balance paid',
+balanceSucceededNote: 'The payment has been confirmed for this booking.',
+balanceFailedTitle: 'Remaining balance payment not completed',
+balanceFailedNote: 'The payment has not been confirmed. You can retry from the booking details.',
 ```
 
-- [ ] **Step 1: Add `isBalancePayment` to `BookingPaymentViewProps`.**
-- [ ] **Step 2: Pending/failed title and description choose the balance keys when `isBalancePayment=true`.** The current generic initial-booking copy remains unchanged otherwise.
-- [ ] **Step 3: Pass `isBalancePayment` to `BookingSuccessView`.**
-- [ ] **Step 4: For desktop/mobile success heading, use `payment.balanceSucceeded` / `payment.balanceSucceededNote` for a balance attempt rather than `success.title` / `success.thanks`.** Keep booking code/details/actions intact.
-- [ ] **Step 5: Do not send a second “booking created” semantic message for balance success.** Existing booking details remain visible because the booking already existed/was confirmed.
-- [ ] **Step 6: Verify locale typing and frontend checks.**
+- [ ] Add `isBalancePayment` prop to `BookingPaymentView` and `BookingSuccessView`.
+- [ ] Pending/failed heading/description select balance keys when true.
+- [ ] Desktop and mobile success heading use balance success keys instead of “booking created/success” copy when true.
+- [ ] Keep booking code/details/actions; do not send another “new booking” semantic message.
+- [ ] Verify using real consumer checks only:
 
 ```bash
 pnpm --filter=@booking/contracts build
-pnpm --filter=@booking/i18n typecheck || true
 pnpm --filter=@booking/storefront lint
 pnpm --filter=@booking/storefront typecheck
 pnpm --filter=@booking/storefront build
 ```
 
-If `@booking/i18n` has no standalone `typecheck` script, the storefront typecheck/build is the authoritative consumer check; do not add a new script solely for this PR.
-
-- [ ] **Step 7: Commit.**
+- [ ] Commit:
 
 ```bash
 git add apps/storefront/app/features/booking/components/booking-payment-view.tsx \
@@ -248,36 +217,33 @@ git commit -m "fix(storefront): show balance payment outcome accurately"
 
 ---
 
-### Task 4: Preserve polling/flow cleanup semantics for balance attempts
+### Task 4: Preserve polling/cookie semantics for balance attempts
 
-**Files:**
-- Modify only if required: `apps/storefront/app/features/booking/server/booking-payment-status.server.ts`
+**File to inspect:** `booking-payment-status.server.ts`.
 
-**Required behavior:**
-- polling does not stop merely because `bookingStatus === 'confirmed'` when `paymentKind === 'balance'` and payment status is pending;
-- flow cookie is destroyed only when `status.paymentStatus === 'succeeded'`, as today;
-- do not destroy flow on `?payment=success` return marker;
-- `canRetry` may remain false for account-originated balance attempts with no public checkout-flow cookie; account booking detail remains the retry entry point.
+The current loader already destroys checkout-flow cookie only when `status.paymentStatus === 'succeeded'`; preserve that. Required behavior:
+- pending balance continues polling because Task 2 returns `shouldPoll=true` even while booking is confirmed;
+- no cookie destruction on return query marker;
+- account-originated balance attempts may keep `canRetry=false` when there is no public checkout-flow cookie; account booking detail remains the retry entry point;
+- do not manufacture a new access grant or checkout-flow record.
 
-- [ ] **Step 1: Verify the existing server loader already satisfies cookie cleanup (`paymentStatus === 'succeeded'`).** If no code change is necessary, leave the file untouched.
-- [ ] **Step 2: If `canRetry` logic accidentally treats confirmed balance as a successful retry state after Task 2, keep `canRetry` independent from `isSuccess`; do not manufacture a new public access grant.**
-- [ ] **Step 3: Run storefront typecheck/build.**
+- [ ] Inspect the loader after Tasks 1-3.
+- [ ] If current logic already satisfies all four rules, leave the file unchanged.
+- [ ] If a change is necessary, limit it to those rules.
+- [ ] Verify:
 
 ```bash
 pnpm --filter=@booking/storefront typecheck
 pnpm --filter=@booking/storefront build
 ```
 
-No commit is required if this task confirms no source change.
-
 ---
 
-### Task 5: Define a new-checkout method policy while keeping the legacy enum
+### Task 5: Define new-checkout eligibility while retaining legacy enum values
 
-**Files:**
-- Modify: `packages/contracts/src/contracts/payment.ts`
+**File:** `packages/contracts/src/contracts/payment.ts`.
 
-**Produces:**
+Add:
 
 ```ts
 export const NEW_CHECKOUT_PAYMENT_METHODS = [
@@ -287,44 +253,30 @@ export const NEW_CHECKOUT_PAYMENT_METHODS = [
   'zalopay_wallet',
 ] as const satisfies readonly CustomerPaymentMethod[];
 
-export function isNewCheckoutPaymentMethod(
-  method: CustomerPaymentMethod,
-): boolean {
+export function isNewCheckoutPaymentMethod(method: CustomerPaymentMethod): boolean {
   return (NEW_CHECKOUT_PAYMENT_METHODS as readonly string[]).includes(method);
 }
 ```
 
-Do **not** remove:
+Document that `napas_qr` remains parseable legacy data but is unavailable for newly-created checkout.
 
-```ts
-'napas_qr'
-```
+Do not remove `napas_qr` from `customerPaymentMethodSchema`; do not remove `NAPAS_BANK_TRANSFER`.
 
-from `customerPaymentMethodSchema`, and do not remove SePay `NAPAS_BANK_TRANSFER` provider code.
-
-- [ ] **Step 1: Add the constant/helper adjacent to customer payment method definitions.**
-- [ ] **Step 2: Document in code that `napas_qr` is parseable legacy data but unavailable for newly-created checkout.**
-- [ ] **Step 3: Rebuild contracts.**
+- [ ] Add constant/helper and rebuild contracts:
 
 ```bash
 pnpm --filter=@booking/contracts build
 ```
 
-Do not commit alone; Task 6 consumes the policy in the same compile-safe change.
+Do not commit yet; Task 6 consumes it so the branch stays coherent.
 
 ---
 
-### Task 6: Stop offering or accepting new standalone `napas_qr` checkout
+### Task 6: Stop offering and accepting standalone `napas_qr`
 
-**Files:**
-- Modify: `apps/api/src/modules/payments/application/use-cases/get-public-payment-options.use-case.ts`
-- Modify: `apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts`
-- Modify: `apps/dashboard/app/features/tenant/components/settings/payment-method-settings-card.tsx`
-- Keep unchanged unless compatibility compile requires it: `apps/storefront/app/features/checkout/hooks/use-checkout-form-controller.ts`
+**Files:** public options use case, checkout use case, dashboard settings card.
 
-**Public options:**
-
-Change the method filter to require both routing support and new-checkout eligibility:
+Public options:
 
 ```ts
 const methods = customerPaymentMethodSchema.options.filter(
@@ -332,9 +284,7 @@ const methods = customerPaymentMethodSchema.options.filter(
 );
 ```
 
-**Direct API guard:**
-
-At the start of the new checkout application flow, before provider work:
+Direct checkout guard, before provider work:
 
 ```ts
 if (!isNewCheckoutPaymentMethod(paymentMethod)) {
@@ -342,18 +292,16 @@ if (!isNewCheckoutPaymentMethod(paymentMethod)) {
 }
 ```
 
-This prevents a client from manually POSTing `napas_qr` despite it being hidden from options.
+Dashboard:
+- remove `napas_qr` from selectable `METHODS` array;
+- remove now-unused icon import if applicable;
+- keep persisted schema validation unchanged, so historical settings with `napas_qr` still parse;
+- next admin save naturally drops the hidden legacy value from posted `enabledMethods`.
 
-**Dashboard:**
+Storefront compatibility map may keep `napas_qr`; new public options make it unreachable for new checkouts.
 
-Remove the standalone Napas entry from the selectable `METHODS` array. Do not change stored schema validation; a historical settings JSON containing `napas_qr` must still parse. On the next admin save, hidden legacy `napas_qr` naturally drops out of `enabledMethods` because the form no longer posts it.
-
-Storefront `PAYMENT_METHODS.napas_qr` may stay as a compatibility renderer. Since `/public/payment-options` no longer emits it, new customers never see it.
-
-- [ ] **Step 1: Consume `isNewCheckoutPaymentMethod` in public options.**
-- [ ] **Step 2: Add the direct checkout guard.**
-- [ ] **Step 3: Remove the dashboard selectable Napas row and its now-unused UI icon import if applicable.**
-- [ ] **Step 4: Verify legacy parsing by building contracts/API/dashboard/storefront.**
+- [ ] Implement API filtering/guard and dashboard removal.
+- [ ] Verify:
 
 ```bash
 pnpm --filter=@booking/contracts build
@@ -365,7 +313,7 @@ pnpm --filter=@booking/storefront lint
 pnpm --filter=@booking/storefront typecheck
 ```
 
-- [ ] **Step 5: Commit Tasks 5-6 together.**
+- [ ] Commit Tasks 5-6:
 
 ```bash
 git add packages/contracts/src/contracts/payment.ts \
@@ -377,25 +325,15 @@ git commit -m "refactor(payments): retire standalone napas checkout"
 
 ---
 
-### Task 7: Remove obsolete conditional paths only where reachability is proven
+### Task 7: Prove remaining Napas references are compatibility-only
 
-**Files:**
-- Inspect: `apps/storefront/app/features/checkout/hooks/use-checkout-form-controller.ts`
-- Inspect: `packages/i18n/src/locales/vi/checkout.ts`
-- Inspect: `packages/i18n/src/locales/en/checkout.ts`
-- Inspect: `apps/api/src/modules/payments/infrastructure/gateways/sepay-gateway.adapter.ts`
+**Inspect:** checkout renderer, VI/EN checkout locales, SePay adapter, contracts.
 
-**Rules:**
-- Do not remove legacy parser/provider branches solely because new UI no longer offers them.
-- Keep `PAYMENT_METHODS.napas_qr` if `CustomerPaymentMethod` remains a total `Record` keyed by the enum; deleting it would make the renderer non-total/type-invalid.
-- Keep SePay `napas_qr -> NAPAS_BANK_TRANSFER` mapping until the legacy enum is removed in a later coordinated cleanup.
-- Keep typed i18n `payment.domesticCard` key if the compatibility map references it.
-- Remove only imports/branches that are genuinely unreachable after the above rules and whose removal preserves total typing.
-
-- [ ] **Step 1: Run code search for `napas_qr`, `NAPAS_BANK_TRANSFER`, and `payment.domesticCard`.**
-- [ ] **Step 2: Categorize every occurrence as `legacy-parse`, `provider-compat`, `new-checkout`, or `UI-copy`.**
-- [ ] **Step 3: Delete only remaining `new-checkout` occurrences.** The expected retained core occurrences are the legacy enum/schema, compatibility renderer, and SePay provider mapping.
-- [ ] **Step 4: Verify full frontend/API typechecks.**
+- [ ] Search for `napas_qr`, `NAPAS_BANK_TRANSFER`, and `payment.domesticCard`.
+- [ ] Classify each occurrence as one of: legacy parser, provider compatibility, new checkout, customer UI copy.
+- [ ] Delete only remaining **new-checkout** occurrences.
+- [ ] Expected retained core occurrences: legacy enum/schema, total compatibility renderer if its `Record<CustomerPaymentMethod,...>` requires it, and SePay provider mapping.
+- [ ] Verify:
 
 ```bash
 pnpm --filter=@booking/contracts build
@@ -404,23 +342,15 @@ pnpm --filter=@booking/storefront typecheck
 pnpm --filter=@booking/dashboard typecheck
 ```
 
-- [ ] **Step 5: Commit only if source actually changed.**
-
-```bash
-git add packages/i18n apps/storefront apps/api/src/modules/payments/infrastructure/gateways
-
-git commit -m "chore(payments): clean deprecated payment method paths"
-```
-
-Skip the commit if inspection proves all remaining occurrences are required compatibility code.
+- [ ] Commit only if this inspection produces real source changes.
 
 ---
 
-### Task 8: Runtime smoke payment-state and method visibility
+### Task 8: Runtime smoke payment state and method visibility
 
-**Files:** no committed test files.
+**No committed test files.**
 
-- [ ] **Step 1: Run the full repository static gate.**
+- [ ] Full static gate:
 
 ```bash
 pnpm check:no-tests && \
@@ -433,39 +363,23 @@ pnpm turbo lint typecheck build && \
 pnpm --filter=@booking/api check:rls
 ```
 
-- [ ] **Step 2: Start local apps against seeded infrastructure.**
-
-```bash
-docker compose up -d
-pnpm --filter=@booking/api prisma:deploy
-pnpm --filter=@booking/api seed
-pnpm dev
-```
-
-- [ ] **Step 3: Smoke initial payment success.** Start a normal pending-payment booking, complete the payment, confirm the existing booking-success screen still appears and polling stops after provider/webhook success.
-
-- [ ] **Step 4: Smoke balance pending on confirmed booking.** Use a confirmed deposit booking with outstanding balance, start balance checkout, return to `/bookings/:code` before webhook success. Confirm the page shows balance-payment pending/checking and continues polling; it must not show booking/payment success merely because booking status is confirmed.
-
-- [ ] **Step 5: Smoke balance failure.** Mark/return the balance payment failed/expired. Confirm balance-specific failure copy is shown, never success.
-
-- [ ] **Step 6: Smoke balance success.** Complete the balance payment/webhook. Confirm the page switches to `Remaining balance paid` / Vietnamese equivalent and displays the existing booking details without pretending a new booking was created.
-
-- [ ] **Step 7: Smoke payment options.** Configure legacy SePay settings containing `napas_qr`. Confirm `/public/payment-options` does not return `napas_qr`; checkout UI does not render it; dashboard no longer offers it as a selectable method; historical config still loads without schema failure.
-
-- [ ] **Step 8: Smoke direct API rejection.** POST a valid accessible checkout request with `paymentMethod: 'napas_qr'` and confirm the established `PAYMENT_METHOD_UNAVAILABLE` error is returned with no new payment/provider call.
-
-- [ ] **Step 9: Confirm legacy rows remain readable.** Open payment history containing legacy Napas/provider method data and verify no contract/parser failure.
+- [ ] Start local infra/apps and seed.
+- [ ] Initial payment success still shows existing booking-success behavior.
+- [ ] Confirmed booking + balance pending shows balance pending and keeps polling.
+- [ ] Balance failed/expired shows balance-specific failure, never success.
+- [ ] Balance succeeded shows balance-specific success without “new booking” copy.
+- [ ] Configure historical SePay settings containing `napas_qr`: public options omit it; dashboard does not offer it; historical config still loads.
+- [ ] Direct accessible POST with `paymentMethod:'napas_qr'` returns established `PAYMENT_METHOD_UNAVAILABLE` and creates no payment/provider call.
+- [ ] Legacy payment history/provider rows containing Napas remain readable.
 
 ## Definition of Done
 
-- `PaymentStatusResponse` identifies the latest payment kind.
+- Payment status exposes latest payment kind.
 - Confirmed booking + pending/failed balance attempt is never rendered as success.
 - Balance pending continues polling until provider truth changes.
 - Balance success uses balance-specific copy.
 - Initial booking payment success remains backward-compatible.
-- `napas_qr` remains parseable for legacy data but is absent from new public payment options.
-- Direct new `napas_qr` checkout is rejected.
-- Tenant settings UI no longer offers standalone Napas.
-- SePay legacy Napas mapping and stored records remain readable during the migration window.
+- `napas_qr` remains parseable legacy data but is absent from new public options/settings and rejected for direct new checkout.
+- SePay legacy Napas mapping/stored rows remain readable.
 - No international-card provider or unrelated payment feature is added.
 - Full static gate and local runtime smoke pass with zero automated test artifacts.
