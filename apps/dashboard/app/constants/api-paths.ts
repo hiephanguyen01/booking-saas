@@ -185,6 +185,7 @@ export const apiPaths = {
 
     partners: tenantPath('/partners'),
     partner: (partnerId: string) => tenantPath(`/partners/${segment(partnerId)}`),
+    partnerDocuments: (partnerId: string) => tenantPath(`/partners/${segment(partnerId)}/documents`),
     partnerApprove: (partnerId: string) => tenantPath(`/partners/${segment(partnerId)}/approve`),
     /** POST a partner's tax status — decides their VAT regime (§VAT). */
     partnerTaxStatus: (partnerId: string) =>
@@ -268,6 +269,8 @@ export const apiPaths = {
     profileAgreements: partnerPath('/profile/agreements'),
     profileDefaultCancellationPolicy: partnerPath('/profile/default-cancellation-policy'),
     profileDocuments: partnerPath('/profile/documents'),
+    profileDocumentPresign: partnerPath('/profile/documents/presign'),
+    profileDocumentList: partnerPath('/profile/documents'),
     profileIdentity: partnerPath('/profile/identity'),
     profilePayout: partnerPath('/profile/payout'),
     profileTaxAssessment: partnerPath('/profile/tax-assessment'),
