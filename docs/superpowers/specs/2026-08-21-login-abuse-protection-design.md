@@ -106,8 +106,8 @@ Storefront and dashboard receive the Caddy-injected header on the original HTTP 
 BFF code MUST:
 
 - accept only a single IPv4 or IPv6 literal;
-- trim surrounding whitespace;
-- reject/omit comma-separated chains and malformed values;
+- trim surrounding whitespace before validation;
+- if the header is missing, comma-separated, or malformed, omit `X-BookingOS-Client-IP` from the backend login call and let the API treat the signal as unavailable;
 - never derive this value from browser form fields or client JavaScript;
 - never forward an arbitrary browser-provided fallback header.
 
@@ -203,7 +203,9 @@ Preferred implementation: a small Redis Lua script or equivalent transaction tha
 4. records a new failure with a unique member when requested;
 5. sets/refreshes a bounded TTL so abandoned keys expire naturally.
 
-Pair and IP failures for one bad credential attempt should be recorded in one application operation. Partial Redis failure is treated as limiter unavailable for that request and logged; authentication behavior remains correct independently.
+Bucket A and Bucket B recording for one bad credential attempt MUST be issued through one atomic Redis operation so a concurrent API process cannot observe only half of the blocking state. Bucket C is observation-only and may be recorded separately; failure to record it must never change login authorization.
+
+Any Redis operation failure is treated as limiter unavailable for that request and logged; authentication behavior remains correct independently.
 
 ## Login request flow
 
@@ -250,7 +252,7 @@ The new login flow no longer reads or writes password lockout state.
 
 Implementation consequences:
 
-- `UserAccount.assertCanPasswordLogin()` stops checking `lockedUntil`;
+- `UserAccount.assertCanPasswordLogin()` stops checking `lockedUntil` but continues enforcing suspended-account and passwordless-guest rules;
 - `LoginUseCase` stops calling `recordLoginFailure()`, `recordLoginSuccess()`, and `users.updateLockout()`;
 - login no longer raises `ACCOUNT_LOCKED`;
 - frontend login flows stop displaying account-lockout-specific copy;
@@ -295,7 +297,7 @@ A coarse `Retry-After` may be returned if easy to compute from the oldest active
 
 The limiter is fail-open for login authorization, while password authentication remains fail-closed as usual.
 
-If Redis limiter operations fail:
+If Redis limiter operations fail after successful application boot:
 
 - emit `auth.login.limiter_unavailable`;
 - continue user lookup/password verification;
@@ -335,7 +337,7 @@ No client-side countdown is required.
 
 Add `AUTH_RATE_LIMIT_HMAC_KEY` to API deployment configuration and deployment documentation.
 
-Production boot should fail fast if this secret is missing or obviously unsafe, matching the repository's existing production-secret posture where practical.
+Production boot MUST fail fast if this secret is missing or obviously unsafe, matching the repository's existing production-secret posture where practical. This is a configuration-integrity guard and is intentionally distinct from runtime limiter fail-open behavior: once a correctly configured process has booted, Redis limiter operation failures do not block credential verification.
 
 ### Caddy
 
