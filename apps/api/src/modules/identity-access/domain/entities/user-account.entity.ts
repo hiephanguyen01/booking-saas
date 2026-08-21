@@ -1,6 +1,5 @@
 import { addMinutes } from '../../../../shared/time/time';
 import {
-  AccountLocked,
   AccountSuspended,
   EmailRegisteredForGuestBooking,
   EmailRegisteredForGuestUpgrade,
@@ -45,7 +44,7 @@ export interface NewUserAccount {
   emailVerifiedAt: Date | null;
 }
 
-/** Column-granular lockout write produced after a login attempt. */
+/** Column-granular legacy lockout write kept until the schema cleanup change. */
 export interface LoginLockoutIntent {
   failedLoginCount: number;
   lockedUntil: Date | null;
@@ -198,21 +197,19 @@ export class UserAccount {
   }
 
   /**
-   * Password-login gates in frozen order: active lockout, suspended status,
-   * then passwordless guest. Expiry is strict: lockedUntil === now is allowed.
+   * Password-login gates only account status and whether a password exists.
+   * Legacy lockedUntil state is intentionally inert for password login: source-
+   * scoped abuse protection now lives outside the account aggregate.
    */
-  assertCanPasswordLogin(now: Date): string {
-    if (this.state.lockedUntil !== null && this.state.lockedUntil > now) {
-      throw new AccountLocked();
-    }
+  assertCanPasswordLogin(): string {
     if (this.state.status !== 'active') throw new AccountSuspended();
     if (this.state.passwordHash === null) throw new InvalidCredentials();
     return this.state.passwordHash;
   }
 
   /**
-   * Attempts 1–4 increment and clear any expired lock. Attempt five locks for
-   * exactly fifteen minutes and resets the persisted counter to zero.
+   * Legacy lockout mutation retained for compatibility until the schema/domain
+   * cleanup change. Password login no longer calls this method.
    */
   recordLoginFailure(now: Date): LoginLockoutIntent {
     const failedLoginCount = this.state.failedLoginCount + 1;
@@ -228,7 +225,7 @@ export class UserAccount {
     return intent;
   }
 
-  /** Successful password verification always persists a reset, even if unchanged. */
+  /** Legacy helper retained until lockout columns and port methods are removed. */
   recordLoginSuccess(): LoginLockoutIntent {
     const intent: LoginLockoutIntent = {
       failedLoginCount: 0,
