@@ -1,10 +1,12 @@
 import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 import {
   approvePartnerInputSchema,
   createHousePartnerInputSchema,
   listPartnersQuerySchema,
   partnerApplyInputSchema,
   partnerAgreementListResponseSchema,
+  partnerDocumentKindSchema,
   partnerDocumentReadItemSchema,
   partnerDocumentUploadInputSchema,
   partnerResponseSchema,
@@ -53,6 +55,22 @@ export class PrivatePartnerDocumentReadItemDto extends createZodDto(
 export class LegacyPublicPartnerDocumentReadItemDto extends createZodDto(
   partnerDocumentReadItemSchema.options[1],
 ) {}
+
+// nestjs-zod cannot extend a discriminated union directly. Keep the wire contract
+// strict in @booking/contracts while exposing a superset object for Swagger's
+// array-item class. The `storage` discriminator tells clients which fields apply.
+const partnerDocumentReadItemOpenApiSchema = z.object({
+  storage: z.enum(['private', 'legacy_public']),
+  kind: partnerDocumentKindSchema,
+  key: z.string().min(1).optional(),
+  downloadUrl: z.string().url().optional(),
+  expiresInSec: z.number().int().positive().optional(),
+  url: z.string().url().optional(),
+});
+export class PartnerDocumentReadItemDto extends createZodDto(
+  partnerDocumentReadItemOpenApiSchema,
+) {}
+
 export class PartnerTaxAssessmentResponseDto extends createZodDto(
   partnerTaxAssessmentResponseSchema,
 ) {}
