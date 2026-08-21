@@ -25,10 +25,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:no-tests
       - run: pnpm check:module-cycles
+      - run: pnpm check:frontend-structure
+      - run: pnpm --filter=@booking/contracts build
+      - run: pnpm --filter=@booking/i18n typecheck
+      - run: pnpm --filter=@booking/api lint
+      - run: pnpm --filter=@booking/api typecheck
+      - run: pnpm --filter=@booking/api build
+      - run: pnpm --filter=@booking/api check:rls
+      - run: pnpm --filter=@booking/storefront security
       - run: pnpm --filter=@booking/storefront lint
       - run: pnpm --filter=@booking/storefront typecheck
       - run: pnpm --filter=@booking/dashboard lint
       - run: pnpm --filter=@booking/dashboard typecheck
+      - name: Verify active lockout copy and login writes are gone
+        run: |
+          ! rg "ACCOUNT_LOCKED|accountLocked|Tài khoản tạm.*khóa|temporarily locked" \
+            apps/storefront apps/dashboard packages/i18n
+          ! rg "recordLoginFailure|recordLoginSuccess|updateLockout|ACCOUNT_LOCKED" \
+            apps/api/src/modules/identity-access/application/use-cases/login.use-case.ts \
+            apps/api/src/modules/identity-access/infrastructure/http/public-auth.controller.ts
       - name: Validate Caddy configuration
         run: |
           docker run --rm \
