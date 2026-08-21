@@ -1,0 +1,31 @@
+name: SEC-002 API verification
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sec-002-api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:no-tests
+      - run: pnpm check:module-cycles
+      - run: pnpm --filter=@booking/contracts build
+      - run: pnpm --filter=@booking/api lint
+      - run: pnpm --filter=@booking/api typecheck
+      - run: pnpm --filter=@booking/api build
+      - run: pnpm --filter=@booking/api check:rls
