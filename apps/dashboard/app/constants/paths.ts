@@ -17,6 +17,7 @@ function partnerPath(suffix = ''): string {
 export const dashboardPaths = {
   home: '/',
   workspaces: '/workspaces',
+  partnerDocumentUploadPresign: '/uploads/partner-documents/presign',
   /** The recipient may hold no membership yet, so this sits outside every area group. */
   invitationAccept: (token: string) => `/invitations/${segment(token)}`,
   auth: { login: '/auth/login', logout: '/auth/logout' },
