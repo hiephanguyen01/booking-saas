@@ -2,8 +2,9 @@ name: AUTH-001 Verification
 
 on:
   push:
-    branches:
-      - fix/auth-001-login-abuse-protection
+    branches: [fix/auth-001-login-abuse-protection]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -14,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-checkpoint:
+  full-static-gates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,17 +28,23 @@ jobs:
       - run: pnpm check:no-tests
       - run: pnpm check:module-cycles
       - run: pnpm check:frontend-structure
+      - run: pnpm check:theme-tokens
+      - run: pnpm check:tenant-surfaces
+      - run: pnpm --filter=@booking/storefront security
       - run: pnpm --filter=@booking/contracts build
       - run: pnpm --filter=@booking/i18n typecheck
       - run: pnpm --filter=@booking/api lint
       - run: pnpm --filter=@booking/api typecheck
       - run: pnpm --filter=@booking/api build
       - run: pnpm --filter=@booking/api check:rls
-      - run: pnpm --filter=@booking/storefront security
       - run: pnpm --filter=@booking/storefront lint
       - run: pnpm --filter=@booking/storefront typecheck
+      - run: pnpm --filter=@booking/storefront build
       - run: pnpm --filter=@booking/dashboard lint
       - run: pnpm --filter=@booking/dashboard typecheck
+      - run: pnpm --filter=@booking/dashboard build
+      - run: pnpm turbo lint typecheck build
+      - run: pnpm --filter=@booking/api check:rls
       - name: Verify active lockout copy and login writes are gone
         run: |
           ! rg "ACCOUNT_LOCKED|accountLocked|Tài khoản tạm.*khóa|temporarily locked" \
@@ -45,6 +52,13 @@ jobs:
           ! rg "recordLoginFailure|recordLoginSuccess|updateLockout|ACCOUNT_LOCKED" \
             apps/api/src/modules/identity-access/application/use-cases/login.use-case.ts \
             apps/api/src/modules/identity-access/infrastructure/http/public-auth.controller.ts
+      - name: Classify legacy lockout references
+        run: |
+          rg "MAX_FAILED_LOGIN_ATTEMPTS|LOGIN_LOCKOUT_MINUTES|recordLoginFailure|recordLoginSuccess|updateLockout|locked_until|failed_login_count|ACCOUNT_LOCKED" \
+            apps packages docs docker .env.example .env.deploy.example > /tmp/legacy-lockout-refs.txt || true
+          cat /tmp/legacy-lockout-refs.txt
+          ! rg "ACCOUNT_LOCKED|accountLocked|Tài khoản tạm.*khóa|temporarily locked" \
+            apps/storefront apps/dashboard packages/i18n docs/deployment.md
       - name: Validate Caddy configuration
         run: |
           docker run --rm \
