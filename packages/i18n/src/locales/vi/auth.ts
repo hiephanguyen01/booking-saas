@@ -165,6 +165,6 @@ export const viAuth = {
     invalidOtp: 'Mã xác thực không đúng.',
     expired: 'Phiên xác thực đã hết hạn. Vui lòng bắt đầu lại.',
     passwordMismatch: 'Mật khẩu nhập lại không khớp.',
-    accountLocked: 'Tài khoản tạm khóa do đăng nhập sai nhiều lần. Vui lòng thử lại sau.',
+    rateLimited: 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.',
   },
 } as const;
