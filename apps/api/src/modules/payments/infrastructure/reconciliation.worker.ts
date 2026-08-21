@@ -73,6 +73,12 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
             await this.payments.markTerminalIfPending(tx, p.id, 'expired');
             return false;
           }
+          if (status.status === 'failed' && gateway.reconcileFailedAsTerminal === true) {
+            // Only gateways that explicitly opt in may turn a queried final failure
+            // into a terminal payment. Existing gateways keep their old semantics.
+            await this.payments.markTerminalIfPending(tx, p.id, 'failed');
+            return false;
+          }
           if (status.status !== 'succeeded') return false;
           // Same amount guard as the webhook path (§11.2): an underpaid result must
           // not confirm — leave it pending for a human/next poll rather than settle.
