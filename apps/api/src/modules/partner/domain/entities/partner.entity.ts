@@ -318,10 +318,15 @@ export class Partner {
     return intent;
   }
 
-  mergeDocuments(input: { logoUrl?: string; licenseDocs?: string[] }): PartnerBusinessInfoIntent {
+  mergeDocuments(input: {
+    logoUrl?: string;
+    licenseDocumentKeys?: string[];
+  }): PartnerBusinessInfoIntent {
     const businessInfo: Record<string, unknown> = { ...this.state.businessInfo };
     if (input.logoUrl !== undefined) businessInfo.logoUrl = input.logoUrl;
-    if (input.licenseDocs !== undefined) businessInfo.licenseDocs = input.licenseDocs;
+    if (input.licenseDocumentKeys !== undefined) {
+      businessInfo.licenseDocumentKeys = input.licenseDocumentKeys;
+    }
     const intent = { businessInfo };
     this.state = { ...this.state, ...intent };
     return intent;
