@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -23,6 +23,8 @@ import { Refund } from '../../domain/entities/refund.entity';
 /** Executes the provider call after the refund intent is durably committed. */
 @Injectable()
 export class ExecuteAutomaticRefundUseCase {
+  private readonly logger = new Logger(ExecuteAutomaticRefundUseCase.name);
+
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
@@ -32,7 +34,7 @@ export class ExecuteAutomaticRefundUseCase {
     private readonly outbox: OutboxService,
   ) {}
 
-  async execute(tenantId: string, refundId: string): Promise<void> {
+  async execute(tenantId: string, refundId: string, attempt = 0): Promise<void> {
     const prepared = await this.tenantDb.forTenant(tenantId, async (tx) => {
       const refund = await this.refunds.findById(tx, refundId);
       if (!refund) return null;
@@ -62,10 +64,38 @@ export class ExecuteAutomaticRefundUseCase {
       gatewayOrderRef: reference,
       amountVnd: prepared.refund.amount,
       reason: prepared.refund.reason ?? 'booking_cancellation',
+      attempt,
     });
 
-    // If a previous attempt voided successfully but crashed before persisting,
-    // a repeated void may be rejected. Provider status makes that retry safe.
+    if (result.pending) {
+      this.logger.warn(
+        `refund pending tenant=${tenantId} refund=${refundId} payment=${prepared.payment.id} gateway=${prepared.payment.gateway} orderRef=${reference} attempt=${attempt}`,
+      );
+      // The same durable outbox event is retried, so the provider attempt identity
+      // stays unchanged until MoMo reports a final result.
+      throw new Error(`Gateway refund attempt ${attempt} is still pending`);
+    }
+
+    if (result.retryAfterSec !== undefined) {
+      this.logger.warn(
+        `refund retry scheduled tenant=${tenantId} refund=${refundId} payment=${prepared.payment.id} gateway=${prepared.payment.gateway} orderRef=${reference} attempt=${attempt} delaySec=${result.retryAfterSec}`,
+      );
+      await this.tenantDb.forTenant(tenantId, async (tx) => {
+        await this.refunds.lockForBooking(tx, prepared.refund.bookingId);
+        const current = await this.refunds.findById(tx, refundId);
+        if (!current || !Refund.rehydrate(current).canExecuteAutomatically()) return;
+        await this.outbox.emit(tx, {
+          tenantId,
+          eventType: 'refund.execution_requested',
+          payload: { refundId, attempt: attempt + 1 },
+          availableAt: new Date(Date.now() + result.retryAfterSec * 1_000),
+        });
+      });
+      return;
+    }
+
+    // Generic recovery for gateways such as SePay: if a prior provider operation
+    // succeeded but persistence crashed, provider status can still prove refund truth.
     if (!result.supported) {
       const status = await prepared.gateway.queryPaymentStatus(reference);
       if (status.status === 'refunded') {
