@@ -4,7 +4,7 @@
 
 **Goal:** Replace the one-booking/one-payment refund assumption with a durable `RefundBatch` that allocates one business refund across the exact successful source payments, including mixed-provider deposit + balance bookings and security-deposit source preservation.
 
-**Architecture:** Keep existing `Refund` rows as provider/manual execution allocations and add one tenant-scoped `RefundBatch` as the booking-level business decision. Planning happens under the existing booking refund advisory lock, child allocations are committed before any provider call, each child executes against its own source payment/config revision, and exactly one business-level `refund.completed` event is emitted only when the batch is fully satisfied.
+**Architecture:** Keep existing `Refund` rows as provider/manual execution allocations and add one tenant-scoped `RefundBatch` as the booking-level business decision. Planning happens under the existing booking refund advisory lock, child allocations are committed before provider calls, each child executes against its own source payment/config revision, and exactly one business-level `refund.completed` event is emitted only when the batch is fully satisfied.
 
 **Tech Stack:** NestJS 11, Prisma 6/PostgreSQL 16, bigint VND, Postgres RLS/advisory locks, outbox, existing payment gateway/refund ports.
 
@@ -12,33 +12,32 @@
 
 ## Global Constraints
 
-- ADR 0005 forbids automated tests. Do not add `*.test.*`, `*.spec.*`, e2e files, test runners, test scripts, or CI test steps.
+- ADR 0005 forbids automated tests. Do not add test files/runners/scripts/CI test steps.
 - ADR 0004 requires hand-written migrations. Do not run `prisma migrate dev` or `db push`.
 - Every tenant-scoped table must have `tenant_id uuid NOT NULL`, FORCE RLS, and `tenant_isolation` policy.
 - Money remains `bigint` VND.
 - Provider network calls remain outside DB transactions.
-- Existing `Refund` rows remain the provider/manual execution unit; do not rename/rewrite the subsystem only for terminology.
-- Existing legacy refund rows with no batch remain readable and recoverable.
+- Existing `Refund` rows remain provider/manual execution units; legacy rows with no batch remain readable/recoverable.
 - Generic cancellation/dispute allocation is newest-successful-payment first.
-- `security_deposit` allocation must target the original successful `deposit`/`full` payment that collected the security deposit; never route it to a balance payment.
-- A payment's refundable capacity is `capturedAmount (or legacy amount) - succeeded refunds - pending/manual_reserved refunds`; failed refunds do not reserve capacity.
-- A business refund is complete only when successful child refund amount equals `RefundBatch.requestedAmount`.
-- Do not emit business-level `refund.completed` for every child allocation. Emit it once when the batch transitions to `completed`, otherwise Booking and Finance finalize too early.
-- Existing outbox event types are reused. `refund.execution_requested` remains child-execution; `refund.requested` remains manual child work; `refund.completed` becomes the single business-level batch completion event for batched refunds.
+- `security_deposit` allocates only against the original successful `deposit`/`full` payment, never a balance payment.
+- Refundable capacity is `(capturedAmount ?? legacy amount) - reserved refunds`, where reserved statuses are `pending`, `manual_required`, and `succeeded`; `failed` does not reserve capacity.
+- A business refund completes only when successful child amount equals `RefundBatch.requestedAmount`.
+- Child execution/manual events are operational only. They must not cause Booking/Finance to finalize the business refund early.
+- For batched refunds, emit one `refund.completed` only on the batch `processing/manual_required -> completed` CAS edge.
 - `affectsBookingStatus=false` remains the security-deposit behavior.
 
 ## File Map
 
 **Schema / migration**
-- Modify `apps/api/prisma/schema.prisma` — add `RefundBatchStatus`, `RefundBatch`, nullable `Refund.refundBatchId`, relations/indexes.
-- Create `apps/api/prisma/migrations/<timestamp>_refund_batches/migration.sql` — enum/table/FK/indexes/RLS.
+- Modify `apps/api/prisma/schema.prisma`.
+- Create `apps/api/prisma/migrations/<timestamp>_refund_batches/migration.sql`.
 
 **Domain / ports**
-- Create `apps/api/src/modules/payments/domain/entities/refund-batch.entity.ts` — batch status classification only; no Prisma/Nest/network.
-- Create `apps/api/src/modules/payments/domain/refund-allocation.ts` — deterministic pure allocation function.
-- Create `apps/api/src/modules/payments/domain/ports/refund-batch-repository.port.ts` — batch persistence/CAS/recovery boundary.
-- Modify `apps/api/src/modules/payments/domain/ports/refund-repository.port.ts` — batch id on child rows and reserved/succeeded totals per payment.
-- Modify `apps/api/src/modules/payments/domain/ports/payment-repository.port.ts` — exact source-payment reads for refund planning/execution.
+- Create `apps/api/src/modules/payments/domain/entities/refund-batch.entity.ts`.
+- Create `apps/api/src/modules/payments/domain/refund-allocation.ts`.
+- Create `apps/api/src/modules/payments/domain/ports/refund-batch-repository.port.ts`.
+- Modify `apps/api/src/modules/payments/domain/ports/refund-repository.port.ts`.
+- Modify `apps/api/src/modules/payments/domain/ports/payment-repository.port.ts`.
 
 **Repositories**
 - Create `apps/api/src/modules/payments/infrastructure/repositories/prisma-refund-batch.repository.ts`.
@@ -46,24 +45,23 @@
 - Modify `apps/api/src/modules/payments/infrastructure/repositories/prisma-payment.repository.ts`.
 
 **Application / orchestration**
-- Modify `apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.ts` — plan batch + child allocations under one short transaction.
-- Modify `apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts` — execute exact child source payment; refresh batch after child result.
-- Modify `apps/api/src/modules/payments/application/use-cases/confirm-manual-refund.use-case.ts` — refresh batch after manual child confirmation.
-- Modify `apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts` — batch-completion recovery instead of child-based recovery for batched refunds.
-- Modify `apps/api/src/modules/payments/infrastructure/http/payments.module.ts` — register new repository provider; existing event routing stays.
+- Modify `apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.ts`.
+- Modify `apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts`.
+- Modify `apps/api/src/modules/payments/application/use-cases/confirm-manual-refund.use-case.ts`.
+- Modify `apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts`.
+- Modify `apps/api/src/modules/payments/infrastructure/http/payments.module.ts`.
 
 **Downstream compatibility**
+- Modify `apps/api/src/modules/finance/infrastructure/http/finance.module.ts` so batched child `refund.requested` events do not re-prepare settlement amounts.
 - No new Finance event type.
-- `refund.completed` payload for batched refunds uses `refundId = refundBatch.id`, `amount = requestedAmount`, `reason`, and `affectsBookingStatus`; this preserves one business-level Finance/Booking transition.
-- Legacy non-batched refunds continue emitting the existing child-level `refund.completed` shape unchanged.
+- Batched business completion emits `refund.completed` with `refundId = refundBatch.id`, `amount = requestedAmount`, `reason`, and `affectsBookingStatus`.
+- Legacy non-batched refunds keep existing event semantics.
 
 ---
 
 ### Task 1: Add `RefundBatch` schema and backward-compatible child link
 
-**Files:**
-- Modify: `apps/api/prisma/schema.prisma`
-- Create: `apps/api/prisma/migrations/<timestamp>_refund_batches/migration.sql`
+**Files:** schema + one hand-written migration.
 
 **Produces:**
 
@@ -89,9 +87,9 @@ model RefundBatch {
   createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  refunds  Refund[]
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  refunds Refund[]
 
   @@unique([tenantId, bookingId, reason])
   @@index([tenantId, status, updatedAt])
@@ -107,27 +105,19 @@ refundBatch   RefundBatch? @relation(fields: [refundBatchId], references: [id], 
 @@index([refundBatchId])
 ```
 
-- [ ] **Step 1: Edit Prisma schema exactly as above and add inverse relations on `Tenant` / `Booking` only if Prisma requires them.**
-- [ ] **Step 2: Hand-write migration SQL.** Create enum, table, unique/indexes, FK from `refunds.refund_batch_id`, and tenant/booking FKs. Existing refunds remain `NULL`.
-- [ ] **Step 3: Add RLS to the new table.** Follow the repository's existing tenant-table migration pattern: `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`, and `tenant_isolation` policy using `current_setting('app.tenant_id', true)::uuid`.
-- [ ] **Step 4: Verify migration shape.**
+- [ ] Edit schema and inverse relations required by Prisma.
+- [ ] Hand-write enum/table/FK/index migration; existing refunds remain `refund_batch_id NULL`.
+- [ ] Add ENABLE + FORCE RLS and tenant policy to `refund_batches`.
+- [ ] Verify/apply locally:
 
 ```bash
 pnpm --filter=@booking/api prisma:generate
 pnpm --filter=@booking/api check:rls
+pnpm --filter=@booking/api prisma:deploy
 pnpm --filter=@booking/api typecheck
 ```
 
-- [ ] **Step 5: Apply to local dev DB and inspect constraints.**
-
-```bash
-pnpm --filter=@booking/api prisma:deploy
-pnpm --filter=@booking/api prisma:generate
-```
-
-Confirm with `psql` that `refund_batches` has FORCE RLS and `refunds.refund_batch_id` is nullable.
-
-- [ ] **Step 6: Commit.**
+- [ ] Commit:
 
 ```bash
 git add apps/api/prisma/schema.prisma apps/api/prisma/migrations
@@ -136,11 +126,9 @@ git commit -m "feat(payments): add refund batches"
 
 ---
 
-### Task 2: Define deterministic allocation and batch status policy
+### Task 2: Define deterministic allocation and batch-state policy
 
-**Files:**
-- Create: `apps/api/src/modules/payments/domain/refund-allocation.ts`
-- Create: `apps/api/src/modules/payments/domain/entities/refund-batch.entity.ts`
+**Files:** create `refund-allocation.ts` and `refund-batch.entity.ts`.
 
 **Produces:**
 
@@ -161,7 +149,7 @@ export function allocateRefundNewestFirst(
 ): RefundAllocation[];
 ```
 
-Allocation behavior:
+Implementation rule:
 
 ```ts
 let remaining = requestedAmount;
@@ -177,35 +165,22 @@ if (remaining > 0n) throw new RefundAmountExceedsPayment();
 return allocations;
 ```
 
-Use the existing refund amount domain error for insufficient aggregate refundable balance; do not create a generic `Error` for this business failure.
-
-`RefundBatch` entity consumes aggregate child counts/amounts and returns one status:
-
-```ts
-export type RefundBatchClassification =
-  | 'processing'
-  | 'manual_required'
-  | 'completed'
-  | 'failed';
-```
-
-Rules in order:
+Batch classification order:
 1. `succeededAmount === requestedAmount` -> `completed`.
-2. any child `manual_required` -> `manual_required`.
-3. any child `pending` -> `processing`.
-4. otherwise, if successful amount is still short and all remaining children are terminal `failed` -> `failed`.
-5. never classify `completed` if successful amount exceeds requested amount; throw defensively because that is a persistence invariant breach.
+2. any `manual_required` child -> `manual_required`.
+3. any `pending` child -> `processing`.
+4. remaining shortfall with all unfinished work terminal `failed` -> `failed`.
+5. `succeededAmount > requestedAmount` is an invariant breach and throws defensively.
 
-- [ ] **Step 1: Implement the pure allocation function.** It must preserve input order and never allocate zero/negative amounts.
-- [ ] **Step 2: Implement `RefundBatch.rehydrate({ requestedAmount })` and `classify(summary)` with the exact rules above.**
-- [ ] **Step 3: Run targeted static checks.**
+- [ ] Implement both pure policies with no Nest/Prisma/network imports.
+- [ ] Verify:
 
 ```bash
 pnpm --filter=@booking/api lint
 pnpm --filter=@booking/api typecheck
 ```
 
-- [ ] **Step 4: Commit.**
+- [ ] Commit:
 
 ```bash
 git add apps/api/src/modules/payments/domain/refund-allocation.ts \
@@ -217,10 +192,7 @@ git commit -m "feat(payments): define refund allocation policy"
 
 ### Task 3: Add batch/source repository boundaries
 
-**Files:**
-- Create: `apps/api/src/modules/payments/domain/ports/refund-batch-repository.port.ts`
-- Modify: `apps/api/src/modules/payments/domain/ports/refund-repository.port.ts`
-- Modify: `apps/api/src/modules/payments/domain/ports/payment-repository.port.ts`
+**Files:** payment/refund ports + new batch repository port.
 
 **Produces:**
 
@@ -236,13 +208,6 @@ export interface RefundBatchRecord {
   affectsBookingStatus: boolean;
   status: 'processing' | 'manual_required' | 'completed' | 'failed';
   completedAt: Date | null;
-}
-
-export interface RefundBatchChildSummary {
-  succeededAmount: bigint;
-  pendingCount: number;
-  manualRequiredCount: number;
-  failedCount: number;
 }
 
 export interface RefreshRefundBatchResult {
@@ -263,25 +228,11 @@ export interface IRefundBatchRepository {
 }
 ```
 
-Add to child refund contracts:
-
-```ts
-refundBatchId: string | null;
-```
-
-and to `CreateRefundData`:
-
-```ts
-refundBatchId?: string | null;
-```
-
-Add refund reservation query:
+Extend child refund records/data with `refundBatchId: string | null` / optional create field and add:
 
 ```ts
 reservedAmountForPayment(tx: PrismaTx, paymentId: string): Promise<bigint>;
 ```
-
-It sums child amounts in statuses `pending`, `manual_required`, and `succeeded`; `failed` is excluded.
 
 Add exact payment reads:
 
@@ -291,68 +242,51 @@ findSucceededRefundSources(tx: PrismaTx, bookingId: string): Promise<PaymentReco
 findSecurityDepositSource(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
 ```
 
-`findSucceededRefundSources` orders `createdAt DESC, id DESC` and returns only `status='succeeded'`.
+- `findSucceededRefundSources`: `status='succeeded'`, `createdAt DESC, id DESC`.
+- `findSecurityDepositSource`: earliest successful `kind IN ('deposit','full')`.
+- `PaymentRecord` exposes `capturedAmount` and `createdAt` after prior hardening PRs.
 
-`findSecurityDepositSource` selects the earliest successful `kind IN ('deposit','full')`; balance payments are never eligible because the checkout plan collects security deposit only on the initial payment.
-
-- [ ] **Step 1: Add the batch repository port.** No Prisma model imports beyond enum-compatible string types; keep the port framework-free except `PrismaTx` as established repository convention.
-- [ ] **Step 2: Extend refund and payment repository ports with the exact methods above.**
-- [ ] **Step 3: Update `PaymentRecord` to expose `capturedAmount` from PR1/PR2 and `createdAt` if it is not already present after those PRs.** Refund capacity uses `capturedAmount ?? amount` for legacy successful payments.
-- [ ] **Step 4: Verify.**
-
-```bash
-pnpm --filter=@booking/api typecheck
-```
-
-Expected at this step: repository adapters/use-cases fail typecheck until Task 4 implements the new methods. Do not commit a deliberately uncompilable intermediate branch; complete Task 4 before the next commit.
+- [ ] Update ports.
+- [ ] Do not commit until Task 4 implements adapters so branch remains compile-safe.
 
 ---
 
 ### Task 4: Implement atomic batch/repository persistence
 
-**Files:**
-- Create: `apps/api/src/modules/payments/infrastructure/repositories/prisma-refund-batch.repository.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/repositories/prisma-refund.repository.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/repositories/prisma-payment.repository.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/http/payments.module.ts`
+**Files:** new Prisma batch repository + payment/refund repositories + PaymentsModule provider.
 
-**Key persistence rules:**
-
-`PrismaRefundBatchRepository.refreshStatus()` must compute child aggregate state in the same RLS transaction, classify it with `RefundBatch`, then use guarded writes. Completion uses:
+`refreshStatus()` must aggregate children and CAS status. Completion write:
 
 ```sql
 UPDATE refund_batches
 SET status = 'completed', completed_at = now(), updated_at = now()
-WHERE id = $1
-  AND status <> 'completed'
+WHERE id = $1 AND status <> 'completed'
 ```
 
-`transitionedToCompleted` is true only when that guarded update changes one row. Duplicate child completions therefore cannot emit two business completion events.
+`transitionedToCompleted=true` only when that guarded update changes one row.
 
-`findCompletedNeedingRecovery()` uses the admin pool only for cross-tenant discovery and returns completed batches whose downstream booking/settlement projection has not converged. Treat either condition as needing recovery when `affects_booking_status=true`:
+`reservedAmountForPayment()` sums `pending`, `manual_required`, `succeeded`; null sum -> `0n`.
 
-- booking is not `refunded`; or
-- booking settlement `refund_id IS DISTINCT FROM refund_batches.id`.
+`findCompletedNeedingRecovery()` uses the admin pool for discovery and returns completed, `affects_booking_status=true` batches when either booking is not `refunded` or settlement `refund_id IS DISTINCT FROM batch.id`.
 
-For `affects_booking_status=false`, do not require booking/settlement finalization recovery.
-
-- [ ] **Step 1: Implement `PrismaRefundBatchRepository`.** Map rows explicitly and classify status through the domain entity.
-- [ ] **Step 2: Implement `reservedAmountForPayment()`.** Use `SUM(amount)` over `pending`, `manual_required`, `succeeded`; return `0n` on null.
-- [ ] **Step 3: Persist `refundBatchId` on child create/read mappings.** Legacy rows remain null.
-- [ ] **Step 4: Implement exact payment-source queries.** Include `capturedAmount`, config revision fields required by PR1, and stable ordering.
-- [ ] **Step 5: Register repository provider in `PaymentsModule`.**
+- [ ] Implement repository mappings explicitly.
+- [ ] Register:
 
 ```ts
 { provide: REFUND_BATCH_REPOSITORY, useClass: PrismaRefundBatchRepository }
 ```
 
-- [ ] **Step 6: Verify and commit Tasks 3-4 together.**
+- [ ] Verify Tasks 3-4 together:
 
 ```bash
 pnpm --filter=@booking/api lint
 pnpm --filter=@booking/api typecheck
 pnpm --filter=@booking/api check:rls
+```
 
+- [ ] Commit:
+
+```bash
 git add apps/api/src/modules/payments/domain/ports \
   apps/api/src/modules/payments/infrastructure/repositories \
   apps/api/src/modules/payments/infrastructure/http/payments.module.ts
@@ -361,52 +295,49 @@ git commit -m "feat(payments): persist refund allocation batches"
 
 ---
 
-### Task 5: Replace single-payment refund planning with batch allocation
+### Task 5: Replace single-payment planning with batch allocation
 
-**Files:**
-- Modify: `apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.ts`
-
-**Consumes:**
-- `allocateRefundNewestFirst()`
-- `IRefundBatchRepository`
-- `IPaymentRepository.findSucceededRefundSources()`
-- `IPaymentRepository.findSecurityDepositSource()`
-- `IRefundRepository.reservedAmountForPayment()`
-
-**Behavior:**
+**File:** `execute-refund.use-case.ts`.
 
 Inside one short `forTenant` transaction:
-1. take existing `refunds.lockForBooking(tx, bookingId)` advisory lock;
-2. if batch exists for `(bookingId, reason)`, return idempotently;
-3. choose sources:
-   - `security_deposit` -> exactly one `findSecurityDepositSource()` result;
-   - all other reasons -> `findSucceededRefundSources()` newest first;
-4. for each source compute `available = (capturedAmount ?? amount) - reservedAmountForPayment()`;
-5. allocate exactly `requestedAmount` using the domain function;
-6. create `RefundBatch(status=processing)`;
-7. create one child `Refund` per allocation using the source payment's gateway/payment method and current refund strategy logic;
-8. emit one `refund.execution_requested` for every automatic child; emit one `refund.requested` for every manual child;
-9. commit; no provider call occurs here.
+1. take `refunds.lockForBooking(tx, bookingId)`;
+2. return idempotently if batch exists for `(bookingId, reason)`;
+3. source selection: security deposit -> one initial `deposit|full`; otherwise all succeeded payments newest first;
+4. for each source compute `(capturedAmount ?? amount) - reservedAmountForPayment()`;
+5. allocate exactly requested amount; fail before writes if aggregate capacity is insufficient;
+6. create batch;
+7. create one child refund per allocation with the source payment's gateway/settings strategy;
+8. emit `refund.execution_requested` for automatic children and `refund.requested` for manual children;
+9. commit; no provider call.
 
-Security-deposit source validation:
-- if no initial successful `deposit|full` payment exists, return without creating a batch because there is no captured source to refund;
-- if the source's available refundable capacity is below requested security deposit, throw the existing refund-amount domain error instead of borrowing from a balance payment.
+Every batched child operational event includes:
 
-For normal cancellation/dispute refunds, if aggregate available refundable amount is below the requested amount, throw before creating the batch/children so no partial business plan is persisted.
+```ts
+{
+  refundId,
+  refundBatchId,
+  paymentId,
+  bookingId,
+  amount,
+  reason,
+  affectsBookingStatus,
+}
+```
 
-- [ ] **Step 1: Inject `REFUND_BATCH_REPOSITORY` and remove `findSucceededByBooking()` planning.**
-- [ ] **Step 2: Implement source capacity calculation exactly as above.**
-- [ ] **Step 3: Create batch before children and assign `refundBatchId` to every new child.**
-- [ ] **Step 4: Preserve existing refund strategy/manual SLA resolution per source payment.** With mixed providers, each child may independently be automatic or manual.
-- [ ] **Step 5: Emit child execution/manual events with `refundId`, `refundBatchId`, `paymentId`, `bookingId`, `amount`, `reason`, `affectsBookingStatus`.** These events are operational allocation events, not business completion.
-- [ ] **Step 6: Verify.**
+Security-deposit rules:
+- no initial succeeded source -> no batch;
+- insufficient capacity on that initial source -> existing refund amount error;
+- never borrow from a balance payment.
+
+- [ ] Implement exact source allocation and per-source strategy.
+- [ ] Verify:
 
 ```bash
 pnpm --filter=@booking/api lint
 pnpm --filter=@booking/api typecheck
 ```
 
-- [ ] **Step 7: Commit.**
+- [ ] Commit:
 
 ```bash
 git add apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.ts
@@ -415,19 +346,17 @@ git commit -m "fix(payments): allocate refunds across source payments"
 
 ---
 
-### Task 6: Execute each child against its exact source payment and complete the batch once
+### Task 6: Execute/confirm children against exact source payments and complete batch once
 
-**Files:**
-- Modify: `apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts`
-- Modify: `apps/api/src/modules/payments/application/use-cases/confirm-manual-refund.use-case.ts`
+**Files:** automatic executor + manual confirmation use case.
 
-**Automatic execution:**
-- load child refund by id;
-- load `payment = payments.findById(tx, refund.paymentId)`; never use latest booking payment;
-- resolve gateway through PR1's `resolveForPayment(payment)` historical-config path;
-- provider call remains outside transaction;
-- apply provider result to the child;
-- call `refundBatches.refreshStatus(tx, refund.refundBatchId)` for batched rows;
+Automatic path:
+- load child;
+- `payments.findById(tx, refund.paymentId)`; never latest booking payment;
+- resolve adapter through PR1's historical `resolveForPayment(payment)` path;
+- provider call outside transaction;
+- apply child status;
+- if batched, `refundBatches.refreshStatus(tx, refundBatchId)`;
 - if `transitionedToCompleted`, emit exactly one business event:
 
 ```ts
@@ -445,25 +374,24 @@ await outbox.emit(tx, {
 });
 ```
 
-For legacy child `refundBatchId === null`, preserve the old behavior and emit the existing child-level `refund.completed` event.
+Manual confirmation follows the same refresh/CAS/event rule after `markSucceeded()` and audit write.
 
-If automatic execution becomes `manual_required`, refresh the batch after the child transition. A batch with any manual child becomes `manual_required`; do not emit business completion.
+For `refundBatchId === null`, preserve legacy child-level `refund.completed` behavior.
 
-**Manual confirmation:** after `markSucceeded()` and audit write, refresh the batch. Emit business completion only on the `transitionedToCompleted` CAS edge. Legacy child behavior stays unchanged.
+If automatic child falls back to manual, emit `refund.requested` with `refundBatchId` and refresh batch to `manual_required`; do not emit business completion.
 
-- [ ] **Step 1: Replace automatic executor's `findSucceededByBooking()` with exact `findById(refund.paymentId)`.**
-- [ ] **Step 2: Resolve historical gateway config from the source payment.**
-- [ ] **Step 3: Remove the old generic fallback that infers refund success from original payment status for providers that now implement `queryRefundStatus()` in PR3.** Keep provider-specific legacy void behavior only where the adapter contract explicitly returns it.
-- [ ] **Step 4: Refresh batch after automatic success/manual handoff/final failure.**
-- [ ] **Step 5: Refresh batch after manual confirmation and gate event emission on the completion CAS.**
-- [ ] **Step 6: Verify.**
+- [ ] Replace any `findSucceededByBooking()` executor read with `findById(refund.paymentId)`.
+- [ ] Use historical gateway config revision.
+- [ ] Remove generic refund-success inference from original payment status where PR3 provides `queryRefundStatus()`.
+- [ ] Refresh batch after automatic success/manual handoff/final failure and after manual confirmation.
+- [ ] Verify:
 
 ```bash
 pnpm --filter=@booking/api lint
 pnpm --filter=@booking/api typecheck
 ```
 
-- [ ] **Step 7: Commit.**
+- [ ] Commit:
 
 ```bash
 git add apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts \
@@ -473,25 +401,61 @@ git commit -m "fix(payments): complete refund batches atomically"
 
 ---
 
-### Task 7: Recover batch completion without replaying child completion
+### Task 7: Prevent batched child manual events from corrupting Finance preparation
 
-**Files:**
-- Modify: `apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts`
-- Modify: `apps/api/src/modules/payments/domain/ports/refund-repository.port.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/repositories/prisma-refund.repository.ts`
+**File:** `apps/api/src/modules/finance/infrastructure/http/finance.module.ts`.
 
-**Behavior:**
-- Keep legacy `findSucceededNeedingRecovery()` for rows with `refund_batch_id IS NULL` only.
-- Add `REFUND_BATCH_REPOSITORY` to reconciliation worker.
-- Query `findCompletedNeedingRecovery(100)`.
-- For each completed batch, emit the same single business `refund.completed` payload using `refundId=batch.id` and `amount=requestedAmount`.
-- Downstream Booking/Finance handlers remain idempotent; settlement `refund_id=batch.id` is the convergence marker for batched service refunds.
-- Do not re-emit every succeeded child; that would double-apply Finance amounts.
+Current Finance consumes every `refund.requested` and may call `PrepareSettlementRefundUseCase` with the child amount. That is correct for legacy single refunds but wrong for batched child allocations: cancellation already prepared the full amount from `booking.cancelled`, and dispute resolution already called `settlements.prepareRefund(...)` before emitting `settlement.refund_requested`.
 
-- [ ] **Step 1: Restrict legacy refund recovery query to `refund_batch_id IS NULL`.**
-- [ ] **Step 2: Add completed-batch recovery loop.**
-- [ ] **Step 3: Verify duplicate recovery.** Run the worker/sweep twice against a local completed batch and confirm the downstream settlement/refunded booking does not change twice.
-- [ ] **Step 4: Commit.**
+Change payload parsing to include `refundBatchId?: string` and skip Finance preparation for batched operational child events:
+
+```ts
+this.registry.register('refund.requested', (event) => {
+  const p = event.payload as {
+    refundBatchId?: string;
+    bookingId: string;
+    amount: string;
+    reason?: string;
+    affectsBookingStatus?: boolean;
+  };
+  if (p.refundBatchId) return Promise.resolve();
+  if (p.affectsBookingStatus === false) return Promise.resolve();
+  // existing legacy preparation path unchanged
+});
+```
+
+Do **not** skip batched `refund.completed`; that is the single full business amount Finance must finalize.
+
+- [ ] Add the guard exactly at the `refund.requested` handler.
+- [ ] Verify API lint/typecheck/module cycles.
+
+```bash
+pnpm --filter=@booking/api lint
+pnpm --filter=@booking/api typecheck
+pnpm check:module-cycles
+```
+
+- [ ] Commit:
+
+```bash
+git add apps/api/src/modules/finance/infrastructure/http/finance.module.ts
+git commit -m "fix(finance): ignore refund batch child requests"
+```
+
+---
+
+### Task 8: Recover batch completion without replaying child completion
+
+**Files:** reconciliation worker + legacy refund recovery query.
+
+- Restrict current succeeded-refund recovery to `refund_batch_id IS NULL`.
+- Inject `REFUND_BATCH_REPOSITORY` into reconciliation worker.
+- For each `findCompletedNeedingRecovery(100)` result, emit the same single business `refund.completed` payload with `refundId=batch.id`, `amount=requestedAmount`.
+- Never re-emit succeeded batched children; Finance would otherwise double-apply amounts.
+
+- [ ] Implement legacy query restriction and batch recovery loop.
+- [ ] Run a local sweep twice against one completed batch and confirm booking/settlement converge once.
+- [ ] Commit:
 
 ```bash
 git add apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts \
@@ -502,11 +466,11 @@ git commit -m "fix(payments): recover refund batch completion"
 
 ---
 
-### Task 8: Runtime smoke the financial scenarios with real DB transactions
+### Task 9: Runtime smoke financial scenarios with real DB transactions
 
-**Files:** no committed test files.
+**No committed test files.**
 
-- [ ] **Step 1: Run full static gate.**
+- [ ] Run full static gate:
 
 ```bash
 pnpm check:no-tests && \
@@ -519,45 +483,25 @@ pnpm turbo lint typecheck build && \
 pnpm --filter=@booking/api check:rls
 ```
 
-- [ ] **Step 2: Start local infra/app and seed.**
-
-```bash
-docker compose up -d
-pnpm --filter=@booking/api prisma:deploy
-pnpm --filter=@booking/api prisma:generate
-pnpm --filter=@booking/api seed
-pnpm --filter=@booking/api dev
-```
-
-- [ ] **Step 3: Smoke mixed-provider multi-payment cancellation.** Create/prepare a booking with two succeeded source payments: older deposit and newer balance. Use mock/provider-safe local data so deposit and balance can carry different gateway keys/config revisions. Request a cancellation refund larger than the balance alone. Confirm:
-  - one `refund_batches` row;
-  - two child `refunds` rows when required by capacity;
-  - newest payment allocated first;
-  - total child amount equals requested amount;
-  - provider calls occur per child source payment;
-  - booking remains not-refunded after first child succeeds;
-  - only after all children succeed does batch become completed and booking/settlement finalize once.
-
-- [ ] **Step 4: Smoke concurrent duplicate refund planning.** Deliver the same cancellation/recovery trigger concurrently. Confirm the advisory lock + unique batch key produce one batch and no duplicate allocations.
-
-- [ ] **Step 5: Smoke manual + automatic mixed batch.** Make one child automatic and one manual. Confirm batch becomes `manual_required`, automatic child success does not finalize booking, manual confirmation transitions the batch to `completed`, and exactly one business `refund.completed` is observable.
-
-- [ ] **Step 6: Smoke security-deposit source preservation.** Create a booking with initial `deposit|full` capture plus later balance. Trigger `security_deposit` return. Confirm the child points only to the initial payment, never the balance, and `affectsBookingStatus=false` leaves booking/settlement service-refund status unchanged.
-
-- [ ] **Step 7: Smoke capacity accounting.** With one pending/manual child already reserving part of a payment, request a second legal refund path and confirm reserved amount is excluded from availability so no over-refund plan can be created.
-
-- [ ] **Step 8: Commit any documentation-only smoke notes if the repository convention requires them; do not commit disposable scripts or test files.**
+- [ ] Start local infra, apply migration, seed, run API.
+- [ ] Mixed-provider cancellation: older deposit + newer balance, refund larger than balance -> two allocations newest-first, booking not finalized after first child, batch completion finalizes once.
+- [ ] Duplicate concurrent refund trigger -> one batch, no duplicate child plan.
+- [ ] Mixed automatic/manual batch -> batch `manual_required` until manual confirmation; one final business completion.
+- [ ] Confirm Finance `refund_pending` amount remains the full business amount while manual child operational events arrive; it must not be overwritten by a child amount.
+- [ ] Security deposit -> one child on initial `deposit|full`, never balance, `affectsBookingStatus=false`.
+- [ ] Existing pending/manual child reserves capacity and blocks over-refund planning.
+- [ ] Reconciliation sweep twice -> no duplicate Finance refund application.
 
 ## Definition of Done
 
 - One business refund can span multiple successful payment rows/providers.
-- Refund allocation never exceeds captured refundable capacity.
-- Pending/manual/succeeded child rows reserve capacity; failed rows do not.
-- Security deposit targets the original initial capture only.
+- Allocation never exceeds captured refundable capacity.
+- Security deposit preserves the original source capture.
 - Automatic/manual child work is durable before provider execution.
-- Exact source payment/config revision is used for every child execution.
-- A mixed batch may be partly automatic and partly manual.
-- Booking/Finance receive exactly one business `refund.completed` only when the requested batch amount is fully succeeded.
+- Exact source payment/config revision is used for every child.
+- Mixed automatic/manual batches work.
+- Batched child `refund.requested` does not mutate Finance business refund preparation.
+- Booking/Finance receive exactly one batched business `refund.completed` only after full requested amount succeeds.
 - Legacy non-batched refunds remain supported.
-- Batch recovery cannot double-apply child refund amounts.
-- Full repository static gate and focused real-DB runtime smoke pass with no automated test artifacts added.
+- Recovery cannot double-apply child amounts.
+- Full static gate and focused real-DB smoke pass with zero automated test artifacts.
