@@ -105,17 +105,26 @@ export class S3StorageService implements StoragePort {
         message: 'Invalid storage object key',
       });
     }
-    const fileName = (input.fileName ?? 'document.pdf')
-      .replace(/[\r\n"\\/]/g, '-')
-      .replace(/[^a-z0-9._-]/gi, '-')
-      .slice(0, 180);
+
+    const responseOverrides = input.fileName
+      ? (() => {
+          const fileName = input.fileName
+            .replace(/[\r\n"\\/]/g, '-')
+            .replace(/[^a-z0-9._-]/gi, '-')
+            .slice(0, 180);
+          return {
+            ResponseContentType: 'application/pdf',
+            ResponseContentDisposition: `inline; filename="${fileName || 'document.pdf'}"`,
+          };
+        })()
+      : {};
+
     const downloadUrl = await getSignedUrl(
       this.client,
       new GetObjectCommand({
         Bucket: this.config.privateBucket,
         Key: key,
-        ResponseContentType: 'application/pdf',
-        ResponseContentDisposition: `inline; filename="${fileName || 'document.pdf'}"`,
+        ...responseOverrides,
       }),
       { expiresIn: this.config.presignExpiresSec },
     );
