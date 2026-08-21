@@ -99,13 +99,14 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
   ): Promise<GatewayConfigRecord> {
     await this.lockTenant(tx, tenantId);
 
-    // Preserve current non-secret policy when an admin only rotates credentials.
-    // The first revision uses provider defaults; explicit settings always win.
-    const current = await tx.tenantGatewayConfig.findFirst({
-      where: { tenantId, gateway: data.gateway, isActive: true },
-      orderBy: { updatedAt: 'desc' },
+    // Preserve the latest non-secret policy when an admin rotates credentials or
+    // reactivates a gateway after temporarily switching providers. Only a gateway
+    // with no historical revision at all falls back to provider defaults.
+    const previous = await tx.tenantGatewayConfig.findFirst({
+      where: { tenantId, gateway: data.gateway },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     });
-    const currentRecord = current ? this.toRecord(current) : null;
+    const previousRecord = previous ? this.toRecord(previous) : null;
 
     // BASE gateways stay max-1-active as a group; wallets run in parallel but each
     // wallet must itself be single-active. The tenant advisory lock makes the
@@ -128,7 +129,7 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
         environment: data.environment,
         credentials: { enc: this.crypto.encrypt(JSON.stringify(data.credentials)) },
         settings: (data.settings ??
-          currentRecord?.settings ??
+          previousRecord?.settings ??
           defaultGatewayPaymentSettings(data.gateway)) as Prisma.InputJsonObject,
         isActive: true,
       },
