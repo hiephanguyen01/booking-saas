@@ -5,9 +5,11 @@ import {
   listPartnersQuerySchema,
   partnerApplyInputSchema,
   partnerAgreementListResponseSchema,
+  partnerDocumentUploadInputSchema,
   partnerResponseSchema,
   partnerTaxAssessmentResponseSchema,
   partnerTaxYearQuerySchema,
+  privateDocumentUploadResponseSchema,
   publicPartnerProfileResponseSchema,
   recordPartnerTaxDeclarationInputSchema,
   setDefaultCancellationPolicyInputSchema,
@@ -22,6 +24,7 @@ import {
 export class PartnerApplyDto extends createZodDto(partnerApplyInputSchema) {}
 export class CreateHousePartnerDto extends createZodDto(createHousePartnerInputSchema) {}
 export class ApprovePartnerDto extends createZodDto(approvePartnerInputSchema) {}
+export class PartnerDocumentUploadDto extends createZodDto(partnerDocumentUploadInputSchema) {}
 export class UpdatePayoutInfoDto extends createZodDto(updatePayoutInfoInputSchema) {}
 export class UpdatePartnerTaxStatusDto extends createZodDto(updatePartnerTaxStatusInputSchema) {}
 export class RecordPartnerTaxDeclarationDto extends createZodDto(
@@ -40,6 +43,9 @@ export class PartnerTaxYearQueryDto extends createZodDto(partnerTaxYearQuerySche
 
 // Responses
 export class PartnerResponseDto extends createZodDto(partnerResponseSchema) {}
+export class PrivateDocumentUploadResponseDto extends createZodDto(
+  privateDocumentUploadResponseSchema,
+) {}
 export class PartnerTaxAssessmentResponseDto extends createZodDto(
   partnerTaxAssessmentResponseSchema,
 ) {}
