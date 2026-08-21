@@ -230,7 +230,14 @@ jobs:
             await uc.execute({email:'fail-open@example.test',password:'Correct123'},{ip:'203.0.113.55'}); assert.equal(created,1);
             await assert.rejects(()=>uc.execute({email:'fail-open@example.test',password:'Wrong123'},{ip:'203.0.113.55'}),e=>e instanceof InvalidCredentials);
             const shared=new Redis(process.env.REDIS_URL); await shared.ping();
-            const svc=new RedisLoginAbuseProtectionService(shared); await svc.redis.ping(); svc.redis.disconnect();
+            const svc=new RedisLoginAbuseProtectionService(shared);
+            if (svc.redis.status !== 'ready') {
+              await new Promise((resolve, reject) => {
+                const timer=setTimeout(()=>reject(new Error(`dedicated Redis did not become ready: ${svc.redis.status}`)),2000);
+                svc.redis.once('ready',()=>{clearTimeout(timer);resolve();});
+              });
+            }
+            await svc.redis.ping(); svc.redis.disconnect();
             const t=Date.now(); await assert.rejects(()=>svc.precheck({normalizedEmail:'fast-fail@example.test',clientIp:'203.0.113.56'})); assert.ok(Date.now()-t<2000);
             shared.disconnect();
           })().catch(e=>{console.error(e);process.exit(1)});
