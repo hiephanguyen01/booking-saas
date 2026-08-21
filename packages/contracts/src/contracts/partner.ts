@@ -180,15 +180,14 @@ export type PartnerDocumentReadItem = z.infer<typeof partnerDocumentReadItemSche
 
 /**
  * Post-registration document upload (§7.3). A partner registers with plain fields,
- * then — once authenticated — uploads a logo + license/business documents on the
- * dashboard. Persisted into `Partner.businessInfo` JSON (partners have no image
- * column). Free of `.transform()`/`.default()` so it can drive a GenericForm.
+ * then — once authenticated — uploads a public logo + private license/business
+ * documents on the dashboard. Persisted into `Partner.businessInfo` JSON.
  */
 export const updatePartnerDocumentsInputSchema = z.object({
   /** Public URL of the uploaded logo (via /uploads/presign, target `partners`). */
   logoUrl: z.string().url().or(z.literal('')).optional(),
-  /** Public URLs of uploaded license/business documents. */
-  licenseDocs: z.array(z.string().url()).max(20).optional(),
+  /** Private object keys returned by the dedicated partner-document presign. */
+  licenseDocumentKeys: z.array(z.string().min(1)).max(20).optional(),
 });
 export type UpdatePartnerDocumentsInput = z.infer<typeof updatePartnerDocumentsInputSchema>;
 
@@ -223,19 +222,25 @@ export const partnerRegistrationSchema = z
     taxId: z.string().max(64).optional(),
     businessRegistrationNo: z.string().max(64).optional(),
     licenseNo: z.string().max(120).optional(),
-    /** Uploaded identity/business document URLs (one image per side). */
-    businessLicenseFrontUrl: z
+    /** Opaque private storage keys (one image per side). */
+    businessLicenseFrontKey: z
       .string()
-      .url('Vui lòng tải ảnh GPKD mặt trước')
+      .min(1, 'Vui lòng tải ảnh GPKD mặt trước')
       .or(z.literal(''))
       .optional(),
-    businessLicenseBackUrl: z
+    businessLicenseBackKey: z
       .string()
-      .url('Vui lòng tải ảnh GPKD mặt sau')
+      .min(1, 'Vui lòng tải ảnh GPKD mặt sau')
       .or(z.literal(''))
       .optional(),
-    identityCardFrontUrl: z.string().url('Vui lòng tải ảnh CCCD mặt trước').or(z.literal('')),
-    identityCardBackUrl: z.string().url('Vui lòng tải ảnh CCCD mặt sau').or(z.literal('')),
+    identityCardFrontKey: z
+      .string()
+      .min(1, 'Vui lòng tải ảnh CCCD mặt trước')
+      .or(z.literal('')),
+    identityCardBackKey: z
+      .string()
+      .min(1, 'Vui lòng tải ảnh CCCD mặt sau')
+      .or(z.literal('')),
   })
   .superRefine((val, ctx) => {
     if (val.partnerType === 'company') {
@@ -251,29 +256,29 @@ export const partnerRegistrationSchema = z
           path: ['businessRegistrationNo'],
           message: 'Doanh nghiệp cần số giấy phép kinh doanh',
         });
-      if (!val.businessLicenseFrontUrl)
+      if (!val.businessLicenseFrontKey)
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['businessLicenseFrontUrl'],
+          path: ['businessLicenseFrontKey'],
           message: 'Vui lòng tải ảnh GPKD mặt trước',
         });
-      if (!val.businessLicenseBackUrl)
+      if (!val.businessLicenseBackKey)
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['businessLicenseBackUrl'],
+          path: ['businessLicenseBackKey'],
           message: 'Vui lòng tải ảnh GPKD mặt sau',
         });
     }
-    if (!val.identityCardFrontUrl)
+    if (!val.identityCardFrontKey)
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['identityCardFrontUrl'],
+        path: ['identityCardFrontKey'],
         message: 'Vui lòng tải ảnh CCCD mặt trước',
       });
-    if (!val.identityCardBackUrl)
+    if (!val.identityCardBackKey)
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['identityCardBackUrl'],
+        path: ['identityCardBackKey'],
         message: 'Vui lòng tải ảnh CCCD mặt sau',
       });
     if (val.phone && val.phone.trim().length > 0 && val.phone.trim().length < 5)
@@ -305,18 +310,24 @@ export const partnerOnboardingProfileSchema = z
     bank: z.string().trim().min(1, 'Vui lòng chọn ngân hàng').max(120),
     bankAccountNumber: z.string().trim().min(1, 'Vui lòng nhập số tài khoản').max(64),
     bankAccountHolder: z.string().trim().min(1, 'Vui lòng nhập tên người thụ hưởng').max(200),
-    businessLicenseFrontUrl: z
+    businessLicenseFrontKey: z
       .string()
-      .url('Vui lòng tải ảnh GPKD mặt trước')
+      .min(1, 'Vui lòng tải ảnh GPKD mặt trước')
       .or(z.literal(''))
       .optional(),
-    businessLicenseBackUrl: z
+    businessLicenseBackKey: z
       .string()
-      .url('Vui lòng tải ảnh GPKD mặt sau')
+      .min(1, 'Vui lòng tải ảnh GPKD mặt sau')
       .or(z.literal(''))
       .optional(),
-    identityCardFrontUrl: z.string().url('Vui lòng tải ảnh CMND/CCCD mặt trước').or(z.literal('')),
-    identityCardBackUrl: z.string().url('Vui lòng tải ảnh CMND/CCCD mặt sau').or(z.literal('')),
+    identityCardFrontKey: z
+      .string()
+      .min(1, 'Vui lòng tải ảnh CMND/CCCD mặt trước')
+      .or(z.literal('')),
+    identityCardBackKey: z
+      .string()
+      .min(1, 'Vui lòng tải ảnh CMND/CCCD mặt sau')
+      .or(z.literal('')),
     acceptedTerms: z.boolean().refine(Boolean, 'Vui lòng đồng ý với Hợp đồng đối tác'),
     acceptedVersionIds: z.array(uuidSchema).min(1).max(4),
     acceptedLocale: localeSchema,
@@ -330,11 +341,11 @@ export const partnerOnboardingProfileSchema = z
     if (value.partnerType === 'company') {
       required('companyName', 'Vui lòng nhập tên doanh nghiệp');
       required('businessRegistrationNo', 'Vui lòng nhập số giấy phép kinh doanh');
-      required('businessLicenseFrontUrl', 'Vui lòng tải ảnh GPKD mặt trước');
-      required('businessLicenseBackUrl', 'Vui lòng tải ảnh GPKD mặt sau');
+      required('businessLicenseFrontKey', 'Vui lòng tải ảnh GPKD mặt trước');
+      required('businessLicenseBackKey', 'Vui lòng tải ảnh GPKD mặt sau');
     }
-    required('identityCardFrontUrl', 'Vui lòng tải ảnh CMND/CCCD mặt trước');
-    required('identityCardBackUrl', 'Vui lòng tải ảnh CMND/CCCD mặt sau');
+    required('identityCardFrontKey', 'Vui lòng tải ảnh CMND/CCCD mặt trước');
+    required('identityCardBackKey', 'Vui lòng tải ảnh CMND/CCCD mặt sau');
   });
 export type PartnerOnboardingProfileInput = z.infer<typeof partnerOnboardingProfileSchema>;
 
