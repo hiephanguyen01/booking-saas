@@ -1,13 +1,14 @@
-import { Controller, HttpCode, Param, Post, Req } from '@nestjs/common';
+import { Controller, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
 import {
   ApiExtraModels,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { gatewayKeySchema, type WebhookAcknowledgementResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
@@ -39,10 +40,12 @@ export class WebhookController {
       ],
     },
   })
+  @ApiNoContentResponse({ description: 'MoMo webhook accepted' })
   async receive(
     @Param('gateway', new ZodValidationPipe(gatewayKeySchema)) gateway: GatewayKey,
     @Req() req: Request & { rawBody?: Buffer },
-  ): Promise<WebhookAcknowledgementResponse> {
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<WebhookAcknowledgementResponse | void> {
     const raw =
       req.rawBody ??
       (Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body ?? {})));
@@ -54,6 +57,11 @@ export class WebhookController {
       }),
     );
     await this.handle.execute(gateway, raw, headers);
+
+    if (gateway === 'momo') {
+      res.status(204);
+      return;
+    }
     return gateway === 'zalopay'
       ? { return_code: 1, return_message: 'success' }
       : { success: true };
