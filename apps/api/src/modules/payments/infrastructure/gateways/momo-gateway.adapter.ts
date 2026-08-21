@@ -60,6 +60,10 @@ function sameHex(expected: string, actual: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
+function isPositiveDecimal(value: string): boolean {
+  return /^\d+$/.test(value) && BigInt(value) > 0n;
+}
+
 function invalidWebhook(): WebhookVerification {
   return {
     valid: false,
@@ -216,6 +220,8 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
     const amountRaw = s('amount');
     const amountValid = /^\d+$/.test(amountRaw);
     const amountVnd = amountValid ? BigInt(amountRaw) : 0n;
+    const transId = s('transId');
+    const successTransIdValid = event !== 'succeeded' || isPositiveDecimal(transId);
 
     return {
       valid:
@@ -223,9 +229,10 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
         partnerValid &&
         referenceValid &&
         resultCode !== undefined &&
-        amountValid,
+        amountValid &&
+        successTransIdValid,
       event,
-      gatewayTxnId: s('transId'),
+      gatewayTxnId: transId,
       gatewayOrderRef: s('orderId'),
       paymentMethod: 'MOMO_WALLET',
       amountVnd,
@@ -364,12 +371,19 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
       return sum + BigInt(refund.amount);
     }, 0n);
     const mapped = mapMomoPaymentResultCode(json.resultCode);
+    const gatewayTxnId =
+      typeof json.transId === 'number' && Number.isSafeInteger(json.transId) && json.transId > 0
+        ? String(json.transId)
+        : undefined;
+    const completeStatus = mapped === 'succeeded' && !gatewayTxnId ? 'pending' : mapped;
     const status: PaymentStatusResult['status'] =
-      mapped === 'succeeded' && amountVnd > 0n && refundedVnd >= amountVnd ? 'refunded' : mapped;
+      completeStatus === 'succeeded' && amountVnd > 0n && refundedVnd >= amountVnd
+        ? 'refunded'
+        : completeStatus;
     return {
       status,
       amountVnd,
-      gatewayTxnId: json.transId !== undefined ? String(json.transId) : undefined,
+      gatewayTxnId,
     };
   }
 }
