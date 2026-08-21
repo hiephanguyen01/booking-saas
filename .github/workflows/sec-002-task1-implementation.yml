@@ -1,0 +1,69 @@
+name: SEC-002 Task 1 implementation
+
+on:
+  push:
+    branches:
+      - fix/sec-002-private-partner-documents-task1-safety3
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.event.head_commit.message == 'chore(sec-002): add task1 implementation harness'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec-002-private-partner-documents-task1-safety3
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply Task 1 source changes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          contract = Path('packages/contracts/src/contracts/partner.ts')
+          text = contract.read_text()
+          if 'export const partnerDocumentContentTypeSchema' not in text:
+              marker = '/**\n * Post-registration document upload (§7.3).'
+              if marker not in text:
+                  raise SystemExit('partner contract insertion marker not found')
+              block = """export const partnerDocumentContentTypeSchema = z.enum([\n  'image/jpeg',\n  'image/png',\n  'image/webp',\n  'image/avif',\n  'image/gif',\n]);\nexport type PartnerDocumentContentType = z.infer<typeof partnerDocumentContentTypeSchema>;\n\nexport const PARTNER_DOCUMENT_UPLOAD_ACCEPT = partnerDocumentContentTypeSchema.options;\nexport const MAX_PARTNER_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024;\n\nexport const partnerDocumentUploadInputSchema = z.object({\n  contentType: partnerDocumentContentTypeSchema,\n  sizeBytes: z.number().int().min(1).max(MAX_PARTNER_DOCUMENT_SIZE_BYTES),\n});\nexport type PartnerDocumentUploadInput = z.infer<typeof partnerDocumentUploadInputSchema>;\n\nexport const privateDocumentUploadResponseSchema = z.object({\n  uploadUrl: z.string().url(),\n  key: z.string().min(1),\n  expiresInSec: z.number().int().positive(),\n  requiredHeaders: z.object({\n    'content-type': partnerDocumentContentTypeSchema,\n    'if-none-match': z.literal('*'),\n  }),\n});\nexport type PrivateDocumentUploadResponse = z.infer<typeof privateDocumentUploadResponseSchema>;\n\nexport const partnerDocumentKindSchema = z.enum([\n  'identity_card_front',\n  'identity_card_back',\n  'business_license_front',\n  'business_license_back',\n  'license_document',\n]);\nexport type PartnerDocumentKind = z.infer<typeof partnerDocumentKindSchema>;\n\nexport const partnerDocumentReadItemSchema = z.discriminatedUnion('storage', [\n  z.object({\n    storage: z.literal('private'),\n    kind: partnerDocumentKindSchema,\n    key: z.string().min(1),\n    downloadUrl: z.string().url(),\n    expiresInSec: z.number().int().positive(),\n  }),\n  z.object({\n    storage: z.literal('legacy_public'),\n    kind: partnerDocumentKindSchema,\n    url: z.string().url(),\n  }),\n]);\nexport const partnerDocumentReadListSchema = z.array(partnerDocumentReadItemSchema);\nexport type PartnerDocumentReadItem = z.infer<typeof partnerDocumentReadItemSchema>;\n\n"""
+              text = text.replace(marker, block + marker, 1)
+              contract.write_text(text)
+
+          storage = Path('apps/api/src/modules/storage/infrastructure/services/s3-storage.service.ts')
+          text = storage.read_text()
+          start = text.index('  private async createUpload(')
+          head, tail = text[:start], text[start:]
+          old = """    const uploadUrl = await getSignedUrl(\n      this.client,\n      new PutObjectCommand({\n        Bucket: bucket,\n        Key: key,\n        ContentType: input.contentType,\n        ...(input.contentLength ? { ContentLength: input.contentLength } : {}),\n        ...(input.writeOnce ? { IfNoneMatch: '*' } : {}),\n      }),\n      { expiresIn: this.config.presignExpiresSec },\n    );\n"""
+          new = """    const signableHeaders = new Set<string>(['content-type']);\n    if (input.contentLength !== undefined) signableHeaders.add('content-length');\n    if (input.writeOnce) signableHeaders.add('if-none-match');\n\n    const uploadUrl = await getSignedUrl(\n      this.client,\n      new PutObjectCommand({\n        Bucket: bucket,\n        Key: key,\n        ContentType: input.contentType,\n        ...(input.contentLength !== undefined ? { ContentLength: input.contentLength } : {}),\n        ...(input.writeOnce ? { IfNoneMatch: '*' } : {}),\n      }),\n      { expiresIn: this.config.presignExpiresSec, signableHeaders },\n    );\n"""
+          if old not in tail:
+              raise SystemExit('storage createUpload block not found')
+          storage.write_text(head + tail.replace(old, new, 1))
+          PY
+      - name: Confirm finance write-once client compatibility
+        shell: bash
+        run: |
+          grep -F "headers: { 'content-type': file.type, 'if-none-match': '*' }" apps/dashboard/app/features/tenant/components/finance/tax-document-upload-field.tsx
+          grep -F 'contentLength: input.sizeBytes' apps/api/src/modules/finance/application/use-cases/create-tax-document-upload.use-case.ts
+          grep -F 'writeOnce: true' apps/api/src/modules/finance/application/use-cases/create-tax-document-upload.use-case.ts
+      - run: pnpm --filter=@booking/contracts build
+      - run: pnpm --filter=@booking/api typecheck
+      - run: pnpm --filter=@booking/api build
+      - name: Commit verified Task 1
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/contracts/src/contracts/partner.ts apps/api/src/modules/storage/infrastructure/services/s3-storage.service.ts
+          git diff --cached --check
+          git commit -m 'fix(storage): enforce signed partner upload headers'
+          git push origin HEAD:fix/sec-002-private-partner-documents-task1-safety3
