@@ -31,23 +31,24 @@ export function PrivateDocumentUpload({
 }: PrivateDocumentUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const controllerRef = React.useRef<AbortController | null>(null);
+  const previewRef = React.useRef<string | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const replacePreview = React.useCallback((next: string | null) => {
-    setPreviewUrl((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return next;
-    });
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = next;
+    setPreviewUrl(next);
   }, []);
 
   React.useEffect(
     () => () => {
       controllerRef.current?.abort();
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+      previewRef.current = null;
     },
-    [previewUrl],
+    [],
   );
 
   async function handleFile(file: File | undefined): Promise<void> {
