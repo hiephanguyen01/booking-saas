@@ -10,7 +10,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "tsc -p tests/tsconfig.json --noEmit && vitest run",
+    "test": "pnpm --filter=@booking/api prisma:generate && tsc -p tests/tsconfig.json --noEmit && vitest run",
     "test:arch": "vitest run --project architecture",
     "test:api": "vitest run --project api",
     "format": "prettier --write ."
