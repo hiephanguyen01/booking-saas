@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check smoke script syntax
+        run: node --check scripts/smoke-infra-local.mjs
       - name: Verify strict staging-parity smoke invariants
         run: |
           node <<'NODE'
