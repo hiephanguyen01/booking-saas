@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * BookingOS Local Staging-Parity Infrastructure Smoke Runner
+ * BookingOS Local Staging-Parity Infrastructure Smoke Runner (Hardened)
  *
  * Verifies local container topology, network isolation, Caddy ingress syntax,
  * staging host-based routing, on-demand TLS security gate, and public webhook ingress.
@@ -10,7 +10,7 @@
  *   pnpm smoke:infra:local
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import https from "node:https";
@@ -46,11 +46,14 @@ function record(tier, name, passed, details = "") {
 
 async function httpGet(url, headers = {}) {
   return new Promise((resolve) => {
+    let resolved = false;
     const client = url.startsWith("https:") ? https : http;
     const req = client.get(url, { headers, timeout: 5000 }, (res) => {
       let data = "";
       res.on("data", (chunk) => (data += chunk));
       res.on("end", () => {
+        if (resolved) return;
+        resolved = true;
         let json = null;
         try {
           json = JSON.parse(data);
@@ -58,7 +61,17 @@ async function httpGet(url, headers = {}) {
         resolve({ status: res.statusCode, headers: res.headers, body: data, json });
       });
     });
+
+    req.on("timeout", () => {
+      if (resolved) return;
+      resolved = true;
+      req.destroy(new Error("Request timeout"));
+      resolve({ status: 0, error: "Request timeout" });
+    });
+
     req.on("error", (err) => {
+      if (resolved) return;
+      resolved = true;
       resolve({ status: 0, error: err.message });
     });
   });
@@ -86,30 +99,39 @@ async function main() {
   // ─── TIER 1: Topology, Storage & Containers ───
   console.log("📦 TIER 1: Container Topology & Storage Subsystems");
 
-  // 1.1 Docker Compose Services
+  // 1.1 Docker Compose Services (all 4 required services)
   try {
     const psOutput = execSync("docker compose ps --format json", { cwd: ROOT_DIR, stdio: ["ignore", "pipe", "ignore"] }).toString();
-    const hasCore = psOutput.includes("postgres") && psOutput.includes("redis");
-    record("TOPOLOGY", "Docker Core Services", hasCore, "postgres, redis, minio, mailpit");
+    const hasPostgres = psOutput.includes("postgres");
+    const hasRedis = psOutput.includes("redis");
+    const hasMinio = psOutput.includes("minio");
+    const hasMailpit = psOutput.includes("mailpit");
+    const all4Up = hasPostgres && hasRedis && hasMinio && hasMailpit;
+    record("TOPOLOGY", "Docker Core Services (4/4)", all4Up, "postgres, redis, minio, mailpit all running");
   } catch {
     const isPgUp = await checkTcp("localhost", 5432);
     const isRedisUp = await checkTcp("localhost", 6379);
-    record("TOPOLOGY", "Docker Core Services", isPgUp && isRedisUp, "tcp 5432 & 6379 reachable");
+    const isMinioUp = await checkTcp("localhost", 9000);
+    const isMailpitUp = await checkTcp("localhost", 1025);
+    const allPortsUp = isPgUp && isRedisUp && isMinioUp && isMailpitUp;
+    record("TOPOLOGY", "Docker Core Services (4/4)", allPortsUp, "5432, 6379, 9000, 1025 reachable");
   }
 
-  // 1.2 PostgreSQL & Prisma RLS Invariant
+  // 1.2 PostgreSQL & Prisma FORCE RLS Invariant across tenant tables
   const prisma = new PrismaClient({ datasourceUrl: DATABASE_URL });
   try {
     const tenantCount = await prisma.tenant.count();
-    const isRlsActive = await prisma.$queryRaw`
-      SELECT relname, relrowsecurity 
-      FROM pg_class 
-      WHERE relname = 'tenant_gateway_configs' AND relrowsecurity = true;
+    const rlsRows = await prisma.$queryRaw`
+      SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity = true;
     `;
-    const rlsOk = Array.isArray(isRlsActive) && isRlsActive.length > 0;
-    record("DATABASE", "PostgreSQL Isolation & Row-Level Security (RLS)", rlsOk && tenantCount > 0, `${tenantCount} tenants, RLS active on tenant tables`);
+    const forceRlsCount = Array.isArray(rlsRows) ? rlsRows.filter((r) => r.relrowsecurity && r.relforcerowsecurity).length : 0;
+    const isRlsComplete = forceRlsCount >= 50 && tenantCount > 0;
+    record("DATABASE", "PostgreSQL Tenant Isolation & FORCE-RLS Invariant", isRlsComplete, `${tenantCount} tenants, ${forceRlsCount} tables with FORCE ROW LEVEL SECURITY`);
   } catch (err) {
-    record("DATABASE", "PostgreSQL Isolation & Row-Level Security (RLS)", false, err.message);
+    record("DATABASE", "PostgreSQL Tenant Isolation & FORCE-RLS Invariant", false, err.message);
   }
 
   // 1.3 Redis Cache & Session Store
@@ -118,41 +140,57 @@ async function main() {
     await redis.connect();
     const pong = await redis.ping();
     await redis.quit();
-    record("CACHE", "Redis Cache / Session Store", pong === "PONG", "Redis 7 responsive");
+    record("CACHE", "Redis Cache / Session Store", pong === "PONG", "Redis 7 responsive (PING -> PONG)");
   } catch (err) {
     record("CACHE", "Redis Cache / Session Store", false, err.message);
   }
 
   // 1.4 MinIO Object Storage
-  const minioUp = await checkTcp("localhost", 9000);
-  record("STORAGE", "MinIO S3 Compatible Storage", minioUp, "port 9000 accessible");
+  const minioTcp = await checkTcp("localhost", 9000);
+  const minioHealth = await httpGet("http://localhost:9000/minio/health/live");
+  record("STORAGE", "MinIO S3 Compatible Storage", minioTcp && minioHealth.status === 200, "port 9000 /minio/health/live HTTP 200");
 
-  // 1.5 Mailpit Transactional Mailpit
-  const mailpitUp = await checkTcp("localhost", 1025);
-  record("MAIL", "Mailpit SMTP & Web Interface", mailpitUp, "port 1025 SMTP / 8025 Web");
+  // 1.5 Mailpit Transactional SMTP + Web UI (both probed)
+  const mailpitSmtp = await checkTcp("localhost", 1025);
+  const mailpitWeb = await httpGet("http://localhost:8025/api/v1/messages");
+  record("MAIL", "Mailpit SMTP & Web Interface", mailpitSmtp && mailpitWeb.status === 200, "SMTP port 1025 + Web API port 8025 HTTP 200");
 
   console.log("");
 
-  // ─── TIER 2: Caddy Ingress & Reverse Proxy Directives ───
+  // ─── TIER 2: Caddy Ingress & Security Directives ───
   console.log("🛡️  TIER 2: Caddy Ingress Configuration & Security Directives");
 
-  // 2.1 Caddyfile Syntax Validation with Staging Env
+  // 2.1 Caddyfile Syntax Validation with Safe execFileSync (no shell injection)
   try {
-    const caddyValidateOut = execSync(
-      `docker run --rm -v ${ROOT_DIR}/docker/caddy/Caddyfile:/etc/caddy/Caddyfile ` +
-      `-e ACME_EMAIL=admin@bookingos.local ` +
-      `-e DASHBOARD_HOST=${STAGING_DASHBOARD_HOST} ` +
-      `-e API_HOST=${STAGING_API_HOST} ` +
-      `-e PLATFORM_BASE_DOMAIN=${STAGING_BASE_DOMAIN} ` +
-      `caddy:2 caddy validate --config /etc/caddy/Caddyfile`,
-      { stdio: ["ignore", "pipe", "ignore"] }
-    ).toString();
-    record("INGRESS", "Caddy Staging Ingress Configuration", caddyValidateOut.includes("Valid configuration"), "Validated against Caddy 2 engine");
+    const caddyValidateOut = execFileSync(
+      "docker",
+      [
+        "run",
+        "--rm",
+        "-v",
+        `${ROOT_DIR}/docker/caddy/Caddyfile:/etc/caddy/Caddyfile`,
+        "-e",
+        "ACME_EMAIL=admin@bookingos.local",
+        "-e",
+        `DASHBOARD_HOST=${STAGING_DASHBOARD_HOST}`,
+        "-e",
+        `API_HOST=${STAGING_API_HOST}`,
+        "-e",
+        `PLATFORM_BASE_DOMAIN=${STAGING_BASE_DOMAIN}`,
+        "caddy:2",
+        "caddy",
+        "validate",
+        "--config",
+        "/etc/caddy/Caddyfile"
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+    );
+    record("INGRESS", "Caddy Staging Ingress Configuration", caddyValidateOut.includes("Valid configuration"), "Caddy 2 config validation exit 0");
   } catch (err) {
     record("INGRESS", "Caddy Staging Ingress Configuration", false, err.message);
   }
 
-  // 2.2 Caddy Reverse Proxy & IP Header Injection Inspection
+  // 2.2 Caddy Ingress Directives & Security Rules
   const caddyfileContent = fs.readFileSync(path.join(ROOT_DIR, "docker/caddy/Caddyfile"), "utf8");
   const hasClientIp = caddyfileContent.includes("X-BookingOS-Client-IP {remote_host}");
   const hasBodyLimit = caddyfileContent.includes("max_size 2MB");
@@ -182,7 +220,7 @@ async function main() {
 
   console.log("");
 
-  // ─── TIER 4: On-Demand TLS Security Gate ───
+  // ─── TIER 4: On-Demand TLS Dynamic Security Gate ───
   console.log("🔒 TIER 4: On-Demand TLS Dynamic Security Gate");
 
   // 4.1 Allowed Registered Staging Domain
@@ -195,10 +233,10 @@ async function main() {
 
   console.log("");
 
-  // ─── TIER 5: Public Webhook Ingress & MoMo Tunnel ───
-  console.log("💳 TIER 5: Public Webhook Ingress & Payment Processing");
+  // ─── TIER 5: Public Webhook Ingress & Payment Storage ───
+  console.log("💳 TIER 5: Public Webhook Ingress & Payment Infrastructure");
 
-  // 5.1 MoMo Gateway Encrypted Credentials (with RLS context)
+  // 5.1 MoMo Gateway AES-GCM Encrypted Blob Format (credentials.enc) under RLS
   try {
     const studiohubTenant = await prisma.tenant.findUnique({ where: { slug: "studiohub" } });
     const momoConfig = await prisma.$transaction(async (tx) => {
@@ -207,17 +245,20 @@ async function main() {
         where: { tenantId: studiohubTenant.id, gateway: "momo", isActive: true }
       });
     });
-    record("PAYMENTS", "Tenant MoMo Gateway Encrypted Secret", !!momoConfig && !!momoConfig.credentials, "AES-GCM encrypted in DB under RLS");
+    const encStr = momoConfig?.credentials?.enc;
+    const isAesGcmFormat = typeof encStr === "string" && encStr.split(".").length === 3;
+    record("PAYMENTS", "Tenant MoMo Gateway Encrypted Secret", isAesGcmFormat, "AES-GCM credentials.enc envelope (iv.tag.ciphertext)");
   } catch (err) {
     record("PAYMENTS", "Tenant MoMo Gateway Encrypted Secret", false, err.message);
   }
 
-  // 5.2 Public Tunnel Webhook Ingress
-  if (PUBLIC_API_URL && !PUBLIC_API_URL.includes("localhost")) {
+  // 5.2 Public HTTPS Ingress Tunnel (enforcing non-loopback HTTPS URL)
+  const isHttpsTunnel = PUBLIC_API_URL.startsWith("https://") && !PUBLIC_API_URL.includes("localhost") && !PUBLIC_API_URL.includes("127.0.0.1");
+  if (isHttpsTunnel) {
     const tunnelRes = await httpGet(`${PUBLIC_API_URL}/health`);
-    record("WEBHOOK", `Public Ingress Tunnel (${PUBLIC_API_URL})`, tunnelRes.status === 200, "Inbound MoMo IPN callbacks reachable");
+    record("WEBHOOK", `Public Ingress Tunnel (${PUBLIC_API_URL})`, tunnelRes.status === 200, "External HTTPS tunnel alive & forwards to local API");
   } else {
-    record("WEBHOOK", "Public Ingress Tunnel (PUBLIC_API_URL)", false, "Set PUBLIC_API_URL to an active HTTPS tunnel");
+    record("WEBHOOK", "Public Ingress Tunnel (PUBLIC_API_URL)", false, "PUBLIC_API_URL must be a valid HTTPS tunnel (e.g. trycloudflare / ngrok)");
   }
 
   await prisma.$disconnect();
