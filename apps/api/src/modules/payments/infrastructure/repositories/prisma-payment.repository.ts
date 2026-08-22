@@ -120,7 +120,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     paymentMethod: string,
   ): Promise<void> {
     const key = `payment-checkout:${bookingId}:${kind}:${paymentMethod}`;
-    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
+    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
   }
 
   async findReusableCheckoutAttempt(
