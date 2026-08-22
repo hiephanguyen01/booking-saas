@@ -161,7 +161,14 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
       },
       body: JSON.stringify({ order_invoice_number: input.gatewayOrderRef }),
     });
-    if ([400, 403, 404, 409, 422].includes(response.status)) return { status: 'unsupported' };
+    if (response.status === 409) {
+      const status = await this.queryPaymentStatus(input.gatewayOrderRef);
+      if (status.status === 'refunded') {
+        return { status: 'succeeded', refundId: `sepay:void:${input.gatewayOrderRef}` };
+      }
+      return { status: 'unsupported' };
+    }
+    if ([400, 403, 404, 422].includes(response.status)) return { status: 'unsupported' };
     if (!response.ok) throw new Error(`SePay void failed with ${response.status}`);
     return { status: 'succeeded', refundId: `sepay:void:${input.gatewayOrderRef}` };
   }
