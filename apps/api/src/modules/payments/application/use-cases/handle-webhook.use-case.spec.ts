@@ -189,6 +189,17 @@ describe('HandleWebhookUseCase', () => {
     expect(events).toEqual([]);
   });
 
+  it('ignores a non-final pending provider notification', async () => {
+    const { useCase, calls, events } = harness({
+      verification: verification({ event: 'pending' as WebhookVerification['event'] }),
+    });
+
+    await useCase.execute('sepay', RAW, HEADERS);
+
+    expect(calls).toEqual(['find']);
+    expect(events).toEqual([]);
+  });
+
   it.each([
     ['failed', 'failed'],
     ['cancelled', 'failed'],

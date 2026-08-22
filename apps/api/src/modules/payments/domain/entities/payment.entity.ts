@@ -70,7 +70,7 @@ export class Payment {
     | { action: 'ignore' }
     | { action: 'terminal'; to: 'failed' | 'expired' }
     | { action: 'try_succeed' } {
-    if (event === 'refunded') return { action: 'ignore' };
+    if (event === 'pending' || event === 'refunded') return { action: 'ignore' };
     if (event !== 'succeeded') {
       return { action: 'terminal', to: event === 'expired' ? 'expired' : 'failed' };
     }

@@ -2,9 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GatewayPaymentSettings } from '@booking/contracts';
 import { fakeCollaborator, fakePort, fakeTenantDb, fakeTx } from '~testing';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { GatewayConfigRecord } from '../../domain/ports/gateway-config-repository.port';
 import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
-import type { PaymentGatewayPort, RefundInput } from '../../domain/ports/payment-gateway.port';
+import type {
+  PaymentGatewayPort,
+  RefundInput,
+  RefundResult,
+  RefundStatusInput,
+} from '../../domain/ports/payment-gateway.port';
 import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';
 import type { IRefundRepository, RefundRecord } from '../../domain/ports/refund-repository.port';
 import { ExecuteAutomaticRefundUseCase } from './execute-automatic-refund.use-case';
@@ -15,6 +21,31 @@ const BOOKING_ID = 'booking-1';
 const PAYMENT_ID = 'payment-1';
 const AMOUNT = 250_000n;
 const NOW = new Date('2026-08-19T10:00:00Z');
+
+type PlannedRefundStatus = 'succeeded' | 'pending' | 'failed' | 'unsupported';
+interface PlannedRefundResult {
+  status: PlannedRefundStatus;
+  refundId?: string;
+}
+interface PlannedRefundStatusInput {
+  refundId: string;
+  gatewayRefundId: string | null;
+}
+interface GatewayWithRefundQuery extends PaymentGatewayPort {
+  queryRefundStatus(input: PlannedRefundStatusInput): Promise<PlannedRefundResult>;
+}
+interface RefundRepositoryWithAutomaticState extends IRefundRepository {
+  markAutomaticPending(
+    tx: PrismaTx,
+    id: string,
+    gatewayRefundId: string | null,
+  ): Promise<RefundRecord | null>;
+  failAutomatic(
+    tx: PrismaTx,
+    id: string,
+    gatewayRefundId: string | null,
+  ): Promise<RefundRecord | null>;
+}
 
 function refund(overrides: Partial<RefundRecord> = {}): RefundRecord {
   return {
@@ -76,26 +107,34 @@ interface Options {
   recheck?: RefundRecord | null;
   succeeded?: PaymentRecord | null;
   config?: GatewayConfigRecord | null;
-  supported?: boolean;
-  providerStatus?: string;
+  providerResult?: PlannedRefundResult;
+  refundStatusResult?: PlannedRefundResult;
   completed?: RefundRecord | null;
   manualised?: RefundRecord | null;
+  pendingResult?: RefundRecord | null;
+  failedResult?: RefundRecord | null;
 }
 
 interface Harness {
   readonly useCase: ExecuteAutomaticRefundUseCase;
   readonly tenantDb: ReturnType<typeof fakeTenantDb>;
   readonly calls: string[];
-  readonly refundCalls: RefundInput[];
+  readonly refundCalls: Array<RefundInput & { refundId?: string }>;
+  readonly refundStatusCalls: PlannedRefundStatusInput[];
   readonly completions: Array<string | null>;
+  readonly pendingRefs: Array<string | null>;
+  readonly failedRefs: Array<string | null>;
   readonly dueDates: Date[];
   readonly events: Array<{ eventType: string; payload: Record<string, unknown> }>;
 }
 
 function harness(options: Options = {}): Harness {
   const calls: string[] = [];
-  const refundCalls: RefundInput[] = [];
+  const refundCalls: Array<RefundInput & { refundId?: string }> = [];
+  const refundStatusCalls: PlannedRefundStatusInput[] = [];
   const completions: Array<string | null> = [];
+  const pendingRefs: Array<string | null> = [];
+  const failedRefs: Array<string | null> = [];
   const dueDates: Date[] = [];
   const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   let reads = 0;
@@ -110,7 +149,7 @@ function harness(options: Options = {}): Harness {
   });
   const tenantDb = fakeTenantDb({ tx, now: NOW });
 
-  const refunds = fakePort<IRefundRepository>({
+  const refunds = fakePort<RefundRepositoryWithAutomaticState>({
     findById: () => {
       reads += 1;
       calls.push('findRefund');
@@ -130,6 +169,24 @@ function harness(options: Options = {}): Harness {
           : options.completed,
       );
     },
+    markAutomaticPending: (_tx, _id, gatewayRefundId) => {
+      calls.push('markPending');
+      pendingRefs.push(gatewayRefundId);
+      return Promise.resolve(
+        options.pendingResult === undefined
+          ? refund({ status: 'pending', gatewayRefundId })
+          : options.pendingResult,
+      );
+    },
+    failAutomatic: (_tx, _id, gatewayRefundId) => {
+      calls.push('failAutomatic');
+      failedRefs.push(gatewayRefundId);
+      return Promise.resolve(
+        options.failedResult === undefined
+          ? refund({ status: 'failed', gatewayRefundId })
+          : options.failedResult,
+      );
+    },
     requireManual: (_tx, _id, dueAt) => {
       calls.push('requireManual');
       dueDates.push(dueAt);
@@ -141,19 +198,27 @@ function harness(options: Options = {}): Harness {
     },
   });
 
-  const gateway = fakeCollaborator<PaymentGatewayPort>({
+  const gateway = fakeCollaborator<GatewayWithRefundQuery>({
     refund: (input: RefundInput) => {
       calls.push('gatewayRefund');
       refundCalls.push(input);
       return Promise.resolve(
-        options.supported === false
-          ? { supported: false }
-          : { supported: true, refundId: 'gw-refund-1' },
+        (options.providerResult ?? {
+          status: 'succeeded',
+          refundId: 'gw-refund-1',
+        }) as unknown as RefundResult,
+      );
+    },
+    queryRefundStatus: (input: RefundStatusInput) => {
+      calls.push('queryRefundStatus');
+      refundStatusCalls.push(input);
+      return Promise.resolve(
+        options.refundStatusResult ?? { status: 'pending', refundId: input.gatewayRefundId ?? undefined },
       );
     },
     queryPaymentStatus: () => {
-      calls.push('queryStatus');
-      return Promise.resolve({ status: options.providerStatus ?? 'succeeded', amountVnd: AMOUNT });
+      calls.push('queryPaymentStatus');
+      return Promise.resolve({ status: 'succeeded', amountVnd: AMOUNT });
     },
   });
 
@@ -185,7 +250,18 @@ function harness(options: Options = {}): Harness {
     new OutboxService(),
   );
 
-  return { useCase, tenantDb, calls, refundCalls, completions, dueDates, events };
+  return {
+    useCase,
+    tenantDb,
+    calls,
+    refundCalls,
+    refundStatusCalls,
+    completions,
+    pendingRefs,
+    failedRefs,
+    dueDates,
+    events,
+  };
 }
 
 describe('ExecuteAutomaticRefundUseCase', () => {
@@ -199,72 +275,61 @@ describe('ExecuteAutomaticRefundUseCase', () => {
 
   it('does nothing for an unknown refund', async () => {
     const { useCase, calls } = harness({ record: null });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(calls).not.toContain('gatewayRefund');
   });
 
   it.each([
     ['manual_required', 'automatic'],
     ['succeeded', 'automatic'],
+    ['failed', 'automatic'],
     ['pending', 'manual'],
   ] as const)('does nothing for a %s / %s refund', async (status, executionMode) => {
     const { useCase, calls } = harness({ record: refund({ status, executionMode }) });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(calls).not.toContain('gatewayRefund');
+    expect(calls).not.toContain('queryRefundStatus');
   });
 
   it('does nothing when the durable source payment is missing', async () => {
     const { useCase, calls } = harness({ succeeded: null });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(calls).not.toContain('gatewayRefund');
   });
 
   it('refuses to refund against a payment the intent was not written for', async () => {
-    // A later, different succeeded payment on the same booking must not be the
-    // one the money comes back out of.
     const { useCase, calls } = harness({ succeeded: payment({ id: 'payment-2' }) });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(calls).not.toContain('gatewayRefund');
   });
 
   it('resolves the exact gateway revision from the durable source payment', async () => {
     const { useCase, calls } = harness();
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(calls).toContain('resolve:payment-1:config-1');
   });
 
   it('calls the provider between the two transactions, never inside one', async () => {
-    // A gateway round-trip inside an open transaction holds a Postgres connection
-    // and its locks for the length of a network call.
     const { useCase, tenantDb, calls } = harness();
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(tenantDb.openedFor).toEqual([TENANT_ID, TENANT_ID]);
     expect(calls.indexOf('gatewayRefund')).toBeGreaterThan(calls.indexOf('findRefund'));
     expect(calls.indexOf('gatewayRefund')).toBeLessThan(calls.indexOf('lock'));
   });
 
-  it('targets the provider order reference, falling back through txn id to the payment id', async () => {
-    const withOrderRef = harness();
-    await withOrderRef.useCase.execute(TENANT_ID, REFUND_ID);
-    expect(withOrderRef.refundCalls[0]).toMatchObject({
+  it('sends the durable local refund id and provider references to a new refund call', async () => {
+    const { useCase, refundCalls } = harness();
+    await useCase.execute(TENANT_ID, REFUND_ID);
+    expect(refundCalls[0]).toMatchObject({
+      refundId: REFUND_ID,
       gatewayOrderRef: 'ORDER-9',
       gatewayTxnId: 'TXN-9',
       amountVnd: AMOUNT,
       reason: 'booking_cancellation',
     });
+  });
 
+  it('falls back through txn id to payment id for provider references', async () => {
     const withTxnOnly = harness({ succeeded: payment({ gatewayOrderRef: null }) });
     await withTxnOnly.useCase.execute(TENANT_ID, REFUND_ID);
     expect(withTxnOnly.refundCalls[0]).toMatchObject({ gatewayOrderRef: 'TXN-9' });
@@ -279,89 +344,96 @@ describe('ExecuteAutomaticRefundUseCase', () => {
     });
   });
 
-  it('completes the refund and announces it when the provider pushed the money back', async () => {
-    const { useCase, completions, events } = harness();
-
-    await useCase.execute(TENANT_ID, REFUND_ID);
-
-    expect(completions).toEqual(['gw-refund-1']);
-    expect(events).toEqual([
-      {
-        eventType: 'refund.completed',
-        payload: {
-          refundId: REFUND_ID,
-          paymentId: PAYMENT_ID,
-          bookingId: BOOKING_ID,
-          amount: AMOUNT.toString(),
-          reason: 'booking_cancellation',
-          affectsBookingStatus: true,
-        },
-      },
-    ]);
-  });
-
-  it('treats an already-refunded provider state as success on a retry', async () => {
-    // A previous attempt voided successfully but crashed before persisting; the
-    // repeated void is rejected, and only the provider status makes the retry safe.
-    const { useCase, completions, events } = harness({
-      supported: false,
-      providerStatus: 'refunded',
+  it('completes and announces a normalized succeeded refund', async () => {
+    const { useCase, completions, events, calls } = harness({
+      providerResult: { status: 'succeeded', refundId: 'gw-refund-1' },
     });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
-    expect(completions).toEqual(['reconciled:void:ORDER-9']);
+    expect(completions).toEqual(['gw-refund-1']);
+    expect(calls).not.toContain('queryPaymentStatus');
     expect(events[0]?.eventType).toBe('refund.completed');
   });
 
-  it('falls back to a manual refund when the provider cannot do it', async () => {
-    const { useCase, dueDates, events } = harness({
-      supported: false,
-      providerStatus: 'succeeded',
+  it('keeps a normalized pending refund pending and persists its provider reference', async () => {
+    const { useCase, pendingRefs, events, calls } = harness({
+      providerResult: { status: 'pending', refundId: 'gw-refund-pending' },
     });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
+    expect(pendingRefs).toEqual(['gw-refund-pending']);
+    expect(calls).not.toContain('queryPaymentStatus');
+    expect(events).toEqual([]);
+  });
 
+  it('queries the refund itself on a retry and never creates the provider refund again', async () => {
+    const { useCase, refundStatusCalls, completions, calls } = harness({
+      record: refund({ gatewayRefundId: 'gw-refund-pending' }),
+      refundStatusResult: { status: 'succeeded', refundId: 'gw-refund-pending' },
+    });
+    await useCase.execute(TENANT_ID, REFUND_ID);
+    expect(calls).not.toContain('gatewayRefund');
+    expect(calls).not.toContain('queryPaymentStatus');
+    expect(refundStatusCalls).toEqual([
+      { refundId: REFUND_ID, gatewayRefundId: 'gw-refund-pending' },
+    ]);
+    expect(completions).toEqual(['gw-refund-pending']);
+  });
+
+  it('preserves the existing provider reference when a refund-status query remains pending', async () => {
+    const { useCase, pendingRefs } = harness({
+      record: refund({ gatewayRefundId: 'gw-refund-pending' }),
+      refundStatusResult: { status: 'pending' },
+    });
+    await useCase.execute(TENANT_ID, REFUND_ID);
+    expect(pendingRefs).toEqual(['gw-refund-pending']);
+  });
+
+  it('marks a normalized failed automatic refund failed without success/manual events', async () => {
+    const { useCase, failedRefs, events, calls } = harness({
+      providerResult: { status: 'failed', refundId: 'gw-refund-failed' },
+    });
+    await useCase.execute(TENANT_ID, REFUND_ID);
+    expect(failedRefs).toEqual(['gw-refund-failed']);
+    expect(calls).not.toContain('queryPaymentStatus');
+    expect(events).toEqual([]);
+  });
+
+  it('falls back to manual only for an explicitly unsupported provider refund', async () => {
+    const { useCase, dueDates, events, calls } = harness({
+      providerResult: { status: 'unsupported' },
+    });
+    await useCase.execute(TENANT_ID, REFUND_ID);
     expect(dueDates).toEqual([new Date(NOW.getTime() + 48 * 60 * 60 * 1000)]);
+    expect(calls).not.toContain('queryPaymentStatus');
     expect(events[0]?.eventType).toBe('refund.requested');
   });
 
-  it("takes the manual SLA from the PAYMENT's gateway, defaulting to 72 hours", async () => {
+  it("takes the manual SLA from the payment gateway, defaulting to 72 hours", async () => {
     const { useCase, dueDates } = harness({
-      supported: false,
-      providerStatus: 'succeeded',
+      providerResult: { status: 'unsupported' },
       config: null,
     });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(dueDates).toEqual([new Date(NOW.getTime() + 72 * 60 * 60 * 1000)]);
   });
 
   it('writes nothing when the refund stopped being executable while the provider was called', async () => {
-    // The whole reason for the re-read under the lock: a manual confirmation or a
-    // concurrent retry may have finished it during the network round-trip.
     const { useCase, calls, events } = harness({ recheck: refund({ status: 'succeeded' }) });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(calls).not.toContain('complete');
+    expect(calls).not.toContain('markPending');
+    expect(calls).not.toContain('failAutomatic');
     expect(events).toEqual([]);
   });
 
   it('announces nothing when the guarded completion updated no row', async () => {
     const { useCase, events } = harness({ completed: null });
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(events).toEqual([]);
   });
 
   it('locks the booking before re-reading the refund', async () => {
     const { useCase, calls } = harness();
-
     await useCase.execute(TENANT_ID, REFUND_ID);
-
     expect(calls.indexOf('lock')).toBeLessThan(calls.lastIndexOf('findRefund'));
   });
 });

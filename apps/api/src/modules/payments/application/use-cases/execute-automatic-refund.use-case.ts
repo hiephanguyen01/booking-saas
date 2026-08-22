@@ -49,29 +49,29 @@ export class ExecuteAutomaticRefundUseCase {
 
     const reference =
       prepared.payment.gatewayOrderRef ?? prepared.payment.gatewayTxnId ?? prepared.payment.id;
-    let result = await prepared.gateway.refund({
-      gatewayTxnId: prepared.payment.gatewayTxnId ?? reference,
-      gatewayOrderRef: reference,
-      amountVnd: prepared.refund.amount,
-      reason: prepared.refund.reason ?? 'booking_cancellation',
-    });
-
-    // If a previous attempt voided successfully but crashed before persisting,
-    // a repeated void may be rejected. Provider status makes that retry safe.
-    if (!result.supported) {
-      const status = await prepared.gateway.queryPaymentStatus(reference);
-      if (status.status === 'refunded') {
-        result = { supported: true, refundId: `reconciled:void:${reference}` };
-      }
-    }
+    const result = prepared.refund.gatewayRefundId
+      ? await prepared.gateway.queryRefundStatus({
+          refundId: prepared.refund.id,
+          gatewayRefundId: prepared.refund.gatewayRefundId,
+        })
+      : await prepared.gateway.refund({
+          refundId: prepared.refund.id,
+          gatewayTxnId: prepared.payment.gatewayTxnId ?? reference,
+          gatewayOrderRef: reference,
+          amountVnd: prepared.refund.amount,
+          reason: prepared.refund.reason ?? 'booking_cancellation',
+        });
 
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       await this.refunds.lockForBooking(tx, prepared.refund.bookingId);
       const current = await this.refunds.findById(tx, refundId);
       if (!current || !Refund.rehydrate(current).canExecuteAutomatically()) return;
 
-      if (result.supported) {
-        const updated = await this.refunds.completeAutomatic(tx, refundId, result.refundId ?? null);
+      const gatewayRefundId =
+        result.refundId ?? current.gatewayRefundId ?? prepared.refund.gatewayRefundId;
+
+      if (result.status === 'succeeded') {
+        const updated = await this.refunds.completeAutomatic(tx, refundId, gatewayRefundId);
         if (!updated) return;
         await this.outbox.emit(tx, {
           tenantId,
@@ -85,6 +85,16 @@ export class ExecuteAutomaticRefundUseCase {
             affectsBookingStatus: updated.affectsBookingStatus,
           },
         });
+        return;
+      }
+
+      if (result.status === 'pending') {
+        await this.refunds.markAutomaticPending(tx, refundId, gatewayRefundId);
+        return;
+      }
+
+      if (result.status === 'failed') {
+        await this.refunds.failAutomatic(tx, refundId, gatewayRefundId);
         return;
       }
 
