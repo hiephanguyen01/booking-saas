@@ -1,0 +1,209 @@
+name: MoMo proof
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: MoMo contract proof
+        shell: bash
+        run: |
+          cat > apps/api/src/modules/payments/infrastructure/gateways/.momo-proof.cjs <<'JS'
+          const { createHash, createHmac } = require('node:crypto');
+          const { MomoGatewayAdapter } = require('./momo-gateway.adapter.ts');
+
+          (async () => {
+            const failures = [];
+            const check = (condition, message) => { if (!condition) failures.push(message); };
+            const equal = (actual, expected, message) => {
+              if (actual !== expected) failures.push(`${message}: expected=${String(expected)} actual=${String(actual)}`);
+            };
+            const momoId = (prefix, value) =>
+              `${prefix}${createHash('sha256').update(`${prefix}:${value}`).digest('hex').slice(0, 32)}`;
+            const sign = (raw) => createHmac('sha256', 'secret').update(raw).digest('hex');
+            const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
+
+            const captured = [];
+            const responders = [];
+            global.fetch = async (input, init = {}) => {
+              const url = String(input);
+              const body = typeof init.body === 'string' ? JSON.parse(init.body) : {};
+              captured.push({ url, init, body });
+              const responder = responders.shift();
+              if (!responder) throw new Error(`unexpected fetch ${url}`);
+              return responder(url, init);
+            };
+
+            const timeoutCalls = [];
+            const originalTimeout = AbortSignal.timeout.bind(AbortSignal);
+            Object.defineProperty(AbortSignal, 'timeout', {
+              configurable: true,
+              value: (ms) => { timeoutCalls.push(ms); return originalTimeout(ms); },
+            });
+
+            process.env.PUBLIC_API_URL = 'https://api.example.test';
+            const adapter = new MomoGatewayAdapter({
+              partnerCode: 'partner', accessKey: 'access', secretKey: 'secret', environment: 'sandbox',
+            });
+            const paymentId = 'payment-abc';
+            const expectedOrder = momoId('MO', paymentId);
+            const order = adapter.prepareOrderReference(paymentId);
+            equal(order, expectedOrder, 'stable MO orderId');
+            check(/^MO[0-9a-f]{32}$/.test(String(order)), 'orderId format');
+            check(String(order).length <= 50, 'orderId <= 50');
+
+            responders.push(() => json({ resultCode: 0, payUrl: 'https://pay.example.test' }));
+            await adapter.createPayment({
+              paymentId, gatewayOrderRef: order, amountVnd: 100000n, description: 'booking-1',
+              returnUrl: 'https://return.example.test', errorUrl: 'https://error.example.test',
+              cancelUrl: 'https://cancel.example.test', expiresInSec: 900, paymentMethod: 'momo_wallet',
+            });
+            const create = captured.at(-1);
+            equal(create.url, 'https://test-payment.momo.vn/v2/gateway/api/create', 'create endpoint');
+            equal(create.body.orderId, expectedOrder, 'create orderId');
+            equal(create.body.requestId, momoId('MC', paymentId), 'create requestId');
+            check(String(create.body.requestId).length <= 50, 'create requestId <= 50');
+            const createRaw =
+              `accessKey=access&amount=100000&extraData=&ipnUrl=https://api.example.test/webhooks/momo` +
+              `&orderId=${expectedOrder}&orderInfo=booking-1&partnerCode=partner` +
+              `&redirectUrl=https://return.example.test&requestId=${momoId('MC', paymentId)}&requestType=captureWallet`;
+            equal(create.body.signature, sign(createRaw), 'create signature');
+
+            responders.push(() => json({ resultCode: 9000, amount: 100000, transId: 12345 }));
+            const payStatus = await adapter.queryPaymentStatus(expectedOrder);
+            equal(payStatus.status, 'succeeded', '9000 succeeds');
+            const query = captured.at(-1);
+            equal(query.url, 'https://test-payment.momo.vn/v2/gateway/api/query', 'query endpoint');
+            equal(query.body.requestId, momoId('MQ', expectedOrder), 'query requestId');
+            equal(
+              query.body.signature,
+              sign(`accessKey=access&orderId=${expectedOrder}&partnerCode=partner&requestId=${momoId('MQ', expectedOrder)}`),
+              'query signature',
+            );
+
+            const localRefund = 'refund-abc';
+            const refundOrder = momoId('RF', localRefund);
+            responders.push(() => json({ resultCode: 0, transId: 777 }));
+            const refundResult = await adapter.refund({
+              refundId: localRefund, gatewayTxnId: '12345', gatewayOrderRef: expectedOrder,
+              amountVnd: 10000n, reason: 'booking_cancellation',
+            });
+            equal(refundResult.status, 'succeeded', 'refund succeeds');
+            const refund = captured.at(-1);
+            equal(refund.url, 'https://test-payment.momo.vn/v2/gateway/api/refund', 'refund endpoint');
+            equal(refund.body.orderId, refundOrder, 'refund orderId');
+            equal(refund.body.requestId, momoId('RR', localRefund), 'refund requestId');
+            equal(
+              refund.body.signature,
+              sign(`accessKey=access&amount=10000&description=booking_cancellation&orderId=${refundOrder}&partnerCode=partner&requestId=${momoId('RR', localRefund)}&transId=12345`),
+              'refund signature',
+            );
+
+            responders.push(() => json({
+              resultCode: 0,
+              refundTrans: [{ orderId: refundOrder, resultCode: 7000, amount: 10000 }],
+            }));
+            const refundStatus = await adapter.queryRefundStatus({ refundId: localRefund, gatewayRefundId: refundOrder });
+            equal(refundStatus.status, 'pending', 'refund query pending');
+            const refundQuery = captured.at(-1);
+            equal(refundQuery.url, 'https://test-payment.momo.vn/v2/gateway/api/refund/query', 'refund query endpoint');
+            equal(refundQuery.body.orderId, refundOrder, 'refund query orderId');
+            equal(refundQuery.body.requestId, momoId('RQ', localRefund), 'refund query requestId');
+            equal(
+              refundQuery.body.signature,
+              sign(`accessKey=access&orderId=${refundOrder}&partnerCode=partner&requestId=${momoId('RQ', localRefund)}`),
+              'refund query signature',
+            );
+
+            responders.push(() => json({ resultCode: 1081 }));
+            responders.push(() => json({
+              resultCode: 0,
+              refundTrans: [{ orderId: refundOrder, resultCode: 0, transId: 888, amount: 10000 }],
+            }));
+            const recovered = await adapter.refund({
+              refundId: localRefund, gatewayTxnId: '12345', gatewayOrderRef: expectedOrder,
+              amountVnd: 10000n, reason: 'booking_cancellation',
+            });
+            equal(recovered.status, 'succeeded', '1081 reconciles');
+            equal(recovered.refundId, '888', '1081 recovered transId');
+            check(captured.at(-1)?.url.endsWith('/v2/gateway/api/refund/query'), '1081 performs refund query');
+
+            const webhook = (resultCode, transId) => {
+              const b = {
+                partnerCode: 'partner', orderId: expectedOrder, requestId: expectedOrder,
+                amount: '100000', orderInfo: 'booking-1', orderType: 'momo_wallet', transId,
+                resultCode, message: 'status', payType: 'qr', responseTime: 1, extraData: '',
+              };
+              const raw =
+                `accessKey=access&amount=${b.amount}&extraData=${b.extraData}&message=${b.message}` +
+                `&orderId=${b.orderId}&orderInfo=${b.orderInfo}&orderType=${b.orderType}` +
+                `&partnerCode=${b.partnerCode}&payType=${b.payType}&requestId=${b.requestId}` +
+                `&responseTime=${b.responseTime}&resultCode=${b.resultCode}&transId=${b.transId}`;
+              return adapter.verifyWebhook(Buffer.from(JSON.stringify({ ...b, signature: sign(raw) })), {});
+            };
+            const pending = webhook(7000, '');
+            check(pending.valid, 'signed pending webhook valid');
+            equal(pending.event, 'pending', '7000 webhook pending');
+            check(!webhook(0, '').valid, 'success webhook requires transId');
+
+            const errorKind = async (code) => {
+              responders.push(() => json({ resultCode: code, message: 'classified' }));
+              try {
+                const id = `payment-${code}`;
+                await adapter.createPayment({
+                  paymentId: id, gatewayOrderRef: momoId('MO', id), amountVnd: 100000n,
+                  description: 'booking', returnUrl: 'https://return.example.test',
+                  errorUrl: 'https://error.example.test', cancelUrl: 'https://cancel.example.test',
+                  expiresInSec: 900, paymentMethod: 'momo_wallet',
+                });
+                return 'none';
+              } catch (error) { return error?.kind; }
+            };
+            equal(await errorKind(11), 'configuration', '11 configuration');
+            equal(await errorKind(10), 'retryable', '10 retryable');
+
+            process.env.PUBLIC_API_URL = 'http://localhost:3000';
+            const production = new MomoGatewayAdapter({
+              partnerCode: 'partner', accessKey: 'access', secretKey: 'secret', environment: 'production',
+            });
+            let guard = false;
+            try {
+              await production.createPayment({
+                paymentId: 'prod', gatewayOrderRef: momoId('MO', 'prod'), amountVnd: 100000n,
+                description: 'booking', returnUrl: 'https://return.example.test',
+                errorUrl: 'https://error.example.test', cancelUrl: 'https://cancel.example.test',
+                expiresInSec: 900, paymentMethod: 'momo_wallet',
+              });
+            } catch (error) { guard = String(error?.message).includes('public HTTPS'); }
+            check(guard, 'production callback requires public HTTPS');
+
+            check(timeoutCalls.length >= 7, 'outbound calls bounded');
+            check(timeoutCalls.every((ms) => ms === 30000), 'timeouts are 30 seconds');
+            Object.defineProperty(AbortSignal, 'timeout', { configurable: true, value: originalTimeout });
+
+            if (failures.length) {
+              console.error(JSON.stringify({ momoProof: false, failures }, null, 2));
+              process.exit(1);
+            }
+            console.log(JSON.stringify({
+              momoProof: true, stableIds: true, signatures: true, resultCodes: true,
+              refund1081Recovery: true, timeout30s: true, productionCallbackGuard: true,
+            }, null, 2));
+          })().catch((error) => { console.error(error); process.exit(2); });
+          JS
+          cd apps/api
+          TS_NODE_COMPILER_OPTIONS='{"module":"CommonJS","moduleResolution":"Node"}' \
+            node -r ts-node/register/transpile-only src/modules/payments/infrastructure/gateways/.momo-proof.cjs
