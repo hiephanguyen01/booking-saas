@@ -1,0 +1,96 @@
+name: Durable Checkout payOS Proof
+
+on:
+  push:
+    branches: [refactor/durable-checkout-payos]
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PAYMENTS_ENC_KEY: durable-checkout-proof-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@booking/contracts build
+      - run: pnpm --filter=@booking/api prisma:generate
+      - name: Disposable RED/GREEN payment proof
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .durable-checkout-payos-proof.ts <<'TS'
+          import assert from 'node:assert/strict';
+          import { payosGatewayConfigInputSchema } from '@booking/contracts';
+          import { amountMatches } from './src/modules/payments/domain/payment-status';
+          import { PayosGatewayAdapter } from './src/modules/payments/infrastructure/gateways/payos-gateway.adapter';
+          import { PrismaPaymentRepository } from './src/modules/payments/infrastructure/repositories/prisma-payment.repository';
+
+          const payos = new PayosGatewayAdapter({
+            clientId: 'proof-client',
+            apiKey: 'proof-api',
+            checksumKey: 'proof-checksum-key-1234567890',
+          });
+
+          assert.equal(
+            typeof (payos as any).prepareOrderReference,
+            'function',
+            'payOS must expose a pure pre-create order-reference seam',
+          );
+
+          const ref = (payos as any).prepareOrderReference('00000000-0000-7000-8000-000000000123');
+          const numericRef = Number(ref);
+          assert.match(ref, /^\d+$/);
+          assert.ok(Number.isSafeInteger(numericRef) && numericRef > 0);
+          assert.equal(
+            ref,
+            (payos as any).prepareOrderReference('00000000-0000-7000-8000-000000000123'),
+            'same payment id must derive the same payOS order code',
+          );
+
+          assert.equal(amountMatches(1_000n, 1_000n), true);
+          assert.equal(amountMatches(1_000n, 999n), false);
+          assert.equal(amountMatches(1_000n, 1_001n), false, 'overpayment must be quarantined');
+
+          const maliciousConfig = payosGatewayConfigInputSchema.safeParse({
+            gateway: 'payos',
+            environment: 'sandbox',
+            credentials: {
+              clientId: 'proof-client',
+              apiKey: 'proof-api',
+              checksumKey: 'proof-checksum-key-1234567890',
+              baseUrl: 'https://attacker.example',
+            },
+          });
+          assert.equal(maliciousConfig.success, false, 'tenant-controlled payOS baseUrl must be rejected');
+
+          const proto = PrismaPaymentRepository.prototype as any;
+          for (const method of [
+            'lockCheckoutAttempt',
+            'findReusableCheckoutAttempt',
+            'createPendingCheckout',
+            'markCheckoutReady',
+            'markCheckoutCreateFailed',
+            'recordCapturedAmountIfPending',
+          ]) {
+            assert.equal(typeof proto[method], 'function', `payment repository must implement ${method}`);
+          }
+
+          console.log(JSON.stringify({
+            deterministicPayosOrderRef: true,
+            exactAmountMatch: true,
+            payosBaseUrlRejected: true,
+            durableRepositorySeams: true,
+          }));
+          TS
+          pnpm exec ts-node --transpile-only .durable-checkout-payos-proof.ts
+          rm -f .durable-checkout-payos-proof.ts
