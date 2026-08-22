@@ -1,18 +1,12 @@
-export type GatewayFailureKind = 'retryable' | 'configuration' | 'final';
+import {
+  GatewayOperationError,
+  type GatewayFailureKind,
+} from '../../domain/errors/gateway-operation-error';
 
-export class GatewayRequestError extends Error {
-  readonly status?: number;
-
-  constructor(
-    public readonly kind: GatewayFailureKind,
-    message: string,
-    options?: { cause?: unknown; status?: number },
-  ) {
-    super(message, options?.cause === undefined ? undefined : { cause: options.cause });
-    this.name = 'GatewayRequestError';
-    this.status = options?.status;
-  }
-}
+// Infrastructure adapters may keep the existing name while application code imports
+// the provider-neutral domain error directly. This is the same constructor identity.
+export { GatewayOperationError as GatewayRequestError };
+export type { GatewayFailureKind };
 
 function defaultHttpFailureKind(status: number): GatewayFailureKind {
   if (status === 401 || status === 403) return 'configuration';
@@ -39,12 +33,12 @@ export async function providerJson<T>(input: {
       signal: AbortSignal.timeout(input.timeoutMs),
     });
   } catch (cause) {
-    throw new GatewayRequestError('retryable', 'Payment provider request failed', { cause });
+    throw new GatewayOperationError('retryable', 'Payment provider request failed', { cause });
   }
 
   if (!response.ok) {
     const classify = input.classifyHttpStatus ?? defaultHttpFailureKind;
-    throw new GatewayRequestError(classify(response.status), 'Payment provider request failed', {
+    throw new GatewayOperationError(classify(response.status), 'Payment provider request failed', {
       status: response.status,
     });
   }
@@ -53,7 +47,7 @@ export async function providerJson<T>(input: {
   try {
     value = await response.json();
   } catch (cause) {
-    throw new GatewayRequestError('retryable', 'Payment provider returned an invalid response', {
+    throw new GatewayOperationError('retryable', 'Payment provider returned an invalid response', {
       cause,
       status: response.status,
     });
@@ -62,8 +56,8 @@ export async function providerJson<T>(input: {
   try {
     return input.parse(value);
   } catch (cause) {
-    if (cause instanceof GatewayRequestError) throw cause;
-    throw new GatewayRequestError('retryable', 'Payment provider returned an invalid response', {
+    if (cause instanceof GatewayOperationError) throw cause;
+    throw new GatewayOperationError('retryable', 'Payment provider returned an invalid response', {
       cause,
       status: response.status,
     });
