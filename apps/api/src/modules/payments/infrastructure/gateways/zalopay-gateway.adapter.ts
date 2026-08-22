@@ -8,6 +8,8 @@ import type {
   PaymentStatusResult,
   RefundInput,
   RefundResult,
+  RefundStatusInput,
+  RefundStatusResult,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
 
@@ -18,7 +20,6 @@ export interface ZalopayCredentials {
   environment: 'sandbox' | 'production';
 }
 
-/** yymmdd theo giờ VN (GMT+7) — ZaloPay bắt buộc app_trans_id/m_refund_id prefix ngày hiện tại. */
 function vnDatePrefix(daysAgo = 0): string {
   const vn = new Date(Date.now() + 7 * 3_600_000 - daysAgo * 86_400_000);
   return vn.toISOString().slice(2, 10).replaceAll('-', '');
@@ -30,14 +31,6 @@ function shortHash(value: string, length: number): string {
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-/**
- * ZaloPay adapter (§11.1) — v2 create/callback/refund/query, bound to tenant creds.
- * Khác MoMo: (1) app_trans_id phải prefix yymmdd giờ VN → adapter mint id riêng và trả
- * qua gatewayOrderRef; (2) refund là ASYNC (return_code 3 = processing) → query-before-
- * refund với id deterministic theo ngày (check cả hôm qua để an toàn qua nửa đêm) + poll
- * ngắn; đang-xử-lý thì throw để redeliver, bị từ chối dứt khoát thì supported:false.
- * NOTE: cần verify end-to-end với sandbox creds thật (CI chỉ cover mock gateway).
- */
 export class ZalopayGatewayAdapter implements PaymentGatewayPort {
   readonly key: GatewayKey = 'zalopay';
   private readonly base: string;
@@ -49,7 +42,11 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
         : 'https://sb-openapi.zalopay.vn';
   }
 
-  /** ZaloPay chỉ thanh toán qua ví ZaloPay, bất kể lựa chọn storefront. */
+  /** ZaloPay's date-prefixed provider ref remains adapter-owned until its dedicated hardening. */
+  prepareOrderReference(_paymentId: string): null {
+    return null;
+  }
+
   providerPaymentMethod(_method: CustomerPaymentMethod): string {
     return 'ZALOPAY_WALLET';
   }
@@ -65,21 +62,19 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
 
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     const { appId, key1 } = this.creds;
-    // orderCode BKF-… không thoả format yymmdd_ ≤40 ký tự → mint id riêng, deterministic
-    // theo orderCode; trả về gatewayOrderRef để checkout persist (IPN sẽ echo lại id này).
-    const appTransId = `${vnDatePrefix()}_${shortHash(input.orderCode, 24)}`;
+    const stableInput = input.gatewayOrderRef ?? input.paymentId;
+    const appTransId = `${vnDatePrefix()}_${shortHash(stableInput, 24)}`;
     const appTime = Date.now();
     const amount = Number(input.amountVnd);
     const embedData = JSON.stringify({ redirecturl: input.returnUrl });
     const item = '[]';
-    // Chuỗi ký cố định của ZaloPay — không đổi thứ tự.
-    const raw = `${appId}|${appTransId}|${input.orderCode}|${amount}|${appTime}|${embedData}|${item}`;
+    const raw = `${appId}|${appTransId}|${stableInput}|${amount}|${appTime}|${embedData}|${item}`;
     const res = await fetch(`${this.base}/v2/create`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         app_id: Number(appId),
-        app_user: input.orderCode,
+        app_user: stableInput,
         app_trans_id: appTransId,
         app_time: appTime,
         amount,
@@ -126,7 +121,7 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
       : {};
     return {
       valid,
-      event: 'succeeded', // ZaloPay chỉ callback khi thanh toán thành công
+      event: 'succeeded',
       gatewayTxnId: data.zp_trans_id !== undefined ? String(data.zp_trans_id) : '',
       gatewayOrderRef: data.app_trans_id,
       paymentMethod: 'ZALOPAY_WALLET',
@@ -134,12 +129,10 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
     };
   }
 
-  /** m_refund_id deterministic theo (orderRef, reason) trong 1 ngày VN → retry cùng ngày idempotent. */
   private refundId(orderRef: string, reason: string, daysAgo = 0): string {
     return `${vnDatePrefix(daysAgo)}_${this.creds.appId}_${shortHash(`${orderRef}:${reason}`, 20)}`;
   }
 
-  /** return_code của /v2/query_refund: 1=success, 2=failed, 3=processing; null=lỗi/không thấy. */
   private async queryRefund(mRefundId: string): Promise<number | null> {
     const { appId, key1 } = this.creds;
     const timestamp = Date.now();
@@ -159,16 +152,12 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
   }
 
   async refund(input: RefundInput): Promise<RefundResult> {
-    if (!/^\d+$/.test(input.gatewayTxnId)) {
-      return { supported: false }; // thiếu zp_trans_id → manual fallback (không gửi request hỏng)
-    }
-    // Chống double-refund khi redeliver: id theo ngày VN — check attempt hôm nay VÀ hôm
-    // qua trước khi bắn lệnh mới (cover retry vắt qua nửa đêm).
+    if (!/^\d+$/.test(input.gatewayTxnId)) return { status: 'unsupported' };
     for (const daysAgo of [0, 1]) {
       const id = this.refundId(input.gatewayOrderRef, input.reason, daysAgo);
       const code = await this.queryRefund(id);
-      if (code === 1) return { supported: true, refundId: id };
-      if (code === 3) throw new Error('ZaloPay refund still processing'); // redeliver sau
+      if (code === 1) return { status: 'succeeded', refundId: id };
+      if (code === 3) return { status: 'pending', refundId: id };
     }
     const { appId, key1 } = this.creds;
     const mRefundId = this.refundId(input.gatewayOrderRef, input.reason);
@@ -192,23 +181,30 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
     });
     const json = (await res.json()) as { return_code?: number; refund_id?: number };
     if (json.return_code === 1) {
-      return { supported: true, refundId: String(json.refund_id ?? mRefundId) };
+      return { status: 'succeeded', refundId: String(json.refund_id ?? mRefundId) };
     }
     if (json.return_code === 3) {
-      // Async — poll ngắn; còn processing thì throw để redeliver (cùng ngày → cùng id).
       for (let i = 0; i < 3; i++) {
         await wait(2_000);
         const code = await this.queryRefund(mRefundId);
-        if (code === 1) return { supported: true, refundId: mRefundId };
-        if (code === 2) return { supported: false }; // ZaloPay từ chối → manual + SLA
+        if (code === 1) return { status: 'succeeded', refundId: mRefundId };
+        if (code === 2) return { status: 'failed', refundId: mRefundId };
       }
-      throw new Error('ZaloPay refund still processing');
+      return { status: 'pending', refundId: mRefundId };
     }
-    return { supported: false }; // từ chối dứt khoát → manual + SLA
+    return { status: 'unsupported' };
+  }
+
+  async queryRefundStatus(input: RefundStatusInput): Promise<RefundStatusResult> {
+    if (!input.gatewayRefundId) return { status: 'unsupported' };
+    const code = await this.queryRefund(input.gatewayRefundId);
+    if (code === 1) return { status: 'succeeded', refundId: input.gatewayRefundId };
+    if (code === 3) return { status: 'pending', refundId: input.gatewayRefundId };
+    if (code === 2) return { status: 'failed', refundId: input.gatewayRefundId };
+    return { status: 'unsupported', refundId: input.gatewayRefundId };
   }
 
   async queryPaymentStatus(reference: string): Promise<PaymentStatusResult> {
-    // reference = app_trans_id (reconciliation truyền gatewayOrderRef).
     const { appId, key1 } = this.creds;
     const raw = `${appId}|${reference}|${key1}`;
     const res = await fetch(`${this.base}/v2/query`, {
@@ -225,9 +221,6 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
       amount?: number;
       zp_trans_id?: number;
     };
-    // 1 = success, 2 = order failed/cancelled/expired, 3 = processing. Anything else
-    // (auth/config/transient errors) must NOT expire the payment — leave it pending
-    // so a late IPN or the next poll can still settle it.
     const status: PaymentStatusResult['status'] =
       json.return_code === 1
         ? 'succeeded'

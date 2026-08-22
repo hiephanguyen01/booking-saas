@@ -8,11 +8,14 @@ import type { CheckoutDestination } from '@booking/contracts';
 import type { CustomerPaymentMethod } from '@booking/contracts';
 
 export type GatewayKey = 'sepay' | 'payos' | 'momo' | 'zalopay' | 'mock';
-export type WebhookEvent = 'succeeded' | 'failed' | 'expired' | 'refunded';
+export type WebhookEvent = 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
 
 export interface CreatePaymentInput {
+  /** Canonical durable local checkout-attempt identity. */
+  paymentId: string;
+  /** Provider-specific opaque reference prepared and persisted before provider I/O. */
+  gatewayOrderRef: string | null;
   amountVnd: bigint;
-  orderCode: string;
   description: string;
   returnUrl: string;
   errorUrl: string;
@@ -39,17 +42,30 @@ export interface WebhookVerification {
 }
 
 export interface RefundInput {
+  /** Durable local refund identity; providers may derive stable operation ids from it. */
+  refundId: string;
   gatewayTxnId: string;
   gatewayOrderRef: string;
   amountVnd: bigint;
   reason: string;
 }
 
+export type RefundProviderStatus = 'succeeded' | 'pending' | 'failed' | 'unsupported';
+
 export interface RefundResult {
-  /** false → the gateway has no refund API; the refund becomes `manual_required`. */
-  supported: boolean;
+  status: RefundProviderStatus;
+  /** Provider refund/operation reference when one exists. */
   refundId?: string;
 }
+
+export interface RefundStatusInput {
+  /** Durable local refund identity. */
+  refundId: string;
+  /** Previously persisted provider refund reference. */
+  gatewayRefundId: string | null;
+}
+
+export type RefundStatusResult = RefundResult;
 
 export interface PaymentStatusResult {
   status: 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
@@ -64,12 +80,15 @@ export interface PaymentStatusResult {
 
 export interface PaymentGatewayPort {
   readonly key: GatewayKey;
+  /** Pure/synchronous provider reference preparation. Core persists the opaque result. */
+  prepareOrderReference(paymentId: string): string | null;
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   /** Map the storefront-neutral choice to the provider code persisted with the payment. */
   providerPaymentMethod(method: CustomerPaymentMethod): string;
-  /** Unauthenticated read of the gateway txn id from a webhook body (to resolve the tenant). */
+  /** Unauthenticated read of the gateway txn/order ref from a webhook body (to resolve tenant). */
   peekReference(rawBody: Buffer): string | null;
   verifyWebhook(rawBody: Buffer, headers: Record<string, string>): WebhookVerification;
   refund(input: RefundInput): Promise<RefundResult>;
-  queryPaymentStatus(gatewayTxnId: string): Promise<PaymentStatusResult>;
+  queryRefundStatus(input: RefundStatusInput): Promise<RefundStatusResult>;
+  queryPaymentStatus(reference: string): Promise<PaymentStatusResult>;
 }

@@ -4,6 +4,7 @@ import { Queue, Worker } from 'bullmq';
 import { QUEUE_OPTIONS } from '../../../shared/redis/queue-options';
 import { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../shared/outbox/outbox.service';
+import { ExecuteAutomaticRefundUseCase } from '../application/use-cases/execute-automatic-refund.use-case';
 import {
   PAYMENT_REPOSITORY,
   type IPaymentRepository,
@@ -16,11 +17,6 @@ export const RECONCILIATION_QUEUE = 'payment-reconciliation';
 const POLL_EVERY_MS = 30_000;
 const staleSec = (): number => Number(process.env.PAYMENT_STALE_SEC ?? '600');
 
-/**
- * Recovers lost webhooks (§11.2): polls the gateway for pending payments stuck
- * too long and applies the result. DB-polled like the outbox relay; the atomic
- * markSucceeded keeps it idempotent with a late webhook.
- */
 @Injectable()
 export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(ReconciliationWorker.name);
@@ -33,6 +29,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
+    private readonly automaticRefunds: ExecuteAutomaticRefundUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -59,26 +56,21 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       const reference = p.gatewayOrderRef ?? p.gatewayTxnId;
       if (!reference) continue;
       try {
-        // Decrypt/configure the adapter in a short RLS transaction, then release
-        // the DB connection before the provider network call.
-        const gateway = await this.tenantDb.forTenant(p.tenantId, (tx) =>
-          this.registry.resolveForTenant(tx, p.tenantId, p.gateway),
+        const resolved = await this.tenantDb.forTenant(p.tenantId, (tx) =>
+          this.registry.resolveForPayment(tx, p),
         );
-        const status = await gateway.queryPaymentStatus(reference);
+        const status = await resolved.gateway.queryPaymentStatus(reference);
 
-        // Record the provider result durably in its own short transaction.
         const flipped = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
           if (status.status === 'expired') {
-            // Guarded: only expire while still pending (a concurrent succeeded wins).
             await this.payments.markTerminalIfPending(tx, p.id, 'expired');
             return false;
           }
           if (status.status !== 'succeeded') return false;
-          // Same amount guard as the webhook path (§11.2): an underpaid result must
-          // not confirm — leave it pending for a human/next poll rather than settle.
           if (!amountMatches(p.amount, status.amountVnd)) {
+            await this.payments.recordCapturedAmountIfPending(tx, p.id, status.amountVnd);
             this.logger.warn(
-              `reconcile ${p.id}: gateway reports succeeded but amount ${status.amountVnd} < expected ${p.amount}; leaving pending`,
+              `payment_amount_mismatch paymentId=${p.id} gateway=${p.gateway} expected=${p.amount} captured=${status.amountVnd} source=reconciliation`,
             );
             return false;
           }
@@ -86,9 +78,10 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
             tx,
             p.id,
             { reconciled: true },
-            // Persist the provider txn id when the status query exposes it (MoMo),
-            // so a payment recovered without an IPN stays refundable.
-            status.gatewayTxnId ? { gatewayTxnId: status.gatewayTxnId } : undefined,
+            {
+              capturedAmount: status.amountVnd,
+              gatewayTxnId: status.gatewayTxnId,
+            },
           );
           if (succeeded) {
             await this.outbox.emit(tx, {
@@ -107,9 +100,17 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       }
     }
 
-    // Backstop both old already-processed events and partial consumer failures.
-    // Re-emitting is safe because Booking confirmation and Settlement creation are
-    // guarded/idempotent; the row drops out as soon as both projections converge.
+    const pendingRefunds = await this.refunds.findPendingAutomatic(100);
+    for (const refund of pendingRefunds) {
+      try {
+        await this.automaticRefunds.execute(refund.tenantId, refund.id);
+      } catch (err) {
+        this.logger.debug(
+          `refund reconcile ${refund.id} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
     const recoverable = await this.payments.findSucceededNeedingRecovery(100);
     for (const p of recoverable) {
       try {
@@ -133,9 +134,6 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       }
     }
 
-    // Provider/manual refund truth can also outlive a failed consumer delivery.
-    // Re-emit the durable refund row until both the booking and custody projection
-    // converge; downstream handlers are guarded by refund id/state.
     const refundRecoveries = await this.refunds.findSucceededNeedingRecovery(100);
     for (const refund of refundRecoveries) {
       try {
@@ -162,10 +160,6 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       }
     }
 
-    // Cancellation stores its exact policy result before emitting the outbox
-    // event. A no-show always returns the security deposit. If either refund
-    // row is missing, request execution again without replaying unrelated
-    // booking notifications.
     const missingRefunds = await this.refunds.findBookingsMissingRefund(100);
     for (const missing of missingRefunds) {
       try {

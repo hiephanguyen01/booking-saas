@@ -8,6 +8,8 @@ import type {
   PaymentStatusResult,
   RefundResult,
   RefundInput,
+  RefundStatusInput,
+  RefundStatusResult,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
 import type { CustomerPaymentMethod } from '@booking/contracts';
@@ -61,12 +63,14 @@ function sameSecret(expected: string, actual: string | undefined): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-/** Official SePay Payment Gateway adapter. Checkout is a browser form POST; IPN
- * is authenticated by the tenant merchant's X-Secret-Key. */
 export class SepayGatewayAdapter implements PaymentGatewayPort {
   readonly key: GatewayKey = 'sepay';
 
   constructor(private readonly creds: SepayCredentials) {}
+
+  prepareOrderReference(paymentId: string): string {
+    return paymentId;
+  }
 
   providerPaymentMethod(method: CustomerPaymentMethod): string {
     const mapping: Partial<Record<CustomerPaymentMethod, string>> = {
@@ -83,8 +87,7 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
     if (input.amountVnd <= 0n || input.amountVnd > BigInt(Number.MAX_SAFE_INTEGER)) {
       throw new Error('SePay amount is outside the supported integer range');
     }
-    // The SDK stores checkout base URLs statically. Construction and both calls
-    // are synchronous, so no other request can interleave before fields/URL are read.
+    const orderRef = input.gatewayOrderRef ?? input.paymentId;
     const client = new SePayPgClient({
       env: this.creds.environment,
       merchant_id: this.creds.merchantId,
@@ -92,10 +95,8 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
     });
     const rawFields = client.checkout.initOneTimePaymentFields({
       operation: 'PURCHASE',
-      // SePay's published API accepts CARD; the installed SDK declaration has
-      // not yet added that provider code.
       payment_method: this.providerPaymentMethod(input.paymentMethod) as never,
-      order_invoice_number: input.orderCode,
+      order_invoice_number: orderRef,
       order_amount: Number(input.amountVnd),
       currency: 'VND',
       order_description: input.description,
@@ -114,7 +115,7 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
         actionUrl: client.checkout.initCheckoutUrl(),
         fields,
       },
-      gatewayOrderRef: input.orderCode,
+      gatewayOrderRef: orderRef,
       paymentMethod: this.providerPaymentMethod(input.paymentMethod),
     });
   }
@@ -160,11 +161,21 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
       },
       body: JSON.stringify({ order_invoice_number: input.gatewayOrderRef }),
     });
-    // SePay only voids full CARD payments before settlement. Business-level
-    // rejections fall back to the tenant's manual queue; 5xx remains retryable.
-    if ([400, 403, 404, 409, 422].includes(response.status)) return { supported: false };
+    if (response.status === 409) {
+      const status = await this.queryPaymentStatus(input.gatewayOrderRef);
+      if (status.status === 'refunded') {
+        return { status: 'succeeded', refundId: `sepay:void:${input.gatewayOrderRef}` };
+      }
+      return { status: 'unsupported' };
+    }
+    if ([400, 403, 404, 422].includes(response.status)) return { status: 'unsupported' };
     if (!response.ok) throw new Error(`SePay void failed with ${response.status}`);
-    return { supported: true, refundId: `sepay:void:${input.gatewayOrderRef}` };
+    return { status: 'succeeded', refundId: `sepay:void:${input.gatewayOrderRef}` };
+  }
+
+  queryRefundStatus(_input: RefundStatusInput): Promise<RefundStatusResult> {
+    // SePay's current void API exposes no dedicated refund-status endpoint.
+    return Promise.resolve({ status: 'unsupported' });
   }
 
   async queryPaymentStatus(orderInvoiceNumber: string): Promise<PaymentStatusResult> {
