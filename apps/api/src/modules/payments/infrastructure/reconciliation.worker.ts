@@ -4,6 +4,7 @@ import { Queue, Worker } from 'bullmq';
 import { QUEUE_OPTIONS } from '../../../shared/redis/queue-options';
 import { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../shared/outbox/outbox.service';
+import { ExecuteAutomaticRefundUseCase } from '../application/use-cases/execute-automatic-refund.use-case';
 import {
   PAYMENT_REPOSITORY,
   type IPaymentRepository,
@@ -28,6 +29,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
+    private readonly automaticRefunds: ExecuteAutomaticRefundUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -94,6 +96,17 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       } catch (err) {
         this.logger.debug(
           `reconcile ${p.id} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const pendingRefunds = await this.refunds.findPendingAutomatic(100);
+    for (const refund of pendingRefunds) {
+      try {
+        await this.automaticRefunds.execute(refund.tenantId, refund.id);
+      } catch (err) {
+        this.logger.debug(
+          `refund reconcile ${refund.id} failed: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }
