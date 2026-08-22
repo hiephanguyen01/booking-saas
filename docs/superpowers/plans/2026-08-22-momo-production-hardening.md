@@ -2,42 +2,38 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make MoMo checkout/refund operations retry-safe and provider-correct by using stable operation identities, normalized result-code handling, dedicated refund-status reconciliation, bounded provider HTTP, and the payment's historical gateway revision.
+**Goal:** Make MoMo checkout and refund operations retry-safe and provider-correct with stable operation identities, normalized result-code handling, dedicated refund-status reconciliation, bounded provider HTTP, and historical gateway-config resolution.
 
-**Architecture:** Keep the provider-neutral payment core and extend its refund contract from a boolean capability result to normalized `succeeded | pending | failed | unsupported` outcomes. MoMo owns provider-specific operation IDs, result-code mapping, and `/refund/query`; the existing automatic-refund use case owns durable transitions, while the reconciliation worker only discovers pending automatic refunds and delegates them back to that use case. No new database columns or migrations are required: `Refund.status` and `gatewayRefundId` already hold the durable lifecycle/reference needed for PR3.
+**Architecture:** Extend the provider-neutral refund contract from a boolean capability result to `succeeded | pending | failed | unsupported`. MoMo owns provider-specific IDs, result-code mapping, and `/refund/query`; `ExecuteAutomaticRefundUseCase` owns durable transitions and historical-config resolution; `ReconciliationWorker` only discovers pending automatic refunds and delegates them back to that use case. Existing `Refund.status` and `gatewayRefundId` are sufficient, so PR3 adds no migration.
 
-**Tech Stack:** NestJS 11, TypeScript 5.9, Prisma/PostgreSQL, Vitest 3, native `fetch` via the existing `providerJson()` helper, HMAC-SHA256, BullMQ.
+**Tech Stack:** NestJS 11, TypeScript 5.9, Prisma/PostgreSQL, Vitest 3, native `fetch` through `providerJson()`, HMAC-SHA256, BullMQ.
 
 **Spec:** `docs/superpowers/specs/2026-08-22-payment-core-hardening-design.md`
 
 ## Global Constraints
 
-- PR3 is stacked on PR2 head `52e48156a862625ba98a022724f3722eebe71991`; do not rewrite or force-update PR1/PR2.
-- No merge or deploy is requested.
-- Provider network calls must run outside `TenantDbService.forTenant()` transactions.
-- Existing payments/refunds must resolve their adapter through `resolveForPayment()` so credential rotation keeps using the historical gateway config revision.
-- MoMo `requestId` is an idempotency key; retries of the same logical operation reuse the same deterministic request identity.
-- MoMo provider calls use the existing shared `providerJson()` helper with `timeoutMs: 30_000`.
-- Fixed-amount payment settlement remains exact-amount only; PR3 must not weaken PR2's amount-equality policy.
-- A pending MoMo refund is reconciled with `POST /v2/gateway/api/refund/query`; never infer refund completion from `queryPaymentStatus()` of the original purchase.
-- No Prisma migration in PR3.
-- ZaloPay/SePay/payOS/mock receive compile-compatible shared-interface updates only; no new provider feature investment.
+- Stack on PR2 head `52e48156a862625ba98a022724f3722eebe71991`; do not rewrite or force-update PR1/PR2.
+- No merge or deploy.
+- No provider network call inside `TenantDbService.forTenant()`.
+- Existing payment/refund operations resolve the adapter with `resolveForPayment()` so credential rotation keeps using the payment's historical gateway config revision.
+- MoMo `requestId` is the idempotency key; retries of one logical operation reuse the same deterministic request ID.
+- Every MoMo outbound call uses `providerJson(..., timeoutMs: 30_000)`.
+- Pending MoMo refunds are reconciled only with `POST /v2/gateway/api/refund/query`; never infer refund completion from original-payment status.
+- PR2 exact captured-amount semantics remain unchanged.
+- No Prisma migration.
+- SePay/payOS/ZaloPay/mock receive shared-interface compatibility changes only.
 
 ---
 
-### Task 1: Normalize gateway refund outcomes and non-terminal webhook events
+### Task 1: Normalize gateway refund outcomes and pending webhook semantics
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/domain/ports/payment-gateway.port.ts`
 - Modify: `apps/api/src/modules/payments/domain/entities/payment.entity.ts`
 - Modify: `apps/api/src/modules/payments/application/use-cases/handle-webhook.use-case.spec.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/gateways/sepay-gateway.adapter.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/gateways/payos-gateway.adapter.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/gateways/zalopay-gateway.adapter.ts`
-- Modify: `apps/api/src/modules/payments/infrastructure/gateways/mock-gateway.adapter.ts`
+- Modify: `apps/api/src/modules/payments/infrastructure/gateways/{sepay,payos,zalopay,mock}-gateway.adapter.ts`
 
-**Interfaces:**
-- Produces:
+**Produces:**
 
 ```ts
 export type WebhookEvent = 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
@@ -65,15 +61,13 @@ export interface RefundStatusInput {
 export type RefundStatusResult = RefundResult;
 
 export interface PaymentGatewayPort {
-  // existing members...
+  // existing members
   refund(input: RefundInput): Promise<RefundResult>;
   queryRefundStatus(input: RefundStatusInput): Promise<RefundStatusResult>;
 }
 ```
 
-- [ ] **Step 1: Add a failing webhook test proving `pending` is ignored.**
-
-In `handle-webhook.use-case.spec.ts`, add a case using the existing harness:
+- [ ] **Step 1: Add a RED webhook test for pending events.**
 
 ```ts
 it('ignores a non-final pending provider notification', async () => {
@@ -88,19 +82,15 @@ it('ignores a non-final pending provider notification', async () => {
 });
 ```
 
-- [ ] **Step 2: Run the targeted test and verify RED.**
-
-Run:
+- [ ] **Step 2: Run the test and confirm RED.**
 
 ```bash
 pnpm vitest run --project api apps/api/src/modules/payments/application/use-cases/handle-webhook.use-case.spec.ts
 ```
 
-Expected: TypeScript/test failure because `WebhookEvent` does not yet include `pending` and/or the transition would terminalize it.
+Expected: the new case fails because current non-success events are terminalized.
 
-- [ ] **Step 3: Extend the gateway contract exactly as shown above and make pending webhook transitions an ignore.**
-
-Change `Payment.decideWebhookTransition()` so both `pending` and `refunded` return `{ action: 'ignore' }`:
+- [ ] **Step 3: Implement the shared interfaces above and ignore pending/refunded callbacks.**
 
 ```ts
 if (event === 'pending' || event === 'refunded') return { action: 'ignore' };
@@ -110,9 +100,9 @@ if (event !== 'succeeded') {
 return { action: 'try_succeed' };
 ```
 
-- [ ] **Step 4: Make non-MoMo adapters compile-compatible without feature expansion.**
+- [ ] **Step 4: Convert non-MoMo adapter refund results mechanically.**
 
-Convert legacy boolean refund results mechanically:
+Old success/capability behavior becomes:
 
 ```ts
 return oldSupported
@@ -120,7 +110,7 @@ return oldSupported
   : { status: 'unsupported' };
 ```
 
-For adapters that never return a pending refund in PR3, implement:
+Because these adapters do not produce a pending refund in PR3, add only compile-compatible status query methods:
 
 ```ts
 queryRefundStatus(): Promise<RefundStatusResult> {
@@ -128,16 +118,12 @@ queryRefundStatus(): Promise<RefundStatusResult> {
 }
 ```
 
-Do not add provider-specific refund-query work to SePay/payOS/ZaloPay/mock in this PR.
-
-- [ ] **Step 5: Run the targeted webhook test plus API typecheck.**
+- [ ] **Step 5: Verify GREEN + static compatibility.**
 
 ```bash
 pnpm vitest run --project api apps/api/src/modules/payments/application/use-cases/handle-webhook.use-case.spec.ts
 pnpm --filter=@booking/api typecheck
 ```
-
-Expected: both pass after all adapters implement the required interface.
 
 - [ ] **Step 6: Commit.**
 
@@ -154,37 +140,33 @@ git commit -m "refactor(payments): normalize refund provider outcomes"
 
 ---
 
-### Task 2: Harden MoMo operation identity, result codes, HTTP behavior, and refund query
+### Task 2: Harden MoMo IDs, result codes, provider HTTP, and refund query
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.ts`
 - Create: `apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.spec.ts`
 
-**Interfaces:**
-- Consumes: `RefundInput.refundId`, `RefundStatusInput`, normalized `RefundResult`, and `providerJson()` from Task 1 / PR2.
-- Produces: stable MoMo create/refund IDs and a working `queryRefundStatus()`.
+**Consumes:** Task 1 gateway interfaces and PR2 `providerJson()`.
 
-- [ ] **Step 1: Write RED tests for stable IDs and bounded create retries.**
+- [ ] **Step 1: Write RED tests for stable create identity.**
 
-Create `momo-gateway.adapter.spec.ts`. Use `vi.stubGlobal('fetch', vi.fn(...))` and capture request bodies. Prove two identical `createPayment()` calls use exactly the same `orderId` and `requestId`, that `requestId.length <= 50`, and that `orderId` matches MoMo's documented regex:
+Mock `fetch`, call `createPayment()` twice with the same `paymentId`, capture both JSON bodies, and assert:
 
 ```ts
-expect(second.requestId).toBe(first.requestId);
 expect(second.orderId).toBe(first.orderId);
+expect(second.requestId).toBe(first.requestId);
 expect(first.requestId.length).toBeLessThanOrEqual(50);
 expect(first.orderId).toMatch(/^[0-9a-zA-Z]([-_.]*[0-9a-zA-Z]+)*$/);
 ```
 
-Also assert the fetch request carries an `AbortSignal` by exercising the adapter through `providerJson()` rather than direct unbounded `fetch`.
+Also mock a rejected fetch and assert the adapter surfaces `GatewayOperationError.kind === 'retryable'`; this proves create uses the bounded provider helper rather than raw unbounded `fetch`.
 
-- [ ] **Step 2: Write RED table tests for payment result classification.**
-
-Cover at least:
+- [ ] **Step 2: Write RED payment-status classification tests.**
 
 ```ts
 const cases = [
   [0, 'succeeded'],
-  [9000, 'succeeded'], // autoCapture=true one-step payment
+  [9000, 'succeeded'], // one-step autoCapture=true
   [1000, 'pending'],
   [7000, 'pending'],
   [7002, 'pending'],
@@ -193,11 +175,11 @@ const cases = [
 ] as const;
 ```
 
-For result codes `10`, `43`, `47`, assert `queryPaymentStatus()` rejects with `GatewayOperationError.kind === 'retryable'`. For `11`, `12`, `13`, assert `kind === 'configuration'`.
+Assert outbound result codes `10`, `43`, `47` throw retryable and `11`, `12`, `13` throw configuration errors.
 
-- [ ] **Step 3: Write RED webhook tests for non-final MoMo result codes.**
+- [ ] **Step 3: Write RED signed-webhook classification tests.**
 
-Build correctly signed MoMo callback payloads and assert:
+Create correctly signed callback bodies and assert:
 
 ```ts
 expect(adapter.verifyWebhook(raw1000, {}).event).toBe('pending');
@@ -206,44 +188,38 @@ expect(adapter.verifyWebhook(raw1005, {}).event).toBe('expired');
 expect(adapter.verifyWebhook(raw0, {}).event).toBe('succeeded');
 ```
 
-A signed non-final provider/system code must never become `failed` merely because it is non-zero.
+- [ ] **Step 4: Write RED refund identity/result tests.**
 
-- [ ] **Step 4: Write RED refund tests for stable local-refund identity and normalized outcomes.**
+Call `refund()` twice with `refundId: 'refund-1'`; prove the same refund `orderId` and `requestId` are reused and do not depend on `gatewayOrderRef + reason`.
 
-Use `refundId: 'refund-1'` twice and verify the MoMo refund `orderId` and `requestId` are identical across retries and are derived from the refund ID, not from `gatewayOrderRef` + reason.
+Required mappings:
 
-Assert these mappings:
-
-```ts
-resultCode 0    -> { status: 'succeeded', ... }
-resultCode 7000 -> { status: 'pending', ... }
-resultCode 7002 -> { status: 'pending', ... }
-resultCode 1088 -> { status: 'failed', ... }
+```text
+0    -> succeeded
+7000 -> pending
+7002 -> pending
+1088 -> failed
+1080 -> throw retryable
+1081 -> reconcile through queryRefundStatus before returning terminal state
 ```
 
-Assert result code `1080` throws retryable. For ambiguous `1081` (already refunded vs exceeds refundable amount), assert `refund()` reconciles through `queryRefundStatus()` before returning a terminal result.
+- [ ] **Step 5: Write RED `/refund/query` tests.**
 
-- [ ] **Step 5: Write RED tests for `POST /v2/gateway/api/refund/query`.**
-
-Verify the request uses deterministic refund order/query request IDs and the documented signing shape:
+Verify `POST /v2/gateway/api/refund/query`, the signature source:
 
 ```text
 accessKey=$accessKey&orderId=$orderId&partnerCode=$partnerCode&requestId=$requestId
 ```
 
-For a successful query response, locate the matching refund transaction by deterministic refund `orderId` and map its result code. If the query itself succeeds but the matching refund transaction is not yet present, return `{ status: 'pending', refundId: deterministicOrderId }` rather than declaring failure.
+and matching of the deterministic refund `orderId` inside `refundTrans`. If the query succeeds but that refund is not present yet, return pending with the deterministic refund order ID.
 
-- [ ] **Step 6: Run the new adapter spec and verify RED.**
+- [ ] **Step 6: Run the new spec and confirm RED.**
 
 ```bash
 pnpm vitest run --project api apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.spec.ts
 ```
 
-Expected: failures on current unstable/create result semantics and missing refund query method.
-
-- [ ] **Step 7: Implement domain-separated deterministic operation IDs.**
-
-Use one helper with output comfortably below MoMo's 50-character requestId limit:
+- [ ] **Step 7: Implement deterministic domain-separated IDs.**
 
 ```ts
 function momoId(prefix: 'MO' | 'MC' | 'MQ' | 'RF' | 'RR' | 'RQ', value: string): string {
@@ -253,18 +229,18 @@ function momoId(prefix: 'MO' | 'MC' | 'MQ' | 'RF' | 'RR' | 'RQ', value: string):
 
 Use:
 
-```ts
-prepareOrderReference(paymentId) -> momoId('MO', paymentId)
-create requestId                 -> momoId('MC', paymentId)
-payment query requestId          -> momoId('MQ', orderId)
-refund orderId                   -> momoId('RF', refundId)
-refund requestId                 -> momoId('RR', refundId)
-refund query requestId           -> momoId('RQ', refundId)
+```text
+payment orderId       = MO(paymentId)
+create requestId      = MC(paymentId)
+payment query request = MQ(orderId)
+refund orderId        = RF(refundId)
+refund requestId      = RR(refundId)
+refund query request  = RQ(refundId)
 ```
 
-- [ ] **Step 8: Implement MoMo result classification with explicit categories.**
+`prepareOrderReference(paymentId)` returns the deterministic `MO` order ID, so it is persisted before provider I/O.
 
-Keep provider-specific mapping in this adapter. Use these minimum sets:
+- [ ] **Step 8: Implement explicit result-code classes.**
 
 ```ts
 const MOMO_CONFIGURATION_CODES = new Set([11, 12, 13]);
@@ -273,29 +249,31 @@ const MOMO_PENDING_CODES = new Set([1000, 7000, 7002]);
 ```
 
 Rules:
-- `0` = success.
-- `9000` = payment success for this adapter because checkout uses one-step `autoCapture: true`.
-- `1000/7000/7002` = pending.
-- `1005` = expired for payment status/webhook.
-- `11/12/13` = `GatewayOperationError('configuration', ...)` for outbound calls.
-- `10/43/47/1080` = `GatewayOperationError('retryable', ...)` for outbound calls.
-- other documented final payment codes = failed.
-- `1081` during refund create = immediately query the deterministic refund ID and use the dedicated refund-query result.
-- `1088` = failed.
+- `0`: success.
+- `9000`: payment success because this adapter uses one-step `autoCapture: true`.
+- `1000/7000/7002`: pending.
+- `1005`: expired for payment status/webhook.
+- `11/12/13`: configuration error on outbound requests.
+- `10/43/47/1080`: retryable error on outbound requests.
+- other final payment codes: failed.
+- `1081` on refund create: immediately call the dedicated refund query using the deterministic refund ID.
+- `1088`: failed.
+- for a signed callback, retryable/configuration/non-final codes map to `pending`, never to local financial failure solely because they are non-zero.
 
-For webhook verification, map retryable/configuration/non-final codes to `pending` rather than terminalizing the local Payment.
-
-- [ ] **Step 9: Move every MoMo outbound call onto `providerJson(..., timeoutMs: 30_000)`.**
+- [ ] **Step 9: Move all MoMo outbound calls to `providerJson(..., timeoutMs: 30_000)`.**
 
 Apply to:
-- `/v2/gateway/api/create`
-- `/v2/gateway/api/query`
-- `/v2/gateway/api/refund`
-- `/v2/gateway/api/refund/query`
 
-Parsers receive `unknown`, validate required primitive fields, and never include credential fields/raw signed request bodies in thrown messages.
+```text
+/v2/gateway/api/create
+/v2/gateway/api/query
+/v2/gateway/api/refund
+/v2/gateway/api/refund/query
+```
 
-- [ ] **Step 10: Run MoMo adapter tests, webhook tests, and API static gates.**
+Each parser narrows `unknown` and thrown messages must not include credentials, signatures, or raw bodies.
+
+- [ ] **Step 10: Verify GREEN.**
 
 ```bash
 pnpm vitest run --project api \
@@ -304,8 +282,6 @@ pnpm vitest run --project api \
 pnpm --filter=@booking/api lint
 pnpm --filter=@booking/api typecheck
 ```
-
-Expected: all pass.
 
 - [ ] **Step 11: Commit.**
 
@@ -317,7 +293,7 @@ git commit -m "refactor(payments): harden MoMo provider operations"
 
 ---
 
-### Task 3: Persist pending/failed automatic refunds and make execution reconcile dedicated refund state
+### Task 3: Persist pending/failed automatic refunds and reconcile the refund itself
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/domain/ports/refund-repository.port.ts`
@@ -325,8 +301,7 @@ git commit -m "refactor(payments): harden MoMo provider operations"
 - Modify: `apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.ts`
 - Modify: `apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.spec.ts`
 
-**Interfaces:**
-- Produces:
+**Produces:**
 
 ```ts
 export interface PendingAutomaticRefundRef {
@@ -335,7 +310,7 @@ export interface PendingAutomaticRefundRef {
 }
 
 export interface IRefundRepository {
-  // existing methods...
+  // existing members
   markAutomaticPending(
     tx: PrismaTx,
     id: string,
@@ -350,70 +325,62 @@ export interface IRefundRepository {
 }
 ```
 
-- [ ] **Step 1: Rewrite the automatic-refund spec harness to normalized provider results and verify RED.**
+- [ ] **Step 1: Convert the use-case harness to normalized results and add RED cases.**
 
-Replace `supported?: boolean` with:
+Replace the old `supported` option with:
 
 ```ts
 providerResult?: RefundResult;
 refundStatusResult?: RefundStatusResult;
 ```
 
-Add `refundId: REFUND_ID` to the expected `RefundInput`.
-
 Add tests proving:
-1. `succeeded` completes + emits `refund.completed`.
-2. `pending` keeps DB status pending and persists the returned provider reference.
-3. a refund already carrying `gatewayRefundId` calls `queryRefundStatus()` and does **not** call `refund()` again.
-4. `failed` marks the automatic refund failed and emits neither `refund.completed` nor `refund.requested`.
-5. `unsupported` enters `manual_required` and emits `refund.requested`.
-6. the exact historical payment config revision is still resolved before either refund/query call.
+- every provider refund call receives `refundId: REFUND_ID`;
+- succeeded -> `completeAutomatic` + `refund.completed`;
+- pending -> remain pending and persist provider ref;
+- an already-pending row with `gatewayRefundId` calls `queryRefundStatus()` and does not call `refund()` again;
+- failed -> mark failed, no completed/requested event;
+- unsupported -> `manual_required` + `refund.requested`;
+- source payment still resolves `config-1` through `resolveForPayment()`.
 
-- [ ] **Step 2: Run the use-case spec and verify RED.**
+- [ ] **Step 2: Run the use-case spec and confirm RED.**
 
 ```bash
 pnpm vitest run --project api apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.spec.ts
 ```
 
-Expected: compile/assertion failures because repository/result-state methods do not exist and the use case still queries original payment status.
-
-- [ ] **Step 3: Implement guarded repository writes with no schema change.**
-
-`markAutomaticPending()`:
+- [ ] **Step 3: Implement guarded repository writes with existing columns only.**
 
 ```ts
-await tx.refund.updateMany({
-  where: { id, status: 'pending', executionMode: 'automatic' },
-  data: { gatewayRefundId },
-});
-return this.findById(tx, id);
+async markAutomaticPending(tx, id, gatewayRefundId) {
+  await tx.refund.updateMany({
+    where: { id, status: 'pending', executionMode: 'automatic' },
+    data: { gatewayRefundId },
+  });
+  return this.findById(tx, id);
+}
+
+async failAutomatic(tx, id, gatewayRefundId) {
+  await tx.refund.updateMany({
+    where: { id, status: 'pending', executionMode: 'automatic' },
+    data: { status: 'failed', gatewayRefundId },
+  });
+  return this.findById(tx, id);
+}
+
+async findPendingAutomatic(limit) {
+  return this.prisma.admin.refund.findMany({
+    where: { status: 'pending', executionMode: 'automatic' },
+    select: { id: true, tenantId: true },
+    orderBy: { updatedAt: 'asc' },
+    take: limit,
+  });
+}
 ```
 
-`failAutomatic()`:
+- [ ] **Step 4: Replace original-payment refund inference.**
 
-```ts
-await tx.refund.updateMany({
-  where: { id, status: 'pending', executionMode: 'automatic' },
-  data: { status: 'failed', gatewayRefundId },
-});
-return this.findById(tx, id);
-```
-
-`findPendingAutomatic(limit)` uses the admin pool and returns only stable cross-tenant identifiers:
-
-```ts
-const rows = await this.prisma.admin.refund.findMany({
-  where: { status: 'pending', executionMode: 'automatic' },
-  select: { id: true, tenantId: true },
-  orderBy: { updatedAt: 'asc' },
-  take: limit,
-});
-return rows;
-```
-
-- [ ] **Step 4: Replace original-payment refund inference in `ExecuteAutomaticRefundUseCase`.**
-
-Provider call outside the transaction becomes:
+Outside both DB transactions:
 
 ```ts
 const result = prepared.refund.gatewayRefundId
@@ -430,38 +397,40 @@ const result = prepared.refund.gatewayRefundId
     });
 ```
 
-Delete the fallback that calls `queryPaymentStatus(reference)` and infers refund completion from `status === 'refunded'`.
+Delete the old `queryPaymentStatus(reference) === 'refunded'` fallback entirely.
 
-- [ ] **Step 5: Apply normalized results under the existing booking lock + re-read.**
+- [ ] **Step 5: Apply normalized transitions under the existing booking lock + re-read.**
 
 ```ts
 switch (result.status) {
   case 'succeeded':
-    // existing completeAutomatic + refund.completed outbox path
+    // existing completeAutomatic + refund.completed path
     break;
-  case 'pending':
-    await this.refunds.markAutomaticPending(tx, refundId, result.refundId ?? null);
+  case 'pending': {
+    const providerRef = result.refundId ?? current.gatewayRefundId ?? prepared.refund.gatewayRefundId;
+    await this.refunds.markAutomaticPending(tx, refundId, providerRef ?? null);
     break;
-  case 'failed':
-    await this.refunds.failAutomatic(tx, refundId, result.refundId ?? null);
+  }
+  case 'failed': {
+    const providerRef = result.refundId ?? current.gatewayRefundId ?? prepared.refund.gatewayRefundId;
+    await this.refunds.failAutomatic(tx, refundId, providerRef ?? null);
     break;
+  }
   case 'unsupported':
     // existing requireManual + refund.requested path
     break;
 }
 ```
 
-Do not add a new `refund.failed` event in PR3; no consumer exists for it and PR4 owns batch aggregation.
+Do not add a `refund.failed` event in PR3; no current consumer exists and PR4 owns batch aggregation.
 
-- [ ] **Step 6: Run targeted tests and API static gates.**
+- [ ] **Step 6: Verify GREEN.**
 
 ```bash
 pnpm vitest run --project api apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.spec.ts
 pnpm --filter=@booking/api lint
 pnpm --filter=@booking/api typecheck
 ```
-
-Expected: all pass.
 
 - [ ] **Step 7: Commit.**
 
@@ -475,43 +444,39 @@ git commit -m "refactor(payments): reconcile pending automatic refunds"
 
 ---
 
-### Task 4: Add pending automatic refunds to the reconciliation sweep
+### Task 4: Reconcile pending automatic refunds from the worker
 
 **Files:**
 - Modify: `apps/api/src/modules/payments/infrastructure/reconciliation.worker.ts`
 - Create: `apps/api/src/modules/payments/infrastructure/reconciliation.worker.spec.ts`
 
-**Interfaces:**
-- Consumes: `IRefundRepository.findPendingAutomatic()` and `ExecuteAutomaticRefundUseCase.execute(tenantId, refundId)` from Task 3.
-- Produces: periodic reconciliation of pending MoMo refunds without duplicating provider/state-transition logic in the worker.
+**Consumes:** `findPendingAutomatic()` and `ExecuteAutomaticRefundUseCase.execute(tenantId, refundId)` from Task 3.
 
-- [ ] **Step 1: Write a RED worker test for pending automatic refund delegation.**
+- [ ] **Step 1: Write a RED delegation test.**
 
-Instantiate `ReconciliationWorker` without calling `onModuleInit()`. Stub all existing discovery calls to empty arrays except:
+Instantiate the worker without calling `onModuleInit()`. Make all existing discovery methods return empty arrays except:
 
 ```ts
 findPendingAutomatic: () => Promise.resolve([{ id: 'refund-1', tenantId: 'tenant-1' }])
 ```
 
-Pass a fake `ExecuteAutomaticRefundUseCase` whose `execute()` records arguments, call `await worker.sweep()`, and assert:
+Inject a fake automatic-refund executor and assert after `sweep()`:
 
 ```ts
 expect(executed).toEqual([{ tenantId: 'tenant-1', refundId: 'refund-1' }]);
 ```
 
-Also assert no `queryPaymentStatus()` call is needed by the worker itself.
+Also assert the worker itself does not call `queryPaymentStatus()` for this refund.
 
-- [ ] **Step 2: Run the worker spec and verify RED.**
+- [ ] **Step 2: Run the worker spec and confirm RED.**
 
 ```bash
 pnpm vitest run --project api apps/api/src/modules/payments/infrastructure/reconciliation.worker.spec.ts
 ```
 
-Expected: constructor/interface failure because the worker does not yet accept/delegate to `ExecuteAutomaticRefundUseCase`.
+- [ ] **Step 3: Inject and delegate to `ExecuteAutomaticRefundUseCase`.**
 
-- [ ] **Step 3: Inject `ExecuteAutomaticRefundUseCase` and delegate pending automatic refunds.**
-
-Add the dependency to the worker constructor and, after stale-payment reconciliation, run:
+After stale-payment reconciliation, add:
 
 ```ts
 const pendingRefunds = await this.refunds.findPendingAutomatic(100);
@@ -526,9 +491,9 @@ for (const refund of pendingRefunds) {
 }
 ```
 
-Do not open a transaction around this call; the use case already separates its short DB phases from provider I/O and resolves the payment's historical gateway revision.
+Do not wrap this loop in a tenant transaction; the use case already keeps provider I/O between its short DB phases. `ExecuteAutomaticRefundUseCase` is already registered in `PaymentsModule`, so no module-provider change is required.
 
-- [ ] **Step 4: Run worker + refund + MoMo tests together.**
+- [ ] **Step 4: Run the three PR3 test groups together.**
 
 ```bash
 pnpm vitest run --project api \
@@ -536,8 +501,6 @@ pnpm vitest run --project api \
   apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.spec.ts \
   apps/api/src/modules/payments/infrastructure/gateways/momo-gateway.adapter.spec.ts
 ```
-
-Expected: all pass.
 
 - [ ] **Step 5: Commit.**
 
@@ -549,13 +512,11 @@ git commit -m "refactor(payments): reconcile MoMo refund status"
 
 ---
 
-### Task 5: Full verification, stacked PR3, and current-main validation
+### Task 5: Full verification and stacked PR validation
 
-**Files:**
-- Modify if needed: `docs/payments-momo.md` only if the repository already has this provider runbook; otherwise do not create unrelated docs.
-- No production file changes are allowed solely to make CI pass unless a fresh failure proves they are required.
+**Files:** No additional files. Any fresh failure must be root-caused before changing code.
 
-- [ ] **Step 1: Run full local/repository verification on the PR3 head.**
+- [ ] **Step 1: Run the full repository gates on the PR3 head.**
 
 ```bash
 pnpm test
@@ -565,11 +526,11 @@ pnpm turbo run lint typecheck --filter=@booking/web --filter=@booking/storefront
 pnpm turbo run build --filter=@booking/web --filter=@booking/storefront --filter=@booking/admin --filter=@booking/partner
 ```
 
-Expected: zero test failures, zero lint/type errors, successful frontend builds.
+Expected: zero failures.
 
-- [ ] **Step 2: Re-check stack ancestry before opening PR3.**
+- [ ] **Step 2: Re-prove stack ancestry.**
 
-Prove `refactor/momo-production-hardening` is ahead-only from `refactor/durable-checkout-payos` and `behind_by = 0`. If PR2 moved, merge/sync the new PR2 head into PR3 without force and rerun Step 1.
+Compare `refactor/durable-checkout-payos` -> `refactor/momo-production-hardening`; require `status=ahead` and `behind_by=0`. If PR2 moved, sync it into PR3 without force and rerun Step 1 before continuing.
 
 - [ ] **Step 3: Open PR3 as Draft stacked on PR2.**
 
@@ -579,29 +540,25 @@ Title:
 refactor(payments): harden MoMo payment and refund flows
 ```
 
-Base:
+Base: `refactor/durable-checkout-payos`.
 
-```text
-refactor/durable-checkout-payos
-```
-
-Body must state:
-- stable MoMo payment/refund request identity;
-- result-code classification;
-- all MoMo outbound HTTP through bounded `providerJson`;
+Body records:
+- stable payment/refund operation IDs;
+- result-code categories;
+- bounded MoMo provider HTTP;
 - dedicated `/refund/query` reconciliation;
-- pending/failed/manual/succeeded refund semantics;
-- historical config resolution through the source payment;
-- no Prisma migration;
+- pending/succeeded/failed/manual refund semantics;
+- historical config resolution;
+- no migration;
 - no merge/deploy requested.
 
-- [ ] **Step 4: Open a temporary Draft validation PR from the PR3 head to `main`.**
+- [ ] **Step 4: Open a temporary Draft validation PR from PR3 to `main`.**
 
-Mark it clearly `Do not merge`. Its only purpose is to trigger the repository's `pull_request` CI against current main for the complete PR1 + PR2 + PR3 stack.
+Mark it **Do not merge**. Its purpose is only to trigger current-main `pull_request` CI for the complete PR1 + PR2 + PR3 stack.
 
-- [ ] **Step 5: Require a fresh green workflow before declaring PR3 integrated.**
+- [ ] **Step 5: Require a fresh green workflow.**
 
-The validation run must finish with all of these successful:
+All four must be successful:
 
 ```text
 Tests
@@ -610,8 +567,6 @@ Frontend lint and typecheck
 Frontend production builds
 ```
 
-If any gate fails, use systematic debugging on the exact fresh-runner failure; do not merge or force-update around it.
+On failure, use systematic debugging on the exact fresh-runner evidence; do not bypass with force updates or merge.
 
-- [ ] **Step 6: Update PR3 body with final evidence and keep it Draft.**
-
-Record the final head SHA, validation PR number, workflow run number, and the four green gates. Retain the temporary validation PR as evidence unless the user explicitly asks to close/delete it.
+- [ ] **Step 6: Update PR3 body with the final head SHA, validation PR number, workflow run number, and four green gates; keep PR3 Draft.**
