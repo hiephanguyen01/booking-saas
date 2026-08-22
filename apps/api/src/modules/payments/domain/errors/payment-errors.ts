@@ -1,18 +1,12 @@
 import { DomainError } from '../../../../shared/domain/domain-error';
 
-/**
- * Domain errors for the Payment aggregate (checkout + webhook confirmation).
- * Codes + statuses + messages are byte-identical to the pre-refactor use-case
- * behaviour.
- */
-
+/** Domain errors for the Payment aggregate (checkout + webhook confirmation). */
 export class BookingNotPayable extends DomainError {
   constructor(status: string) {
     super('BOOKING_NOT_PAYABLE', 400, `Booking is ${status}, not awaiting payment`);
   }
 }
 
-/** A balance payment was requested on a booking that owes nothing (§8.3). */
 export class NothingLeftToPay extends DomainError {
   constructor() {
     super('NOTHING_LEFT_TO_PAY', 409, 'This booking has no outstanding balance');
@@ -45,9 +39,19 @@ export class AmountExceedsGatewayLimit extends DomainError {
   }
 }
 
+export class AmountBelowGatewayMinimum extends DomainError {
+  constructor() {
+    super(
+      'AMOUNT_BELOW_GATEWAY_MINIMUM',
+      400,
+      'Đơn hàng dưới hạn mức thanh toán MoMo (tối thiểu 1.000đ)',
+    );
+  }
+}
+
 export class AmountMismatch extends DomainError {
   constructor() {
-    super('AMOUNT_MISMATCH', 400, 'Paid amount is less than expected');
+    super('AMOUNT_MISMATCH', 400, 'Paid amount does not match the expected amount');
   }
 }
 

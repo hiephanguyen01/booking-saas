@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import type { GatewayKey } from '../../domain/ports/payment-gateway.port';
@@ -11,16 +11,14 @@ import {
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
 import { Payment } from '../../domain/entities/payment.entity';
+import { amountMatches } from '../../domain/payment-status';
 import { BadWebhook, InvalidWebhookSignature } from '../payment-http-errors';
 
-/**
- * The webhook — the single source of truth for payment (§11.2). Resolves the
- * tenant from the gateway txn (admin pool), verifies the signature, is idempotent
- * (an atomic non-succeeded→succeeded flip means 5 duplicate deliveries record one
- * payment and confirm once), guards the amount, then confirms the booking.
- */
+/** The verified webhook is the single source of truth for payment (§11.2). */
 @Injectable()
 export class HandleWebhookUseCase {
+  private readonly logger = new Logger(HandleWebhookUseCase.name);
+
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
@@ -37,29 +35,31 @@ export class HandleWebhookUseCase {
     if (!ref) throw new BadWebhook();
 
     const payment = await this.payments.findByGatewayReference(gatewayKey, ref);
-    if (!payment) return; // unknown txn — acknowledge and ignore
+    if (!payment) return;
 
-    // Record the payment durably first (its own tx). markSucceeded is an atomic
-    // non-succeeded→succeeded flip, so 5 duplicate deliveries return `true` exactly once.
     const flipped = await this.tenantDb.forTenant(payment.tenantId, async (tx) => {
       const resolved = await this.registry.resolveForPayment(tx, payment);
       const v = resolved.gateway.verifyWebhook(rawBody, headers);
       if (!v.valid) throw new InvalidWebhookSignature();
 
-      // A SePay TRANSACTION_VOID confirms an already-recorded automatic refund; it
-      // must never downgrade the original successful payment. A late/out-of-order
-      // failed/expired only applies while still pending — the write is atomic
-      // (UPDATE ... WHERE status = 'pending'), so a concurrent succeeded delivery is
-      // never clobbered; the pre-tx snapshot can't be trusted under concurrent
-      // webhooks (one-way machine, §11.2). The entity only picks which transition to
-      // attempt; the guarded UPDATE decides whether it actually applies.
       const transition = Payment.decideWebhookTransition(v.event);
       if (transition.action === 'ignore') return false;
       if (transition.action === 'terminal') {
         await this.payments.markTerminalIfPending(tx, payment.id, transition.to);
         return false;
       }
-      Payment.assertAmountCovers(payment.amount, v.amountVnd);
+
+      // Valid succeeded events with either under- OR over-payment are intentionally
+      // acknowledged but quarantined. Persist the observed capture for operations,
+      // do not settle, and do not make the provider retry a condition we understood.
+      if (!amountMatches(payment.amount, v.amountVnd)) {
+        await this.payments.recordCapturedAmountIfPending(tx, payment.id, v.amountVnd);
+        this.logger.warn(
+          `payment_amount_mismatch paymentId=${payment.id} gateway=${gatewayKey} expected=${payment.amount} captured=${v.amountVnd}`,
+        );
+        return false;
+      }
+
       const succeeded = await this.payments.markSucceeded(
         tx,
         payment.id,
@@ -85,8 +85,6 @@ export class HandleWebhookUseCase {
       return succeeded;
     });
 
-    // Booking and Finance consume `payment.succeeded` independently through the
-    // retrying outbox. Never perform a one-shot cross-module confirmation here.
     if (!flipped) return;
   }
 }
