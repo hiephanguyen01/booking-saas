@@ -16,6 +16,7 @@ import type {
   PaymentHistoryRecord,
   PaymentRecord,
   PaymentRef,
+  PendingCheckoutRecord,
 } from '../../domain/ports/payment-repository.port';
 import { pageOffset } from '../../../../shared/pagination/pagination';
 
@@ -70,14 +71,20 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     return payment ? toRecord(payment) : null;
   }
 
+  async lockCheckout(tx: PrismaTx, bookingId: string, paymentMethod: string): Promise<void> {
+    await tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('checkout:' || ${bookingId} || ':' || ${paymentMethod}))`,
+    );
+  }
+
   async findPendingCheckout(
     tx: PrismaTx,
     bookingId: string,
     paymentMethod: string,
-  ): Promise<{ id: string; destination: CheckoutDestination } | null> {
+  ): Promise<PendingCheckoutRecord | null> {
     const payment = await tx.payment.findFirst({
       where: { bookingId, status: 'pending', paymentMethod },
-      select: { id: true, gatewayPayload: true },
+      select: { id: true, gatewayOrderRef: true, gatewayPayload: true },
       orderBy: { createdAt: 'desc' },
     });
     if (!payment) return null;
@@ -92,7 +99,22 @@ export class PrismaPaymentRepository implements IPaymentRepository {
           ? { type: 'redirect', paymentUrl: payload.paymentUrl }
           : null;
     const parsed = checkoutDestinationSchema.safeParse(candidate);
-    return parsed.success ? { id: payment.id, destination: parsed.data } : null;
+    return {
+      id: payment.id,
+      gatewayOrderRef: payment.gatewayOrderRef,
+      destination: parsed.success ? parsed.data : null,
+    };
+  }
+
+  async saveCheckoutDestination(
+    tx: PrismaTx,
+    paymentId: string,
+    destination: CheckoutDestination,
+  ): Promise<void> {
+    await tx.payment.updateMany({
+      where: { id: paymentId, status: 'pending' },
+      data: { gatewayPayload: { destination } as Prisma.InputJsonObject },
+    });
   }
 
   async findSucceededByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {

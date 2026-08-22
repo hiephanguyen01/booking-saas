@@ -6,6 +6,7 @@ export interface EmitOptions {
   tenantId?: string;
   eventType: string;
   payload: Prisma.InputJsonValue;
+  availableAt?: Date;
 }
 
 /**
@@ -21,6 +22,7 @@ export class OutboxService {
         tenantId: options.tenantId,
         eventType: options.eventType,
         payload: options.payload,
+        ...(options.availableAt ? { availableAt: options.availableAt } : {}),
       },
     });
   }

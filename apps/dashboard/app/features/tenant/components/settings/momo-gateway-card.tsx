@@ -75,9 +75,10 @@ export function MomoGatewayBody({
         steps={[
           'Mở MoMo Business → Cấu hình kết nối → IPN URL.',
           <>
-            IPN URL: <span className="font-mono">/webhooks/momo</span> trên API public HTTPS.
+            Production yêu cầu API public HTTPS; endpoint IPN là{' '}
+            <span className="font-mono">/webhooks/momo</span> trên PUBLIC_API_URL.
           </>,
-          'MoMo gửi POST JSON, xác thực bằng chữ ký HMAC-SHA256 (Access Key + Secret Key).',
+          'BookingOS xác thực IPN bằng HMAC-SHA256 và trả HTTP 204 No Content sau khi xử lý.',
           'Sandbox và Production dùng hai bộ Partner Code/Access Key/Secret Key riêng.',
         ]}
         footnote="Access Key và Secret Key được mã hoá trước khi lưu và không hiển thị lại. Thanh toán qua ví MoMo (redirect); hoàn tiền huỷ đơn được đẩy tự động về ví khách qua API MoMo."

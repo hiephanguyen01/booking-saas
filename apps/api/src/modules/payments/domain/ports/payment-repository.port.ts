@@ -38,6 +38,12 @@ export interface CheckoutGatewayPayload {
   destination: CheckoutDestination;
 }
 
+export interface PendingCheckoutRecord {
+  id: string;
+  gatewayOrderRef: string | null;
+  destination: CheckoutDestination | null;
+}
+
 export type PaymentCompletionPayload =
   | {
       event: 'succeeded';
@@ -80,12 +86,20 @@ export interface PaymentHistoryRecord {
 export interface IPaymentRepository {
   create(tx: PrismaTx, tenantId: string, data: CreatePaymentData): Promise<PaymentRecord>;
   findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
-  /** Reuse the stored provider handoff on retries/double-clicks. */
+  /** Serialize the pending-checkout find/create decision for one logical method. */
+  lockCheckout(tx: PrismaTx, bookingId: string, paymentMethod: string): Promise<void>;
+  /** Reuse a pending checkout even before a persist-first provider handoff exists. */
   findPendingCheckout(
     tx: PrismaTx,
     bookingId: string,
     paymentMethod: string,
-  ): Promise<{ id: string; destination: CheckoutDestination } | null>;
+  ): Promise<PendingCheckoutRecord | null>;
+  /** Store the normalized provider handoff after a persist-first provider create succeeds. */
+  saveCheckoutDestination(
+    tx: PrismaTx,
+    paymentId: string,
+    destination: CheckoutDestination,
+  ): Promise<void>;
   findSucceededByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   /** Atomically mark succeeded (only if not already) — the webhook idempotency guard. */
   markSucceeded(
@@ -114,7 +128,5 @@ export interface IPaymentRepository {
     tenantId: string,
     query: PaymentHistoryQuery,
   ): Promise<RepoPage<PaymentHistoryRecord>>;
-  listPlatform(
-    query: PaymentHistoryQuery,
-  ): Promise<RepoPage<PaymentHistoryRecord>>;
+  listPlatform(query: PaymentHistoryQuery): Promise<RepoPage<PaymentHistoryRecord>>;
 }

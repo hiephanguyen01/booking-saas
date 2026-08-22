@@ -80,6 +80,7 @@ export class ExecuteRefundUseCase {
           amount: amount.toString(),
           reason,
           affectsBookingStatus,
+          ...(planned.executionMode === 'automatic' ? { attempt: 0 } : {}),
         },
       });
     });

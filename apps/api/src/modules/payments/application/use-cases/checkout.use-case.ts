@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { CheckoutResponse } from '@booking/contracts';
 import type { CustomerPaymentMethod } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
@@ -66,6 +66,8 @@ function invalidStorefrontHost(): InvalidStorefrontHost {
  */
 @Injectable()
 export class CheckoutUseCase {
+  private readonly logger = new Logger(CheckoutUseCase.name);
+
   constructor(
     @Inject(PAYMENT_BOOKING_READER) private readonly bookings: IPaymentBookingReader,
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
@@ -84,7 +86,8 @@ export class CheckoutUseCase {
     if (!tenant.live) {
       throw new PaymentStorefrontSuspended();
     }
-    return this.tenantDb.forTenant(tenant.id, async (tx) => {
+
+    const prepared = await this.tenantDb.forTenant(tenant.id, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
       if (!booking) throw new BookingNotFound();
       // Two legal shapes: the FIRST payment on a booking awaiting payment, and a
@@ -103,18 +106,6 @@ export class CheckoutUseCase {
       // configs rỗng → resolveForTenant trả mock (dev); guard NO_ACTIVE_GATEWAY prod giữ nguyên phía dưới
       const gateway = await this.registry.resolveForTenant(tx, tenant.id, routed?.gateway);
       const providerPaymentMethod = gateway.providerPaymentMethod(paymentMethod);
-
-      // Idempotent per method: with parallel wallet gateways, a booking could end up
-      // with 2 pending links (e.g. one MoMo, one ZaloPay) if the customer switches
-      // methods before either resolves — the webhook confirms whichever one succeeds
-      // first, the other is left to expire via reconciliation. Acceptable trade-off.
-      const existing = await this.payments.findPendingCheckout(
-        tx,
-        bookingId,
-        providerPaymentMethod,
-      );
-      if (existing) return { paymentId: existing.id, destination: existing.destination };
-
       const { amount, kind } = isBalance ? Payment.planBalance(booking) : Payment.plan(booking);
       const origin = storefrontOrigin(host); // the tenant's own domain (from the Host the customer used)
       Payment.assertGatewayAccepts({
@@ -123,30 +114,139 @@ export class CheckoutUseCase {
         isProductionEnv: process.env.NODE_ENV === 'production',
         allowMockPayments: process.env.ALLOW_MOCK_PAYMENTS === 'true',
       });
-      const orderRef = `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
       const bookingReturnUrl = `${origin}/bookings/${booking.code}`;
-      const created = await gateway.createPayment({
-        amountVnd: amount,
-        orderCode: orderRef,
-        description: `Booking ${booking.code}`,
-        returnUrl: `${bookingReturnUrl}?payment=success`,
-        errorUrl: `${bookingReturnUrl}?payment=error`,
-        cancelUrl: `${bookingReturnUrl}?payment=cancel`,
-        expiresInSec: 900,
-        paymentMethod,
-      });
-      const payment = await this.payments.create(tx, tenant.id, {
+      const description = `Booking ${booking.code}`;
+      const returnUrl = `${bookingReturnUrl}?payment=success`;
+      const errorUrl = `${bookingReturnUrl}?payment=error`;
+      const cancelUrl = `${bookingReturnUrl}?payment=cancel`;
+      const expiresInSec = 900;
+      const initiation = gateway.checkoutInitiation ?? 'provider_first';
+
+      // Provider-first is intentionally kept as the current behavior for all
+      // existing gateways except MoMo. The provider call remains inside this
+      // transaction so this refactor does not change their lifecycle semantics.
+      if (initiation === 'provider_first') {
+        const existing = await this.payments.findPendingCheckout(
+          tx,
+          bookingId,
+          providerPaymentMethod,
+        );
+        if (existing?.destination) {
+          return {
+            kind: 'response' as const,
+            response: { paymentId: existing.id, destination: existing.destination },
+          };
+        }
+
+        const orderRef = `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
+        const created = await gateway.createPayment({
+          amountVnd: amount,
+          orderCode: orderRef,
+          description,
+          returnUrl,
+          errorUrl,
+          cancelUrl,
+          expiresInSec,
+          paymentMethod,
+        });
+        const payment = await this.payments.create(tx, tenant.id, {
+          bookingId,
+          gateway: gateway.key,
+          kind,
+          amount,
+          gatewayTxnId: created.gatewayTxnId ?? null,
+          gatewayOrderRef: created.gatewayOrderRef ?? orderRef,
+          paymentMethod: created.paymentMethod ?? providerPaymentMethod,
+          idempotencyKey: `checkout:${bookingId}:${paymentMethod}:${created.gatewayOrderRef ?? created.gatewayTxnId ?? orderRef}`,
+          gatewayPayload: { destination: created.destination },
+        });
+        return {
+          kind: 'response' as const,
+          response: { paymentId: payment.id, destination: created.destination },
+        };
+      }
+
+      // Persist-first: serialize the local find/create decision, then commit the
+      // payment/reference before any provider I/O. A retry reuses the same row.
+      await this.payments.lockCheckout(tx, bookingId, providerPaymentMethod);
+      const pending = await this.payments.findPendingCheckout(
+        tx,
         bookingId,
-        gateway: gateway.key,
-        kind,
+        providerPaymentMethod,
+      );
+      if (pending?.destination) {
+        return {
+          kind: 'response' as const,
+          response: { paymentId: pending.id, destination: pending.destination },
+        };
+      }
+      if (pending && !pending.gatewayOrderRef) {
+        throw new Error('Pending persist-first payment is missing gatewayOrderRef');
+      }
+
+      const orderRef =
+        pending?.gatewayOrderRef ?? `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
+      const paymentId = pending
+        ? pending.id
+        : (
+            await this.payments.create(tx, tenant.id, {
+              bookingId,
+              gateway: gateway.key,
+              kind,
+              amount,
+              gatewayOrderRef: orderRef,
+              paymentMethod: providerPaymentMethod,
+              idempotencyKey: `checkout:${bookingId}:${paymentMethod}:${orderRef}`,
+            })
+          ).id;
+
+      return {
+        kind: 'provider_create' as const,
+        tenantId: tenant.id,
+        paymentId,
+        gateway,
+        gatewayKey: gateway.key,
+        orderRef,
         amount,
-        gatewayTxnId: created.gatewayTxnId ?? null,
-        gatewayOrderRef: created.gatewayOrderRef ?? orderRef,
-        paymentMethod: created.paymentMethod ?? providerPaymentMethod,
-        idempotencyKey: `checkout:${bookingId}:${paymentMethod}:${created.gatewayOrderRef ?? created.gatewayTxnId ?? orderRef}`,
-        gatewayPayload: { destination: created.destination },
-      });
-      return { paymentId: payment.id, destination: created.destination };
+        description,
+        returnUrl,
+        errorUrl,
+        cancelUrl,
+        expiresInSec,
+        paymentMethod,
+      };
     });
+
+    if (prepared.kind === 'response') return prepared.response;
+
+    const startedAt = Date.now();
+    try {
+      const created = await prepared.gateway.createPayment({
+        amountVnd: prepared.amount,
+        orderCode: prepared.orderRef,
+        description: prepared.description,
+        returnUrl: prepared.returnUrl,
+        errorUrl: prepared.errorUrl,
+        cancelUrl: prepared.cancelUrl,
+        expiresInSec: prepared.expiresInSec,
+        paymentMethod: prepared.paymentMethod,
+      });
+
+      await this.tenantDb.forTenant(prepared.tenantId, (tx) =>
+        this.payments.saveCheckoutDestination(tx, prepared.paymentId, created.destination),
+      );
+
+      if (prepared.gatewayKey === 'momo') {
+        this.logger.log(
+          `momo checkout created tenant=${prepared.tenantId} payment=${prepared.paymentId} orderRef=${prepared.orderRef} latencyMs=${Date.now() - startedAt}`,
+        );
+      }
+      return { paymentId: prepared.paymentId, destination: created.destination };
+    } catch (error) {
+      this.logger.warn(
+        `persist-first checkout create failed tenant=${prepared.tenantId} payment=${prepared.paymentId} gateway=${prepared.gatewayKey} orderRef=${prepared.orderRef} latencyMs=${Date.now() - startedAt}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw error;
+    }
   }
 }

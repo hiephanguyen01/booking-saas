@@ -58,6 +58,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
     for (const p of stale) {
       const reference = p.gatewayOrderRef ?? p.gatewayTxnId;
       if (!reference) continue;
+      const queryStartedAt = Date.now();
       try {
         // Decrypt/configure the adapter in a short RLS transaction, then release
         // the DB connection before the provider network call.
@@ -65,12 +66,33 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
           this.registry.resolveForTenant(tx, p.tenantId, p.gateway),
         );
         const status = await gateway.queryPaymentStatus(reference);
+        if (p.gateway === 'momo') {
+          this.logger.debug(
+            `momo reconcile queried tenant=${p.tenantId} payment=${p.id} ref=${reference} status=${status.status} latencyMs=${Date.now() - queryStartedAt}`,
+          );
+        }
 
         // Record the provider result durably in its own short transaction.
         const flipped = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
           if (status.status === 'expired') {
             // Guarded: only expire while still pending (a concurrent succeeded wins).
             await this.payments.markTerminalIfPending(tx, p.id, 'expired');
+            if (p.gateway === 'momo') {
+              this.logger.log(
+                `momo reconcile terminal tenant=${p.tenantId} payment=${p.id} ref=${reference} status=expired`,
+              );
+            }
+            return false;
+          }
+          if (status.status === 'failed' && gateway.reconcileFailedAsTerminal === true) {
+            // Only gateways that explicitly opt in may turn a queried final failure
+            // into a terminal payment. Existing gateways keep their old semantics.
+            await this.payments.markTerminalIfPending(tx, p.id, 'failed');
+            if (p.gateway === 'momo') {
+              this.logger.log(
+                `momo reconcile terminal tenant=${p.tenantId} payment=${p.id} ref=${reference} status=failed`,
+              );
+            }
             return false;
           }
           if (status.status !== 'succeeded') return false;
@@ -78,7 +100,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
           // not confirm — leave it pending for a human/next poll rather than settle.
           if (!amountMatches(p.amount, status.amountVnd)) {
             this.logger.warn(
-              `reconcile ${p.id}: gateway reports succeeded but amount ${status.amountVnd} < expected ${p.amount}; leaving pending`,
+              `reconcile ${p.id}: gateway=${p.gateway} ref=${reference} reports succeeded but amount ${status.amountVnd} < expected ${p.amount}; leaving pending`,
             );
             return false;
           }
@@ -96,14 +118,28 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
               eventType: 'payment.succeeded',
               payload: { paymentId: p.id, bookingId: p.bookingId },
             });
+            if (p.gateway === 'momo') {
+              this.logger.log(
+                `momo reconcile succeeded tenant=${p.tenantId} payment=${p.id} ref=${reference} txnId=${status.gatewayTxnId ?? 'unknown'}`,
+              );
+            }
+          } else if (p.gateway === 'momo') {
+            this.logger.debug(
+              `momo reconcile duplicate tenant=${p.tenantId} payment=${p.id} ref=${reference}`,
+            );
           }
           return succeeded;
         });
         if (flipped) reconciled++;
       } catch (err) {
-        this.logger.debug(
-          `reconcile ${p.id} failed: ${err instanceof Error ? err.message : String(err)}`,
-        );
+        const message = err instanceof Error ? err.message : String(err);
+        if (p.gateway === 'momo') {
+          this.logger.warn(
+            `momo reconcile failed tenant=${p.tenantId} payment=${p.id} ref=${reference} latencyMs=${Date.now() - queryStartedAt}: ${message}`,
+          );
+        } else {
+          this.logger.debug(`reconcile ${p.id} failed: ${message}`);
+        }
       }
     }
 

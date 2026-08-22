@@ -105,9 +105,8 @@ export class Payment {
 
   /**
    * Route a verified webhook event to the transition the caller should attempt:
-   *   - `refunded` → ignore (a SePay TRANSACTION_VOID confirms a recorded refund;
-   *     it must never downgrade the original successful payment);
-   *   - any non-`succeeded` event → a terminal `failed`/`expired` (applied only
+   *   - `refunded` / `pending` → ignore;
+   *   - final non-`succeeded` event → a terminal `failed`/`expired` (applied only
    *     while still pending, via the repo's guarded write);
    *   - `succeeded` → attempt the non-succeeded → succeeded flip (late success is valid).
    */
@@ -117,7 +116,7 @@ export class Payment {
     | { action: 'ignore' }
     | { action: 'terminal'; to: 'failed' | 'expired' }
     | { action: 'try_succeed' } {
-    if (event === 'refunded') return { action: 'ignore' };
+    if (event === 'refunded' || event === 'pending') return { action: 'ignore' };
     if (event !== 'succeeded') {
       return { action: 'terminal', to: event === 'expired' ? 'expired' : 'failed' };
     }
