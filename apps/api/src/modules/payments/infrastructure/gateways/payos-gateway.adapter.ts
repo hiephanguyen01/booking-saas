@@ -26,6 +26,7 @@ interface PayosPaymentData {
   id: string;
   orderCode: number;
   amount: number;
+  amountPaid: number | null;
   status: string;
 }
 
@@ -54,6 +55,15 @@ function parsePositiveSafeInteger(value: unknown, field: string): number {
   return number;
 }
 
+function parseOptionalNonNegativeSafeInteger(value: unknown, field: string): number | null {
+  if (value === undefined || value === null) return null;
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isSafeInteger(number) || number < 0) {
+    throw new GatewayRequestError('final', `payOS returned an invalid ${field}`);
+  }
+  return number;
+}
+
 function parsePaymentData(value: unknown): PayosPaymentData {
   if (!isRecord(value) || value.code !== '00' || !isRecord(value.data)) {
     throw new GatewayRequestError('final', 'payOS rejected the payment request');
@@ -67,6 +77,7 @@ function parsePaymentData(value: unknown): PayosPaymentData {
     id,
     orderCode: parsePositiveSafeInteger(value.data.orderCode, 'orderCode'),
     amount: parsePositiveSafeInteger(value.data.amount, 'amount'),
+    amountPaid: parseOptionalNonNegativeSafeInteger(value.data.amountPaid, 'amountPaid'),
     status,
   };
 }
@@ -86,6 +97,7 @@ function parseCreateData(value: unknown): PayosCreateData {
     paymentLinkId,
     orderCode: parsePositiveSafeInteger(value.data.orderCode, 'orderCode'),
     amount: parsePositiveSafeInteger(value.data.amount, 'amount'),
+    amountPaid: parseOptionalNonNegativeSafeInteger(value.data.amountPaid, 'amountPaid'),
     status,
   };
 }
@@ -186,7 +198,8 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
     const body = {
       orderCode,
       amount: Number(input.amountVnd),
-      description: input.description.slice(0, 25),
+      // payOS documents a 9-character limit for the broadest bank-account compatibility.
+      description: input.description.slice(0, 9),
       cancelUrl: input.cancelUrl,
       returnUrl: input.returnUrl,
     };
@@ -262,6 +275,8 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
         : data.status === 'CANCELLED' || data.status === 'EXPIRED'
           ? 'expired'
           : 'pending';
-    return { status, amountVnd: BigInt(data.amount) };
+    const observedAmount =
+      status === 'succeeded' && data.amountPaid !== null ? data.amountPaid : data.amount;
+    return { status, amountVnd: BigInt(observedAmount) };
   }
 }
