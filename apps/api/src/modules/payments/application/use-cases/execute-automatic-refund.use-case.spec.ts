@@ -9,6 +9,7 @@ import type {
   PaymentGatewayPort,
   RefundInput,
   RefundResult,
+  RefundStatusInput,
 } from '../../domain/ports/payment-gateway.port';
 import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';
 import type { IRefundRepository, RefundRecord } from '../../domain/ports/refund-repository.port';
@@ -208,7 +209,7 @@ function harness(options: Options = {}): Harness {
         }) as unknown as RefundResult,
       );
     },
-    queryRefundStatus: (input) => {
+    queryRefundStatus: (input: RefundStatusInput) => {
       calls.push('queryRefundStatus');
       refundStatusCalls.push(input);
       return Promise.resolve(
