@@ -15,15 +15,6 @@ export default tseslint.config(
     },
   },
   {
-    files: ['scripts/**/*.mjs'],
-    languageOptions: {
-      globals: {
-        console: 'readonly',
-        process: 'readonly',
-      },
-    },
-  },
-  {
     // NestJS DI relies on emitDecoratorMetadata: constructor-injected classes
     // must stay value imports — `import type` would erase them at runtime
     files: ['apps/api/**'],
@@ -56,7 +47,7 @@ export default tseslint.config(
     // A module's domain layer is its innermost ring: it may read `@booking/contracts`,
     // `shared/*` and its own module, but never another module's use-cases. Logic two
     // contexts genuinely share belongs in `shared/domain/*` (ADR 0003). The acyclic
-    // half of that rule is enforced by `pnpm check:module-cycles`.
+    // half of that rule is enforced by the module-cycle guard in `pnpm test`.
     files: ['apps/api/src/modules/*/domain/**'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [

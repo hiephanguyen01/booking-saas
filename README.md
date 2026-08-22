@@ -49,20 +49,20 @@ Project-level skills in `.agents/skills/` (symlinked into `.claude/skills/`), in
 pnpm turbo lint typecheck build # static checks and production builds
 ```
 
-**There are no tests, by owner decision** ([ADR 0005](docs/decisions/0005-no-tests-policy.md)) — no
-`test` script exists in any package, and none may be added. Verification is lint + typecheck + build,
-the architecture guard scripts, and running the app:
+**Tests are limited to two shapes** ([ADR 0009](docs/decisions/0009-limited-tests-policy.md)): one unit
+test beside each use case, and the architecture guards under `tests/architecture/`. Nothing else — no
+integration or e2e suite, no browser driver, no frontend or contracts tests. `pnpm test` runs both
+projects in one vitest pass and needs no database. Verification is that, plus lint, typecheck, build
+and running the app:
 
 ```bash
-pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure \
-  && pnpm check:theme-tokens && pnpm --filter=@booking/storefront security \
-  && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls
+pnpm test && pnpm turbo lint typecheck build
 ```
 
 ## Architecture notes (Phase 0)
 
 - **Two DB pools**: `app_user` (RLS-FORCED) for tenant work, `app_admin` (BYPASSRLS) for platform admin/workers. Business code must run inside `TenantDbService.forTenant()` — one interactive transaction per use case with `app.tenant_id` set via `SET LOCAL`.
-- **RLS convention**: every table with a `tenant_id` column needs FORCE RLS + a policy in a hand-written migration; `pnpm --filter=@booking/api check:rls` (static script, runs in CI) fails otherwise.
+- **RLS convention**: every table with a `tenant_id` column needs FORCE RLS + a policy in a hand-written migration; the RLS coverage guard in `pnpm test` (static, no database; runs in CI) fails otherwise.
 - **Deny-by-default authz**: routes must be `@Public()`, `@AuthenticatedOnly()`, or declare `@RequirePermissions(...)`; anything else is 403. Permission catalog + system roles live in `modules/identity-access/domain/permission-catalog.ts` and are seeded, never edited via UI.
 - **Outbox**: modules communicate via `OutboxService.emit(tx, ...)` inside the business transaction; the BullMQ relay delivers with retry/backoff. Time comparisons for the outbox run on the **DB clock** (`now()`), never `Date.now()`.
 - **Money/time**: VND is `bigint` đồng (`shared/money`), DB timestamps are UTC `timestamptz`; timezone math at the edges only (`shared/time`).

@@ -42,7 +42,7 @@ import { CreateTenantRoleDto, UpdateTenantRoleDto } from './dto/tenant-access.dt
  *    `RequirePermissions`/`Public` decorators — so identity-access importing
  *    anything back from `modules/tenancy/*` would close
  *    `identity-access → tenancy → identity-access`, which
- *    `pnpm check:module-cycles` (ADR 0003, CI-enforced) rejects.
+ *    the module-cycle guard (ADR 0003, CI-enforced) rejects.
  *
  * Do not "fix" this by re-adding the guard.
  */

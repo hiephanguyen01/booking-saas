@@ -92,7 +92,7 @@ export class PublishLegalDocumentUseCase {
    * Readiness is computed HERE, in the module that owns the documents, and
    * shipped as a boolean + count in the payload. tenancy's handler then writes
    * two columns and imports nothing from legal — which is what keeps
-   * `pnpm check:module-cycles` green, since legal already imports tenancy.
+   * the module-cycle guard green, since legal already imports tenancy.
    */
   private async emitReadiness(tx: PrismaTx, tenantId: string, defaultLocale: Locale): Promise<void> {
     const all = await this.documents.listAll(tx, tenantId);

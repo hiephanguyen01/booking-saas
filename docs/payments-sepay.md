@@ -139,7 +139,7 @@ does not mark the service booking or settlement refunded.
 Both screens paginate and filter BookingOS's normalized `payments` rows. They do not expose raw IPN
 payloads, card data or credentials.
 
-## Verification (no test files)
+## Verification
 
 Use SePay Payment Gateway Sandbox to exercise success, cancel/error redirect, valid/invalid
 `X-Secret-Key`, duplicate IPN, unknown invoice number, amount mismatch and lost-IPN reconciliation.
@@ -148,8 +148,10 @@ Then run:
 ```bash
 pnpm --filter=@booking/api prisma:deploy
 pnpm --filter=@booking/api prisma:generate
-pnpm --filter=@booking/api check:rls
+pnpm test
 pnpm turbo lint typecheck build
 ```
 
-The repository's no-tests policy applies: do not add unit/E2E test files or test configuration.
+The repository's tests policy applies ([ADR 0009](./decisions/0009-limited-tests-policy.md)): a new
+payments **use case** ships with its unit test beside it; do not add integration/E2E files or a second
+runner.

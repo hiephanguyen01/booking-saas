@@ -10,22 +10,21 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "check:frontend-structure": "node scripts/architecture/check-frontend-structure.mjs",
-    "check:no-tests": "node scripts/architecture/check-no-tests.mjs",
-    "check:storefront-security": "node scripts/architecture/check-storefront-security.mjs",
-    "check:theme-tokens": "node scripts/architecture/check-theme-tokens.mjs",
-    "check:tenant-surfaces": "node scripts/architecture/check-tenant-surfaces.mjs",
-    "check:module-cycles": "node scripts/architecture/check-module-cycles.mjs",
+    "test": "pnpm --filter=@booking/api prisma:generate && tsc -p tests/tsconfig.json --noEmit && vitest run",
+    "test:arch": "vitest run --project architecture",
+    "test:api": "vitest run --project api",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
+    "@types/node": "^22.15.0",
     "eslint": "^9.31.0",
     "eslint-config-prettier": "^10.1.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.6.0",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0",
-    "typescript-eslint": "^8.36.0"
+    "typescript-eslint": "^8.36.0",
+    "vitest": "^3.2.0"
   }
 }

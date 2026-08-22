@@ -1,6 +1,11 @@
 # ADR 0005 — No automated tests
 
-**Status:** Accepted.
+**Status:** Superseded by [ADR 0009](./0009-limited-tests-policy.md) (2026-08-19).
+
+> ADR 0009 relaxes this decision in two places and only two: a use case may — and now must — carry
+> one unit test beside it, and the architecture guards moved from `scripts/*.mjs` into
+> `tests/architecture/`. Everything else below still holds, including the reasoning for it. Read this
+> ADR for *why* the repo has no broad suite; read ADR 0009 for what is allowed.
 
 ## Context
 

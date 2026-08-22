@@ -26,5 +26,7 @@ Replace mock ratings with verified-booking reviews and complete the existing set
 - Reviews cannot mutate settlement, refund, ledger, payout, or affiliate commission state.
 - Dispute opening still locks release; Partner response and Tenant adjudication remain the only financial path.
 - Platform Admin can audit across tenants but cannot resolve a Tenant dispute.
-- `check:rls`, lint, typecheck, and build pass; no test files or test commands are added.
+- `pnpm test`, lint, typecheck and build pass. Every new use case ships its unit test beside it
+  ([ADR 0009](../../docs/decisions/0009-limited-tests-policy.md)); nothing else — no integration or
+  e2e suite, no second runner.
 

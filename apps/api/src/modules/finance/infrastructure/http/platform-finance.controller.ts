@@ -70,7 +70,7 @@ export class PlatformFinanceController {
   /**
    * Lives here rather than on the tenant-detail response because `finance`
    * already imports `TenancyModule` — having tenancy read commission rules back
-   * would close a module cycle that `check:module-cycles` rejects.
+   * would close a module cycle that the module-cycle guard rejects.
    */
   @RequirePermissions('platform.finance.read')
   @Get('tenants/:tenantId/commission-rules')

@@ -197,7 +197,7 @@ hai operator.
 2. Tạm tắt release worker bằng `SETTLEMENT_RELEASE_DISABLED=true` nếu deploy nhiều replica lệch version.
 3. Chạy `pnpm --filter=@booking/api prisma:deploy` bằng migration role.
 4. Chạy `pnpm --filter=@booking/api prisma:generate` trên artifact/build mới.
-5. Chạy `pnpm --filter=@booking/api check:rls`.
+5. Chạy `pnpm test`.
 6. Deploy tất cả API worker cùng version, bật lại release worker.
 7. Theo dõi outbox error, reconciliation count, số `refund_pending`, settlement quá hạn và payout mở.
 

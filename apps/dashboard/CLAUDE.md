@@ -4,7 +4,7 @@ Local rules for the operator dashboard (`/admin`, `/tenant`, `/partner`, `/affil
 [`../../AGENTS.md`](../../AGENTS.md). Shared frontend conventions:
 [`../../docs/conventions.md`](../../docs/conventions.md).
 
-## Folder architecture (enforced by review — the old `architecture.spec.ts` was removed with the no-tests policy)
+## Folder architecture (enforced by review — the frontend-structure guard covers the storefront only)
 
 ```
 app/

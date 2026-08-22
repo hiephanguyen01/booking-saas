@@ -1,0 +1,357 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { CustomerPaymentMethod, GatewayPaymentSettings } from '@booking/contracts';
+import { fakeCollaborator, fakePort, fakeTenantDb } from '~testing';
+import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
+import type { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
+import {
+  AmountExceedsGatewayLimit,
+  BookingNotPayable,
+  InvalidStorefrontHost,
+  NoActiveGateway,
+  NothingLeftToPay,
+  PaymentMethodUnavailable,
+  PaymentStorefrontSuspended,
+} from '../../domain/errors/payment-errors';
+import type {
+  GatewayConfigRecord,
+  IGatewayConfigRepository,
+} from '../../domain/ports/gateway-config-repository.port';
+import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
+import type { GatewayKey, PaymentGatewayPort } from '../../domain/ports/payment-gateway.port';
+import type {
+  IPaymentBookingReader,
+  PaymentBookingRecord,
+} from '../../domain/ports/payment-booking-reader.port';
+import type {
+  CreatePaymentData,
+  IPaymentRepository,
+} from '../../domain/ports/payment-repository.port';
+import { CheckoutUseCase } from './checkout.use-case';
+
+const HOST = 'studiohub.localhost';
+const TENANT_ID = 'tenant-1';
+const BOOKING_ID = 'booking-1';
+const CODE = 'BK-0001';
+
+function booking(overrides: Partial<PaymentBookingRecord> = {}): PaymentBookingRecord {
+  return {
+    id: BOOKING_ID,
+    code: CODE,
+    status: 'pending_payment',
+    bookingMode: 'daily',
+    depositAmount: 400_000n,
+    securityDeposit: 100_000n,
+    finalAmount: 1_000_000n,
+    paidAmount: 0n,
+    ...overrides,
+  } as PaymentBookingRecord;
+}
+
+/** Only `gateway` and `settings.enabledMethods` drive routing. */
+const config = (
+  gateway: GatewayKey,
+  enabledMethods: CustomerPaymentMethod[],
+): GatewayConfigRecord =>
+  ({
+    id: `config-${gateway}`,
+    gateway,
+    environment: 'production',
+    credentials: {},
+    settings: {
+      enabledMethods,
+      refundStrategy: 'manual',
+      manualRefundSlaHours: 72,
+    } as GatewayPaymentSettings,
+  }) as unknown as GatewayConfigRecord;
+
+interface Options {
+  live?: boolean;
+  record?: PaymentBookingRecord | null;
+  configs?: GatewayConfigRecord[];
+  gatewayKey?: GatewayKey;
+  pending?: { id: string; destination: unknown } | null;
+  /** What the provider reports back from `createPayment`. */
+  gatewayOrderRef?: string;
+  gatewayTxnId?: string | null;
+}
+
+interface Harness {
+  readonly useCase: CheckoutUseCase;
+  readonly tenantDb: ReturnType<typeof fakeTenantDb>;
+  readonly created: CreatePaymentData[];
+  readonly gatewayCalls: Array<Record<string, unknown>>;
+  readonly routedTo: Array<GatewayKey | undefined>;
+}
+
+function harness(options: Options = {}): Harness {
+  const created: CreatePaymentData[] = [];
+  const gatewayCalls: Array<Record<string, unknown>> = [];
+  const routedTo: Array<GatewayKey | undefined> = [];
+  const tenantDb = fakeTenantDb();
+  const key = options.gatewayKey ?? 'sepay';
+
+  const gateway = fakeCollaborator<PaymentGatewayPort>({
+    key,
+    createPayment: (input: Record<string, unknown>) => {
+      gatewayCalls.push(input);
+      return Promise.resolve({
+        destination: { kind: 'redirect', url: 'https://pay.example/x' },
+        gatewayTxnId: options.gatewayTxnId === undefined ? 'txn-1' : options.gatewayTxnId,
+        gatewayOrderRef: options.gatewayOrderRef ?? null,
+        paymentMethod: null,
+      });
+    },
+    providerPaymentMethod: (method: CustomerPaymentMethod) => `PROVIDER_${method.toUpperCase()}`,
+  });
+
+  const useCase = new CheckoutUseCase(
+    fakePort<IPaymentBookingReader>({
+      findById: () => Promise.resolve(options.record === undefined ? booking() : options.record),
+    }),
+    fakePort<IPaymentRepository>({
+      findPendingCheckout: () => Promise.resolve((options.pending ?? null) as never),
+      create: (_tx, _tenantId, data) => {
+        created.push(data);
+        return Promise.resolve({ id: 'payment-1', ...data } as never);
+      },
+    }),
+    fakePort<GatewayRegistryPort>({
+      resolveActiveForCheckout: (_tx, _tenantId, requested) => {
+        routedTo.push(requested);
+        return Promise.resolve({
+          gateway,
+          configRevisionId: requested ? `config-${requested}` : null,
+          settings: {
+            enabledMethods: [],
+            refundStrategy: 'manual',
+            manualRefundSlaHours: 72,
+          } as GatewayPaymentSettings,
+        });
+      },
+    }),
+    fakePort<IGatewayConfigRepository>({
+      findActiveAll: () =>
+        Promise.resolve(options.configs ?? [config('sepay', ['bank_transfer', 'napas_qr'])]),
+    }),
+    fakeCollaborator<ResolveTenantByHostUseCase>({
+      execute: () => Promise.resolve({ id: TENANT_ID, live: options.live ?? true }),
+    }),
+    tenantDb.service,
+  );
+
+  return { useCase, tenantDb, created, gatewayCalls, routedTo };
+}
+
+describe('CheckoutUseCase', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('refuses to take money for a suspended storefront', async () => {
+    const { useCase, tenantDb } = harness({ live: false });
+
+    await expect(useCase.execute(HOST, BOOKING_ID, 'bank_transfer')).rejects.toBeInstanceOf(
+      PaymentStorefrontSuspended,
+    );
+    expect(tenantDb.openedFor).toEqual([]);
+  });
+
+  it('rejects an unknown booking', async () => {
+    const { useCase } = harness({ record: null });
+
+    await expect(useCase.execute(HOST, BOOKING_ID, 'bank_transfer')).rejects.toBeInstanceOf(
+      BookingNotFound,
+    );
+  });
+
+  it('charges the deposit plus the security deposit on the first payment', async () => {
+    // The security deposit rides along with the deposit and is refunded on return.
+    const { useCase, created } = harness();
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]).toMatchObject({ amount: 500_000n, kind: 'deposit' });
+  });
+
+  it('marks the payment full when the deposit already covers the booking', async () => {
+    const { useCase, created } = harness({
+      record: booking({ depositAmount: 1_000_000n, finalAmount: 1_000_000n }),
+    });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]).toMatchObject({ amount: 1_100_000n, kind: 'full' });
+  });
+
+  it.each(['cancelled', 'confirmed_but_unknown', 'refunded'])(
+    'refuses a deposit payment on a %s booking',
+    async (status) => {
+      // The deposit guard stays strictly `pending_payment`; widening it would let a
+      // cancelled or refunded booking take money.
+      const { useCase } = harness({ record: booking({ status: status as never }) });
+
+      await expect(useCase.execute(HOST, BOOKING_ID, 'bank_transfer')).rejects.toBeInstanceOf(
+        BookingNotPayable,
+      );
+    },
+  );
+
+  it('charges only what is still owed on a balance payment', async () => {
+    // The security deposit was already taken with the deposit payment and must
+    // never be charged twice.
+    const { useCase, created } = harness({
+      record: booking({ status: 'confirmed', paidAmount: 400_000n }),
+    });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]).toMatchObject({ amount: 600_000n, kind: 'balance' });
+  });
+
+  it('refuses a balance payment on a fully paid booking', async () => {
+    const { useCase } = harness({
+      record: booking({ status: 'confirmed', paidAmount: 1_000_000n }),
+    });
+
+    await expect(useCase.execute(HOST, BOOKING_ID, 'bank_transfer')).rejects.toBeInstanceOf(
+      NothingLeftToPay,
+    );
+  });
+
+  it('refuses a method no active gateway serves', async () => {
+    const { useCase } = harness({ configs: [config('sepay', ['bank_transfer'])] });
+
+    await expect(useCase.execute(HOST, BOOKING_ID, 'international_card')).rejects.toBeInstanceOf(
+      PaymentMethodUnavailable,
+    );
+  });
+
+  it('routes a wallet method to that wallet gateway', async () => {
+    const { useCase, routedTo } = harness({
+      configs: [config('sepay', ['bank_transfer']), config('momo', ['momo_wallet'])],
+      gatewayKey: 'momo',
+    });
+
+    await useCase.execute(HOST, BOOKING_ID, 'momo_wallet');
+
+    expect(routedTo).toEqual(['momo']);
+  });
+
+  it('falls back to the registry default when no gateway is configured at all', async () => {
+    // Dev/test convenience; the production guard below is what stops it mattering.
+    const { useCase, routedTo } = harness({ configs: [], gatewayKey: 'mock' });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(routedTo).toEqual([undefined]);
+  });
+
+  it('refuses the mock gateway in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { useCase } = harness({ configs: [], gatewayKey: 'mock' });
+
+    await expect(useCase.execute(HOST, BOOKING_ID, 'bank_transfer')).rejects.toBeInstanceOf(
+      NoActiveGateway,
+    );
+  });
+
+  it('refuses a MoMo order above the gateway cap', async () => {
+    // Capped to the refund limit so every MoMo payment stays refundable in one call.
+    const { useCase } = harness({
+      record: booking({
+        depositAmount: 50_000_001n,
+        securityDeposit: 0n,
+        finalAmount: 50_000_001n,
+      }),
+      configs: [config('momo', ['momo_wallet'])],
+      gatewayKey: 'momo',
+    });
+
+    await expect(useCase.execute(HOST, BOOKING_ID, 'momo_wallet')).rejects.toBeInstanceOf(
+      AmountExceedsGatewayLimit,
+    );
+  });
+
+  it('returns the pending link instead of opening a second one for the same method', async () => {
+    const pending = {
+      id: 'payment-existing',
+      destination: { kind: 'redirect', url: 'https://old' },
+    };
+    const { useCase, created } = harness({ pending });
+
+    const result = await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(result).toEqual({ paymentId: 'payment-existing', destination: pending.destination });
+    expect(created).toEqual([]);
+  });
+
+  it("sends the customer back to the tenant's own host, not a global storefront", async () => {
+    // Each tenant serves on its own domain, so the return URLs have to be built
+    // from the Host the customer is actually on.
+    const { useCase, gatewayCalls } = harness();
+
+    await useCase.execute('bookingstad.localhost', BOOKING_ID, 'bank_transfer');
+
+    expect(gatewayCalls[0]).toMatchObject({
+      returnUrl: `http://bookingstad.localhost/bookings/${CODE}?payment=success`,
+      errorUrl: `http://bookingstad.localhost/bookings/${CODE}?payment=error`,
+      cancelUrl: `http://bookingstad.localhost/bookings/${CODE}?payment=cancel`,
+    });
+  });
+
+  it.each(['not a host', 'evil.com/path', 'user:pass@evil.com', 'evil.com?x=1'])(
+    'rejects the malformed host %s rather than building a URL from it',
+    async (host) => {
+      const { useCase } = harness();
+
+      await expect(useCase.execute(host, BOOKING_ID, 'bank_transfer')).rejects.toBeInstanceOf(
+        InvalidStorefrontHost,
+      );
+    },
+  );
+
+  it('keys idempotency on the reference the provider reports', async () => {
+    const { useCase, created } = harness({ gatewayOrderRef: 'PROVIDER-REF-9' });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]).toMatchObject({
+      gatewayOrderRef: 'PROVIDER-REF-9',
+      idempotencyKey: `checkout:${BOOKING_ID}:bank_transfer:PROVIDER-REF-9`,
+    });
+  });
+
+  it('keys on the transaction id when the provider names no order ref', async () => {
+    // The two fall back differently on purpose: the PERSISTED ref becomes the
+    // locally generated order code (it is what was actually sent to the gateway),
+    // while the idempotency KEY prefers the provider's own transaction id.
+    const { useCase, created } = harness({ gatewayOrderRef: undefined, gatewayTxnId: 'txn-1' });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]?.gatewayOrderRef).toMatch(/^BKF-[0-9A-F]{32}$/);
+    expect(created[0]?.idempotencyKey).toBe(`checkout:${BOOKING_ID}:bank_transfer:txn-1`);
+  });
+
+  it('falls back to the locally generated order code when the provider names neither', async () => {
+    const { useCase, created } = harness({ gatewayOrderRef: undefined, gatewayTxnId: null });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    const orderRef = created[0]?.gatewayOrderRef;
+    expect(orderRef).toMatch(/^BKF-[0-9A-F]{32}$/);
+    expect(created[0]?.idempotencyKey).toBe(`checkout:${BOOKING_ID}:bank_transfer:${orderRef}`);
+  });
+
+  it('persists the provider method and gateway revision when the gateway does not name a method', async () => {
+    const { useCase, created } = harness();
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]).toMatchObject({
+      gateway: 'sepay',
+      gatewayConfigRevisionId: 'config-sepay',
+      paymentMethod: 'PROVIDER_BANK_TRANSFER',
+    });
+  });
+});
