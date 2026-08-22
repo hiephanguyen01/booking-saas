@@ -3,6 +3,8 @@ name: Durable Checkout payOS Proof
 on:
   push:
     branches: [refactor/durable-checkout-payos]
+  pull_request:
+    branches: [refactor/payment-foundation]
 
 permissions:
   contents: read
