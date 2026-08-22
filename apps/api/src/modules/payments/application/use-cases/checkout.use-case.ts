@@ -25,11 +25,11 @@ import {
   PaymentMethodUnavailable,
   PaymentStorefrontSuspended,
 } from '../../domain/errors/payment-errors';
+import { GatewayOperationError } from '../../domain/errors/gateway-operation-error';
 import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
 } from '../../domain/ports/gateway-config-repository.port';
-import { GatewayRequestError } from '../../infrastructure/gateways/provider-http';
 
 const LOCAL_REFERENCE_RETRIES = 3;
 
@@ -196,9 +196,9 @@ export class CheckoutUseCase {
       });
     } catch (error) {
       // Retryable transport/timeout failures intentionally keep `creating`; the next
-      // request reuses the same durable payment/reference. Definite payOS rejection
+      // request reuses the same durable payment/reference. Definite create rejection
       // becomes create_failed so a new checkout attempt can be minted next time.
-      if (error instanceof GatewayRequestError && error.kind !== 'retryable') {
+      if (error instanceof GatewayOperationError && error.kind !== 'retryable') {
         await this.tenantDb.forTenant(tenant.id, (tx) =>
           this.payments.markCheckoutCreateFailed(tx, prepared.payment.id),
         );
