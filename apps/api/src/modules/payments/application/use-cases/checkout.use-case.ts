@@ -195,10 +195,12 @@ export class CheckoutUseCase {
 
     // Phase C: attach handoff/provider ids. This write accepts a concurrently
     // succeeded payment so an early webhook cannot make us lose the checkout URL.
+    // Undefined optional provider ids are intentionally omitted: an early webhook
+    // may already have persisted the definitive transaction id.
     const attached = await this.tenantDb.forTenant(tenant.id, (tx) =>
       this.payments.markCheckoutReady(tx, prepared.payment.id, {
         destination: created.destination,
-        gatewayTxnId: created.gatewayTxnId ?? null,
+        gatewayTxnId: created.gatewayTxnId,
         gatewayOrderRef: created.gatewayOrderRef ?? prepared.payment.gatewayOrderRef,
         paymentMethod: created.paymentMethod ?? prepared.payment.paymentMethod,
       }),
