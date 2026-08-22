@@ -207,3 +207,76 @@ jobs:
           cd apps/api
           TS_NODE_COMPILER_OPTIONS='{"module":"CommonJS","moduleResolution":"Node"}' \
             node -r ts-node/register/transpile-only src/modules/payments/infrastructure/gateways/.momo-proof.cjs
+      - name: Pending refund worker proof
+        shell: bash
+        run: |
+          cat > apps/api/src/modules/payments/infrastructure/.refund-worker-proof.cjs <<'JS'
+          const { ReconciliationWorker } = require('./reconciliation.worker.ts');
+
+          (async () => {
+            const delegated = [];
+            const calls = [];
+            let pendingLimit = null;
+            const payments = {
+              findStalePending: async () => [],
+              findSucceededNeedingRecovery: async () => [],
+            };
+            const registry = {};
+            const refunds = {
+              findSucceededNeedingRecovery: async () => [],
+              findBookingsMissingRefund: async () => [],
+              findPendingAutomatic: async (limit) => {
+                pendingLimit = limit;
+                calls.push('findPendingAutomatic');
+                return [
+                  { id: 'refund-1', tenantId: 'tenant-1' },
+                  { id: 'refund-2', tenantId: 'tenant-2' },
+                ];
+              },
+            };
+            const tenantDb = {};
+            const outbox = {};
+            const automaticRefund = {
+              execute: async (tenantId, refundId) => {
+                delegated.push([tenantId, refundId]);
+                if (refundId === 'refund-1') throw new Error('proof-first-item-failure');
+              },
+            };
+
+            const worker = new ReconciliationWorker(
+              payments,
+              registry,
+              refunds,
+              tenantDb,
+              outbox,
+              automaticRefund,
+            );
+            await worker.sweep();
+
+            const failures = [];
+            if (pendingLimit !== 100) failures.push(`pending scan limit expected=100 actual=${String(pendingLimit)}`);
+            if (calls.filter((call) => call === 'findPendingAutomatic').length !== 1) {
+              failures.push('findPendingAutomatic must run exactly once');
+            }
+            const actual = JSON.stringify(delegated);
+            const expected = JSON.stringify([
+              ['tenant-1', 'refund-1'],
+              ['tenant-2', 'refund-2'],
+            ]);
+            if (actual !== expected) failures.push(`delegation expected=${expected} actual=${actual}`);
+
+            if (failures.length) {
+              console.error(JSON.stringify({ refundWorkerProof: false, failures }, null, 2));
+              process.exit(1);
+            }
+            console.log(JSON.stringify({
+              refundWorkerProof: true,
+              pendingAutomaticScan: true,
+              delegatesToUseCase: true,
+              itemFailureIsolation: true,
+            }, null, 2));
+          })().catch((error) => { console.error(error); process.exit(2); });
+          JS
+          cd apps/api
+          TS_NODE_COMPILER_OPTIONS='{"module":"CommonJS","moduleResolution":"Node","experimentalDecorators":true,"emitDecoratorMetadata":true}' \
+            node -r ts-node/register/transpile-only src/modules/payments/infrastructure/.refund-worker-proof.cjs
