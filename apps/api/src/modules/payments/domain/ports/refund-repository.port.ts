@@ -48,6 +48,11 @@ export interface RefundRecoveryRecord {
   affectsBookingStatus: boolean;
 }
 
+export interface PendingAutomaticRefundRecord {
+  id: string;
+  tenantId: string;
+}
+
 export interface MissingRefundRecord {
   tenantId: string;
   bookingId: string;
@@ -66,6 +71,16 @@ export interface IRefundRepository {
     id: string,
     gatewayRefundId: string | null,
   ): Promise<RefundRecord | null>;
+  markAutomaticPending(
+    tx: PrismaTx,
+    id: string,
+    gatewayRefundId: string | null,
+  ): Promise<RefundRecord | null>;
+  failAutomatic(
+    tx: PrismaTx,
+    id: string,
+    gatewayRefundId: string | null,
+  ): Promise<RefundRecord | null>;
   requireManual(tx: PrismaTx, id: string, dueAt: Date): Promise<RefundRecord | null>;
   markSucceeded(
     tx: PrismaTx,
@@ -78,6 +93,7 @@ export interface IRefundRepository {
     tx: PrismaTx,
     query: RefundHistoryQuery,
   ): Promise<RepoPage<RefundHistoryRecord>>;
+  findPendingAutomatic(limit: number): Promise<PendingAutomaticRefundRecord[]>;
   findSucceededNeedingRecovery(limit: number): Promise<RefundRecoveryRecord[]>;
   findBookingsMissingRefund(limit: number): Promise<MissingRefundRecord[]>;
 }

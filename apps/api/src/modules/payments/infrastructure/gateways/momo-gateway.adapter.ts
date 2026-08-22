@@ -8,6 +8,8 @@ import type {
   PaymentStatusResult,
   RefundInput,
   RefundResult,
+  RefundStatusInput,
+  RefundStatusResult,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
 import { MOMO_MAX_PAYMENT_VND, MOMO_MIN_REFUND_VND } from '../../domain/gateway-limits';
@@ -130,12 +132,12 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
 
   async refund(input: RefundInput): Promise<RefundResult> {
     const transId = Number(input.gatewayTxnId);
-    if (!Number.isInteger(transId) || transId <= 0) return { supported: false };
+    if (!Number.isInteger(transId) || transId <= 0) return { status: 'unsupported' };
     if (input.amountVnd < MOMO_MIN_REFUND_VND || input.amountVnd > MOMO_MAX_PAYMENT_VND) {
-      return { supported: false };
+      return { status: 'unsupported' };
     }
     const { partnerCode, accessKey } = this.creds;
-    const id = momoRefundId(`${input.gatewayOrderRef}:${input.reason}`);
+    const id = momoRefundId(input.refundId);
     const amount = Number(input.amountVnd);
     const description = input.reason;
     const raw =
@@ -158,8 +160,18 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
       signal: AbortSignal.timeout(30_000),
     });
     const json = (await res.json()) as { resultCode?: number; transId?: number };
-    if (json.resultCode !== 0) return { supported: false };
-    return { supported: true, refundId: json.transId !== undefined ? String(json.transId) : id };
+    if (json.resultCode !== 0) return { status: 'failed', refundId: id };
+    return {
+      status: 'succeeded',
+      refundId: json.transId !== undefined ? String(json.transId) : id,
+    };
+  }
+
+  queryRefundStatus(input: RefundStatusInput): Promise<RefundStatusResult> {
+    return Promise.resolve({
+      status: 'unsupported',
+      refundId: input.gatewayRefundId ?? undefined,
+    });
   }
 
   async queryPaymentStatus(reference: string): Promise<PaymentStatusResult> {

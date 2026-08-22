@@ -8,6 +8,8 @@ import type {
   PaymentStatusResult,
   RefundInput,
   RefundResult,
+  RefundStatusInput,
+  RefundStatusResult,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
 
@@ -150,12 +152,12 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
   }
 
   async refund(input: RefundInput): Promise<RefundResult> {
-    if (!/^\d+$/.test(input.gatewayTxnId)) return { supported: false };
+    if (!/^\d+$/.test(input.gatewayTxnId)) return { status: 'unsupported' };
     for (const daysAgo of [0, 1]) {
       const id = this.refundId(input.gatewayOrderRef, input.reason, daysAgo);
       const code = await this.queryRefund(id);
-      if (code === 1) return { supported: true, refundId: id };
-      if (code === 3) throw new Error('ZaloPay refund still processing');
+      if (code === 1) return { status: 'succeeded', refundId: id };
+      if (code === 3) return { status: 'pending', refundId: id };
     }
     const { appId, key1 } = this.creds;
     const mRefundId = this.refundId(input.gatewayOrderRef, input.reason);
@@ -179,18 +181,27 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
     });
     const json = (await res.json()) as { return_code?: number; refund_id?: number };
     if (json.return_code === 1) {
-      return { supported: true, refundId: String(json.refund_id ?? mRefundId) };
+      return { status: 'succeeded', refundId: String(json.refund_id ?? mRefundId) };
     }
     if (json.return_code === 3) {
       for (let i = 0; i < 3; i++) {
         await wait(2_000);
         const code = await this.queryRefund(mRefundId);
-        if (code === 1) return { supported: true, refundId: mRefundId };
-        if (code === 2) return { supported: false };
+        if (code === 1) return { status: 'succeeded', refundId: mRefundId };
+        if (code === 2) return { status: 'failed', refundId: mRefundId };
       }
-      throw new Error('ZaloPay refund still processing');
+      return { status: 'pending', refundId: mRefundId };
     }
-    return { supported: false };
+    return { status: 'unsupported' };
+  }
+
+  async queryRefundStatus(input: RefundStatusInput): Promise<RefundStatusResult> {
+    if (!input.gatewayRefundId) return { status: 'unsupported' };
+    const code = await this.queryRefund(input.gatewayRefundId);
+    if (code === 1) return { status: 'succeeded', refundId: input.gatewayRefundId };
+    if (code === 3) return { status: 'pending', refundId: input.gatewayRefundId };
+    if (code === 2) return { status: 'failed', refundId: input.gatewayRefundId };
+    return { status: 'unsupported', refundId: input.gatewayRefundId };
   }
 
   async queryPaymentStatus(reference: string): Promise<PaymentStatusResult> {
