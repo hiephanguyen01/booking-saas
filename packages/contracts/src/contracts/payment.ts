@@ -89,12 +89,13 @@ export type SepayGatewayCredentials = SepayGatewayConfigInput['credentials'];
 export const payosGatewayConfigInputSchema = z.object({
   gateway: z.literal('payos'),
   environment: gatewayEnvironmentSchema,
-  credentials: z.object({
-    clientId: z.string().trim().min(1).max(200),
-    apiKey: z.string().trim().min(1).max(500),
-    checksumKey: z.string().trim().min(16).max(500),
-    baseUrl: z.string().url().optional(),
-  }),
+  credentials: z
+    .object({
+      clientId: z.string().trim().min(1).max(200),
+      apiKey: z.string().trim().min(1).max(500),
+      checksumKey: z.string().trim().min(16).max(500),
+    })
+    .strict(),
 });
 export type PayosGatewayConfigInput = z.infer<typeof payosGatewayConfigInputSchema>;
 export type PayosGatewayCredentials = PayosGatewayConfigInput['credentials'];
