@@ -210,6 +210,7 @@ jobs:
       - name: Pending refund worker proof
         shell: bash
         run: |
+          pnpm --filter=@booking/api prisma:generate
           cat > apps/api/src/modules/payments/infrastructure/.refund-worker-proof.cjs <<'JS'
           const { ReconciliationWorker } = require('./reconciliation.worker.ts');
 
