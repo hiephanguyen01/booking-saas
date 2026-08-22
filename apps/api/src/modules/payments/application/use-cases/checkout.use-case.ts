@@ -127,6 +127,19 @@ export class CheckoutUseCase {
         };
       }
 
+      // An early provider webhook can win the race and mark the durable attempt
+      // succeeded before Phase C attaches its handoff. If booking projection has
+      // not caught up yet, reuse that same attempt rather than minting a second one.
+      const latest = await this.payments.findLatestByBooking(tx, bookingId);
+      if (
+        latest?.status === 'succeeded' &&
+        latest.kind === kind &&
+        latest.paymentMethod === providerPaymentMethod &&
+        (latest.checkoutState === 'creating' || latest.checkoutState === 'ready')
+      ) {
+        return { payment: latest, destination: null, bookingCode: booking.code };
+      }
+
       for (let attempt = 0; attempt < LOCAL_REFERENCE_RETRIES; attempt++) {
         const paymentId = uuidv7();
         const gatewayOrderRef = gateway.prepareOrderReference(paymentId);
