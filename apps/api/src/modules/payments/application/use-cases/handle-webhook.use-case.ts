@@ -11,10 +11,7 @@ import {
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
 import { Payment } from '../../domain/entities/payment.entity';
-import {
-  BadWebhook,
-  InvalidWebhookSignature,
-} from '../payment-http-errors';
+import { BadWebhook, InvalidWebhookSignature } from '../payment-http-errors';
 
 /**
  * The webhook — the single source of truth for payment (§11.2). Resolves the
@@ -45,8 +42,8 @@ export class HandleWebhookUseCase {
     // Record the payment durably first (its own tx). markSucceeded is an atomic
     // non-succeeded→succeeded flip, so 5 duplicate deliveries return `true` exactly once.
     const flipped = await this.tenantDb.forTenant(payment.tenantId, async (tx) => {
-      const gateway = await this.registry.resolveForTenant(tx, payment.tenantId, payment.gateway);
-      const v = gateway.verifyWebhook(rawBody, headers);
+      const resolved = await this.registry.resolveForPayment(tx, payment);
+      const v = resolved.gateway.verifyWebhook(rawBody, headers);
       if (!v.valid) throw new InvalidWebhookSignature();
 
       // A SePay TRANSACTION_VOID confirms an already-recorded automatic refund; it
@@ -72,6 +69,7 @@ export class HandleWebhookUseCase {
           gatewayOrderRef: v.gatewayOrderRef ?? ref,
         },
         {
+          capturedAmount: v.amountVnd,
           gatewayTxnId: v.gatewayTxnId,
           gatewayOrderId: v.gatewayOrderId,
           paymentMethod: v.paymentMethod,

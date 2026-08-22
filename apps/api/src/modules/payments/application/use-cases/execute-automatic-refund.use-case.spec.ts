@@ -2,10 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GatewayPaymentSettings } from '@booking/contracts';
 import { fakeCollaborator, fakePort, fakeTenantDb, fakeTx } from '~testing';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import type {
-  GatewayConfigRecord,
-  IGatewayConfigRepository,
-} from '../../domain/ports/gateway-config-repository.port';
+import type { GatewayConfigRecord } from '../../domain/ports/gateway-config-repository.port';
 import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 import type { PaymentGatewayPort, RefundInput } from '../../domain/ports/payment-gateway.port';
 import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';
@@ -46,7 +43,10 @@ function payment(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
     gateway: 'momo',
     kind: 'deposit',
     amount: 500_000n,
+    capturedAmount: 500_000n,
     status: 'succeeded',
+    checkoutState: 'ready',
+    gatewayConfigRevisionId: 'config-1',
     gatewayOrderRef: 'ORDER-9',
     gatewayOrderId: null,
     gatewayTxnId: 'TXN-9',
@@ -157,16 +157,29 @@ function harness(options: Options = {}): Harness {
     },
   });
 
+  const resolvedConfig = options.config === undefined ? configWith(48) : options.config;
+  const settings =
+    resolvedConfig?.settings ??
+    ({
+      enabledMethods: ['momo_wallet'],
+      refundStrategy: 'automatic_preferred',
+      manualRefundSlaHours: 72,
+    } as GatewayPaymentSettings);
+
   const useCase = new ExecuteAutomaticRefundUseCase(
     fakePort<IPaymentRepository>({
-      findSucceededByBooking: () =>
-        Promise.resolve(options.succeeded === undefined ? payment() : options.succeeded),
+      findById: () => Promise.resolve(options.succeeded === undefined ? payment() : options.succeeded),
     }),
     refunds,
-    fakePort<GatewayRegistryPort>({ resolveForTenant: () => Promise.resolve(gateway) }),
-    fakePort<IGatewayConfigRepository>({
-      findByGateway: () =>
-        Promise.resolve(options.config === undefined ? configWith(48) : options.config),
+    fakePort<GatewayRegistryPort>({
+      resolveForPayment: (_tx, sourcePayment) => {
+        calls.push(`resolve:${sourcePayment.id}:${sourcePayment.gatewayConfigRevisionId ?? 'legacy'}`);
+        return Promise.resolve({
+          gateway,
+          configRevisionId: resolvedConfig?.id ?? sourcePayment.gatewayConfigRevisionId,
+          settings,
+        });
+      },
     }),
     tenantDb.service,
     new OutboxService(),
@@ -204,7 +217,7 @@ describe('ExecuteAutomaticRefundUseCase', () => {
     expect(calls).not.toContain('gatewayRefund');
   });
 
-  it('does nothing when the booking has no succeeded payment', async () => {
+  it('does nothing when the durable source payment is missing', async () => {
     const { useCase, calls } = harness({ succeeded: null });
 
     await useCase.execute(TENANT_ID, REFUND_ID);
@@ -220,6 +233,14 @@ describe('ExecuteAutomaticRefundUseCase', () => {
     await useCase.execute(TENANT_ID, REFUND_ID);
 
     expect(calls).not.toContain('gatewayRefund');
+  });
+
+  it('resolves the exact gateway revision from the durable source payment', async () => {
+    const { useCase, calls } = harness();
+
+    await useCase.execute(TENANT_ID, REFUND_ID);
+
+    expect(calls).toContain('resolve:payment-1:config-1');
   });
 
   it('calls the provider between the two transactions, never inside one', async () => {

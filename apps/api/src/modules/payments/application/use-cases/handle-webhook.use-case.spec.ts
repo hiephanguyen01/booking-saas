@@ -1,3 +1,4 @@
+import type { GatewayPaymentSettings } from '@booking/contracts';
 import { describe, expect, it } from 'vitest';
 import { fakeCollaborator, fakePort, fakeTenantDb, fakeTx } from '~testing';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -27,6 +28,11 @@ const paymentRef = () =>
     bookingId: BOOKING_ID,
     gateway: 'sepay' as const,
     amount: DUE,
+    capturedAmount: null,
+    status: 'pending',
+    gatewayConfigRevisionId: 'config-sepay-1',
+    gatewayTxnId: null,
+    gatewayOrderRef: REF,
   }) as unknown as Awaited<ReturnType<IPaymentRepository['findByGatewayReference']>>;
 
 const verification = (overrides: Partial<WebhookVerification> = {}): WebhookVerification => ({
@@ -55,6 +61,7 @@ interface Harness {
   readonly terminals: string[];
   readonly events: Array<{ eventType: string; payload: Record<string, unknown> }>;
   readonly resolvedGateways: Array<string | undefined>;
+  readonly resolvedRevisions: Array<string | null>;
 }
 
 function harness(options: Options = {}): Harness {
@@ -63,6 +70,7 @@ function harness(options: Options = {}): Harness {
   const terminals: string[] = [];
   const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   const resolvedGateways: Array<string | undefined> = [];
+  const resolvedRevisions: Array<string | null> = [];
 
   const tx = fakeTx({
     outboxEvent: {
@@ -80,9 +88,18 @@ function harness(options: Options = {}): Harness {
   });
   const registry = fakePort<GatewayRegistryPort>({
     statelessByKey: () => gateway,
-    resolveForTenant: (_tx, _tenantId, key) => {
-      resolvedGateways.push(key);
-      return Promise.resolve(gateway);
+    resolveForPayment: (_tx, payment) => {
+      resolvedGateways.push(payment.gateway);
+      resolvedRevisions.push(payment.gatewayConfigRevisionId);
+      return Promise.resolve({
+        gateway,
+        configRevisionId: payment.gatewayConfigRevisionId,
+        settings: {
+          enabledMethods: [],
+          refundStrategy: 'manual',
+          manualRefundSlaHours: 72,
+        } as GatewayPaymentSettings,
+      });
     },
   });
   const payments = fakePort<IPaymentRepository>({
@@ -110,6 +127,7 @@ function harness(options: Options = {}): Harness {
     terminals,
     events,
     resolvedGateways,
+    resolvedRevisions,
   };
 }
 
@@ -131,13 +149,14 @@ describe('HandleWebhookUseCase', () => {
     expect(events).toEqual([]);
   });
 
-  it('resolves the tenant and its own gateway from the payment, not from the URL', async () => {
-    const { useCase, tenantDb, resolvedGateways } = harness();
+  it('resolves the tenant and exact gateway revision from the payment, not from the URL', async () => {
+    const { useCase, tenantDb, resolvedGateways, resolvedRevisions } = harness();
 
     await useCase.execute('sepay', RAW, HEADERS);
 
     expect(tenantDb.openedFor).toEqual([TENANT_ID]);
     expect(resolvedGateways).toEqual(['sepay']);
+    expect(resolvedRevisions).toEqual(['config-sepay-1']);
   });
 
   it('refuses an unsigned delivery before touching the payment', async () => {
@@ -205,7 +224,12 @@ describe('HandleWebhookUseCase', () => {
     expect(succeededWith).toEqual([
       {
         payload: { event: 'succeeded', amountVnd: DUE.toString(), gatewayOrderRef: 'gw-ref-1' },
-        gatewayData: { gatewayTxnId: 'txn-1', gatewayOrderId: 'order-1', paymentMethod: 'BANK' },
+        gatewayData: {
+          capturedAmount: DUE,
+          gatewayTxnId: 'txn-1',
+          gatewayOrderId: 'order-1',
+          paymentMethod: 'BANK',
+        },
       },
     ]);
     expect(events).toEqual([

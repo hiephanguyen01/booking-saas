@@ -29,7 +29,10 @@ function toRecord(p: Row): PaymentRecord {
     gateway: p.gateway as GatewayKey,
     kind: p.kind,
     amount: p.amount,
+    capturedAmount: p.capturedAmount,
     status: p.status,
+    checkoutState: p.checkoutState,
+    gatewayConfigRevisionId: p.gatewayConfigRevisionId,
     gatewayOrderRef: p.gatewayOrderRef,
     gatewayOrderId: p.gatewayOrderId,
     gatewayTxnId: p.gatewayTxnId,
@@ -52,6 +55,9 @@ export class PrismaPaymentRepository implements IPaymentRepository {
           gateway: data.gateway,
           kind: data.kind,
           amount: data.amount,
+          capturedAmount: data.capturedAmount,
+          checkoutState: data.checkoutState,
+          gatewayConfigRevisionId: data.gatewayConfigRevisionId,
           gatewayOrderRef: data.gatewayOrderRef,
           gatewayTxnId: data.gatewayTxnId,
           paymentMethod: data.paymentMethod,
@@ -60,6 +66,11 @@ export class PrismaPaymentRepository implements IPaymentRepository {
         },
       }),
     );
+  }
+
+  async findById(tx: PrismaTx, id: string): Promise<PaymentRecord | null> {
+    const payment = await tx.payment.findUnique({ where: { id } });
+    return payment ? toRecord(payment) : null;
   }
 
   async findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {
@@ -109,17 +120,18 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     id: string,
     payload: PaymentCompletionPayload,
     gatewayData: {
+      capturedAmount: bigint;
       gatewayTxnId?: string;
       gatewayOrderId?: string;
       paymentMethod?: string;
-    } = {},
+    },
   ): Promise<boolean> {
     const gatewayTxnId = gatewayData.gatewayTxnId ?? null;
     const gatewayOrderId = gatewayData.gatewayOrderId ?? null;
     const paymentMethod = gatewayData.paymentMethod ?? null;
     const affected = await tx.$executeRaw(Prisma.sql`
       UPDATE payments
-      SET status = 'succeeded', paid_at = now(),
+      SET status = 'succeeded', paid_at = now(), captured_amount = ${gatewayData.capturedAmount},
           gateway_txn_id = COALESCE(${gatewayTxnId}, gateway_txn_id),
           gateway_order_id = COALESCE(${gatewayOrderId}, gateway_order_id),
           payment_method = COALESCE(${paymentMethod}, payment_method),
@@ -159,14 +171,17 @@ export class PrismaPaymentRepository implements IPaymentRepository {
         bookingId: string;
         gateway: string;
         amount: bigint;
+        capturedAmount: bigint | null;
         status: string;
+        gatewayConfigRevisionId: string | null;
         gatewayTxnId: string | null;
         gatewayOrderRef: string | null;
       }[]
     >(Prisma.sql`
       SELECT id, tenant_id AS "tenantId", booking_id AS "bookingId", gateway::text AS "gateway",
-             amount, status::text AS "status", gateway_txn_id AS "gatewayTxnId",
-             gateway_order_ref AS "gatewayOrderRef"
+             amount, captured_amount AS "capturedAmount", status::text AS "status",
+             gateway_config_revision_id AS "gatewayConfigRevisionId",
+             gateway_txn_id AS "gatewayTxnId", gateway_order_ref AS "gatewayOrderRef"
       FROM payments
       WHERE status = 'pending' AND created_at < now() - make_interval(secs => ${olderThanSec})
       ORDER BY created_at LIMIT 100`);
@@ -176,7 +191,9 @@ export class PrismaPaymentRepository implements IPaymentRepository {
       bookingId: r.bookingId,
       gateway: r.gateway as GatewayKey,
       amount: r.amount,
+      capturedAmount: r.capturedAmount,
       status: r.status as PaymentRef['status'],
+      gatewayConfigRevisionId: r.gatewayConfigRevisionId,
       gatewayTxnId: r.gatewayTxnId,
       gatewayOrderRef: r.gatewayOrderRef,
     }));
@@ -190,14 +207,18 @@ export class PrismaPaymentRepository implements IPaymentRepository {
         bookingId: string;
         gateway: string;
         amount: bigint;
+        capturedAmount: bigint | null;
         status: string;
+        gatewayConfigRevisionId: string | null;
         gatewayTxnId: string | null;
         gatewayOrderRef: string | null;
         skipBookingConfirmation: boolean;
       }>
     >(Prisma.sql`
       SELECT p.id, p.tenant_id AS "tenantId", p.booking_id AS "bookingId",
-             p.gateway::text AS gateway, p.amount, p.status::text AS status,
+             p.gateway::text AS gateway, p.amount, p.captured_amount AS "capturedAmount",
+             p.status::text AS status,
+             p.gateway_config_revision_id AS "gatewayConfigRevisionId",
              p.gateway_txn_id AS "gatewayTxnId", p.gateway_order_ref AS "gatewayOrderRef",
              (b.status IN ('cancelled', 'refunded') OR EXISTS (
                 SELECT 1 FROM refunds r
@@ -226,7 +247,9 @@ export class PrismaPaymentRepository implements IPaymentRepository {
       bookingId: r.bookingId,
       gateway: r.gateway as GatewayKey,
       amount: r.amount,
+      capturedAmount: r.capturedAmount,
       status: r.status as PaymentRef['status'],
+      gatewayConfigRevisionId: r.gatewayConfigRevisionId,
       gatewayTxnId: r.gatewayTxnId,
       gatewayOrderRef: r.gatewayOrderRef,
       skipBookingConfirmation: r.skipBookingConfirmation,
@@ -337,7 +360,9 @@ export class PrismaPaymentRepository implements IPaymentRepository {
       bookingId: p.bookingId,
       gateway: p.gateway as GatewayKey,
       amount: p.amount,
+      capturedAmount: p.capturedAmount,
       status: p.status,
+      gatewayConfigRevisionId: p.gatewayConfigRevisionId,
       gatewayTxnId: p.gatewayTxnId,
       gatewayOrderRef: p.gatewayOrderRef,
     };

@@ -116,9 +116,17 @@ function harness(options: Options = {}): Harness {
       },
     }),
     fakePort<GatewayRegistryPort>({
-      resolveForTenant: (_tx, _tenantId, requested) => {
+      resolveActiveForCheckout: (_tx, _tenantId, requested) => {
         routedTo.push(requested);
-        return Promise.resolve(gateway);
+        return Promise.resolve({
+          gateway,
+          configRevisionId: requested ? `config-${requested}` : null,
+          settings: {
+            enabledMethods: [],
+            refundStrategy: 'manual',
+            manualRefundSlaHours: 72,
+          } as GatewayPaymentSettings,
+        });
       },
     }),
     fakePort<IGatewayConfigRepository>({
@@ -335,11 +343,15 @@ describe('CheckoutUseCase', () => {
     expect(created[0]?.idempotencyKey).toBe(`checkout:${BOOKING_ID}:bank_transfer:${orderRef}`);
   });
 
-  it('persists the provider method when the gateway does not name one', async () => {
+  it('persists the provider method and gateway revision when the gateway does not name a method', async () => {
     const { useCase, created } = harness();
 
     await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
 
-    expect(created[0]).toMatchObject({ gateway: 'sepay', paymentMethod: 'PROVIDER_BANK_TRANSFER' });
+    expect(created[0]).toMatchObject({
+      gateway: 'sepay',
+      gatewayConfigRevisionId: 'config-sepay',
+      paymentMethod: 'PROVIDER_BANK_TRANSFER',
+    });
   });
 });

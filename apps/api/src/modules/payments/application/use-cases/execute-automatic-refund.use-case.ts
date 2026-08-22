@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -14,10 +13,6 @@ import {
   GATEWAY_REGISTRY,
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
-import {
-  GATEWAY_CONFIG_REPOSITORY,
-  type IGatewayConfigRepository,
-} from '../../domain/ports/gateway-config-repository.port';
 import { Refund } from '../../domain/entities/refund.entity';
 
 /** Executes the provider call after the refund intent is durably committed. */
@@ -27,7 +22,6 @@ export class ExecuteAutomaticRefundUseCase {
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
     @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
-    @Inject(GATEWAY_CONFIG_REPOSITORY) private readonly configs: IGatewayConfigRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -38,19 +32,17 @@ export class ExecuteAutomaticRefundUseCase {
       if (!refund) return null;
       const entity = Refund.rehydrate(refund);
       if (!entity.canExecuteAutomatically()) return null;
-      const payment = await this.payments.findSucceededByBooking(tx, refund.bookingId);
-      if (!payment || !entity.isForPayment(payment)) return null;
-      const gateway = await this.registry.resolveForTenant(tx, tenantId, payment.gateway);
-      // Parallel gateways: settings must come from the PAYMENT's own gateway, not
-      // the base config (which may not even be the gateway that took the payment).
-      const config = await this.configs.findByGateway(tx, tenantId, payment.gateway);
+
+      // A durable refund already names its source transaction. Never substitute
+      // the latest succeeded payment from the booking when multiple captures exist.
+      const payment = await this.payments.findById(tx, refund.paymentId);
+      if (!payment || payment.status !== 'succeeded' || !entity.isForPayment(payment)) return null;
+      const resolved = await this.registry.resolveForPayment(tx, payment);
       return {
         refund,
         payment,
-        gateway,
-        manualRefundSlaHours:
-          config?.settings.manualRefundSlaHours ??
-          DEFAULT_GATEWAY_PAYMENT_SETTINGS.manualRefundSlaHours,
+        gateway: resolved.gateway,
+        manualRefundSlaHours: resolved.settings.manualRefundSlaHours,
       };
     });
     if (!prepared) return;
