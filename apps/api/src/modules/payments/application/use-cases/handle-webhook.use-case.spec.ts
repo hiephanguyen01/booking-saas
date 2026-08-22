@@ -8,7 +8,6 @@ import type {
 } from '../../domain/ports/payment-gateway.port';
 import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 import type { IPaymentRepository } from '../../domain/ports/payment-repository.port';
-import { AmountMismatch } from '../../domain/errors/payment-errors';
 import { BadWebhook, InvalidWebhookSignature } from '../payment-http-errors';
 import { HandleWebhookUseCase } from './handle-webhook.use-case';
 
@@ -58,6 +57,7 @@ interface Harness {
   readonly tenantDb: ReturnType<typeof fakeTenantDb>;
   readonly calls: string[];
   readonly succeededWith: unknown[];
+  readonly capturedAmounts: bigint[];
   readonly terminals: string[];
   readonly events: Array<{ eventType: string; payload: Record<string, unknown> }>;
   readonly resolvedGateways: Array<string | undefined>;
@@ -67,6 +67,7 @@ interface Harness {
 function harness(options: Options = {}): Harness {
   const calls: string[] = [];
   const succeededWith: unknown[] = [];
+  const capturedAmounts: bigint[] = [];
   const terminals: string[] = [];
   const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   const resolvedGateways: Array<string | undefined> = [];
@@ -107,6 +108,11 @@ function harness(options: Options = {}): Harness {
       calls.push('find');
       return Promise.resolve(options.found === undefined ? paymentRef() : options.found);
     },
+    recordCapturedAmountIfPending: (_tx, _id, amount) => {
+      calls.push('recordCaptured');
+      capturedAmounts.push(amount);
+      return Promise.resolve();
+    },
     markSucceeded: (_tx, _id, payload, gatewayData) => {
       calls.push('markSucceeded');
       succeededWith.push({ payload, gatewayData });
@@ -124,6 +130,7 @@ function harness(options: Options = {}): Harness {
     tenantDb,
     calls,
     succeededWith,
+    capturedAmounts,
     terminals,
     events,
     resolvedGateways,
@@ -201,26 +208,38 @@ describe('HandleWebhookUseCase', () => {
     },
   );
 
-  it('rejects an underpayment', async () => {
-    const { useCase, calls } = harness({ verification: verification({ amountVnd: DUE - 1n }) });
+  it('quarantines an underpayment and records the observed capture', async () => {
+    const captured = DUE - 1n;
+    const { useCase, calls, capturedAmounts, events } = harness({
+      verification: verification({ amountVnd: captured }),
+    });
 
-    await expect(useCase.execute('sepay', RAW, HEADERS)).rejects.toBeInstanceOf(AmountMismatch);
+    await expect(useCase.execute('sepay', RAW, HEADERS)).resolves.toBeUndefined();
+
+    expect(capturedAmounts).toEqual([captured]);
     expect(calls).not.toContain('markSucceeded');
+    expect(events).toEqual([]);
   });
 
-  it('accepts an overpayment', async () => {
-    const { useCase, calls } = harness({ verification: verification({ amountVnd: DUE + 1n }) });
+  it('quarantines an overpayment and records the observed capture', async () => {
+    const captured = DUE + 1n;
+    const { useCase, calls, capturedAmounts, events } = harness({
+      verification: verification({ amountVnd: captured }),
+    });
 
-    await useCase.execute('sepay', RAW, HEADERS);
+    await expect(useCase.execute('sepay', RAW, HEADERS)).resolves.toBeUndefined();
 
-    expect(calls).toContain('markSucceeded');
+    expect(capturedAmounts).toEqual([captured]);
+    expect(calls).not.toContain('markSucceeded');
+    expect(events).toEqual([]);
   });
 
   it('records the payment and announces it once', async () => {
-    const { useCase, succeededWith, events } = harness();
+    const { useCase, succeededWith, capturedAmounts, events } = harness();
 
     await useCase.execute('sepay', RAW, HEADERS);
 
+    expect(capturedAmounts).toEqual([]);
     expect(succeededWith).toEqual([
       {
         payload: { event: 'succeeded', amountVnd: DUE.toString(), gatewayOrderRef: 'gw-ref-1' },
