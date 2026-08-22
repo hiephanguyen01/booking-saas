@@ -1,16 +1,36 @@
+import type { GatewayPaymentSettings } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { GatewayKey, PaymentGatewayPort } from './payment-gateway.port';
 
 export const GATEWAY_REGISTRY = Symbol('GATEWAY_REGISTRY');
 
-/**
- * Picks the gateway adapter for a tenant (§11.1). Falls back to the mock when no
- * config is present (dev/test). Implemented by the infrastructure registry.
- */
+export interface ResolvedGateway {
+  gateway: PaymentGatewayPort;
+  configRevisionId: string | null;
+  settings: GatewayPaymentSettings;
+}
+
+export interface PaymentGatewayResolutionInput {
+  id: string;
+  tenantId: string;
+  gateway: GatewayKey;
+  gatewayConfigRevisionId: string | null;
+}
+
+/** Selects an active checkout adapter or the exact historical adapter for a payment. */
 export interface GatewayRegistryPort {
   /** Creds-free adapter for `peekReference` (before the tenant is known). */
   statelessByKey(key: GatewayKey): PaymentGatewayPort;
-  /** The tenant's configured gateway, bound to its decrypted credentials. */
+  resolveActiveForCheckout(
+    tx: PrismaTx,
+    tenantId: string,
+    gateway?: GatewayKey,
+  ): Promise<ResolvedGateway>;
+  resolveForPayment(
+    tx: PrismaTx,
+    payment: PaymentGatewayResolutionInput,
+  ): Promise<ResolvedGateway>;
+  /** Temporary compatibility seam for PR1 callers not yet migrated. */
   resolveForTenant(
     tx: PrismaTx,
     tenantId: string,

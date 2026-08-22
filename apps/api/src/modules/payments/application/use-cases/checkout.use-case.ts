@@ -100,8 +100,10 @@ export class CheckoutUseCase {
       if (!routed && configs.length > 0) {
         throw new PaymentMethodUnavailable();
       }
-      // configs rỗng → resolveForTenant trả mock (dev); guard NO_ACTIVE_GATEWAY prod giữ nguyên phía dưới
-      const gateway = await this.registry.resolveForTenant(tx, tenant.id, routed?.gateway);
+      // Empty configs retain the existing dev/mock fallback. Real configured
+      // gateways return the exact active revision ID that this payment must keep.
+      const resolved = await this.registry.resolveActiveForCheckout(tx, tenant.id, routed?.gateway);
+      const gateway = resolved.gateway;
       const providerPaymentMethod = gateway.providerPaymentMethod(paymentMethod);
 
       // Idempotent per method: with parallel wallet gateways, a booking could end up
@@ -140,6 +142,8 @@ export class CheckoutUseCase {
         gateway: gateway.key,
         kind,
         amount,
+        checkoutState: 'ready',
+        gatewayConfigRevisionId: resolved.configRevisionId,
         gatewayTxnId: created.gatewayTxnId ?? null,
         gatewayOrderRef: created.gatewayOrderRef ?? orderRef,
         paymentMethod: created.paymentMethod ?? providerPaymentMethod,
