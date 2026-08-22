@@ -1,8 +1,9 @@
 /**
  * End-to-end money-lifecycle scenario driver.
  *
- * Replaces the integration tests the no-tests policy forbids (ADR 0005) — the
- * companion to `audit-tax-lifecycle.ts`: that one asserts invariants over whatever
+ * Covers what an integration suite would — still forbidden under ADR 0009, which
+ * allows only use-case unit tests and the architecture guards. The companion to
+ * `audit-tax-lifecycle.ts`: that one asserts invariants over whatever
  * is in the database, this one CREATES the situations worth asserting by driving
  * the real HTTP API, so every state change goes through the real controllers,
  * use-cases, outbox relay and settlement worker.

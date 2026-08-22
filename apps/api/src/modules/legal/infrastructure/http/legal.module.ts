@@ -35,7 +35,7 @@ import { TenantLegalController } from './tenant-legal.controller';
   // ResolveLegalCallerScopeUseCase uses to verify the scope headers the
   // dashboard names) need importing here. Both edges already exist at file
   // level — legal has always imported identity-access's guards/decorators —
-  // so no new edge appears in `pnpm check:module-cycles`.
+  // so no new edge appears in the graph the module-cycle guard walks.
   imports: [PrismaModule, TenantContextModule, TenancyModule, IdentityAccessModule],
   controllers: [TenantLegalController, PublicLegalController, MeLegalController],
   providers: [
@@ -97,7 +97,7 @@ export class LegalModule implements OnModuleInit {
     // D10: tenancy cannot call SeedTenantLegalDraftsUseCase directly either —
     // legal already imports tenancy (TENANT_REPOSITORY, ResolveTenantByHostUseCase,
     // RequireActiveSubscriptionGuard), so a tenancy -> legal call back would close
-    // the exact cycle `pnpm check:module-cycles` exists to catch. CreateTenantUseCase
+    // the exact cycle the module-cycle guard exists to catch. CreateTenantUseCase
     // already emits `tenant.created` unconditionally; seeding the four drafts here,
     // async, is harmless — a brand-new tenant is dark until its owner publishes
     // regardless of whether the drafts exist yet.

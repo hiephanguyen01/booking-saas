@@ -58,7 +58,7 @@ export interface LegalCallerScope {
  * Affiliates are membership-gated, not RBAC (`AffiliateController`'s docblock),
  * so they hold no role assignment, and the `affiliates` table belongs to a
  * module `legal` may not import — `affiliate` already imports `legal`'s guard,
- * so the reverse edge is the cycle `pnpm check:module-cycles` exists to catch.
+ * so the reverse edge is the cycle the module-cycle guard exists to catch.
  * It is therefore treated as a selector over a tenant that must exist, which is
  * safe on exactly these three routes: every query underneath is narrowed to
  * `user_id = <the caller>`, and the only tenant-owned data reachable is

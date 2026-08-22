@@ -3,7 +3,7 @@
 Local rules for the customer storefront. Root context: [`../../AGENTS.md`](../../AGENTS.md). Frontend
 conventions shared with the dashboard: [`../../docs/conventions.md`](../../docs/conventions.md).
 
-## Folder architecture (enforced by `pnpm check:frontend-structure`)
+## Folder architecture (enforced by the frontend-structure guard in `pnpm test`)
 
 ```
 app/
@@ -105,7 +105,7 @@ nothing on their own and have to opt in:
   md:rounded-md` looks harmless and means "the tenant's radius applies on phones only" — the desktop
   half silently ignores `theme_config`. This is not hypothetical: the tokens were introduced that way
   (`eef5dc0e`, "improve tenant config") by adding the token and keeping the old literal as a `md:`
-  override, and every such site was still mobile-only until 2026-08-18. **`pnpm check:tenant-surfaces`
+  override, and every such site was still mobile-only until 2026-08-18. **`pnpm test`
   now fails the build on it** (in CI).
 - **Substituting** a fixed shape is the bug; **removing** the surface is not. `md:rounded-md` says
   "use 6px instead of whatever the tenant chose". `md:rounded-none` / `md:shadow-none` / `md:border-0`
@@ -194,13 +194,15 @@ Never route partner identity/legal documents through the generic public image-up
 
 ## Verification
 
-ADR 0005 prohibits automated tests and test scripts. Use the static security gate, lint, typecheck,
-production build and manual runtime flows for tenant guards, session rotation/locking,
-request-security, parsers, money/idempotency and time-sensitive changes.
+[ADR 0009](../../docs/decisions/0009-limited-tests-policy.md) allows tests in the API's use-case layer
+and in `tests/architecture/` — **not here**. The storefront gets no component, route or e2e tests.
+Its rules are enforced statically instead, by the storefront-security, frontend-structure,
+theme-token and tenant-surface guards in `pnpm test`. For tenant guards, session rotation/locking,
+request-security, parsers, money/idempotency and time-sensitive changes, use those guards plus lint,
+typecheck, production build and manual runtime flows.
 
 ## Scripts (verified)
 
 `dev` (`react-router dev`, port `STOREFRONT_PORT`/5173) · `build` · `start`
-(`react-router-serve ./build/server/index.js`) · `lint` (`eslint app`) · `security` (static policy
-gate) · `typecheck`
+(`react-router-serve ./build/server/index.js`) · `lint` (`eslint app`) · `typecheck`
 (`react-router typegen && tsc`). Requires Node ≥ 22.22.0.

@@ -11,7 +11,7 @@ export const AUTHENTICATED_ONLY = 'authenticatedOnly';
  * (`permissions.guard.ts:35`), so the string `'authenticatedOnly'` must never change.
  * `identity-access/infrastructure/http/decorators/authenticated-only.decorator.ts` re-exports both
  * symbols so its existing importers keep working untouched; do not delete that re-export, it is
- * what keeps `pnpm check:module-cycles` green.
+ * what keeps the module-cycle guard green.
  */
 export const AuthenticatedOnly = () =>
   applyDecorators(

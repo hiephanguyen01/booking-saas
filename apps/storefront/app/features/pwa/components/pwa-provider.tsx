@@ -114,7 +114,7 @@ export function PwaProvider({
         // A deliberately dark band: it opts into `dark` and then styles itself with
         // ordinary semantic tokens, per apps/storefront/CLAUDE.md. Literal
         // white/black utilities would ignore a tenant's brand and fail
-        // `pnpm check:theme-tokens`.
+        // the theme-token guard.
         <aside
           className="dark fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto grid max-w-xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-background/80 p-3 pr-9 text-foreground shadow-2xl backdrop-blur-md lg:hidden"
           aria-label={t('install.title')}

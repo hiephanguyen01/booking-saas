@@ -18,7 +18,7 @@ Author migrations **by hand**:
   `migration.sql` written by hand (including any RLS block for a new tenant-scoped table).
 - Apply with `pnpm --filter=@booking/api prisma:deploy` (`prisma migrate deploy`), then
   `prisma:generate`. Do **not** run `prisma migrate dev`.
-- `pnpm --filter=@booking/api check:rls` (CI) fails if a `tenant_id` table is missing FORCE RLS + policy.
+- `pnpm test` (CI) fails if a `tenant_id` table is missing FORCE RLS + policy.
 
 ## Consequences
 

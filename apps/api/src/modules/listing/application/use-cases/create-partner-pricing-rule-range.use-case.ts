@@ -96,9 +96,10 @@ export class CreatePartnerPricingRuleRangeUseCase {
 
       const created: PricingRuleRecord[] = [];
       const skipped: { date: string; reason: PricingRuleSkipReason }[] = [];
-      // Read once, then keep in step with our own writes: `replaceSameWindow`
-      // drops entries it deletes so a later overlap check never consults a row
-      // this transaction already removed.
+      // One read for the whole span. Rows this transaction deletes need no
+      // pruning from it: an overlap requires the same `params.date`, and each
+      // date is visited once, so a row replaced on date D can never reach the
+      // check for a later date.
       const existing = await this.rules.listByListing(tx, listingId);
 
       if (isDaily) {
@@ -149,20 +150,16 @@ export class CreatePartnerPricingRuleRangeUseCase {
 
   /**
    * Re-saving the exact same scope overwrites it, matching the single-date
-   * save. Mutates `existing` so the caller's overlap checks stay truthful about
-   * what is still stored.
+   * save — `findOverlappingWindow` deliberately does not flag an identical
+   * window, so this is what stops a repeated range action stacking duplicates.
    */
   private async replaceSameWindow(
     tx: PrismaTx,
-    existing: PricingRuleRecord[],
+    existing: readonly PricingRuleRecord[],
     candidate: NewPricingRule,
   ): Promise<void> {
-    for (let index = existing.length - 1; index >= 0; index -= 1) {
-      const rule = existing[index];
-      if (rule && sameWindowKey(rule, candidate)) {
-        await this.rules.delete(tx, rule.id);
-        existing.splice(index, 1);
-      }
+    for (const rule of existing) {
+      if (sameWindowKey(rule, candidate)) await this.rules.delete(tx, rule.id);
     }
   }
 }
