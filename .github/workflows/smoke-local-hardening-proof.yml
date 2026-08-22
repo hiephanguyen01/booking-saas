@@ -1,9 +1,10 @@
 name: Smoke Local Hardening Proof
 
 on:
-  push:
+  pull_request:
     branches:
-      - refactor/momo-production-hardening
+      - main
+      - refactor/durable-checkout-payos
 
 jobs:
   proof:
@@ -18,7 +19,7 @@ jobs:
 
           const source = fs.readFileSync('scripts/smoke-local.mjs', 'utf8');
           const required = [
-            ['all four compose services are required', /postgres[\s\S]*redis[\s\S]*minio[\s\S]*mailpit|REQUIRED_COMPOSE_SERVICES/],
+            ['all four compose services are required', /REQUIRED_COMPOSE_SERVICES/],
             ['encrypted MoMo credentials require credentials.enc', /credentials\?\.enc|credentials\.enc|\.credentials\?\.enc/],
             ['public callback URL is explicitly HTTPS-only', /protocol\s*!==\s*["']https:["']|protocol\s*===\s*["']https:["']/],
             ['HTTP requests are destroyed on timeout', /req\.destroy\(/],
