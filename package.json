@@ -14,6 +14,7 @@
     "test:arch": "vitest run --project architecture",
     "test:api": "vitest run --project api",
     "smoke:local": "node --env-file-if-exists=.env scripts/smoke-local.mjs",
+    "smoke:infra:local": "node --env-file-if-exists=.env scripts/smoke-infra-local.mjs",
     "format": "prettier --write ."
   },
   "devDependencies": {
