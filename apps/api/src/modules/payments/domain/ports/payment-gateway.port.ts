@@ -8,7 +8,7 @@ import type { CheckoutDestination } from '@booking/contracts';
 import type { CustomerPaymentMethod } from '@booking/contracts';
 
 export type GatewayKey = 'sepay' | 'payos' | 'momo' | 'zalopay' | 'mock';
-export type WebhookEvent = 'succeeded' | 'failed' | 'expired' | 'refunded';
+export type WebhookEvent = 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
 
 export interface CreatePaymentInput {
   /** Canonical durable local checkout-attempt identity. */
@@ -42,17 +42,30 @@ export interface WebhookVerification {
 }
 
 export interface RefundInput {
+  /** Durable local refund identity; providers may derive stable operation ids from it. */
+  refundId: string;
   gatewayTxnId: string;
   gatewayOrderRef: string;
   amountVnd: bigint;
   reason: string;
 }
 
+export type RefundProviderStatus = 'succeeded' | 'pending' | 'failed' | 'unsupported';
+
 export interface RefundResult {
-  /** false → the gateway has no refund API; the refund becomes `manual_required`. */
-  supported: boolean;
+  status: RefundProviderStatus;
+  /** Provider refund/operation reference when one exists. */
   refundId?: string;
 }
+
+export interface RefundStatusInput {
+  /** Durable local refund identity. */
+  refundId: string;
+  /** Previously persisted provider refund reference. */
+  gatewayRefundId: string | null;
+}
+
+export type RefundStatusResult = RefundResult;
 
 export interface PaymentStatusResult {
   status: 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
@@ -76,5 +89,6 @@ export interface PaymentGatewayPort {
   peekReference(rawBody: Buffer): string | null;
   verifyWebhook(rawBody: Buffer, headers: Record<string, string>): WebhookVerification;
   refund(input: RefundInput): Promise<RefundResult>;
+  queryRefundStatus(input: RefundStatusInput): Promise<RefundStatusResult>;
   queryPaymentStatus(reference: string): Promise<PaymentStatusResult>;
 }

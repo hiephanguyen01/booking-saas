@@ -14,6 +14,7 @@ import type {
   RefundRecord,
   RefundHistoryRecord,
   RefundRecoveryRecord,
+  PendingAutomaticRefundRecord,
   MissingRefundRecord,
 } from '../../domain/ports/refund-repository.port';
 import { pageOffset } from '../../../../shared/pagination/pagination';
@@ -87,18 +88,46 @@ export class PrismaRefundRepository implements IRefundRepository {
     id: string,
     gatewayRefundId: string | null,
   ): Promise<RefundRecord | null> {
-    await tx.refund.updateMany({
+    const changed = await tx.refund.updateMany({
       where: { id, status: 'pending', executionMode: 'automatic' },
       data: { status: 'succeeded', gatewayRefundId, completedAt: new Date() },
     });
+    if (changed.count === 0) return null;
+    return this.findById(tx, id);
+  }
+
+  async markAutomaticPending(
+    tx: PrismaTx,
+    id: string,
+    gatewayRefundId: string | null,
+  ): Promise<RefundRecord | null> {
+    const changed = await tx.refund.updateMany({
+      where: { id, status: 'pending', executionMode: 'automatic' },
+      data: { gatewayRefundId },
+    });
+    if (changed.count === 0) return null;
+    return this.findById(tx, id);
+  }
+
+  async failAutomatic(
+    tx: PrismaTx,
+    id: string,
+    gatewayRefundId: string | null,
+  ): Promise<RefundRecord | null> {
+    const changed = await tx.refund.updateMany({
+      where: { id, status: 'pending', executionMode: 'automatic' },
+      data: { status: 'failed', gatewayRefundId },
+    });
+    if (changed.count === 0) return null;
     return this.findById(tx, id);
   }
 
   async requireManual(tx: PrismaTx, id: string, dueAt: Date): Promise<RefundRecord | null> {
-    await tx.refund.updateMany({
+    const changed = await tx.refund.updateMany({
       where: { id, status: 'pending', executionMode: 'automatic' },
       data: { status: 'manual_required', executionMode: 'manual', dueAt },
     });
+    if (changed.count === 0) return null;
     return this.findById(tx, id);
   }
 
@@ -145,6 +174,16 @@ export class PrismaRefundRepository implements IRefundRepository {
       })),
       total,
     };
+  }
+
+  async findPendingAutomatic(limit: number): Promise<PendingAutomaticRefundRecord[]> {
+    return this.prisma.admin.$queryRaw<PendingAutomaticRefundRecord[]>(Prisma.sql`
+      SELECT id, tenant_id AS "tenantId"
+      FROM refunds
+      WHERE status = 'pending'::refund_status
+        AND execution_mode = 'automatic'::refund_execution_mode
+      ORDER BY updated_at, created_at, id
+      LIMIT ${limit}`);
   }
 
   async findSucceededNeedingRecovery(limit: number): Promise<RefundRecoveryRecord[]> {

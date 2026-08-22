@@ -8,6 +8,8 @@ import type {
   PaymentStatusResult,
   RefundResult,
   RefundInput,
+  RefundStatusInput,
+  RefundStatusResult,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
 import type { CustomerPaymentMethod } from '@booking/contracts';
@@ -159,9 +161,21 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
       },
       body: JSON.stringify({ order_invoice_number: input.gatewayOrderRef }),
     });
-    if ([400, 403, 404, 409, 422].includes(response.status)) return { supported: false };
+    if (response.status === 409) {
+      const status = await this.queryPaymentStatus(input.gatewayOrderRef);
+      if (status.status === 'refunded') {
+        return { status: 'succeeded', refundId: `sepay:void:${input.gatewayOrderRef}` };
+      }
+      return { status: 'unsupported' };
+    }
+    if ([400, 403, 404, 422].includes(response.status)) return { status: 'unsupported' };
     if (!response.ok) throw new Error(`SePay void failed with ${response.status}`);
-    return { supported: true, refundId: `sepay:void:${input.gatewayOrderRef}` };
+    return { status: 'succeeded', refundId: `sepay:void:${input.gatewayOrderRef}` };
+  }
+
+  queryRefundStatus(_input: RefundStatusInput): Promise<RefundStatusResult> {
+    // SePay's current void API exposes no dedicated refund-status endpoint.
+    return Promise.resolve({ status: 'unsupported' });
   }
 
   async queryPaymentStatus(orderInvoiceNumber: string): Promise<PaymentStatusResult> {

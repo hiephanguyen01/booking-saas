@@ -6,7 +6,10 @@ import type {
   GatewayKey,
   PaymentGatewayPort,
   PaymentStatusResult,
+  RefundInput,
   RefundResult,
+  RefundStatusInput,
+  RefundStatusResult,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
 import { GatewayRequestError, providerJson } from './provider-http';
@@ -294,8 +297,12 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
     };
   }
 
-  refund(): Promise<RefundResult> {
-    return Promise.resolve({ supported: false });
+  refund(_input: RefundInput): Promise<RefundResult> {
+    return Promise.resolve({ status: 'unsupported' });
+  }
+
+  queryRefundStatus(_input: RefundStatusInput): Promise<RefundStatusResult> {
+    return Promise.resolve({ status: 'unsupported' });
   }
 
   async queryPaymentStatus(reference: string): Promise<PaymentStatusResult> {

@@ -9,6 +9,8 @@ import type {
   PaymentStatusResult,
   RefundInput,
   RefundResult,
+  RefundStatusInput,
+  RefundStatusResult,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
 
@@ -36,6 +38,7 @@ type MockTxnState = { status: PaymentStatusResult['status']; amountVnd: bigint }
 export class MockGatewayAdapter implements PaymentGatewayPort {
   readonly key: GatewayKey = 'mock';
   private readonly ledger = new Map<string, MockTxnState>();
+  private readonly refundLedger = new Map<string, RefundStatusResult>();
 
   prepareOrderReference(paymentId: string): string {
     return paymentId;
@@ -86,10 +89,20 @@ export class MockGatewayAdapter implements PaymentGatewayPort {
   }
 
   refund(input: RefundInput): Promise<RefundResult> {
-    return Promise.resolve({
-      supported: true,
-      refundId: `mock_refund_${randomUUID()}_${input.gatewayTxnId.slice(-4)}`,
-    });
+    const refundId = `mock_refund_${randomUUID()}_${input.gatewayTxnId.slice(-4)}`;
+    const result: RefundResult = { status: 'succeeded', refundId };
+    this.refundLedger.set(refundId, result);
+    return Promise.resolve(result);
+  }
+
+  queryRefundStatus(input: RefundStatusInput): Promise<RefundStatusResult> {
+    if (!input.gatewayRefundId) return Promise.resolve({ status: 'pending' });
+    return Promise.resolve(
+      this.refundLedger.get(input.gatewayRefundId) ?? {
+        status: 'pending',
+        refundId: input.gatewayRefundId,
+      },
+    );
   }
 
   queryPaymentStatus(gatewayTxnId: string): Promise<PaymentStatusResult> {
