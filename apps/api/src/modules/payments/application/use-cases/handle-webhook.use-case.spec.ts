@@ -140,6 +140,8 @@ describe('HandleWebhookUseCase', () => {
   });
 
   it('acknowledges an unknown transaction without opening a transaction', async () => {
+    // A gateway will happily post about payments that are not ours; answering 200
+    // and doing nothing is the correct behaviour, not an error.
     const { useCase, tenantDb, events } = harness({ found: null });
 
     await expect(useCase.execute('sepay', RAW, HEADERS)).resolves.toBeUndefined();
@@ -167,6 +169,9 @@ describe('HandleWebhookUseCase', () => {
   });
 
   it('ignores a refund notification instead of downgrading the payment', async () => {
+    // A SePay TRANSACTION_VOID confirms an already-recorded automatic refund. If
+    // it were treated as a terminal event it would mark the original payment
+    // failed.
     const { useCase, calls, events } = harness({
       verification: verification({ event: 'refunded' }),
     });
@@ -191,6 +196,7 @@ describe('HandleWebhookUseCase', () => {
       await useCase.execute('sepay', RAW, HEADERS);
 
       expect(terminals).toEqual([to]);
+      // No `payment.succeeded`: a late failure must not tell Booking to confirm.
       expect(events).toEqual([]);
     },
   );
@@ -235,6 +241,9 @@ describe('HandleWebhookUseCase', () => {
   });
 
   it('announces nothing when the flip did not happen — five deliveries, one event', async () => {
+    // The idempotency guard. `markSucceeded` is an atomic non-succeeded→succeeded
+    // UPDATE, so only the first of N duplicate deliveries gets `true`; emitting on
+    // the others would confirm the booking N times.
     const { useCase, events } = harness({ flipped: false });
 
     await useCase.execute('sepay', RAW, HEADERS);
