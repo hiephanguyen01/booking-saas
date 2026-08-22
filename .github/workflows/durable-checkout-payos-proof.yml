@@ -47,6 +47,18 @@ jobs:
           pnpm --filter=@booking/api lint
           pnpm --filter=@booking/api typecheck
           pnpm --filter=@booking/api build
+      - name: Repository CI-equivalent gates
+        run: |
+          pnpm check:no-tests
+          pnpm check:module-cycles
+          pnpm check:frontend-structure
+          pnpm check:theme-tokens
+          pnpm check:tenant-surfaces
+          pnpm --filter=@booking/storefront security
+          pnpm turbo run typecheck --filter=@booking/api
+          pnpm turbo run lint typecheck --filter=@booking/storefront --filter=@booking/dashboard
+          pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
+          pnpm --filter=@booking/api check:rls
       - name: Disposable durable checkout + payOS proof
         working-directory: apps/api
         shell: bash
@@ -92,7 +104,6 @@ jobs:
 
             const originalFetch = globalThis.fetch;
             try {
-              // Create: lookup miss -> one POST. Checkout URL is rebuilt from the fixed host.
               const calls: string[] = [];
               globalThis.fetch = (async (_request: string | URL | Request, init?: RequestInit) => {
                 const method = init?.method ?? 'GET';
@@ -128,7 +139,6 @@ jobs:
                 'https://pay.payos.vn/web/proof-link',
               );
 
-              // Provider accepts POST but response is lost. Retry must recover by GET only.
               const recoverId = '00000000-0000-7000-8000-000000000124';
               const recoverRef = payos.prepareOrderReference(recoverId);
               let phase: 'first' | 'second' = 'first';
@@ -166,7 +176,7 @@ jobs:
               );
               phase = 'second';
               const recovered = await payos.createPayment(recoveryInput);
-              assert.deepEqual(recoveryCalls, ['first:GET', 'first:POST', 'second:GET']);
+              assert.deepEqual(recoveryCalls, ['first:GET', 'first:POST', 'first:GET', 'second:GET']);
               assert.equal(
                 recovered.destination.type === 'redirect' ? recovered.destination.paymentUrl : '',
                 'https://pay.payos.vn/web/recovered-link',
@@ -175,7 +185,6 @@ jobs:
               globalThis.fetch = originalFetch;
             }
 
-            // Real PostgreSQL proof: advisory lock serializes two identical checkout claims.
             const prisma = new PrismaClient();
             const repo = new PrismaPaymentRepository({} as never);
             const tenantId = '00000000-0000-7000-8000-000000000201';
@@ -218,11 +227,15 @@ jobs:
             assert.equal(claimed[0], claimed[1], 'concurrent same-method checkout must reuse one Payment');
             assert.equal(await prisma.payment.count({ where: { bookingId } }), 1);
 
-            // Early webhook can succeed before Phase C. Attaching handoff must preserve its txn id.
             const durableId = claimed[0]!;
             await prisma.payment.update({
               where: { id: durableId },
-              data: { status: 'succeeded', gatewayTxnId: 'webhook-txn', checkoutState: 'creating' },
+              data: {
+                status: 'succeeded',
+                gatewayTxnId: 'webhook-txn',
+                checkoutState: 'creating',
+                gatewayPayload: { event: 'succeeded', amountVnd: '3000' },
+              },
             });
             await prisma.$transaction(async (tx) => {
               const latest = await repo.findLatestByBooking(tx as never, bookingId);
@@ -239,6 +252,13 @@ jobs:
             const afterEarlyWebhook = await prisma.payment.findUniqueOrThrow({ where: { id: durableId } });
             assert.equal(afterEarlyWebhook.checkoutState, 'ready');
             assert.equal(afterEarlyWebhook.gatewayTxnId, 'webhook-txn');
+            const payload = afterEarlyWebhook.gatewayPayload as Record<string, unknown>;
+            assert.equal(payload.event, 'succeeded');
+            assert.equal(payload.amountVnd, '3000');
+            assert.equal(
+              (payload.destination as { paymentUrl?: string } | undefined)?.paymentUrl,
+              'https://pay.payos.vn/web/early',
+            );
 
             await prisma.$disconnect();
 
@@ -250,6 +270,7 @@ jobs:
               payosTimeoutRecovery: true,
               postgresConcurrentCheckoutSinglePayment: true,
               earlyWebhookTxnPreserved: true,
+              checkoutAndWebhookEvidenceMerged: true,
             }));
           }
 
