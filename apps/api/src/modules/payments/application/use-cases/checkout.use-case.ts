@@ -1,7 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { CheckoutResponse } from '@booking/contracts';
-import type { CustomerPaymentMethod } from '@booking/contracts';
+import type { CheckoutResponse, CustomerPaymentMethod } from '@booking/contracts';
+import { v7 as uuidv7 } from 'uuid';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
 import { pickConfigForMethod } from '../../domain/method-routing';
@@ -11,8 +10,10 @@ import {
   type IPaymentBookingReader,
 } from '../../domain/ports/payment-booking-reader.port';
 import {
+  CheckoutOrderReferenceCollision,
   PAYMENT_REPOSITORY,
   type IPaymentRepository,
+  type PaymentRecord,
 } from '../../domain/ports/payment-repository.port';
 import {
   GATEWAY_REGISTRY,
@@ -28,19 +29,17 @@ import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
 } from '../../domain/ports/gateway-config-repository.port';
+import { GatewayRequestError } from '../../infrastructure/gateways/provider-http';
 
-/**
- * The tenant's OWN storefront origin — each tenant serves on its own dynamic
- * domain (`tenant_domains`), so the return/cancel URLs must point back to the
- * host the customer is actually on, never a single global storefront.
- */
+const LOCAL_REFERENCE_RETRIES = 3;
+
 function storefrontOrigin(host: string): string {
   const scheme = process.env.NODE_ENV === 'production' ? 'https' : 'http';
   let url: URL;
   try {
     url = new URL(`${scheme}://${host.trim()}`);
   } catch {
-    throw invalidStorefrontHost();
+    throw new InvalidStorefrontHost();
   }
   if (
     url.username ||
@@ -50,19 +49,22 @@ function storefrontOrigin(host: string): string {
     url.hash ||
     !url.hostname
   ) {
-    throw invalidStorefrontHost();
+    throw new InvalidStorefrontHost();
   }
   return url.origin;
 }
 
-function invalidStorefrontHost(): InvalidStorefrontHost {
-  return new InvalidStorefrontHost();
+interface CheckoutPhaseA {
+  payment: PaymentRecord;
+  destination: CheckoutResponse['destination'] | null;
+  bookingCode: string;
 }
 
 /**
- * Create a gateway payment for a booking (§11.2). Amount = deposit + security
- * deposit (the security deposit is refunded on return, §9.4). Returns a
- * normalized provider handoff; the webhook — not the return URL — confirms it.
+ * Durable checkout is split into three phases:
+ * A) short DB tx creates/claims a local Payment attempt;
+ * B) provider network call runs with no DB transaction open;
+ * C) short DB tx attaches the provider handoff.
  */
 @Injectable()
 export class CheckoutUseCase {
@@ -81,76 +83,128 @@ export class CheckoutUseCase {
     paymentMethod: CustomerPaymentMethod,
   ): Promise<CheckoutResponse> {
     const tenant = await this.resolveTenant.execute(host);
-    if (!tenant.live) {
-      throw new PaymentStorefrontSuspended();
-    }
-    return this.tenantDb.forTenant(tenant.id, async (tx) => {
+    if (!tenant.live) throw new PaymentStorefrontSuspended();
+
+    const origin = storefrontOrigin(host);
+
+    // Phase A: all local validation/routing plus durable attempt creation in one
+    // short tenant transaction. There is deliberately no provider I/O here.
+    const prepared = await this.tenantDb.forTenant(tenant.id, async (tx): Promise<CheckoutPhaseA> => {
       const booking = await this.bookings.findById(tx, bookingId);
       if (!booking) throw new BookingNotFound();
-      // Two legal shapes: the FIRST payment on a booking awaiting payment, and a
-      // BALANCE payment on one already confirmed but not fully paid (§8.3). The
-      // two guards stay separate so the deposit path keeps its strict
-      // `pending_payment` check.
+
       const isBalance = booking.status === 'confirmed';
       if (isBalance) Payment.assertBalancePayable(booking);
       else Payment.assertPayable(booking);
 
+      const { amount, kind } = isBalance ? Payment.planBalance(booking) : Payment.plan(booking);
       const configs = await this.configs.findActiveAll(tx, tenant.id);
       const routed = pickConfigForMethod(configs, paymentMethod);
-      if (!routed && configs.length > 0) {
-        throw new PaymentMethodUnavailable();
-      }
-      // Empty configs retain the existing dev/mock fallback. Real configured
-      // gateways return the exact active revision ID that this payment must keep.
+      if (!routed && configs.length > 0) throw new PaymentMethodUnavailable();
+
       const resolved = await this.registry.resolveActiveForCheckout(tx, tenant.id, routed?.gateway);
       const gateway = resolved.gateway;
       const providerPaymentMethod = gateway.providerPaymentMethod(paymentMethod);
-
-      // Idempotent per method: with parallel wallet gateways, a booking could end up
-      // with 2 pending links (e.g. one MoMo, one ZaloPay) if the customer switches
-      // methods before either resolves — the webhook confirms whichever one succeeds
-      // first, the other is left to expire via reconciliation. Acceptable trade-off.
-      const existing = await this.payments.findPendingCheckout(
-        tx,
-        bookingId,
-        providerPaymentMethod,
-      );
-      if (existing) return { paymentId: existing.id, destination: existing.destination };
-
-      const { amount, kind } = isBalance ? Payment.planBalance(booking) : Payment.plan(booking);
-      const origin = storefrontOrigin(host); // the tenant's own domain (from the Host the customer used)
       Payment.assertGatewayAccepts({
         gatewayKey: gateway.key,
         amount,
         isProductionEnv: process.env.NODE_ENV === 'production',
         allowMockPayments: process.env.ALLOW_MOCK_PAYMENTS === 'true',
       });
-      const orderRef = `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
-      const bookingReturnUrl = `${origin}/bookings/${booking.code}`;
-      const created = await gateway.createPayment({
-        amountVnd: amount,
-        orderCode: orderRef,
-        description: `Booking ${booking.code}`,
+
+      await this.payments.lockCheckoutAttempt(tx, bookingId, kind, providerPaymentMethod);
+      const reusable = await this.payments.findReusableCheckoutAttempt(
+        tx,
+        bookingId,
+        kind,
+        providerPaymentMethod,
+      );
+      if (reusable) {
+        return {
+          payment: reusable.payment,
+          destination: reusable.destination,
+          bookingCode: booking.code,
+        };
+      }
+
+      for (let attempt = 0; attempt < LOCAL_REFERENCE_RETRIES; attempt++) {
+        const paymentId = uuidv7();
+        const gatewayOrderRef = gateway.prepareOrderReference(paymentId);
+        try {
+          const payment = await this.payments.createPendingCheckout(tx, tenant.id, {
+            id: paymentId,
+            bookingId,
+            gateway: gateway.key,
+            kind,
+            amount,
+            checkoutState: 'creating',
+            gatewayConfigRevisionId: resolved.configRevisionId,
+            gatewayOrderRef,
+            paymentMethod: providerPaymentMethod,
+            idempotencyKey: `checkout:${paymentId}`,
+          });
+          return { payment, destination: null, bookingCode: booking.code };
+        } catch (error) {
+          if (error instanceof CheckoutOrderReferenceCollision) continue;
+          throw error;
+        }
+      }
+
+      throw new Error('Unable to allocate a unique checkout order reference');
+    });
+
+    // A previously completed Phase C is a pure local fast path: double-clicks and
+    // retries never touch the provider again.
+    if (prepared.destination) {
+      return { paymentId: prepared.payment.id, destination: prepared.destination };
+    }
+
+    // Resolve the exact immutable config revision recorded in Phase A. A tenant
+    // rotating credentials now cannot switch this in-flight attempt to new keys.
+    const resolved = await this.tenantDb.forTenant(tenant.id, (tx) =>
+      this.registry.resolveForPayment(tx, prepared.payment),
+    );
+    const gateway = resolved.gateway;
+    const bookingReturnUrl = `${origin}/bookings/${prepared.bookingCode}`;
+
+    // Phase B: provider call with NO DB transaction open.
+    let created;
+    try {
+      created = await gateway.createPayment({
+        paymentId: prepared.payment.id,
+        gatewayOrderRef: prepared.payment.gatewayOrderRef,
+        amountVnd: prepared.payment.amount,
+        description: `Booking ${prepared.bookingCode}`,
         returnUrl: `${bookingReturnUrl}?payment=success`,
         errorUrl: `${bookingReturnUrl}?payment=error`,
         cancelUrl: `${bookingReturnUrl}?payment=cancel`,
         expiresInSec: 900,
         paymentMethod,
       });
-      const payment = await this.payments.create(tx, tenant.id, {
-        bookingId,
-        gateway: gateway.key,
-        kind,
-        amount,
-        checkoutState: 'ready',
-        gatewayConfigRevisionId: resolved.configRevisionId,
+    } catch (error) {
+      // Retryable transport/timeout failures intentionally keep `creating`; the next
+      // request reuses the same durable payment/reference. Definite payOS rejection
+      // becomes create_failed so a new checkout attempt can be minted next time.
+      if (error instanceof GatewayRequestError && error.kind !== 'retryable') {
+        await this.tenantDb.forTenant(tenant.id, (tx) =>
+          this.payments.markCheckoutCreateFailed(tx, prepared.payment.id),
+        );
+      }
+      throw error;
+    }
+
+    // Phase C: attach handoff/provider ids. This write accepts a concurrently
+    // succeeded payment so an early webhook cannot make us lose the checkout URL.
+    const attached = await this.tenantDb.forTenant(tenant.id, (tx) =>
+      this.payments.markCheckoutReady(tx, prepared.payment.id, {
+        destination: created.destination,
         gatewayTxnId: created.gatewayTxnId ?? null,
-        gatewayOrderRef: created.gatewayOrderRef ?? orderRef,
-        paymentMethod: created.paymentMethod ?? providerPaymentMethod,
-        idempotencyKey: `checkout:${bookingId}:${paymentMethod}:${created.gatewayOrderRef ?? created.gatewayTxnId ?? orderRef}`,
-        gatewayPayload: { destination: created.destination },
-      });
-      return { paymentId: payment.id, destination: created.destination };
-    });
+        gatewayOrderRef: created.gatewayOrderRef ?? prepared.payment.gatewayOrderRef,
+        paymentMethod: created.paymentMethod ?? prepared.payment.paymentMethod,
+      }),
+    );
+    if (!attached) throw new Error('Checkout attempt is no longer active');
+
+    return { paymentId: prepared.payment.id, destination: created.destination };
   }
 }
