@@ -50,8 +50,8 @@ failAutomatic(tx, id, gatewayRefundId): Promise<RefundRecord | null>;
 findPendingAutomatic(limit): Promise<Array<{ id: string; tenantId: string }>>;
 ```
 
-- [ ] Convert `execute-automatic-refund.use-case.spec.ts` first and add RED cases for succeeded, pending, already-pending query, failed, unsupported, stable local `refundId`, and historical config revision.
-- [ ] Confirm RED on fresh CI.
+- [x] Convert `execute-automatic-refund.use-case.spec.ts` first and add RED cases for succeeded, pending, already-pending query, failed, unsupported, stable local `refundId`, and historical config revision.
+- [x] Confirm RED on fresh CI #725: 8 failures in `execute-automatic-refund.use-case.spec.ts` exposed the old `supported`/payment-status fallback implementation.
 - [ ] Implement the normalized gateway contract and compile-compatible SePay/payOS/ZaloPay/mock methods.
 - [ ] Update MoMo to compile against the contract; provider-specific semantics are completed in Task 3.
 - [ ] Replace the original-payment `queryPaymentStatus(...) === 'refunded'` fallback. If `gatewayRefundId` exists, call `queryRefundStatus()`; otherwise call `refund()` with the durable local `refund.id`.
