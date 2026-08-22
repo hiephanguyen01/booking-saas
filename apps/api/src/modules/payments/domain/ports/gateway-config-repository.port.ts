@@ -29,12 +29,18 @@ export interface IGatewayConfigRepository {
   findActiveAll(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord[]>;
   /** Cổng BASE (sepay/payos/mock) đang active — tối đa 1; ví KHÔNG tính. */
   findActiveBase(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null>;
-  /** Provider-specific config, including inactive records needed by old webhooks. */
+  /** Provider-specific config, preferring the active revision for legacy callers. */
   findByGateway(
     tx: PrismaTx,
     tenantId: string,
     gateway: GatewayKey,
   ): Promise<GatewayConfigRecord | null>;
+  /** Exact immutable revision lookup. Tenant scope is mandatory. */
+  findById(tx: PrismaTx, tenantId: string, id: string): Promise<GatewayConfigRecord | null>;
+  /**
+   * Tenant-facing save operation. Persistence creates a successor revision rather
+   * than mutating historical credentials/settings in place.
+   */
   upsert(
     tx: PrismaTx,
     tenantId: string,
@@ -42,6 +48,7 @@ export interface IGatewayConfigRepository {
   ): Promise<GatewayConfigRecord>;
   /** Tắt 1 cổng (gateway) hoặc tắt hết (không truyền). */
   deactivate(tx: PrismaTx, tenantId: string, gateway?: GatewayKey): Promise<void>;
+  /** Creates a successor revision carrying the same credentials/environment. */
   updateSettings(
     tx: PrismaTx,
     tenantId: string,
