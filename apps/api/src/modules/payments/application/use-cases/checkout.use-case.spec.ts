@@ -165,6 +165,7 @@ describe('CheckoutUseCase', () => {
   });
 
   it('charges the deposit plus the security deposit on the first payment', async () => {
+    // The security deposit rides along with the deposit and is refunded on return.
     const { useCase, created } = harness();
 
     await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
@@ -185,6 +186,8 @@ describe('CheckoutUseCase', () => {
   it.each(['cancelled', 'confirmed_but_unknown', 'refunded'])(
     'refuses a deposit payment on a %s booking',
     async (status) => {
+      // The deposit guard stays strictly `pending_payment`; widening it would let a
+      // cancelled or refunded booking take money.
       const { useCase } = harness({ record: booking({ status: status as never }) });
 
       await expect(useCase.execute(HOST, BOOKING_ID, 'bank_transfer')).rejects.toBeInstanceOf(
@@ -194,6 +197,8 @@ describe('CheckoutUseCase', () => {
   );
 
   it('charges only what is still owed on a balance payment', async () => {
+    // The security deposit was already taken with the deposit payment and must
+    // never be charged twice.
     const { useCase, created } = harness({
       record: booking({ status: 'confirmed', paidAmount: 400_000n }),
     });
@@ -233,6 +238,7 @@ describe('CheckoutUseCase', () => {
   });
 
   it('falls back to the registry default when no gateway is configured at all', async () => {
+    // Dev/test convenience; the production guard below is what stops it mattering.
     const { useCase, routedTo } = harness({ configs: [], gatewayKey: 'mock' });
 
     await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
@@ -250,6 +256,7 @@ describe('CheckoutUseCase', () => {
   });
 
   it('refuses a MoMo order above the gateway cap', async () => {
+    // Capped to the refund limit so every MoMo payment stays refundable in one call.
     const { useCase } = harness({
       record: booking({
         depositAmount: 50_000_001n,
@@ -279,6 +286,8 @@ describe('CheckoutUseCase', () => {
   });
 
   it("sends the customer back to the tenant's own host, not a global storefront", async () => {
+    // Each tenant serves on its own domain, so the return URLs have to be built
+    // from the Host the customer is actually on.
     const { useCase, gatewayCalls } = harness();
 
     await useCase.execute('bookingstad.localhost', BOOKING_ID, 'bank_transfer');
@@ -313,6 +322,9 @@ describe('CheckoutUseCase', () => {
   });
 
   it('keys on the transaction id when the provider names no order ref', async () => {
+    // The two fall back differently on purpose: the PERSISTED ref becomes the
+    // locally generated order code (it is what was actually sent to the gateway),
+    // while the idempotency KEY prefers the provider's own transaction id.
     const { useCase, created } = harness({ gatewayOrderRef: undefined, gatewayTxnId: 'txn-1' });
 
     await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
