@@ -52,13 +52,13 @@ findPendingAutomatic(limit): Promise<Array<{ id: string; tenantId: string }>>;
 
 - [x] Convert `execute-automatic-refund.use-case.spec.ts` first and add RED cases for succeeded, pending, already-pending query, failed, unsupported, stable local `refundId`, and historical config revision.
 - [x] Confirm RED on fresh CI #725: 8 failures in `execute-automatic-refund.use-case.spec.ts` exposed the old `supported`/payment-status fallback implementation.
-- [ ] Implement the normalized gateway contract and compile-compatible SePay/payOS/ZaloPay/mock methods.
-- [ ] Update MoMo to compile against the contract; provider-specific semantics are completed in Task 3.
-- [ ] Replace the original-payment `queryPaymentStatus(...) === 'refunded'` fallback. If `gatewayRefundId` exists, call `queryRefundStatus()`; otherwise call `refund()` with the durable local `refund.id`.
-- [ ] Apply results under the existing booking lock: succeeded -> complete + `refund.completed`; pending -> preserve/persist provider ref; failed -> mark failed; unsupported -> manual + `refund.requested`.
-- [ ] Preserve an existing provider reference with `result.refundId ?? current.gatewayRefundId ?? prepared.refund.gatewayRefundId`.
-- [ ] Implement guarded repository writes and `findPendingAutomatic()` using the admin pool.
-- [ ] Confirm GREEN with the full repository CI.
+- [x] Implement the normalized gateway contract and compile-compatible SePay/payOS/ZaloPay/mock methods.
+- [x] Update MoMo to compile against the contract; provider-specific semantics are completed in Task 3.
+- [x] Replace the original-payment `queryPaymentStatus(...) === 'refunded'` fallback. If `gatewayRefundId` exists, call `queryRefundStatus()`; otherwise call `refund()` with the durable local `refund.id`.
+- [x] Apply results under the existing booking lock: succeeded -> complete + `refund.completed`; pending -> preserve/persist provider ref; failed -> mark failed; unsupported -> manual + `refund.requested`.
+- [x] Preserve an existing provider reference with `result.refundId ?? current.gatewayRefundId ?? prepared.refund.gatewayRefundId`.
+- [x] Implement guarded repository writes and `findPendingAutomatic()` using the admin pool.
+- [x] Confirm GREEN with full repository CI #732: Tests, API lint/typecheck, frontend lint/typecheck, and production builds all passed.
 
 ## Task 3 — MoMo provider hardening
 
@@ -85,21 +85,21 @@ Provider rules:
 - `1081` refund create ambiguity: immediately reconcile with dedicated refund query.
 - signed non-final/system callbacks map to `pending`, never local financial failure solely because the result code is non-zero.
 
-- [ ] Add a temporary `.github/workflows/momo-proof.yml` targeting PR3/main validation and make its runtime script prove stable IDs, requestId <= 50, orderId regex, create/query/refund/refund-query URLs/signatures, result-code categories, `1081` query recovery, network retry classification, and 30-second provider timeout wiring.
-- [ ] Run the proof in RED against current MoMo behavior and capture the expected failed assertions.
-- [ ] Implement all four MoMo outbound calls with existing `providerJson(..., timeoutMs: 30_000)` and defensive `unknown` parsers.
-- [ ] Implement deterministic operation IDs and result-code classification.
-- [ ] Implement `POST /v2/gateway/api/refund/query` using signing source `accessKey=$accessKey&orderId=$orderId&partnerCode=$partnerCode&requestId=$requestId`; match the deterministic refund order ID in `refundTrans`; if absent after a successful query, return pending.
-- [ ] Rerun proof GREEN, then delete the disposable proof workflow and require standard CI green after deletion.
+- [x] Add a temporary `.github/workflows/momo-proof.yml` targeting PR3/main validation and make its runtime script prove stable IDs, requestId <= 50, orderId regex, create/query/refund/refund-query URLs/signatures, result-code categories, `1081` query recovery, network retry classification, and 30-second provider timeout wiring.
+- [x] Run the proof in RED against current MoMo behavior. After fixing the proof loader itself, proof run #2 exposed the intended behavioral gaps: unstable operation IDs, wrong `9000/7000` classification, missing refund query/recovery, missing provider error kinds, missing production callback guard, and incomplete timeout wiring.
+- [x] Implement all four MoMo outbound calls with existing `providerJson(..., timeoutMs: 30_000)` and defensive `unknown` parsers.
+- [x] Implement deterministic operation IDs and result-code classification.
+- [x] Implement `POST /v2/gateway/api/refund/query` using signing source `accessKey=$accessKey&orderId=$orderId&partnerCode=$partnerCode&requestId=$requestId`; match the deterministic refund order ID in `refundTrans`; if absent after a successful query, return pending.
+- [x] Rerun proof GREEN on proof run #4, then delete the disposable proof workflow. Standard CI #741 passed all gates after deletion.
 
 ## Task 4 — Pending-refund reconciliation sweep
 
 **Files:** `reconciliation.worker.ts`; no permanent worker spec is allowed by ADR 0009.
 
-- [ ] Add pending automatic refunds to the disposable runtime proof: `findPendingAutomatic()` returns `{id, tenantId}` and the worker delegates each item to `ExecuteAutomaticRefundUseCase.execute(tenantId, refundId)` without provider logic in the worker.
-- [ ] Confirm RED before changing the worker.
-- [ ] Inject `ExecuteAutomaticRefundUseCase` and delegate pending refunds after stale-payment reconciliation, catching/logging each item independently.
-- [ ] Confirm proof GREEN; remove the proof workflow before final diff.
+- [x] Add pending automatic refunds to the disposable runtime proof: `findPendingAutomatic()` returns `{id, tenantId}` and the worker delegates each item to `ExecuteAutomaticRefundUseCase.execute(tenantId, refundId)` without provider logic in the worker.
+- [x] Confirm behavioral RED on proof run #6 after generating the Prisma client: pending scan limit stayed `null`, `findPendingAutomatic()` was never called, and the delegation list was empty.
+- [x] Inject `ExecuteAutomaticRefundUseCase` and delegate pending refunds after stale-payment reconciliation, catching/logging each item independently.
+- [x] Confirm proof GREEN on proof run #7, including item-failure isolation; remove the proof workflow before final diff. Standard CI #741 passed after cleanup.
 
 ## Task 5 — Final stacked PR3 validation
 
