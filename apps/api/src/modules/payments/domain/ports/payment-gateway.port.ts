@@ -8,7 +8,7 @@ import type { CheckoutDestination } from '@booking/contracts';
 import type { CustomerPaymentMethod } from '@booking/contracts';
 
 export type GatewayKey = 'sepay' | 'payos' | 'momo' | 'zalopay' | 'mock';
-export type WebhookEvent = 'succeeded' | 'failed' | 'expired' | 'refunded';
+export type WebhookEvent = 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
 
 export interface CreatePaymentInput {
   /** Canonical durable local checkout-attempt identity. */
