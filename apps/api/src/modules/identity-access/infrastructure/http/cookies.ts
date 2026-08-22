@@ -6,7 +6,7 @@ import { ACCESS_COOKIE } from '../../../../shared/http/cookie-names';
  * Canonical definition moved to `shared/http/cookie-names.ts` — `AuthenticatedOnly` (also
  * `shared/http/`) needs the cookie name and `shared/` must never import from `modules/`.
  * Re-exported here so every existing importer of `ACCESS_COOKIE` from this path keeps working
- * untouched. Do not delete this re-export: it is what keeps `pnpm check:module-cycles` green.
+ * untouched. Do not delete this re-export: it is what keeps the module-cycle guard green.
  */
 export { ACCESS_COOKIE };
 export const REFRESH_COOKIE = 'rid';

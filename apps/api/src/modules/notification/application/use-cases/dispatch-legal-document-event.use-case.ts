@@ -42,7 +42,7 @@ export interface LegalDocumentPublishedPayload {
  *
  * Deliberately imports nothing from `modules/legal`: `legal → identity-access →
  * notification` already exists in the module graph, so the reverse edge would close a
- * cycle (`pnpm check:module-cycles`). Everything this needs — `docType`, `versionId`,
+ * cycle (the module-cycle guard). Everything this needs — `docType`, `versionId`,
  * `versionNo` — travels in the outbox payload; recipients are read directly off
  * `partners`/`partner_members`/`affiliates` (same style as the rest of this reader),
  * and the public document URL is built from `@booking/contracts`' `LEGAL_DOCUMENT_SLUGS`

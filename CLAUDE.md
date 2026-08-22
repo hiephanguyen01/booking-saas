@@ -29,9 +29,13 @@ Reach for the matching skill before writing code in that area — don't guess a 
 | Auth / RBAC / input-handling change | `/security-review` before merging |
 | Git branches / commits / PRs | `/managing-git` |
 
-Verify a change by running it, not by adding a test: `/run` then `/verify` (or the manual loop in
-[`AGENTS.md`](./AGENTS.md) → Local run recipe). Clean up afterwards with `/simplify`; review a diff with
-`/code-review`.
+Verification is `pnpm test` **and** running the app — never one instead of the other. Tests exist in
+exactly two shapes ([ADR 0009](./docs/decisions/0009-limited-tests-policy.md)): one unit test beside
+each use case, and the architecture guards in `tests/architecture/`. Anything else — an integration
+or e2e suite, a browser driver, a frontend test, a second runner — is forbidden, and a use-case test
+over fake ports proves nothing about rollback, RLS or the outbox. So still run it: `/run` then
+`/verify` (or the manual loop in [`AGENTS.md`](./AGENTS.md) → Local run recipe). Clean up afterwards
+with `/simplify`; review a diff with `/code-review`.
 
 > Skill tables in older docs referenced skills not installed here — the list above is the accurate one.
 > `.claude/skills/` vendors only a handful (react-router-framework-mode, nestjs-best-practices,

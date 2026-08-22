@@ -61,7 +61,7 @@ the problem.
 `legal` computes `{legalReady, publishedCount}` itself and emits `legal.readiness_changed`; the
 `tenancy` handler (`apply-legal-readiness.use-case.ts`) only writes columns and **imports nothing from
 `legal`**. That direction is not a style choice: `legal` already imports `tenancy` (guard + host
-resolution), so the reverse import closes a cycle that `pnpm check:module-cycles` fails on.
+resolution), so the reverse import closes a cycle the module-cycle guard fails on.
 
 Outbox delivery is at-least-once **and out of order** (a failed row backs off up to 300s while newer
 rows drain), so the handler is a guarded compare-and-set against `legal_readiness_applied_at`. Without

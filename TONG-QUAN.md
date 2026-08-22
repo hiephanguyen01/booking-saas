@@ -1417,12 +1417,14 @@ screen + platform-fee reconciliation · the `rental` template.
 
 ## 22. Testing Strategy
 
-> ⛔ **Superseded — this section is product history, not the current policy.** The repository has a
-> hard **no-tests rule** by owner decision ([ADR 0005](./docs/decisions/0005-no-tests-policy.md)):
-> there are no test files, no vitest/jest/playwright config, no `test` script and no CI test step, and
-> none may be added. Verification is `typecheck` + `lint` + `build` + the architecture guard scripts +
-> running the app. The table below records what was originally planned; do not implement it, and do not
-> quote the definition-of-done line under it.
+> ⛔ **Superseded — this section is product history, not the current policy.** The repository allows
+> exactly two kinds of test ([ADR 0009](./docs/decisions/0009-limited-tests-policy.md), which supersedes
+> [ADR 0005](./docs/decisions/0005-no-tests-policy.md)): a unit test beside every use case, and the
+> architecture guards under `tests/architecture/`. **Nothing in the table below is sanctioned** — no
+> integration layer, no Testcontainers, no contract test, no Playwright, no second runner — and none
+> may be added. Verification is `pnpm test` + `typecheck` + `lint` + `build` + running the app. The
+> table records what was originally planned; do not implement it, and do not quote the
+> definition-of-done line under it.
 
 | Layer         | Tooling                          | Focus                                                                                                                                                                                                                                                                                                                                                                                           |
 | ------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1432,7 +1434,7 @@ screen + platform-fee reconciliation · the `rental` template.
 | E2E           | Playwright + a mock gateway      | Customer: search → hold a slot → pay (including one **discount code** case) → receive an email (mailpit) → cancel → refund; **equipment rental**: book a quantity → security deposit → return the item → deposit refunded; Tenant: create a listing → approve → appears on the storefront; Partner: approve a request-to-book                                                                   |
 | Real gateway  | SePay Sandbox                   | One full end-to-end payment + IPN + reconciliation flow before release                                                                                                                                                                                                                                                                                                                           |
 
-Definition of done per phase: `pnpm turbo lint typecheck test` green + E2E green + a working demo via `docker compose up` with seed data.
+Definition of done per phase (**superseded** — there is no E2E suite): `pnpm test` + `pnpm turbo lint typecheck build` green, plus a working demo via `docker compose up` with seed data.
 
 ---
 

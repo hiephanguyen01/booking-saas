@@ -5,7 +5,8 @@
  * entirely about auth — `identity-access` already depends on `notification` (its OTP-email
  * adapter, `smtp-auth-email.sender.ts`, injects notification's `EMAIL_SENDER`/`EMAIL_RENDERER`/
  * `NOTIFICATION_READER`), so a module that itself needs `SessionPrincipal` cannot get it from
- * `identity-access` without closing a cycle (`pnpm check:module-cycles`, CI-enforced). AGENTS.md
+ * `identity-access` without closing a cycle (the module-cycle guard in `pnpm test`, CI-enforced).
+ * AGENTS.md
  * already treats auth as "de-facto framework"; this is that framework status made literal.
  *
  * `identity-access/domain/ports/session-store.port.ts` re-exports this type so its ~41 existing

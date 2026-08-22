@@ -42,8 +42,8 @@ read it before touching money, migrations, or tenant tables. Domain term definit
 
 ## Invariants enforced in the database (hand-written SQL, not Prisma)
 
-Everything below lives in hand-authored migration SQL — Prisma can't express it, and `check:rls`
-guards the RLS parts in CI.
+Everything below lives in hand-authored migration SQL — Prisma can't express it, and the RLS
+coverage guard in `pnpm test` guards the RLS parts in CI.
 
 1. **Tenant isolation (RLS).** Every table with `tenant_id uuid NOT NULL` has `ENABLE` + **`FORCE ROW
    LEVEL SECURITY`** and a `tenant_isolation` policy:
@@ -171,7 +171,7 @@ rewrite history.
 
 Hand-authored, timestamped folders in `apps/api/prisma/migrations/`, applied with
 `pnpm --filter=@booking/api prisma:deploy`. `prisma migrate dev` is **not** used in this repo. Adding a
-tenant-scoped table requires a companion RLS migration or `check:rls` fails CI. The RLS/role
+tenant-scoped table requires a companion RLS migration or the RLS coverage guard fails CI. The RLS/role
 migrations, ledger triggers, and the bookings GiST constraint are **no-touch zones** — see
 [ADR 0004](./decisions/0004-hand-written-migrations.md) and [`conventions.md`](./conventions.md) →
 Migrations.

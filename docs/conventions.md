@@ -150,7 +150,7 @@ app/
   `*.server.ts`.
 - Both apps use `~/` for cross-directory imports and `./sibling` within one directory. Route URLs come
   from `~/constants/paths`, never ad-hoc string construction.
-- ESLint enforces route boundaries and React Hooks rules. `pnpm check:frontend-structure` enforces the
+- ESLint enforces route boundaries and React Hooks rules. The frontend-structure guard in `pnpm test` enforces the
   six buckets, storefront `lib/server/`, feature/server placement, JSX-free `lib/`, hook placement
   outside `components/`, and storefront's semantic route-only constraints; it runs in CI and in the
   repository full static check.
@@ -388,7 +388,7 @@ Hand-authored — **do not run `prisma migrate dev`** (it's not the workflow her
      WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
    ```
 3. `pnpm --filter=@booking/api prisma:deploy` then `pnpm --filter=@booking/api prisma:generate`.
-4. `pnpm --filter=@booking/api check:rls` (a static schema↔SQL check; runs in CI). It cannot prove the
+4. `pnpm test` — its RLS coverage guard is a static schema↔SQL check (runs in CI). It cannot prove the
    policy works at runtime — sanity-check against the dev DB when touching RLS itself.
 
 **No-touch SQL zones:** the RLS role/policy migrations, the ledger triggers/constraints, and the
@@ -403,9 +403,19 @@ bookings GiST exclusion constraint. See [ADR 0004](./decisions/0004-hand-written
 - **API messages** are mixed (some Vietnamese transport/guard messages, some English). Match the
   surrounding module; user-facing customer messages lean Vietnamese.
 
-## Testing & verification ([ADR 0005](./decisions/0005-no-tests-policy.md))
+## Testing & verification ([ADR 0009](./decisions/0009-limited-tests-policy.md))
 
-Automated tests are prohibited by owner decision: no test files, test runners/config, `test` scripts
-or CI test steps. Verify with `pnpm turbo lint typecheck build`, static architecture/RLS checks, then
-run the app and exercise changed flows manually. Requires **Node ≥ 22.22.0** — React Router 8 refuses
-to run below it.
+Two kinds of test exist and no others:
+
+1. **One use case, one unit test** — `apps/api/src/**/*.use-case.spec.ts`, beside the use case.
+   Required for every use case, with no allowlist and no exemption. Construct the class over fakes
+   from `~testing` (`fakeTenantDb`, `fakePort`); never boot Nest, Prisma or Redis.
+2. **Architecture guards** — `tests/architecture/*.test.ts`, one file per rule, each reading files
+   and asserting.
+
+Everything else stays prohibited: integration and e2e suites, browser drivers, frontend or contracts
+tests, tests for controllers or repositories, and any runner other than Vitest.
+
+Verify with `pnpm test && pnpm turbo lint typecheck build`, then run the app and exercise changed
+flows manually — a unit test over fake ports proves nothing about rollback, RLS, the GiST exclusion
+constraint or the outbox relay. Requires **Node ≥ 22.22.0** — React Router 8 refuses to run below it.

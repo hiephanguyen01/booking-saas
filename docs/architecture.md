@@ -200,14 +200,17 @@ presents it to a different host.
 
 ## Build, verification & CI
 
-There are **no tests** by owner decision; do not add test files, runners, scripts or CI test steps
-([ADR 0005](./decisions/0005-no-tests-policy.md)). Verification is
-`pnpm turbo lint typecheck build`, `pnpm --filter=@booking/api check:rls`, and runtime smoke against
-local infrastructure.
+Tests exist in exactly two shapes — one unit test per use case, and the architecture guards under
+`tests/architecture/` ([ADR 0009](./decisions/0009-limited-tests-policy.md)). Do not add anything
+else: no integration or e2e suite, no browser driver, no frontend tests, no second runner.
+Verification is `pnpm test`, `pnpm turbo lint typecheck build`, and runtime smoke against local
+infrastructure.
 
 CI (`.github/workflows/ci.yml`, "Frontend CI") runs for pull requests into `main` (or manually). It
-lints/typechecks/builds the two frontends, typechecks the API, and runs the architecture, Storefront
-security and API RLS static guards. Turbo builds shared workspace dependencies once through the task
+runs `pnpm test` — one vitest pass over the architecture guards (tests policy, module cycles,
+frontend structure, theme tokens, tenant surfaces, storefront security, RLS coverage, use-case test
+coverage) and the use-case unit tests, needing no database — then lints/typechecks/builds the two
+frontends and typechecks the API. Turbo builds shared workspace dependencies once through the task
 graph. Docker images are not rebuilt in CI; the manual Deploy workflow builds and pushes only the
 selected app(s).
 

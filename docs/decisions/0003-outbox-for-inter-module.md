@@ -31,7 +31,7 @@ The rule is about **atomicity of a state change and its side effects**, so the r
 | --- | --- |
 | Guards, decorators and Nest modules from `identity-access` / `tenancy` (they are framework here) | Reaching into another module's `infrastructure/` |
 | Injecting another module's use-case or repository **port** for a synchronous read | A `domain/` layer importing another module's `application/` (eslint) |
-| Importing another module's `domain/` types and pure functions | **Any cycle in the module graph** (`pnpm check:module-cycles`) |
+| Importing another module's `domain/` types and pure functions | **Any cycle in the module graph** (the module-cycle guard in `pnpm test`) |
 | | Calling another module directly to *cause* a state change — that is what `emit()` is for |
 
 Logic that two contexts genuinely share is not "one module importing another" — it belongs in
@@ -43,7 +43,7 @@ that had formed (`catalog → listing → catalog` and `catalog → scheduling �
 
 - State change and event commit or roll back together — no lost or phantom events.
 - Modules stay decoupled; a new consumer is added without touching the producer.
-- The module import graph is a DAG, enforced in CI by `check:module-cycles`. Cycles are fixed by
+- The module import graph is a DAG, enforced in CI by the module-cycle guard. Cycles are fixed by
   extracting the shared logic to `shared/domain/*` or inverting the dependency behind a port —
   **never** with `forwardRef()`.
 - The `outbox_events.aggregate_type`/`aggregate_id` columns exist but are currently unpopulated by
