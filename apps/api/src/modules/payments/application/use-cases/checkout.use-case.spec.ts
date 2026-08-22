@@ -157,7 +157,7 @@ function harness(options: Options = {}): Harness {
           gateway: key,
           kind: 'deposit',
           amount: 500_000n,
-          checkoutState: 'ready',
+          checkoutState: 'creating',
           gatewayConfigRevisionId: `config-${key}`,
           gatewayOrderRef: options.pending.id,
           paymentMethod: 'PROVIDER_BANK_TRANSFER',
