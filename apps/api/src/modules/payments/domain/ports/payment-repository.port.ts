@@ -26,6 +26,7 @@ export interface PaymentRecord {
 }
 
 export interface CreatePaymentData {
+  id?: string;
   bookingId: string;
   gateway: GatewayKey;
   kind: PaymentKind;
@@ -38,6 +39,26 @@ export interface CreatePaymentData {
   paymentMethod?: string | null;
   idempotencyKey: string;
   gatewayPayload?: CheckoutGatewayPayload;
+}
+
+export interface CreatePendingCheckoutData extends CreatePaymentData {
+  id: string;
+  checkoutState: 'creating';
+  gatewayConfigRevisionId: string | null;
+  gatewayOrderRef?: string | null;
+}
+
+export interface CheckoutAttemptRecord {
+  payment: PaymentRecord;
+  destination: CheckoutDestination | null;
+}
+
+/** Internal retry signal: regenerate the local attempt before any provider I/O. */
+export class CheckoutOrderReferenceCollision extends Error {
+  constructor() {
+    super('Generated gateway order reference collided with an existing payment');
+    this.name = 'CheckoutOrderReferenceCollision';
+  }
 }
 
 export interface CheckoutGatewayPayload {
@@ -89,7 +110,42 @@ export interface IPaymentRepository {
   create(tx: PrismaTx, tenantId: string, data: CreatePaymentData): Promise<PaymentRecord>;
   findById(tx: PrismaTx, id: string): Promise<PaymentRecord | null>;
   findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
-  /** Reuse the stored provider handoff on retries/double-clicks. */
+  /** Serialize creation/reuse for one booking + payment kind + provider-normalized method. */
+  lockCheckoutAttempt(
+    tx: PrismaTx,
+    bookingId: string,
+    kind: PaymentKind,
+    paymentMethod: string,
+  ): Promise<void>;
+  /** Reuse a durable pending attempt. `ready` always carries a valid handoff. */
+  findReusableCheckoutAttempt(
+    tx: PrismaTx,
+    bookingId: string,
+    kind: PaymentKind,
+    paymentMethod: string,
+  ): Promise<CheckoutAttemptRecord | null>;
+  /** Insert the local attempt before any provider network call. */
+  createPendingCheckout(
+    tx: PrismaTx,
+    tenantId: string,
+    data: CreatePendingCheckoutData,
+  ): Promise<PaymentRecord>;
+  /** Attach provider handoff without downgrading a concurrent financial success. */
+  markCheckoutReady(
+    tx: PrismaTx,
+    paymentId: string,
+    data: {
+      destination: CheckoutDestination;
+      gatewayTxnId?: string | null;
+      gatewayOrderRef?: string | null;
+      paymentMethod?: string | null;
+    },
+  ): Promise<boolean>;
+  /** Mark only a still-pending create attempt as definitively rejected. */
+  markCheckoutCreateFailed(tx: PrismaTx, paymentId: string): Promise<boolean>;
+  /** Observe mismatched provider capture while keeping financial status pending. */
+  recordCapturedAmountIfPending(tx: PrismaTx, paymentId: string, amount: bigint): Promise<void>;
+  /** Reuse the stored provider handoff on legacy retries/double-clicks. */
   findPendingCheckout(
     tx: PrismaTx,
     bookingId: string,
@@ -124,7 +180,5 @@ export interface IPaymentRepository {
     tenantId: string,
     query: PaymentHistoryQuery,
   ): Promise<RepoPage<PaymentHistoryRecord>>;
-  listPlatform(
-    query: PaymentHistoryQuery,
-  ): Promise<RepoPage<PaymentHistoryRecord>>;
+  listPlatform(query: PaymentHistoryQuery): Promise<RepoPage<PaymentHistoryRecord>>;
 }
