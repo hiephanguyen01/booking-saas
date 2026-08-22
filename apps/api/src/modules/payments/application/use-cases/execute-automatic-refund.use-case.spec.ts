@@ -226,6 +226,8 @@ describe('ExecuteAutomaticRefundUseCase', () => {
   });
 
   it('refuses to refund against a payment the intent was not written for', async () => {
+    // A later, different succeeded payment on the same booking must not be the
+    // one the money comes back out of.
     const { useCase, calls } = harness({ succeeded: payment({ id: 'payment-2' }) });
 
     await useCase.execute(TENANT_ID, REFUND_ID);
@@ -242,6 +244,8 @@ describe('ExecuteAutomaticRefundUseCase', () => {
   });
 
   it('calls the provider between the two transactions, never inside one', async () => {
+    // A gateway round-trip inside an open transaction holds a Postgres connection
+    // and its locks for the length of a network call.
     const { useCase, tenantDb, calls } = harness();
 
     await useCase.execute(TENANT_ID, REFUND_ID);
@@ -297,6 +301,8 @@ describe('ExecuteAutomaticRefundUseCase', () => {
   });
 
   it('treats an already-refunded provider state as success on a retry', async () => {
+    // A previous attempt voided successfully but crashed before persisting; the
+    // repeated void is rejected, and only the provider status makes the retry safe.
     const { useCase, completions, events } = harness({
       supported: false,
       providerStatus: 'refunded',
@@ -333,6 +339,8 @@ describe('ExecuteAutomaticRefundUseCase', () => {
   });
 
   it('writes nothing when the refund stopped being executable while the provider was called', async () => {
+    // The whole reason for the re-read under the lock: a manual confirmation or a
+    // concurrent retry may have finished it during the network round-trip.
     const { useCase, calls, events } = harness({ recheck: refund({ status: 'succeeded' }) });
 
     await useCase.execute(TENANT_ID, REFUND_ID);
