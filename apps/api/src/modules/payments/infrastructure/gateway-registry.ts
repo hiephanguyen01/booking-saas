@@ -41,7 +41,6 @@ export class GatewayRegistry implements GatewayRegistryPort {
       return new PayosGatewayAdapter({ clientId: '', apiKey: '', checksumKey: '' });
     }
     if (key === 'momo') {
-      // peekReference only parses the IPN body — no credentials needed.
       return new MomoGatewayAdapter({
         partnerCode: '',
         accessKey: '',
@@ -150,7 +149,6 @@ export class GatewayRegistry implements GatewayRegistryPort {
         clientId: cfg.credentials.clientId,
         apiKey: cfg.credentials.apiKey,
         checksumKey: cfg.credentials.checksumKey,
-        baseUrl: cfg.credentials.baseUrl,
       });
     }
     return this.mock;
