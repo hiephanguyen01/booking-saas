@@ -1,0 +1,262 @@
+name: Durable Checkout payOS Proof
+
+on:
+  push:
+    branches: [refactor/durable-checkout-payos]
+  pull_request:
+    branches: [refactor/payment-foundation]
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: booking
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      PAYMENTS_ENC_KEY: durable-checkout-proof-key
+      MIGRATE_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/booking
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/booking
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@booking/contracts build
+      - run: pnpm --filter=@booking/api prisma:deploy
+      - run: pnpm --filter=@booking/api prisma:generate
+      - name: API lint/typecheck/build
+        run: |
+          pnpm --filter=@booking/api lint
+          pnpm --filter=@booking/api typecheck
+          pnpm --filter=@booking/api build
+      - name: Disposable durable checkout + payOS proof
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .durable-checkout-payos-proof.ts <<'TS'
+          import assert from 'node:assert/strict';
+          import { PrismaClient } from '@prisma/client';
+          import { payosGatewayConfigInputSchema } from '@booking/contracts';
+          import { amountMatches } from './src/modules/payments/domain/payment-status';
+          import { PayosGatewayAdapter } from './src/modules/payments/infrastructure/gateways/payos-gateway.adapter';
+          import { GatewayRequestError } from './src/modules/payments/infrastructure/gateways/provider-http';
+          import { PrismaPaymentRepository } from './src/modules/payments/infrastructure/repositories/prisma-payment.repository';
+
+          async function main() {
+            const payos = new PayosGatewayAdapter({
+              clientId: 'proof-client',
+              apiKey: 'proof-api',
+              checksumKey: 'proof-checksum-key-1234567890',
+            });
+
+            const paymentId = '00000000-0000-7000-8000-000000000123';
+            const ref = payos.prepareOrderReference(paymentId);
+            assert.match(ref, /^\d+$/);
+            assert.ok(Number.isSafeInteger(Number(ref)) && Number(ref) > 0);
+            assert.equal(ref, payos.prepareOrderReference(paymentId));
+
+            assert.equal(amountMatches(1_000n, 1_000n), true);
+            assert.equal(amountMatches(1_000n, 999n), false);
+            assert.equal(amountMatches(1_000n, 1_001n), false);
+
+            const malicious = payosGatewayConfigInputSchema.safeParse({
+              gateway: 'payos',
+              environment: 'sandbox',
+              credentials: {
+                clientId: 'proof-client',
+                apiKey: 'proof-api',
+                checksumKey: 'proof-checksum-key-1234567890',
+                baseUrl: 'https://attacker.example',
+              },
+            });
+            assert.equal(malicious.success, false);
+
+            const originalFetch = globalThis.fetch;
+            try {
+              // Create: lookup miss -> one POST. Checkout URL is rebuilt from the fixed host.
+              const calls: string[] = [];
+              globalThis.fetch = (async (_request: string | URL | Request, init?: RequestInit) => {
+                const method = init?.method ?? 'GET';
+                calls.push(method);
+                if (method === 'GET') return new Response('{}', { status: 404 });
+                const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+                assert.equal(body.orderCode, Number(ref));
+                return new Response(JSON.stringify({
+                  code: '00',
+                  data: {
+                    paymentLinkId: 'proof-link',
+                    orderCode: Number(ref),
+                    amount: 1_200,
+                    status: 'PENDING',
+                    checkoutUrl: 'https://attacker.example/ignored',
+                  },
+                }), { status: 200, headers: { 'content-type': 'application/json' } });
+              }) as typeof fetch;
+              const created = await payos.createPayment({
+                paymentId,
+                gatewayOrderRef: ref,
+                amountVnd: 1_200n,
+                description: 'Booking BK-PROOF',
+                returnUrl: 'https://shop.example/return',
+                errorUrl: 'https://shop.example/error',
+                cancelUrl: 'https://shop.example/cancel',
+                expiresInSec: 900,
+                paymentMethod: 'bank_transfer',
+              });
+              assert.deepEqual(calls, ['GET', 'POST']);
+              assert.equal(
+                created.destination.type === 'redirect' ? created.destination.paymentUrl : '',
+                'https://pay.payos.vn/web/proof-link',
+              );
+
+              // Provider accepts POST but response is lost. Retry must recover by GET only.
+              const recoverId = '00000000-0000-7000-8000-000000000124';
+              const recoverRef = payos.prepareOrderReference(recoverId);
+              let phase: 'first' | 'second' = 'first';
+              const recoveryCalls: string[] = [];
+              globalThis.fetch = (async (_request: string | URL | Request, init?: RequestInit) => {
+                const method = init?.method ?? 'GET';
+                recoveryCalls.push(`${phase}:${method}`);
+                if (phase === 'first' && method === 'GET') return new Response('{}', { status: 404 });
+                if (phase === 'first' && method === 'POST') throw new Error('simulated response loss');
+                assert.equal(method, 'GET');
+                return new Response(JSON.stringify({
+                  code: '00',
+                  data: {
+                    id: 'recovered-link',
+                    orderCode: Number(recoverRef),
+                    amount: 2_000,
+                    status: 'PENDING',
+                  },
+                }), { status: 200, headers: { 'content-type': 'application/json' } });
+              }) as typeof fetch;
+              const recoveryInput = {
+                paymentId: recoverId,
+                gatewayOrderRef: recoverRef,
+                amountVnd: 2_000n,
+                description: 'Booking BK-RECOVER',
+                returnUrl: 'https://shop.example/return',
+                errorUrl: 'https://shop.example/error',
+                cancelUrl: 'https://shop.example/cancel',
+                expiresInSec: 900,
+                paymentMethod: 'bank_transfer' as const,
+              };
+              await assert.rejects(
+                () => payos.createPayment(recoveryInput),
+                (error: unknown) => error instanceof GatewayRequestError && error.kind === 'retryable',
+              );
+              phase = 'second';
+              const recovered = await payos.createPayment(recoveryInput);
+              assert.deepEqual(recoveryCalls, ['first:GET', 'first:POST', 'second:GET']);
+              assert.equal(
+                recovered.destination.type === 'redirect' ? recovered.destination.paymentUrl : '',
+                'https://pay.payos.vn/web/recovered-link',
+              );
+            } finally {
+              globalThis.fetch = originalFetch;
+            }
+
+            // Real PostgreSQL proof: advisory lock serializes two identical checkout claims.
+            const prisma = new PrismaClient();
+            const repo = new PrismaPaymentRepository({} as never);
+            const tenantId = '00000000-0000-7000-8000-000000000201';
+            const bookingId = '00000000-0000-7000-8000-000000000202';
+            const ids = [
+              '00000000-0000-7000-8000-000000000203',
+              '00000000-0000-7000-8000-000000000204',
+            ];
+            let next = 0;
+
+            async function claim(): Promise<string> {
+              return prisma.$transaction(async (tx) => {
+                await tx.$executeRawUnsafe("SET LOCAL session_replication_role = 'replica'");
+                await repo.lockCheckoutAttempt(tx as never, bookingId, 'full', 'BANK_TRANSFER');
+                const existing = await repo.findReusableCheckoutAttempt(
+                  tx as never,
+                  bookingId,
+                  'full',
+                  'BANK_TRANSFER',
+                );
+                if (existing) return existing.payment.id;
+                const id = ids[next++]!;
+                const payment = await repo.createPendingCheckout(tx as never, tenantId, {
+                  id,
+                  bookingId,
+                  gateway: 'payos',
+                  kind: 'full',
+                  amount: 3_000n,
+                  checkoutState: 'creating',
+                  gatewayConfigRevisionId: null,
+                  gatewayOrderRef: payos.prepareOrderReference(id),
+                  paymentMethod: 'BANK_TRANSFER',
+                  idempotencyKey: `proof:${id}`,
+                });
+                return payment.id;
+              });
+            }
+
+            const claimed = await Promise.all([claim(), claim()]);
+            assert.equal(claimed[0], claimed[1], 'concurrent same-method checkout must reuse one Payment');
+            assert.equal(await prisma.payment.count({ where: { bookingId } }), 1);
+
+            // Early webhook can succeed before Phase C. Attaching handoff must preserve its txn id.
+            const durableId = claimed[0]!;
+            await prisma.payment.update({
+              where: { id: durableId },
+              data: { status: 'succeeded', gatewayTxnId: 'webhook-txn', checkoutState: 'creating' },
+            });
+            await prisma.$transaction(async (tx) => {
+              const latest = await repo.findLatestByBooking(tx as never, bookingId);
+              assert.equal(latest?.id, durableId);
+              assert.equal(latest?.status, 'succeeded');
+              const attached = await repo.markCheckoutReady(tx as never, durableId, {
+                destination: { type: 'redirect', paymentUrl: 'https://pay.payos.vn/web/early' },
+                gatewayTxnId: undefined,
+                gatewayOrderRef: latest?.gatewayOrderRef,
+                paymentMethod: latest?.paymentMethod,
+              });
+              assert.equal(attached, true);
+            });
+            const afterEarlyWebhook = await prisma.payment.findUniqueOrThrow({ where: { id: durableId } });
+            assert.equal(afterEarlyWebhook.checkoutState, 'ready');
+            assert.equal(afterEarlyWebhook.gatewayTxnId, 'webhook-txn');
+
+            await prisma.$disconnect();
+
+            console.log(JSON.stringify({
+              deterministicPayosOrderRef: true,
+              exactAmountMatch: true,
+              payosBaseUrlRejected: true,
+              payosLookupBeforeCreate: true,
+              payosTimeoutRecovery: true,
+              postgresConcurrentCheckoutSinglePayment: true,
+              earlyWebhookTxnPreserved: true,
+            }));
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          TS
+          pnpm exec ts-node --transpile-only .durable-checkout-payos-proof.ts
+          rm -f .durable-checkout-payos-proof.ts
