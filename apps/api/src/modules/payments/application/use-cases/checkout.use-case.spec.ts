@@ -23,8 +23,9 @@ import type {
   PaymentBookingRecord,
 } from '../../domain/ports/payment-booking-reader.port';
 import type {
-  CreatePaymentData,
+  CreatePendingCheckoutData,
   IPaymentRepository,
+  PaymentRecord,
 } from '../../domain/ports/payment-repository.port';
 import { CheckoutUseCase } from './checkout.use-case';
 
@@ -64,6 +65,31 @@ const config = (
     } as GatewayPaymentSettings,
   }) as unknown as GatewayConfigRecord;
 
+function paymentRecord(
+  data: CreatePendingCheckoutData,
+  overrides: Partial<PaymentRecord> = {},
+): PaymentRecord {
+  return {
+    id: data.id,
+    tenantId: TENANT_ID,
+    bookingId: data.bookingId,
+    gateway: data.gateway,
+    kind: data.kind,
+    amount: data.amount,
+    capturedAmount: null,
+    status: 'pending',
+    checkoutState: data.checkoutState,
+    gatewayConfigRevisionId: data.gatewayConfigRevisionId,
+    gatewayOrderRef: data.gatewayOrderRef ?? null,
+    gatewayOrderId: null,
+    gatewayTxnId: null,
+    paymentMethod: data.paymentMethod ?? null,
+    idempotencyKey: data.idempotencyKey,
+    paidAt: null,
+    ...overrides,
+  };
+}
+
 interface Options {
   live?: boolean;
   record?: PaymentBookingRecord | null;
@@ -75,30 +101,40 @@ interface Options {
   gatewayTxnId?: string | null;
 }
 
+type ReadyData = Parameters<IPaymentRepository['markCheckoutReady']>[2];
+
 interface Harness {
   readonly useCase: CheckoutUseCase;
   readonly tenantDb: ReturnType<typeof fakeTenantDb>;
-  readonly created: CreatePaymentData[];
+  readonly created: CreatePendingCheckoutData[];
+  readonly readyWrites: Array<{ paymentId: string; data: ReadyData }>;
   readonly gatewayCalls: Array<Record<string, unknown>>;
   readonly routedTo: Array<GatewayKey | undefined>;
+  readonly locks: Array<{ bookingId: string; kind: string; paymentMethod: string }>;
 }
 
 function harness(options: Options = {}): Harness {
-  const created: CreatePaymentData[] = [];
+  const created: CreatePendingCheckoutData[] = [];
+  const readyWrites: Array<{ paymentId: string; data: ReadyData }> = [];
   const gatewayCalls: Array<Record<string, unknown>> = [];
   const routedTo: Array<GatewayKey | undefined> = [];
+  const locks: Array<{ bookingId: string; kind: string; paymentMethod: string }> = [];
   const tenantDb = fakeTenantDb();
   const key = options.gatewayKey ?? 'sepay';
 
   const gateway = fakeCollaborator<PaymentGatewayPort>({
     key,
+    prepareOrderReference: (paymentId: string) => paymentId,
     createPayment: (input: Record<string, unknown>) => {
       gatewayCalls.push(input);
       return Promise.resolve({
         destination: { kind: 'redirect', url: 'https://pay.example/x' },
-        gatewayTxnId: options.gatewayTxnId === undefined ? 'txn-1' : options.gatewayTxnId,
-        gatewayOrderRef: options.gatewayOrderRef ?? null,
-        paymentMethod: null,
+        ...(options.gatewayTxnId === null
+          ? {}
+          : { gatewayTxnId: options.gatewayTxnId ?? 'txn-1' }),
+        ...(options.gatewayOrderRef === undefined
+          ? {}
+          : { gatewayOrderRef: options.gatewayOrderRef }),
       });
     },
     providerPaymentMethod: (method: CustomerPaymentMethod) => `PROVIDER_${method.toUpperCase()}`,
@@ -109,17 +145,63 @@ function harness(options: Options = {}): Harness {
       findById: () => Promise.resolve(options.record === undefined ? booking() : options.record),
     }),
     fakePort<IPaymentRepository>({
-      findPendingCheckout: () => Promise.resolve((options.pending ?? null) as never),
-      create: (_tx, _tenantId, data) => {
-        created.push(data);
-        return Promise.resolve({ id: 'payment-1', ...data } as never);
+      lockCheckoutAttempt: (_tx, bookingId, kind, paymentMethod) => {
+        locks.push({ bookingId, kind, paymentMethod });
+        return Promise.resolve();
       },
+      findReusableCheckoutAttempt: () => {
+        if (!options.pending) return Promise.resolve(null);
+        const data: CreatePendingCheckoutData = {
+          id: options.pending.id,
+          bookingId: BOOKING_ID,
+          gateway: key,
+          kind: 'deposit',
+          amount: 500_000n,
+          checkoutState: 'creating',
+          gatewayConfigRevisionId: `config-${key}`,
+          gatewayOrderRef: options.pending.id,
+          paymentMethod: 'PROVIDER_BANK_TRANSFER',
+          idempotencyKey: `checkout:${options.pending.id}`,
+        };
+        return Promise.resolve({
+          payment: paymentRecord(data, { checkoutState: 'ready' }),
+          destination: options.pending.destination,
+        } as never);
+      },
+      findLatestByBooking: () => Promise.resolve(null),
+      createPendingCheckout: (_tx, _tenantId, data) => {
+        created.push(data);
+        return Promise.resolve(paymentRecord(data));
+      },
+      markCheckoutReady: (_tx, paymentId, data) => {
+        readyWrites.push({ paymentId, data });
+        return Promise.resolve(true);
+      },
+      markCheckoutCreateFailed: () => Promise.resolve(true),
     }),
     fakePort<GatewayRegistryPort>({
-      resolveForTenant: (_tx, _tenantId, requested) => {
+      resolveActiveForCheckout: (_tx, _tenantId, requested) => {
         routedTo.push(requested);
-        return Promise.resolve(gateway);
+        return Promise.resolve({
+          gateway,
+          configRevisionId: requested ? `config-${requested}` : null,
+          settings: {
+            enabledMethods: [],
+            refundStrategy: 'manual',
+            manualRefundSlaHours: 72,
+          } as GatewayPaymentSettings,
+        });
       },
+      resolveForPayment: (_tx, payment) =>
+        Promise.resolve({
+          gateway,
+          configRevisionId: payment.gatewayConfigRevisionId,
+          settings: {
+            enabledMethods: [],
+            refundStrategy: 'manual',
+            manualRefundSlaHours: 72,
+          } as GatewayPaymentSettings,
+        }),
     }),
     fakePort<IGatewayConfigRepository>({
       findActiveAll: () =>
@@ -131,7 +213,7 @@ function harness(options: Options = {}): Harness {
     tenantDb.service,
   );
 
-  return { useCase, tenantDb, created, gatewayCalls, routedTo };
+  return { useCase, tenantDb, created, readyWrites, gatewayCalls, routedTo, locks };
 }
 
 describe('CheckoutUseCase', () => {
@@ -264,17 +346,18 @@ describe('CheckoutUseCase', () => {
     );
   });
 
-  it('returns the pending link instead of opening a second one for the same method', async () => {
+  it('returns the ready durable attempt instead of opening a second one for the same method', async () => {
     const pending = {
       id: 'payment-existing',
       destination: { kind: 'redirect', url: 'https://old' },
     };
-    const { useCase, created } = harness({ pending });
+    const { useCase, created, gatewayCalls } = harness({ pending });
 
     const result = await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
 
     expect(result).toEqual({ paymentId: 'payment-existing', destination: pending.destination });
     expect(created).toEqual([]);
+    expect(gatewayCalls).toEqual([]);
   });
 
   it("sends the customer back to the tenant's own host, not a global storefront", async () => {
@@ -302,44 +385,76 @@ describe('CheckoutUseCase', () => {
     },
   );
 
-  it('keys idempotency on the reference the provider reports', async () => {
-    const { useCase, created } = harness({ gatewayOrderRef: 'PROVIDER-REF-9' });
+  it('persists a stable attempt identity before the provider reports a reference', async () => {
+    const { useCase, created, readyWrites, gatewayCalls, locks } = harness({
+      gatewayOrderRef: 'PROVIDER-REF-9',
+    });
 
     await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
 
-    expect(created[0]).toMatchObject({
-      gatewayOrderRef: 'PROVIDER-REF-9',
-      idempotencyKey: `checkout:${BOOKING_ID}:bank_transfer:PROVIDER-REF-9`,
+    const attempt = created[0];
+    expect(attempt).toBeDefined();
+    expect(attempt).toMatchObject({
+      checkoutState: 'creating',
+      gatewayOrderRef: attempt?.id,
+      idempotencyKey: `checkout:${attempt?.id}`,
+    });
+    expect(gatewayCalls[0]).toMatchObject({
+      paymentId: attempt?.id,
+      gatewayOrderRef: attempt?.id,
+    });
+    expect(readyWrites[0]).toMatchObject({
+      paymentId: attempt?.id,
+      data: { gatewayOrderRef: 'PROVIDER-REF-9' },
+    });
+    expect(locks).toEqual([
+      {
+        bookingId: BOOKING_ID,
+        kind: 'deposit',
+        paymentMethod: 'PROVIDER_BANK_TRANSFER',
+      },
+    ]);
+  });
+
+  it('keeps durable idempotency when the provider only returns a transaction id', async () => {
+    const { useCase, created, readyWrites } = harness({ gatewayTxnId: 'txn-1' });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    const attempt = created[0];
+    expect(attempt?.idempotencyKey).toBe(`checkout:${attempt?.id}`);
+    expect(readyWrites[0]).toMatchObject({
+      paymentId: attempt?.id,
+      data: {
+        gatewayTxnId: 'txn-1',
+        gatewayOrderRef: attempt?.gatewayOrderRef,
+      },
     });
   });
 
-  it('keys on the transaction id when the provider names no order ref', async () => {
-    // The two fall back differently on purpose: the PERSISTED ref becomes the
-    // locally generated order code (it is what was actually sent to the gateway),
-    // while the idempotency KEY prefers the provider's own transaction id.
-    const { useCase, created } = harness({ gatewayOrderRef: undefined, gatewayTxnId: 'txn-1' });
+  it('keeps the pre-created gateway reference when the provider names neither reference nor transaction', async () => {
+    const { useCase, created, readyWrites } = harness({ gatewayTxnId: null });
 
     await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
 
-    expect(created[0]?.gatewayOrderRef).toMatch(/^BKF-[0-9A-F]{32}$/);
-    expect(created[0]?.idempotencyKey).toBe(`checkout:${BOOKING_ID}:bank_transfer:txn-1`);
+    const attempt = created[0];
+    expect(attempt?.gatewayOrderRef).toBe(attempt?.id);
+    expect(attempt?.idempotencyKey).toBe(`checkout:${attempt?.id}`);
+    expect(readyWrites[0]).toMatchObject({
+      paymentId: attempt?.id,
+      data: { gatewayOrderRef: attempt?.gatewayOrderRef },
+    });
   });
 
-  it('falls back to the locally generated order code when the provider names neither', async () => {
-    const { useCase, created } = harness({ gatewayOrderRef: undefined, gatewayTxnId: null });
-
-    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
-
-    const orderRef = created[0]?.gatewayOrderRef;
-    expect(orderRef).toMatch(/^BKF-[0-9A-F]{32}$/);
-    expect(created[0]?.idempotencyKey).toBe(`checkout:${BOOKING_ID}:bank_transfer:${orderRef}`);
-  });
-
-  it('persists the provider method when the gateway does not name one', async () => {
+  it('persists the provider method and gateway revision before provider I/O', async () => {
     const { useCase, created } = harness();
 
     await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
 
-    expect(created[0]).toMatchObject({ gateway: 'sepay', paymentMethod: 'PROVIDER_BANK_TRANSFER' });
+    expect(created[0]).toMatchObject({
+      gateway: 'sepay',
+      gatewayConfigRevisionId: 'config-sepay',
+      paymentMethod: 'PROVIDER_BANK_TRANSFER',
+    });
   });
 });

@@ -2,12 +2,11 @@ import type { PaymentStatus } from '@prisma/client';
 import type { PaymentStatusResponse } from '@booking/contracts';
 
 /**
- * Payment status is a one-way machine (§11.2): `succeeded` is terminal, and a
- * later out-of-order `failed`/`expired` is ignored. The webhook must also match
- * the paid amount against the expected amount — an underpayment can't confirm.
+ * Fixed checkout amounts settle only on an exact provider capture. Underpayment
+ * and overpayment are both quarantined for review; neither may confirm a booking.
  */
 export function amountMatches(expected: bigint, paid: bigint): boolean {
-  return paid >= expected; // an underpayment cannot confirm; overpayment is accepted
+  return paid === expected;
 }
 
 /** Keep the public payment state aligned with the latest gateway attempt. */
