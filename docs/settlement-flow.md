@@ -321,7 +321,7 @@ Triển khai:
 ```bash
 pnpm --filter=@booking/api prisma:deploy
 pnpm --filter=@booking/api prisma:generate
-pnpm --filter=@booking/api check:rls
+pnpm test
 ```
 
 Không dùng `prisma migrate dev`; migration được hand-write theo ADR 0004.

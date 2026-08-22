@@ -6,7 +6,7 @@
 > feature-folder refactor, so the flat `app/components/*` and `app/routes/*` files it names (slot
 > picker, date-range calendar, lookup, my-bookings, group…) do not exist at those paths any more —
 > they live under `app/features/<name>/{components,hooks,server,lib}`, a layout now enforced by
-> `pnpm check:frontend-structure`. Read [`apps/storefront/CLAUDE.md`](../../apps/storefront/CLAUDE.md)
+> `pnpm test`. Read [`apps/storefront/CLAUDE.md`](../../apps/storefront/CLAUDE.md)
 > for the real structure; keep this ticket as the record of what was scoped.
 
 ## Goal
