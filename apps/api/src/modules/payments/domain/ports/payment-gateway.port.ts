@@ -11,8 +11,11 @@ export type GatewayKey = 'sepay' | 'payos' | 'momo' | 'zalopay' | 'mock';
 export type WebhookEvent = 'succeeded' | 'failed' | 'expired' | 'refunded';
 
 export interface CreatePaymentInput {
+  /** Canonical durable local checkout-attempt identity. */
+  paymentId: string;
+  /** Provider-specific opaque reference prepared and persisted before provider I/O. */
+  gatewayOrderRef: string | null;
   amountVnd: bigint;
-  orderCode: string;
   description: string;
   returnUrl: string;
   errorUrl: string;
@@ -64,12 +67,14 @@ export interface PaymentStatusResult {
 
 export interface PaymentGatewayPort {
   readonly key: GatewayKey;
+  /** Pure/synchronous provider reference preparation. Core persists the opaque result. */
+  prepareOrderReference(paymentId: string): string | null;
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   /** Map the storefront-neutral choice to the provider code persisted with the payment. */
   providerPaymentMethod(method: CustomerPaymentMethod): string;
-  /** Unauthenticated read of the gateway txn id from a webhook body (to resolve the tenant). */
+  /** Unauthenticated read of the gateway txn/order ref from a webhook body (to resolve tenant). */
   peekReference(rawBody: Buffer): string | null;
   verifyWebhook(rawBody: Buffer, headers: Record<string, string>): WebhookVerification;
   refund(input: RefundInput): Promise<RefundResult>;
-  queryPaymentStatus(gatewayTxnId: string): Promise<PaymentStatusResult>;
+  queryPaymentStatus(reference: string): Promise<PaymentStatusResult>;
 }
