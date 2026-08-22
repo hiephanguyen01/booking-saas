@@ -36,7 +36,6 @@ export interface RefundStatusInput { refundId: string; gatewayRefundId: string |
 export type RefundStatusResult = RefundResult;
 
 export interface PaymentGatewayPort {
-  // existing methods
   refund(input: RefundInput): Promise<RefundResult>;
   queryRefundStatus(input: RefundStatusInput): Promise<RefundStatusResult>;
 }
@@ -103,8 +102,40 @@ Provider rules:
 
 ## Task 5 — Final stacked PR3 validation
 
-- [ ] Run/require `pnpm test`, API lint/typecheck, frontend lint/typecheck, and frontend production builds green on final PR3 head.
-- [ ] Re-prove `refactor/durable-checkout-payos -> refactor/momo-production-hardening` is ahead-only with `behind_by=0`; sync without force if PR2 moved, then revalidate.
-- [ ] Open Draft PR3 `refactor(payments): harden MoMo payment and refund flows` with base `refactor/durable-checkout-payos`.
-- [ ] Keep/update Draft validation PR #195 against `main` and require a fresh green current-main workflow on the final head.
-- [ ] Record final head SHA, validation run, no migration, no merge/deploy; keep PR3 Draft.
+- [x] Final cleanup head `6b5cae3f0588748a6fb1f60ed2b5adb7ca700b65` passed Frontend CI #745: tests, API lint/typecheck, frontend lint/typecheck, production builds.
+- [x] Re-proved `refactor/durable-checkout-payos -> refactor/momo-production-hardening` ahead-only with `ahead_by=29`, `behind_by=0`, merge base exactly PR2 head.
+- [x] Opened stacked Draft PR3 #196 with base `refactor/durable-checkout-payos`.
+- [x] Updated Draft validation PR #195 against `main`; current `main` remained `2a837bf0ab74bb309774e5152c151b3266c7dfd6` at verification time.
+- [x] Review found and fixed a SePay duplicate-void crash-recovery regression; disposable proof RED→GREEN then removed; final diff remained 15 files with no Prisma migration.
+
+## Sandbox UAT gate
+
+Live MoMo Sandbox UAT is intentionally **not claimed as passed** yet.
+
+Current readiness:
+- code/static/runtime proof gates are green on PR3;
+- staging target is `https://api.stg.bookingos.vn` with IPN `https://api.stg.bookingos.vn/webhooks/momo`;
+- Deploy workflow is manual-only and supports `environment=stg`, `app=api`, `run_migrations=false` for this no-migration PR;
+- tenant MoMo settings require Sandbox `partnerCode`, `accessKey`, and `secretKey`; gateway credentials are encrypted at rest;
+- MoMo refund API requires at least a 30-second timeout, uses `requestId` for idempotency, and exposes dedicated `/v2/gateway/api/refund/query` status reconciliation.
+
+Current blocker observed during UAT prep on 2026-08-23:
+- `api.stg.bookingos.vn` did not resolve in DNS from the verification runtime, so the public HTTPS callback was not reachable;
+- no deployment was performed because this plan explicitly forbids deploy without separate authorization;
+- live UAT also requires real MoMo Sandbox credentials configured for a staging tenant.
+
+Required live UAT cases once staging + credentials exist:
+1. successful checkout → IPN/query → payment succeeded and booking/settlement converge;
+2. customer cancel/reject → final failure;
+3. expiry → expired;
+4. double click/concurrent checkout → one durable pending payment with stable orderId/requestId;
+5. uncertain/create retry → same identities, no second payment row;
+6. delayed/lost IPN → reconciliation converges via query;
+7. valid MoMo webhook returns 204/no body; invalid signature/partner/reference/amount never succeeds;
+8. successful refund stores/reuses provider refund identity;
+9. pending refund is queried again with the same attempt identity and never double-refunds;
+10. result `1081` reconciles through refund query; `1080` follows retryable policy;
+11. terminal refund failures do not repost the same refund identity indefinitely;
+12. verify Sandbox acceptance of `orderExpireTime` for `captureWallet`.
+
+No merge or deploy is requested by this plan.
