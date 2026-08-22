@@ -172,21 +172,22 @@ export class PrismaPaymentRepository implements IPaymentRepository {
       paymentMethod?: string | null;
     },
   ): Promise<boolean> {
-    const result = await tx.payment.updateMany({
-      where: {
-        id: paymentId,
-        status: { in: ['pending', 'succeeded'] },
-        checkoutState: { in: ['creating', 'ready'] },
-      },
-      data: {
-        checkoutState: 'ready',
-        gatewayTxnId: data.gatewayTxnId,
-        gatewayOrderRef: data.gatewayOrderRef,
-        paymentMethod: data.paymentMethod,
-        gatewayPayload: { destination: data.destination } as Prisma.InputJsonValue,
-      },
-    });
-    return result.count > 0;
+    const gatewayTxnId = data.gatewayTxnId ?? null;
+    const gatewayOrderRef = data.gatewayOrderRef ?? null;
+    const paymentMethod = data.paymentMethod ?? null;
+    const destinationPayload = JSON.stringify({ destination: data.destination });
+    const affected = await tx.$executeRaw(Prisma.sql`
+      UPDATE payments
+      SET checkout_state = 'ready',
+          gateway_txn_id = COALESCE(${gatewayTxnId}, gateway_txn_id),
+          gateway_order_ref = COALESCE(${gatewayOrderRef}, gateway_order_ref),
+          payment_method = COALESCE(${paymentMethod}, payment_method),
+          gateway_payload = COALESCE(gateway_payload, '{}'::jsonb) || ${destinationPayload}::jsonb,
+          updated_at = now()
+      WHERE id = ${paymentId}::uuid
+        AND status IN ('pending', 'succeeded')
+        AND checkout_state IN ('creating', 'ready')`);
+    return affected > 0;
   }
 
   async markCheckoutCreateFailed(tx: PrismaTx, paymentId: string): Promise<boolean> {
@@ -246,13 +247,15 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     const gatewayTxnId = gatewayData.gatewayTxnId ?? null;
     const gatewayOrderId = gatewayData.gatewayOrderId ?? null;
     const paymentMethod = gatewayData.paymentMethod ?? null;
+    const completionPayload = JSON.stringify(payload ?? {});
     const affected = await tx.$executeRaw(Prisma.sql`
       UPDATE payments
       SET status = 'succeeded', paid_at = now(), captured_amount = ${gatewayData.capturedAmount},
           gateway_txn_id = COALESCE(${gatewayTxnId}, gateway_txn_id),
           gateway_order_id = COALESCE(${gatewayOrderId}, gateway_order_id),
           payment_method = COALESCE(${paymentMethod}, payment_method),
-          gateway_payload = ${JSON.stringify(payload ?? null)}::jsonb, updated_at = now()
+          gateway_payload = COALESCE(gateway_payload, '{}'::jsonb) || ${completionPayload}::jsonb,
+          updated_at = now()
       WHERE id = ${id}::uuid AND status <> 'succeeded'`);
     return affected > 0;
   }
