@@ -178,6 +178,20 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
     }
   }
 
+  private existingResult(
+    data: PayosPaymentData,
+    orderCode: number,
+    input: CreatePaymentInput,
+  ): CreatePaymentResult {
+    this.validateExisting(data, orderCode, input.amountVnd);
+    return {
+      destination: hostedCheckout(data.id),
+      gatewayTxnId: data.id,
+      gatewayOrderRef: String(orderCode),
+      paymentMethod: this.providerPaymentMethod(input.paymentMethod),
+    };
+  }
+
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     const orderCode = this.parsePersistedOrderCode(input.gatewayOrderRef);
     if (input.amountVnd <= 0n || input.amountVnd > BigInt(Number.MAX_SAFE_INTEGER)) {
@@ -185,15 +199,7 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
     }
 
     const existing = await this.lookup(String(orderCode));
-    if (existing) {
-      this.validateExisting(existing, orderCode, input.amountVnd);
-      return {
-        destination: hostedCheckout(existing.id),
-        gatewayTxnId: existing.id,
-        gatewayOrderRef: String(orderCode),
-        paymentMethod: this.providerPaymentMethod(input.paymentMethod),
-      };
-    }
+    if (existing) return this.existingResult(existing, orderCode, input);
 
     const body = {
       orderCode,
@@ -204,19 +210,45 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
       returnUrl: input.returnUrl,
     };
     const signature = signedPayload(body, this.creds.checksumKey);
-    const created = await providerJson({
-      url: `${PAYOS_API_BASE}/v2/payment-requests`,
-      init: {
-        method: 'POST',
-        headers: {
-          ...this.headers(),
-          'content-type': 'application/json',
+
+    let created: PayosCreateData;
+    try {
+      created = await providerJson({
+        url: `${PAYOS_API_BASE}/v2/payment-requests`,
+        init: {
+          method: 'POST',
+          headers: {
+            ...this.headers(),
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ ...body, signature }),
         },
-        body: JSON.stringify({ ...body, signature }),
-      },
-      timeoutMs: PAYOS_TIMEOUT_MS,
-      parse: parseCreateData,
-    });
+        timeoutMs: PAYOS_TIMEOUT_MS,
+        parse: parseCreateData,
+      });
+    } catch (error) {
+      // Two requests may claim the same durable Payment in Phase A and race after
+      // the transaction is released. If both initial lookups miss, one POST can win
+      // while the other gets a duplicate/final error or loses its response. Re-read
+      // the stable orderCode before surfacing the error so both requests converge on
+      // the same provider resource. Configuration failures are not recoverable this way.
+      if (error instanceof GatewayRequestError && error.kind !== 'configuration') {
+        try {
+          const recovered = await this.lookup(String(orderCode));
+          if (recovered) return this.existingResult(recovered, orderCode, input);
+        } catch (lookupError) {
+          if (
+            lookupError instanceof GatewayRequestError &&
+            lookupError.kind === 'final' &&
+            lookupError.status !== 404
+          ) {
+            throw lookupError;
+          }
+        }
+      }
+      throw error;
+    }
+
     this.validateExisting(created, orderCode, input.amountVnd);
     return {
       destination: hostedCheckout(created.paymentLinkId),
