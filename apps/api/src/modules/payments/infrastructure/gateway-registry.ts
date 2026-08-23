@@ -130,7 +130,7 @@ export class GatewayRegistry implements GatewayRegistryPort {
   }
 
   private resolveConfig(cfg: GatewayConfigRecord | null): ResolvedGateway {
-    if (!cfg || cfg.gateway === 'mock') {
+    if (!cfg) {
       return {
         gateway: this.mock,
         configRevisionId: null,
@@ -138,7 +138,7 @@ export class GatewayRegistry implements GatewayRegistryPort {
       };
     }
     return {
-      gateway: this.adapterForConfig(cfg),
+      gateway: cfg.gateway === 'mock' ? this.mock : this.adapterForConfig(cfg),
       configRevisionId: cfg.id,
       settings: cfg.settings,
     };
