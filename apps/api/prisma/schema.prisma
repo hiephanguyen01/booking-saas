@@ -376,6 +376,15 @@ enum RefundExecutionMode {
   @@map("refund_execution_mode")
 }
 
+enum RefundBatchStatus {
+  processing
+  manual_required
+  completed
+  failed
+
+  @@map("refund_batch_status")
+}
+
 enum GatewayEnvironment {
   sandbox
   production
@@ -830,6 +839,7 @@ model Tenant {
   defaultCancellationPolicy CancellationPolicy?        @relation("TenantDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
   bookings                  Booking[]
   payments                  Payment[]
+  refundBatches             RefundBatch[]
   gatewayConfigs            TenantGatewayConfig[]
   commissionRules           CommissionRule[]
   ledgerAccounts            LedgerAccount[]
@@ -1634,6 +1644,7 @@ model Booking {
   cancellationPolicy  CancellationPolicy?    @relation(fields: [cancellationPolicyId], references: [id])
   payments            Payment[]
   refunds             Refund[]
+  refundBatches        RefundBatch[]
   statusHistory       BookingStatusHistory[]
   promoRedemption     PromoRedemption?
   affiliateCommission AffiliateCommission?
@@ -1902,6 +1913,7 @@ model Payment {
 model Refund {
   id                   String              @id @default(uuid(7)) @db.Uuid
   tenantId             String              @map("tenant_id") @db.Uuid
+  refundBatchId        String?             @map("refund_batch_id") @db.Uuid
   paymentId            String              @map("payment_id") @db.Uuid
   bookingId            String              @map("booking_id") @db.Uuid
   amount               BigInt
@@ -1916,14 +1928,37 @@ model Refund {
   createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  payment    Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  booking    Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  settlement BookingSettlement?
+  payment     Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  booking     Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  refundBatch RefundBatch? @relation(fields: [refundBatchId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([paymentId])
   @@index([bookingId])
+  @@index([refundBatchId])
+  @@index([bookingId, reason])
   @@map("refunds")
+}
+
+model RefundBatch {
+  id                   String            @id @default(uuid(7)) @db.Uuid
+  tenantId             String            @map("tenant_id") @db.Uuid
+  bookingId            String            @map("booking_id") @db.Uuid
+  requestedAmount      BigInt            @map("requested_amount")
+  reason               String
+  affectsBookingStatus Boolean           @default(true) @map("affects_booking_status")
+  status               RefundBatchStatus @default(processing)
+  completedAt          DateTime?         @map("completed_at") @db.Timestamptz(6)
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  refunds Refund[]
+
+  @@unique([tenantId, bookingId, reason])
+  @@index([tenantId, status, updatedAt])
+  @@map("refund_batches")
 }
 
 /// Per-tenant gateway credentials — credentials jsonb is AES-256-GCM encrypted at
@@ -2121,7 +2156,8 @@ model BookingSettlement {
   booking           Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   payment           Payment            @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   partner           Partner            @relation(fields: [partnerId], references: [id], onDelete: Restrict)
-  refund            Refund?            @relation(fields: [refundId], references: [id], onDelete: SetNull)
+  // Business refund reference: legacy Refund.id or batched RefundBatch.id.
+  // The database column is intentionally polymorphic and has no single-table FK.
   dispute           SettlementDispute?
   payoutAllocations PayoutAllocation[]
   taxWithholdingEvents TaxWithholdingEvent[]
