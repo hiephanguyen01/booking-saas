@@ -76,7 +76,8 @@ export class GatewayRegistry implements GatewayRegistryPort {
         process.env.NODE_ENV !== 'production' &&
         process.env.ALLOW_MOCK_PAYMENTS === 'true'
       ) {
-        return this.resolveConfig(null);
+        const activeConfigs = await this.configs.findActiveAll(tx, tenantId);
+        if (activeConfigs.length === 0) return this.resolveConfig(null);
       }
       throw new PaymentMethodUnavailable();
     }
