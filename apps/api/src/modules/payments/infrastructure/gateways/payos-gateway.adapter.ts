@@ -304,7 +304,7 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
 
   verifyWebhook(rawBody: Buffer): WebhookVerification {
     const body = JSON.parse(rawBody.toString('utf8')) as {
-      data: Record<string, unknown> & {
+      data?: Record<string, unknown> & {
         orderCode?: unknown;
         paymentLinkId?: unknown;
         amount?: unknown;
@@ -312,13 +312,21 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
       };
       signature?: unknown;
     };
+    if (!isRecord(body) || !isRecord(body.data)) {
+      return { valid: false, event: 'failed', gatewayTxnId: '', amountVnd: 0n };
+    }
+    const expected = signedPayload(body.data, this.creds.checksumKey);
+    const valid = safeHexEqual(expected, body.signature);
+    if (!valid) {
+      return { valid: false, event: 'failed', gatewayTxnId: '', amountVnd: 0n };
+    }
+
     const orderCode = parsePositiveSafeInteger(body.data?.orderCode, 'webhook orderCode');
     const amount = parsePositiveSafeInteger(body.data?.amount, 'webhook amount');
     const paymentLinkId =
       typeof body.data?.paymentLinkId === 'string' ? body.data.paymentLinkId : String(orderCode);
-    const expected = signedPayload(body.data, this.creds.checksumKey);
     return {
-      valid: safeHexEqual(expected, body.signature),
+      valid: true,
       event: body.data?.code === '00' ? 'succeeded' : 'failed',
       gatewayTxnId: paymentLinkId,
       gatewayOrderRef: String(orderCode),
