@@ -29,7 +29,8 @@ import {
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
 import { PaymentGatewayCard } from '~/features/tenant/components/settings/payment-gateway-card';
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
-import { PaymentMethodSettingsCard } from '~/features/tenant/components/settings/payment-method-settings-card';
+import { CheckoutMethodSettingsCard } from '~/features/tenant/components/settings/checkout-method-settings-card';
+import { RefundPolicyCard } from '~/features/tenant/components/settings/refund-policy-card';
 import { SettingsOverview } from '~/features/tenant/components/settings/settings-overview';
 import { SettingsSectionNav } from '~/features/tenant/components/settings/settings-section-nav';
 import { loadTenantSettings } from '~/features/tenant/server/settings-loader.server';
@@ -56,10 +57,12 @@ const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   'cancellation-policy-update': 'operations',
   'cancellation-policy-delete': 'operations',
   sepay: 'payments',
+  payos: 'payments',
   momo: 'payments',
   zalopay: 'payments',
   'gateway-off': 'payments',
-  'payment-settings': 'payments',
+  'payment-routing': 'payments',
+  'refund-policy': 'payments',
   'payout-policy': 'payouts',
   'legal-draft': 'legal',
   'legal-publish': 'legal',
@@ -95,14 +98,16 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     cancellationPoliciesError,
     gatewayConfigs,
     gatewayError,
+    paymentRouting,
+    paymentRoutingError,
+    refundPolicy,
+    refundPolicyError,
     payoutPolicy,
     payoutPolicyError,
     canManagePayoutPolicy,
     legal,
     legalError,
   } = loaderData;
-  const baseGatewayConfig =
-    gatewayConfigs?.find((c) => c.gateway !== 'momo' && c.gateway !== 'zalopay') ?? null;
   const { readOnly, subscription } = useTenantArea();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -243,7 +248,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               domainsError={domainsError}
               cancellationPolicies={cancellationPolicies}
               cancellationPoliciesError={cancellationPoliciesError}
-              gatewayConfig={baseGatewayConfig}
+              gatewayConfig={gatewayConfigs?.[0] ?? null}
               gatewayError={gatewayError}
               payoutPolicy={payoutPolicy}
               payoutPolicyError={payoutPolicyError}
@@ -349,33 +354,41 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               <PaymentGatewayCard
                 configs={gatewayConfigs ?? []}
                 readOnly={readOnly}
-                sepaySaved={okFor('sepay')}
-                sepayError={errFor('sepay')}
-                sepayFieldErrors={fieldErrorsFor('sepay')}
-                momoSaved={okFor('momo')}
-                momoError={errFor('momo')}
-                momoFieldErrors={fieldErrorsFor('momo')}
-                zalopaySaved={okFor('zalopay')}
-                zalopayError={errFor('zalopay')}
-                zalopayFieldErrors={fieldErrorsFor('zalopay')}
-                offError={errFor('gateway-off')}
+                sepay={{
+                  saved: okFor('sepay'),
+                  error: errFor('sepay'),
+                  fieldErrors: fieldErrorsFor('sepay'),
+                }}
+                payos={{
+                  saved: okFor('payos'),
+                  error: errFor('payos'),
+                  fieldErrors: fieldErrorsFor('payos'),
+                }}
+                momo={{
+                  saved: okFor('momo'),
+                  error: errFor('momo'),
+                  fieldErrors: fieldErrorsFor('momo'),
+                }}
+                zalopay={{
+                  saved: okFor('zalopay'),
+                  error: errFor('zalopay'),
+                  fieldErrors: fieldErrorsFor('zalopay'),
+                }}
+                offError={errFor('gateway-off') ?? gatewayError}
               />
-              {!gatewayError ? (
-                baseGatewayConfig ? (
-                  <PaymentMethodSettingsCard
-                    settings={baseGatewayConfig.settings}
-                    gateway={baseGatewayConfig.gateway}
-                    readOnly={readOnly}
-                    error={errFor('payment-settings')}
-                    success={okFor('payment-settings')}
-                  />
-                ) : (gatewayConfigs?.length ?? 0) > 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Ví điện tử dùng cấu hình hoàn tiền tự động mặc định. Bật một cổng cơ bản (SePay)
-                    để tuỳ chỉnh phương thức hiển thị và chính sách hoàn tiền.
-                  </p>
-                ) : null
-              ) : null}
+              <CheckoutMethodSettingsCard
+                routes={paymentRouting?.routes ?? []}
+                configs={gatewayConfigs ?? []}
+                readOnly={readOnly}
+                error={errFor('payment-routing') ?? paymentRoutingError}
+                success={okFor('payment-routing')}
+              />
+              <RefundPolicyCard
+                policy={refundPolicy ?? { refundStrategy: 'manual', manualRefundSlaHours: 72 }}
+                readOnly={readOnly}
+                error={errFor('refund-policy') ?? refundPolicyError}
+                success={okFor('refund-policy')}
+              />
             </TabsContent>
           ) : null}
 
