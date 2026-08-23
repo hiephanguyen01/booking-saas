@@ -276,7 +276,7 @@ describe('ExecuteRefundUseCase', () => {
     });
     await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n);
     expect(created[0]).toMatchObject({ executionMode: 'manual', status: 'manual_required' });
-    expect(resolvedPayments).toEqual(['sepay:config-1']);
+    expect(resolvedPayments).toEqual([]);
   });
 
   it('uses the exact historical config revision for a legacy Payment with null snapshots', async () => {
@@ -290,7 +290,7 @@ describe('ExecuteRefundUseCase', () => {
   });
 
   it('fails closed when only half of the refund policy snapshot is populated', async () => {
-    const { useCase, created } = harness({
+    const { useCase, created, resolvedPayments } = harness({
       succeeded: payment({
         refundStrategySnapshot: 'automatic_preferred',
         manualRefundSlaHoursSnapshot: null,
@@ -301,5 +301,6 @@ describe('ExecuteRefundUseCase', () => {
       'Invalid refund policy snapshot',
     );
     expect(created).toEqual([]);
+    expect(resolvedPayments).toEqual([]);
   });
 });
