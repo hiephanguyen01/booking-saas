@@ -10,7 +10,7 @@ export interface RefundPolicyInput {
   amount: bigint;
   reason: string;
   affectsBookingStatus: boolean;
-  settings: GatewayPaymentSettings;
+  settings: Pick<GatewayPaymentSettings, 'refundStrategy' | 'manualRefundSlaHours'>;
   now: Date;
 }
 
