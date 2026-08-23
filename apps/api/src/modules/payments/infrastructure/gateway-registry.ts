@@ -38,7 +38,6 @@ export class GatewayRegistry implements GatewayRegistryPort {
     @Inject(PAYMENT_METHOD_ROUTE_REPOSITORY) private readonly routes: IPaymentMethodRouteRepository,
   ) {}
 
-  /** Creds-free adapter for `peekReference` (before the tenant is known). */
   statelessByKey(key: GatewayKey): PaymentGatewayPort {
     if (key === 'sepay') {
       return new SepayGatewayAdapter({
@@ -99,18 +98,6 @@ export class GatewayRegistry implements GatewayRegistryPort {
     return this.resolveConfig(cfg);
   }
 
-  /** Compatibility-only legacy active lookup while old callers migrate. */
-  async resolveActiveForCheckout(
-    tx: PrismaTx,
-    tenantId: string,
-    gateway?: GatewayKey,
-  ): Promise<ResolvedGateway> {
-    const cfg = gateway
-      ? await this.configs.findActiveByGateway(tx, tenantId, gateway)
-      : await this.configs.findActiveBase(tx, tenantId);
-    return this.resolveConfig(cfg);
-  }
-
   async resolveForPayment(
     tx: PrismaTx,
     payment: PaymentGatewayResolutionInput,
@@ -139,15 +126,6 @@ export class GatewayRegistry implements GatewayRegistryPort {
     );
     const cfg = await this.configs.findByGateway(tx, payment.tenantId, payment.gateway);
     return this.resolveConfig(cfg);
-  }
-
-  /** Temporary compatibility seam; payment-lifecycle callers use resolveForPayment. */
-  async resolveForTenant(
-    tx: PrismaTx,
-    tenantId: string,
-    gateway?: GatewayKey,
-  ): Promise<PaymentGatewayPort> {
-    return (await this.resolveActiveForCheckout(tx, tenantId, gateway)).gateway;
   }
 
   private resolveConfig(cfg: GatewayConfigRecord | null): ResolvedGateway {
