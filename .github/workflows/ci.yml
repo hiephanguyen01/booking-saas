@@ -38,3 +38,176 @@ jobs:
         # Keep this separate from typecheck: React Router typegen and build both
         # write generated route files and should not race within the same app.
         run: pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
+
+  mock_revision_tdd:
+    if: github.head_ref == 'refactor/payment-provider-routing-separation'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add regression test only
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          p = Path('apps/api/src/modules/payments/application/use-cases/checkout.use-case.spec.ts')
+          s = p.read_text()
+          s = s.replace(
+            "import type { GatewayConfigRecord } from '../../domain/ports/gateway-config-repository.port';",
+            "import type {\n  GatewayConfigRecord,\n  IGatewayConfigRepository,\n} from '../../domain/ports/gateway-config-repository.port';"
+          )
+          s = s.replace(
+            "import type { IRefundPolicyRepository } from '../../domain/ports/refund-policy-repository.port';\nimport { CheckoutUseCase } from './checkout.use-case';",
+            "import type { IRefundPolicyRepository } from '../../domain/ports/refund-policy-repository.port';\nimport type { IPaymentMethodRouteRepository } from '../../domain/ports/payment-method-route-repository.port';\nimport { GatewayRegistry } from '../../infrastructure/gateway-registry';\nimport { MockGatewayAdapter } from '../../infrastructure/gateways/mock-gateway.adapter';\nimport { CheckoutUseCase } from './checkout.use-case';"
+          )
+          s = s.replace(
+            "  gatewayTxnId?: string | null;\n}",
+            "  gatewayTxnId?: string | null;\n  registry?: GatewayRegistryPort;\n}"
+          )
+          s = s.replace(
+            "    fakePort<GatewayRegistryPort>({\n      resolveActiveForMethod:",
+            "    options.registry ?? fakePort<GatewayRegistryPort>({\n      resolveActiveForMethod:"
+          )
+          marker = "\n\ndescribe('CheckoutUseCase', () => {"
+          helper = r'''
+
+function explicitMockRegistry(): GatewayRegistryPort {
+  const mockConfig = config('mock', ['bank_transfer']);
+  return new GatewayRegistry(
+    new MockGatewayAdapter(),
+    fakePort<IGatewayConfigRepository>({
+      findActiveAll: () => Promise.resolve([mockConfig]),
+      findActiveByGateway: (_tx, _tenantId, gateway) =>
+        Promise.resolve(gateway === 'mock' ? mockConfig : null),
+      findById: (_tx, _tenantId, id) => Promise.resolve(id === mockConfig.id ? mockConfig : null),
+      findByGateway: () => Promise.resolve(mockConfig),
+    }),
+    fakePort<IPaymentMethodRouteRepository>({
+      findEnabledByMethod: (_tx, _tenantId, method) =>
+        Promise.resolve(
+          method === 'bank_transfer' ? { method, gateway: 'mock', enabled: true } : null,
+        ),
+      hasConfiguredRoutes: () => Promise.resolve(true),
+    }),
+  );
+}
+'''
+          if marker not in s:
+            raise SystemExit('describe marker not found')
+          s = s.replace(marker, helper + marker, 1)
+          test_marker = "  it('refuses the mock gateway in production', async () => {"
+          test = r'''  it('snapshots the exact config revision for an explicit mock route', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('ALLOW_MOCK_PAYMENTS', 'true');
+    const { useCase, created } = harness({
+      gatewayKey: 'mock',
+      registry: explicitMockRegistry(),
+    });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]).toMatchObject({
+      gateway: 'mock',
+      gatewayConfigRevisionId: 'config-mock',
+    });
+  });
+
+'''
+          if test_marker not in s:
+            raise SystemExit('test marker not found')
+          s = s.replace(test_marker, test + test_marker, 1)
+          p.write_text(s)
+          PY
+      - name: Verify RED
+        shell: bash
+        run: |
+          set +e
+          pnpm exec vitest run --project api apps/api/src/modules/payments/application/use-cases/checkout.use-case.spec.ts 2>&1 | tee /tmp/red.log
+          code=${PIPESTATUS[0]}
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo 'Expected regression test to fail before production fix'
+            exit 1
+          fi
+          grep -q "snapshots the exact config revision for an explicit mock route" /tmp/red.log
+          grep -q "config-mock" /tmp/red.log
+          echo 'RED confirmed: explicit mock route lost config revision'
+      - name: Apply minimal production fix
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          p = Path('apps/api/src/modules/payments/infrastructure/gateway-registry.ts')
+          s = p.read_text()
+          old = """  private resolveConfig(cfg: GatewayConfigRecord | null): ResolvedGateway {\n    if (!cfg || cfg.gateway === 'mock') {\n      return {\n        gateway: this.mock,\n        configRevisionId: null,\n        settings: DEFAULT_GATEWAY_PAYMENT_SETTINGS,\n      };\n    }\n    return {\n      gateway: this.adapterForConfig(cfg),\n      configRevisionId: cfg.id,\n      settings: cfg.settings,\n    };\n  }\n"""
+          new = """  private resolveConfig(cfg: GatewayConfigRecord | null): ResolvedGateway {\n    if (!cfg) {\n      return {\n        gateway: this.mock,\n        configRevisionId: null,\n        settings: DEFAULT_GATEWAY_PAYMENT_SETTINGS,\n      };\n    }\n    return {\n      gateway: cfg.gateway === 'mock' ? this.mock : this.adapterForConfig(cfg),\n      configRevisionId: cfg.id,\n      settings: cfg.settings,\n    };\n  }\n"""
+          if old not in s:
+            raise SystemExit('resolveConfig block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Verify targeted GREEN
+        run: pnpm exec vitest run --project api apps/api/src/modules/payments/application/use-cases/checkout.use-case.spec.ts
+      - name: Commit regression and fix, restore workflow files
+        shell: bash
+        run: |
+          rm -f .github/workflows/payment-mock-revision-tdd.yml
+          cat > .github/workflows/ci.yml <<'YAML'
+          name: Frontend CI
+
+          on:
+            pull_request:
+              branches: [main]
+            workflow_dispatch:
+
+          permissions:
+            contents: read
+
+          concurrency:
+            group: frontend-ci-${{ github.ref }}
+            cancel-in-progress: true
+
+          jobs:
+            quality:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - uses: pnpm/action-setup@v4
+                - uses: actions/setup-node@v4
+                  with:
+                    node-version: 22.22.0
+                    cache: pnpm
+                - run: pnpm install --frozen-lockfile
+                # Architecture guards + use-case unit tests (ADR 0009). One vitest run,
+                # no database and no browser: the guards read files, and a use-case test
+                # constructs the class over fake ports.
+                - name: Tests
+                  run: pnpm test
+                - name: API lint and typecheck
+                  # Run through Turbo so workspace dependencies such as contracts are
+                  # built once and reused by the frontend checks below.
+                  run: pnpm turbo run lint typecheck --filter=@booking/api
+                - name: Frontend lint and typecheck
+                  run: pnpm turbo run lint typecheck --filter=@booking/storefront --filter=@booking/dashboard
+                - name: Frontend production builds
+                  # Keep this separate from typecheck: React Router typegen and build both
+                  # write generated route files and should not race within the same app.
+                  run: pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
+          YAML
+          git config user.name 'bookingos-ci'
+          git config user.email 'bookingos-ci@users.noreply.github.com'
+          git add apps/api/src/modules/payments/application/use-cases/checkout.use-case.spec.ts \
+                  apps/api/src/modules/payments/infrastructure/gateway-registry.ts \
+                  .github/workflows/ci.yml \
+                  .github/workflows/payment-mock-revision-tdd.yml
+          git commit -m 'fix(payments): retain explicit mock config revision'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
