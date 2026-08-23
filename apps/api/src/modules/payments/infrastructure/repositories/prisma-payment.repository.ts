@@ -260,7 +260,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
           payment_method = COALESCE(${paymentMethod}, payment_method),
           gateway_payload = COALESCE(gateway_payload, '{}'::jsonb) || ${completionPayload}::jsonb,
           updated_at = now()
-      WHERE id = ${id}::uuid AND status <> 'succeeded'`);
+      WHERE id = ${id}::uuid AND status = 'pending'`);
     return affected > 0;
   }
 
