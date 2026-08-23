@@ -85,3 +85,147 @@ jobs:
           echo "public_tunnel_origin_resolved=true"
           curl -fsS --retry 5 --retry-delay 1 --max-time 20 "$tunnel_url" >/dev/null
           echo "public_tunnel_roundtrip=true"
+
+  provider-boundary-smoke:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Exercise local API through PayOS provider boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+
+          docker compose up -d postgres redis minio mailpit
+          for _ in $(seq 1 30); do
+            if docker compose exec -T postgres pg_isready -U postgres -d booking >/dev/null 2>&1 \
+              && docker compose exec -T redis redis-cli ping | grep -q PONG; then
+              break
+            fi
+            sleep 1
+          done
+          docker compose exec -T postgres pg_isready -U postgres -d booking
+          docker compose exec -T redis redis-cli ping | grep -q PONG
+
+          pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api prisma:generate
+          pnpm --filter=@booking/api seed
+
+          curl -fsSLo /tmp/cloudflared \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x /tmp/cloudflared
+          /tmp/cloudflared tunnel --url http://127.0.0.1:3000 \
+            --no-autoupdate >/tmp/cloudflared-api.log 2>&1 &
+          tunnel_pid=$!
+
+          cleanup() {
+            kill ${api_pid:-0} 2>/dev/null || true
+            kill ${tunnel_pid:-0} 2>/dev/null || true
+            docker compose down -v >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 30); do
+            tunnel_url=$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' /tmp/cloudflared-api.log | head -n1 || true)
+            [ -n "$tunnel_url" ] && break
+            sleep 1
+          done
+          test -n "${tunnel_url:-}" || {
+            echo "::error::API tunnel URL was not created"
+            sed -n '1,120p' /tmp/cloudflared-api.log
+            exit 1
+          }
+          sed -i "s|^PUBLIC_API_URL=.*|PUBLIC_API_URL=${tunnel_url}|" .env
+
+          pnpm --filter=@booking/api dev >/tmp/booking-api.log 2>&1 &
+          api_pid=$!
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/health/ready >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then
+              echo "::error::API process exited before becoming ready"
+              tail -n 160 /tmp/booking-api.log
+              exit 1
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000/health/ready >/dev/null
+          echo "local_api_ready=true"
+
+          curl -fsS --retry 10 --retry-delay 1 --max-time 20 \
+            "${tunnel_url}/health/ready" >/dev/null
+          echo "public_api_tunnel_ready=true"
+
+          tenant_id=$(docker compose exec -T postgres psql -U postgres -d booking -Atc \
+            "select id from tenants where slug='studiohub' limit 1")
+          test -n "$tenant_id" || {
+            echo "::error::StudioHub tenant was not seeded"
+            exit 1
+          }
+          echo "tenant_seed_resolved=true"
+
+          login_status=$(curl -sS -o /tmp/login.json -c /tmp/cookies.txt -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            -d '{"email":"owner@studiohub.vn","password":"demo-password"}' \
+            http://127.0.0.1:3000/auth/login)
+          if [ "$login_status" != "200" ]; then
+            echo "::error::owner login failed with HTTP ${login_status}"
+            cat /tmp/login.json
+            exit 1
+          fi
+          echo "tenant_owner_login=true"
+
+          config_status=$(curl -sS -o /tmp/config.json -b /tmp/cookies.txt -w '%{http_code}' \
+            -X PUT \
+            -H 'content-type: application/json' \
+            -H "x-tenant-id: ${tenant_id}" \
+            -d '{"gateway":"payos","environment":"production","credentials":{"clientId":"diag-invalid-client","apiKey":"diag-invalid-api-key","checksumKey":"diag-invalid-checksum-key-0123456789"}}' \
+            http://127.0.0.1:3000/tenant/gateway-config)
+          if [ "$config_status" != "200" ]; then
+            echo "::error::PayOS config write failed with HTTP ${config_status}"
+            cat /tmp/config.json
+            exit 1
+          fi
+          echo "payos_config_write=true"
+
+          get_status=$(curl -sS -o /tmp/config-list.json -b /tmp/cookies.txt -w '%{http_code}' \
+            -H "x-tenant-id: ${tenant_id}" \
+            http://127.0.0.1:3000/tenant/gateway-config)
+          if [ "$get_status" != "200" ] || ! grep -q '"gateway":"payos"' /tmp/config-list.json; then
+            echo "::error::active PayOS config was not readable after write"
+            cat /tmp/config-list.json
+            exit 1
+          fi
+          if grep -q 'diag-invalid-api-key\|diag-invalid-checksum-key' /tmp/config-list.json; then
+            echo "::error::gateway read endpoint leaked credential material"
+            exit 1
+          fi
+          echo "payos_config_read_redacted=true"
+
+          confirm_status=$(curl -sS -o /tmp/confirm.json -b /tmp/cookies.txt -w '%{http_code}' \
+            -X POST \
+            -H "x-tenant-id: ${tenant_id}" \
+            http://127.0.0.1:3000/tenant/gateway-config/payos/confirm-webhook)
+          echo "confirm_http_status=${confirm_status}"
+          cat /tmp/confirm.json
+          if [ "$confirm_status" != "400" ] \
+            || ! grep -q 'PAYOS_WEBHOOK_CONFIRMATION_FAILED' /tmp/confirm.json; then
+            echo "::error::expected normalized PayOS credential rejection at provider boundary"
+            tail -n 160 /tmp/booking-api.log
+            exit 1
+          fi
+          echo "provider_boundary_rejection_normalized=true"
