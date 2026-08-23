@@ -12,10 +12,7 @@ import {
   PaymentMethodUnavailable,
   PaymentStorefrontSuspended,
 } from '../../domain/errors/payment-errors';
-import type {
-  GatewayConfigRecord,
-  IGatewayConfigRepository,
-} from '../../domain/ports/gateway-config-repository.port';
+import type { GatewayConfigRecord } from '../../domain/ports/gateway-config-repository.port';
 import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 import type { GatewayKey, PaymentGatewayPort } from '../../domain/ports/payment-gateway.port';
 import type {
@@ -27,6 +24,7 @@ import type {
   IPaymentRepository,
   PaymentRecord,
 } from '../../domain/ports/payment-repository.port';
+import type { IRefundPolicyRepository } from '../../domain/ports/refund-policy-repository.port';
 import { CheckoutUseCase } from './checkout.use-case';
 
 const HOST = 'studiohub.localhost';
@@ -80,6 +78,8 @@ function paymentRecord(
     status: 'pending',
     checkoutState: data.checkoutState,
     gatewayConfigRevisionId: data.gatewayConfigRevisionId,
+    refundStrategySnapshot: data.refundStrategySnapshot,
+    manualRefundSlaHoursSnapshot: data.manualRefundSlaHoursSnapshot,
     gatewayOrderRef: data.gatewayOrderRef ?? null,
     gatewayOrderId: null,
     gatewayTxnId: null,
@@ -159,6 +159,8 @@ function harness(options: Options = {}): Harness {
           amount: 500_000n,
           checkoutState: 'creating',
           gatewayConfigRevisionId: `config-${key}`,
+          refundStrategySnapshot: 'manual',
+          manualRefundSlaHoursSnapshot: 72,
           gatewayOrderRef: options.pending.id,
           paymentMethod: 'PROVIDER_BANK_TRANSFER',
           idempotencyKey: `checkout:${options.pending.id}`,
@@ -180,16 +182,30 @@ function harness(options: Options = {}): Harness {
       markCheckoutCreateFailed: () => Promise.resolve(true),
     }),
     fakePort<GatewayRegistryPort>({
-      resolveActiveForCheckout: (_tx, _tenantId, requested) => {
-        routedTo.push(requested);
+      resolveActiveForMethod: (_tx, _tenantId, method) => {
+        const configured = options.configs ?? [config('sepay', ['bank_transfer', 'napas_qr'])];
+        if (configured.length === 0) {
+          routedTo.push(undefined);
+          return Promise.resolve({
+            gateway,
+            configRevisionId: null,
+            settings: {
+              enabledMethods: [],
+              refundStrategy: 'manual',
+              manualRefundSlaHours: 72,
+            } as GatewayPaymentSettings,
+          });
+        }
+        const selected = configured.find(
+          (candidate) =>
+            candidate.gateway === key && candidate.settings.enabledMethods.includes(method),
+        );
+        if (!selected) return Promise.reject(new PaymentMethodUnavailable());
+        routedTo.push(selected.gateway);
         return Promise.resolve({
           gateway,
-          configRevisionId: requested ? `config-${requested}` : null,
-          settings: {
-            enabledMethods: [],
-            refundStrategy: 'manual',
-            manualRefundSlaHours: 72,
-          } as GatewayPaymentSettings,
+          configRevisionId: selected.gateway === 'mock' ? null : selected.id,
+          settings: selected.settings,
         });
       },
       resolveForPayment: (_tx, payment) =>
@@ -203,9 +219,8 @@ function harness(options: Options = {}): Harness {
           } as GatewayPaymentSettings,
         }),
     }),
-    fakePort<IGatewayConfigRepository>({
-      findActiveAll: () =>
-        Promise.resolve(options.configs ?? [config('sepay', ['bank_transfer', 'napas_qr'])]),
+    fakePort<IRefundPolicyRepository>({
+      get: () => Promise.resolve({ refundStrategy: 'manual', manualRefundSlaHours: 72 }),
     }),
     fakeCollaborator<ResolveTenantByHostUseCase>({
       execute: () => Promise.resolve({ id: TENANT_ID, live: options.live ?? true }),
