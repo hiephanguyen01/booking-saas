@@ -154,6 +154,7 @@ export const apiPaths = {
     defaultCancellationPolicy: tenantPath('/settings/default-cancellation-policy'),
 
     gatewayConfig: tenantPath('/gateway-config'),
+    payosConfirmWebhook: tenantPath('/gateway-config/payos/confirm-webhook'),
     paymentRouting: tenantPath('/payment-routing'),
     refundPolicy: tenantPath('/refund-policy'),
 

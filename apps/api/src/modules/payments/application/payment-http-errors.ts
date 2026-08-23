@@ -87,3 +87,33 @@ export class InvalidGatewayConfig extends BadRequestException {
     });
   }
 }
+
+export class PayosWebhookNotConfigured extends BadRequestException {
+  constructor() {
+    super({
+      statusCode: 400,
+      code: 'PAYOS_NOT_CONFIGURED',
+      message: 'Hãy lưu và bật cấu hình PayOS trước khi xác nhận webhook',
+    });
+  }
+}
+
+export class PayosWebhookConfirmationFailed extends BadRequestException {
+  constructor() {
+    super({
+      statusCode: 400,
+      code: 'PAYOS_WEBHOOK_CONFIRMATION_FAILED',
+      message: 'PayOS từ chối xác nhận webhook. Hãy kiểm tra cấu hình và URL API public.',
+    });
+  }
+}
+
+export class PayosWebhookConfirmationUnavailable extends ServiceUnavailableException {
+  constructor() {
+    super({
+      statusCode: 503,
+      code: 'PAYOS_WEBHOOK_CONFIRMATION_UNAVAILABLE',
+      message: 'Tạm thời không thể kết nối PayOS để xác nhận webhook',
+    });
+  }
+}

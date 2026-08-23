@@ -6,21 +6,12 @@ import {
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
+import { Button } from '@booking/ui/components/ui/button';
 import { CheckCircle2, CircleAlert } from 'lucide-react';
+import { useFetcher } from 'react-router';
 import { GatewaySetupNotes } from './gateway-setup-notes';
 
 const payosGatewayFields: FieldConfig<PayosGatewaySettingsForm>[] = [
-  {
-    name: 'environment',
-    type: 'radio',
-    label: 'Môi trường',
-    variant: 'segmented',
-    options: [
-      { label: 'Sandbox', value: 'sandbox' },
-      { label: 'Production', value: 'production' },
-    ],
-    colSpan: 2,
-  },
   {
     name: 'clientId',
     type: 'text',
@@ -40,13 +31,20 @@ const payosGatewayFields: FieldConfig<PayosGatewaySettingsForm>[] = [
     name: 'checksumKey',
     type: 'password',
     label: 'Checksum Key',
-    description: 'Dùng để ký request và xác thực webhook PayOS.',
+    description: 'Dùng để xác thực webhook PayOS.',
     placeholder: 'Nhập Checksum Key',
     autoComplete: 'new-password',
     required: true,
     colSpan: 2,
   },
 ];
+
+type PayosWebhookActionData = {
+  form?: string;
+  ok?: boolean;
+  webhookUrl?: string;
+  error?: string;
+};
 
 export function PayosGatewayBody({
   config,
@@ -62,6 +60,10 @@ export function PayosGatewayBody({
   fieldErrors: Record<string, string[]> | null;
 }) {
   const active = config?.gateway === 'payos';
+  const verify = useFetcher<PayosWebhookActionData>();
+  const verifying = verify.state !== 'idle';
+  const webhookResult = verify.data?.form === 'payos-webhook' ? verify.data : null;
+
   return (
     <div>
       {saved ? (
@@ -73,9 +75,7 @@ export function PayosGatewayBody({
       {active ? (
         <Alert className="mb-4">
           <CheckCircle2 className="size-4" />
-          <AlertDescription>
-            Đang hoạt động ở {config.environment === 'production' ? 'Production' : 'Sandbox'}.
-          </AlertDescription>
+          <AlertDescription>PayOS đang hoạt động trên Production.</AlertDescription>
         </Alert>
       ) : null}
       {readOnly ? (
@@ -90,14 +90,14 @@ export function PayosGatewayBody({
           fields={payosGatewayFields}
           columns={2}
           defaultValues={{
-            environment: config?.environment ?? 'sandbox',
+            environment: 'production',
             clientId: '',
             apiKey: '',
             checksumKey: '',
           }}
           transform={(values) => ({
             gateway: 'payos',
-            environment: values.environment,
+            environment: 'production',
             credentials: {
               clientId: values.clientId,
               apiKey: values.apiKey,
@@ -111,14 +111,54 @@ export function PayosGatewayBody({
           fieldErrors={fieldErrors}
         />
       </fieldset>
+
+      <div className="mt-4 space-y-3 rounded-lg border p-4">
+        <div>
+          <p className="font-medium">Webhook PayOS</p>
+          <p className="text-sm text-muted-foreground">
+            Đăng ký URL webhook public HTTPS của BookingOS với PayOS bằng bộ khoá đang hoạt động.
+          </p>
+        </div>
+        {webhookResult?.ok ? (
+          <Alert className="border-success/40 text-success">
+            <CheckCircle2 className="size-4" />
+            <AlertDescription>
+              Webhook đã được PayOS xác nhận
+              {webhookResult.webhookUrl ? (
+                <span className="mt-1 block break-all font-mono text-xs">
+                  {webhookResult.webhookUrl}
+                </span>
+              ) : null}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {webhookResult?.error ? (
+          <Alert className="border-destructive/40 text-destructive">
+            <CircleAlert className="size-4" />
+            <AlertDescription>{webhookResult.error}</AlertDescription>
+          </Alert>
+        ) : null}
+        <verify.Form method="post">
+          <input type="hidden" name="intent" value="confirm-payos-webhook" />
+          <Button type="submit" variant="outline" disabled={readOnly || !active || verifying}>
+            {verifying ? 'Đang xác nhận webhook…' : 'Xác nhận webhook với PayOS'}
+          </Button>
+        </verify.Form>
+        {!active ? (
+          <p className="text-xs text-muted-foreground">
+            Hãy lưu và bật cấu hình PayOS trước khi xác nhận webhook.
+          </p>
+        ) : null}
+      </div>
+
       <GatewaySetupNotes
         title="Cấu hình webhook PayOS"
         steps={[
           'Mở kênh thanh toán PayOS và lấy Client ID, API Key, Checksum Key.',
+          'PayOS không có sandbox riêng; hãy dùng kênh Production và giao dịch giá trị nhỏ khi kiểm thử.',
           <>
-            Webhook URL: <span className="font-mono">/webhooks/payos</span> trên API public HTTPS.
+            BookingOS sẽ xác nhận <span className="font-mono">/webhooks/payos</span> trên API public HTTPS khi bạn bấm nút xác nhận webhook.
           </>,
-          'Dùng đúng bộ khoá tương ứng với Sandbox hoặc Production.',
         ]}
         footnote="API Key và Checksum Key được mã hoá trước khi lưu và không được hiển thị lại."
       />
