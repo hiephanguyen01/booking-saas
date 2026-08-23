@@ -1,0 +1,195 @@
+name: Local Payment Smoke (temporary)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-payment-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NODE_ENV: development
+      MIGRATE_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/booking
+      DATABASE_URL: postgresql://app_user:app_user_dev_pw@localhost:5432/booking
+      ADMIN_DATABASE_URL: postgresql://app_admin:app_admin_dev_pw@localhost:5432/booking
+      REDIS_URL: redis://localhost:6379
+      PAYMENTS_ENC_KEY: dev-payments-encryption-key-change-me
+      ALLOW_MOCK_PAYMENTS: 'true'
+      PLATFORM_BASE_DOMAIN: stg.bookingos.vn
+      DASHBOARD_HOST: admin.stg.bookingos.vn
+      API_HOST: api.stg.bookingos.vn
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: minio
+      S3_SECRET_KEY: minio12345
+      S3_BUCKET: bookingos
+      S3_PRIVATE_BUCKET: bookingos-private
+      S3_PUBLIC_URL: http://127.0.0.1:9000/bookingos
+      S3_FORCE_PATH_STYLE: 'true'
+      STORAGE_UPLOAD_ORIGINS: http://localhost:9000,http://127.0.0.1:9000
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      PORT: '3000'
+      BACKEND_URL: http://localhost:3000
+      SESSION_SECRET_CURRENT: dev-session-secret-change-me-min-32-chars-long
+      SESSION_COOKIE_SECURE: 'false'
+      AUTH_RATE_LIMIT_HMAC_KEY: dev-auth-rate-limit-hmac-key-not-for-production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start local infrastructure
+        run: |
+          docker compose up -d postgres redis minio mailpit
+          for attempt in $(seq 1 40); do
+            if docker compose ps --format json | grep -q 'postgres' && \
+               docker compose ps --format json | grep -q 'redis'; then
+              if docker compose exec -T postgres pg_isready -U postgres -d booking >/dev/null 2>&1 && \
+                 docker compose exec -T redis redis-cli ping | grep -q PONG; then
+                break
+              fi
+            fi
+            sleep 2
+          done
+          docker compose ps
+          docker compose exec -T postgres pg_isready -U postgres -d booking
+          docker compose exec -T redis redis-cli ping
+
+      - name: Apply migrations and seed demo tenants
+        run: |
+          pnpm --filter=@booking/api prisma:generate
+          pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api seed
+          pnpm --filter=@booking/api storage:init
+
+      - name: Seed isolated MoMo provider and explicit route
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { createCipheriv, createHash, randomBytes } = require('node:crypto');
+          const { PrismaClient } = require('./apps/api/node_modules/@prisma/client');
+
+          const prisma = new PrismaClient({ datasourceUrl: process.env.MIGRATE_DATABASE_URL });
+          function encrypt(value) {
+            const key = createHash('sha256').update(process.env.PAYMENTS_ENC_KEY).digest();
+            const iv = randomBytes(12);
+            const cipher = createCipheriv('aes-256-gcm', key, iv);
+            const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+            return [iv.toString('base64'), cipher.getAuthTag().toString('base64'), encrypted.toString('base64')].join('.');
+          }
+
+          (async () => {
+            const tenant = await prisma.tenant.findUniqueOrThrow({ where: { slug: 'studiohub' } });
+            await prisma.tenantGatewayConfig.updateMany({
+              where: { tenantId: tenant.id, gateway: 'momo', isActive: true },
+              data: { isActive: false },
+            });
+            await prisma.tenantGatewayConfig.create({
+              data: {
+                tenantId: tenant.id,
+                gateway: 'momo',
+                environment: 'sandbox',
+                credentials: {
+                  enc: encrypt(JSON.stringify({
+                    partnerCode: 'MOMO_LOCAL_SMOKE',
+                    accessKey: 'local-smoke-access',
+                    secretKey: 'local-smoke-secret-key-1234567890',
+                  })),
+                },
+                settings: {
+                  enabledMethods: ['momo_wallet'],
+                  refundStrategy: 'automatic_preferred',
+                  manualRefundSlaHours: 72,
+                },
+                isActive: true,
+              },
+            });
+            await prisma.tenantPaymentMethodRoute.upsert({
+              where: { tenantId_method: { tenantId: tenant.id, method: 'momo_wallet' } },
+              update: { gateway: 'momo', enabled: true },
+              create: { tenantId: tenant.id, method: 'momo_wallet', gateway: 'momo', enabled: true },
+            });
+            await prisma.tenantRefundPolicy.upsert({
+              where: { tenantId: tenant.id },
+              update: { refundStrategy: 'automatic_preferred', manualRefundSlaHours: 72 },
+              create: {
+                tenantId: tenant.id,
+                refundStrategy: 'automatic_preferred',
+                manualRefundSlaHours: 72,
+              },
+            });
+          })().finally(() => prisma.$disconnect());
+          NODE
+
+      - name: Build and start API
+        run: |
+          pnpm turbo run build --filter=@booking/api...
+          nohup pnpm --filter=@booking/api start >/tmp/booking-api.log 2>&1 &
+          echo $! >/tmp/booking-api.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://localhost:3000/health >/dev/null; then
+              curl --fail --silent http://localhost:3000/health/ready
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/booking-api.log
+          exit 1
+
+      - name: Start public HTTPS tunnel
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /tmp/cloudflared
+          chmod +x /tmp/cloudflared
+          nohup /tmp/cloudflared tunnel --no-autoupdate --url http://localhost:3000 >/tmp/cloudflared.log 2>&1 &
+          echo $! >/tmp/cloudflared.pid
+          for attempt in $(seq 1 60); do
+            PUBLIC_API_URL=$(grep -oE 'https://[-a-z0-9]+\.trycloudflare\.com' /tmp/cloudflared.log | head -1 || true)
+            if [ -n "$PUBLIC_API_URL" ] && curl --fail --silent "$PUBLIC_API_URL/health" >/dev/null; then
+              echo "PUBLIC_API_URL=$PUBLIC_API_URL" >> "$GITHUB_ENV"
+              echo "Tunnel ready: $PUBLIC_API_URL"
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/cloudflared.log
+          exit 1
+
+      - name: Run local application smoke
+        run: pnpm smoke:local
+
+      - name: Run local staging-parity infrastructure smoke
+        run: pnpm smoke:infra:local
+
+      - name: Diagnostics
+        if: always()
+        run: |
+          echo '=== docker compose ps ==='
+          docker compose ps || true
+          echo '=== API log ==='
+          cat /tmp/booking-api.log 2>/dev/null || true
+          echo '=== cloudflared log ==='
+          cat /tmp/cloudflared.log 2>/dev/null || true
+
+      - name: Teardown local stack
+        if: always()
+        run: docker compose down -v --remove-orphans
