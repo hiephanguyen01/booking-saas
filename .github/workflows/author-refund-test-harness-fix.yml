@@ -1,0 +1,122 @@
+name: Author Refund Test Harness Fix
+
+on:
+  push:
+    branches:
+      - feat/refund-allocation
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/refund-allocation
+          fetch-depth: 0
+      - name: Patch refund unit harnesses
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected replacement once, found {count}')
+              p.write_text(text.replace(old, new, 1))
+
+          planner = 'apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.spec.ts'
+          replace_once(
+              planner,
+              "import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';\n",
+              "import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';\nimport type { IRefundBatchRepository, RefundBatchRecord } from '../../domain/ports/refund-batch-repository.port';\n",
+          )
+          replace_once(
+              planner,
+              "    paidAt: new Date('2026-08-01T10:00:00Z'),\n    ...overrides,\n",
+              "    paidAt: new Date('2026-08-01T10:00:00Z'),\n    createdAt: new Date('2026-08-01T09:59:00Z'),\n    ...overrides,\n",
+          )
+          replace_once(
+              planner,
+              "const MANUAL: GatewayPaymentSettings = {\n",
+              "function batch(overrides: Partial<RefundBatchRecord> = {}): RefundBatchRecord {\n  return {\n    id: 'refund-batch-1',\n    tenantId: TENANT_ID,\n    bookingId: BOOKING_ID,\n    requestedAmount: 100_000n,\n    reason: 'booking_cancellation',\n    affectsBookingStatus: true,\n    status: 'processing',\n    completedAt: null,\n    ...overrides,\n  };\n}\n\nconst MANUAL: GatewayPaymentSettings = {\n",
+          )
+          replace_once(
+              planner,
+              "    existsForBooking: () => {\n      calls.push('exists');\n      return Promise.resolve(options.existing ?? false);\n    },\n    create: (_tx, _tenantId, data) => {\n",
+              "    existsForBooking: () => Promise.resolve(options.existing ?? false),\n    reservedAmountForPayment: () => Promise.resolve(0n),\n    create: (_tx, _tenantId, data) => {\n",
+          )
+          replace_once(
+              planner,
+              "  const payments = fakePort<IPaymentRepository>({\n    findSucceededByBooking: () => {\n      calls.push('payment');\n      return Promise.resolve(options.succeeded === undefined ? payment() : options.succeeded);\n    },\n  });\n\n  return {\n",
+              "  const refundBatches = fakePort<IRefundBatchRepository>({\n    findByBookingReason: (_tx, _bookingId, reason) => {\n      calls.push('exists');\n      return Promise.resolve(options.existing ? batch({ reason }) : null);\n    },\n    create: (_tx, tenantId, data) => Promise.resolve(batch({ tenantId, ...data })),\n    refreshStatus: () => Promise.resolve(null),\n  });\n  const payments = fakePort<IPaymentRepository>({\n    findSucceededRefundSources: () => {\n      calls.push('payment');\n      const source = options.succeeded === undefined ? payment() : options.succeeded;\n      return Promise.resolve(source ? [source] : []);\n    },\n    findSecurityDepositSource: () => {\n      calls.push('payment');\n      return Promise.resolve(options.succeeded === undefined ? payment() : options.succeeded);\n    },\n  });\n\n  return {\n",
+          )
+          replace_once(
+              planner,
+              "    useCase: new ExecuteRefundUseCase(\n      payments,\n      refunds,\n",
+              "    useCase: new ExecuteRefundUseCase(\n      payments,\n      refundBatches,\n      refunds,\n",
+          )
+          old_special = """  it('scopes idempotency to the reason, so a deposit refund still goes through', async () => {\n    const reasons: string[] = [];\n    const tenantDb = fakeTenantDb({\n      tx: fakeTx({ outboxEvent: { create: () => Promise.resolve({}) } }),\n    });\n    const refunds = fakePort<IRefundRepository>({\n      lockForBooking: () => Promise.resolve(),\n      existsForBooking: (_tx, _bookingId, reason) => {\n        reasons.push(reason);\n        return Promise.resolve(reason === 'booking_cancellation');\n      },\n      create: (_tx, _tenantId, data) =>\n        Promise.resolve({ id: 'refund-1', ...data } as unknown as RefundRecord),\n    });\n    const resolvedPayments: string[] = [];\n    const useCase = new ExecuteRefundUseCase(\n      fakePort<IPaymentRepository>({ findSucceededByBooking: () => Promise.resolve(payment()) }),\n      refunds,\n      registryFor({}, resolvedPayments),\n      tenantDb.service,\n      new OutboxService(),\n    );\n\n    await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n, 'booking_cancellation');\n    await useCase.execute(TENANT_ID, BOOKING_ID, 50_000n, 'security_deposit');\n    expect(reasons).toEqual(['booking_cancellation', 'security_deposit']);\n  });\n"""
+          new_special = """  it('scopes idempotency to the reason, so a deposit refund still goes through', async () => {\n    const reasons: string[] = [];\n    const tenantDb = fakeTenantDb({\n      tx: fakeTx({ outboxEvent: { create: () => Promise.resolve({}) } }),\n    });\n    const refundBatches = fakePort<IRefundBatchRepository>({\n      findByBookingReason: (_tx, _bookingId, reason) => {\n        reasons.push(reason);\n        return Promise.resolve(reason === 'booking_cancellation' ? batch({ reason }) : null);\n      },\n      create: (_tx, tenantId, data) => Promise.resolve(batch({ tenantId, ...data })),\n      refreshStatus: () => Promise.resolve(null),\n    });\n    const refunds = fakePort<IRefundRepository>({\n      lockForBooking: () => Promise.resolve(),\n      reservedAmountForPayment: () => Promise.resolve(0n),\n      create: (_tx, _tenantId, data) =>\n        Promise.resolve({ id: 'refund-1', refundBatchId: null, ...data } as unknown as RefundRecord),\n    });\n    const resolvedPayments: string[] = [];\n    const useCase = new ExecuteRefundUseCase(\n      fakePort<IPaymentRepository>({\n        findSucceededRefundSources: () => Promise.resolve([payment()]),\n        findSecurityDepositSource: () => Promise.resolve(payment()),\n      }),\n      refundBatches,\n      refunds,\n      registryFor({}, resolvedPayments),\n      tenantDb.service,\n      new OutboxService(),\n    );\n\n    await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n, 'booking_cancellation');\n    await useCase.execute(TENANT_ID, BOOKING_ID, 50_000n, 'security_deposit');\n    expect(reasons).toEqual(['booking_cancellation', 'security_deposit']);\n  });\n"""
+          replace_once(planner, old_special, new_special)
+
+          automatic = 'apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.spec.ts'
+          replace_once(
+              automatic,
+              "import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';\n",
+              "import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';\nimport type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';\n",
+          )
+          replace_once(
+              automatic,
+              "    tenantId: TENANT_ID,\n    paymentId: PAYMENT_ID,\n",
+              "    tenantId: TENANT_ID,\n    refundBatchId: null,\n    paymentId: PAYMENT_ID,\n",
+          )
+          replace_once(
+              automatic,
+              "  const useCase = new ExecuteAutomaticRefundUseCase(\n",
+              "  const refundBatches = fakePort<IRefundBatchRepository>({\n    refreshStatus: () => Promise.resolve(null),\n  });\n\n  const useCase = new ExecuteAutomaticRefundUseCase(\n",
+          )
+          replace_once(
+              automatic,
+              "    }),\n    refunds,\n    fakePort<GatewayRegistryPort>({\n",
+              "    }),\n    refundBatches,\n    refunds,\n    fakePort<GatewayRegistryPort>({\n",
+          )
+
+          manual = 'apps/api/src/modules/payments/application/use-cases/confirm-manual-refund.use-case.spec.ts'
+          replace_once(
+              manual,
+              "import type { IRefundRepository, RefundRecord } from '../../domain/ports/refund-repository.port';\n",
+              "import type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';\nimport type { IRefundRepository, RefundRecord } from '../../domain/ports/refund-repository.port';\n",
+          )
+          replace_once(
+              manual,
+              "    tenantId: TENANT_ID,\n    paymentId: 'payment-1',\n",
+              "    tenantId: TENANT_ID,\n    refundBatchId: null,\n    paymentId: 'payment-1',\n",
+          )
+          replace_once(
+              manual,
+              "  return {\n    useCase: new ConfirmManualRefundUseCase(\n      refunds,\n",
+              "  const refundBatches = fakePort<IRefundBatchRepository>({\n    refreshStatus: () => Promise.resolve(null),\n  });\n\n  return {\n    useCase: new ConfirmManualRefundUseCase(\n      refundBatches,\n      refunds,\n",
+          )
+          PY
+      - name: Validate patch
+        run: |
+          git diff --check
+          git diff --stat
+      - name: Commit harness adaptation
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            apps/api/src/modules/payments/application/use-cases/execute-refund.use-case.spec.ts \
+            apps/api/src/modules/payments/application/use-cases/execute-automatic-refund.use-case.spec.ts \
+            apps/api/src/modules/payments/application/use-cases/confirm-manual-refund.use-case.spec.ts
+          git diff --cached --quiet && { echo 'No harness changes produced'; exit 1; }
+          git commit -m 'test(payments): adapt refund harnesses to allocation'
+          git push origin HEAD:feat/refund-allocation
