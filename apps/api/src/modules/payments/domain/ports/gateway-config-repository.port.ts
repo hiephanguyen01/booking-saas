@@ -28,15 +28,13 @@ export type UpsertGatewayConfigData = UpsertGatewayConfigInput;
 export interface IGatewayConfigRepository {
   /** Every active provider revision for the tenant. Providers are independent. */
   findActiveAll(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord[]>;
-  /** Temporary compatibility lookup; remove after implicit base routing callers migrate. */
-  findActiveBase(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null>;
   /** Exact active revision for one provider. */
   findActiveByGateway(
     tx: PrismaTx,
     tenantId: string,
     gateway: GatewayKey,
   ): Promise<GatewayConfigRecord | null>;
-  /** Provider-specific config, preferring the active revision for legacy callers. */
+  /** Provider-specific config, preferring the active revision for legacy Payment fallback. */
   findByGateway(
     tx: PrismaTx,
     tenantId: string,
@@ -52,11 +50,4 @@ export interface IGatewayConfigRepository {
   ): Promise<GatewayConfigRecord>;
   /** Disable one provider or every provider when no gateway is supplied. */
   deactivate(tx: PrismaTx, tenantId: string, gateway?: GatewayKey): Promise<void>;
-  /** Compatibility write path removed after routing/refund APIs migrate. */
-  updateSettings(
-    tx: PrismaTx,
-    tenantId: string,
-    gateway: GatewayKey,
-    settings: GatewayPaymentSettings,
-  ): Promise<GatewayConfigRecord | null>;
 }
