@@ -3,7 +3,6 @@ import type { CheckoutResponse, CustomerPaymentMethod } from '@booking/contracts
 import { v7 as uuidv7 } from 'uuid';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
-import { pickConfigForMethod } from '../../domain/method-routing';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import {
   PAYMENT_BOOKING_READER,
@@ -19,17 +18,16 @@ import {
   GATEWAY_REGISTRY,
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
+import {
+  REFUND_POLICY_REPOSITORY,
+  type IRefundPolicyRepository,
+} from '../../domain/ports/refund-policy-repository.port';
 import { Payment } from '../../domain/entities/payment.entity';
 import {
   InvalidStorefrontHost,
-  PaymentMethodUnavailable,
   PaymentStorefrontSuspended,
 } from '../../domain/errors/payment-errors';
 import { GatewayOperationError } from '../../domain/errors/gateway-operation-error';
-import {
-  GATEWAY_CONFIG_REPOSITORY,
-  type IGatewayConfigRepository,
-} from '../../domain/ports/gateway-config-repository.port';
 
 const LOCAL_REFERENCE_RETRIES = 3;
 
@@ -62,7 +60,7 @@ interface CheckoutPhaseA {
 
 /**
  * Durable checkout is split into three phases:
- * A) short DB tx creates/claims a local Payment attempt;
+ * A) short DB tx resolves explicit routing + policy and creates/claims a local Payment attempt;
  * B) provider network call runs with no DB transaction open;
  * C) short DB tx attaches the provider handoff.
  */
@@ -72,7 +70,7 @@ export class CheckoutUseCase {
     @Inject(PAYMENT_BOOKING_READER) private readonly bookings: IPaymentBookingReader,
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
-    @Inject(GATEWAY_CONFIG_REPOSITORY) private readonly configs: IGatewayConfigRepository,
+    @Inject(REFUND_POLICY_REPOSITORY) private readonly refundPolicies: IRefundPolicyRepository,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -98,11 +96,7 @@ export class CheckoutUseCase {
       else Payment.assertPayable(booking);
 
       const { amount, kind } = isBalance ? Payment.planBalance(booking) : Payment.plan(booking);
-      const configs = await this.configs.findActiveAll(tx, tenant.id);
-      const routed = pickConfigForMethod(configs, paymentMethod);
-      if (!routed && configs.length > 0) throw new PaymentMethodUnavailable();
-
-      const resolved = await this.registry.resolveActiveForCheckout(tx, tenant.id, routed?.gateway);
+      const resolved = await this.registry.resolveActiveForMethod(tx, tenant.id, paymentMethod);
       const gateway = resolved.gateway;
       const providerPaymentMethod = gateway.providerPaymentMethod(paymentMethod);
       Payment.assertGatewayAccepts({
@@ -111,6 +105,7 @@ export class CheckoutUseCase {
         isProductionEnv: process.env.NODE_ENV === 'production',
         allowMockPayments: process.env.ALLOW_MOCK_PAYMENTS === 'true',
       });
+      const refundPolicy = await this.refundPolicies.get(tx, tenant.id);
 
       await this.payments.lockCheckoutAttempt(tx, bookingId, kind, providerPaymentMethod);
       const reusable = await this.payments.findReusableCheckoutAttempt(
@@ -152,6 +147,8 @@ export class CheckoutUseCase {
             amount,
             checkoutState: 'creating',
             gatewayConfigRevisionId: resolved.configRevisionId,
+            refundStrategySnapshot: refundPolicy.refundStrategy,
+            manualRefundSlaHoursSnapshot: refundPolicy.manualRefundSlaHours,
             gatewayOrderRef,
             paymentMethod: providerPaymentMethod,
             idempotencyKey: `checkout:${paymentId}`,
@@ -173,7 +170,7 @@ export class CheckoutUseCase {
     }
 
     // Resolve the exact immutable config revision recorded in Phase A. A tenant
-    // rotating credentials now cannot switch this in-flight attempt to new keys.
+    // changing routes or rotating credentials now cannot redirect this in-flight attempt.
     const resolved = await this.tenantDb.forTenant(tenant.id, (tx) =>
       this.registry.resolveForPayment(tx, prepared.payment),
     );
