@@ -14,7 +14,10 @@ import {
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
 import { Refund } from '../../domain/entities/refund.entity';
-import { resolvePaymentRefundPolicy } from '../../domain/refund-policy-resolution';
+import {
+  paymentRefundPolicySnapshot,
+  resolvePaymentRefundPolicy,
+} from '../../domain/refund-policy-resolution';
 
 /**
  * Plan a refund intent from the source Payment's frozen policy. Provider execution
@@ -45,16 +48,15 @@ export class ExecuteRefundUseCase {
       const payment = await this.payments.findSucceededByBooking(tx, bookingId);
       if (!payment) return;
 
-      // resolveForPayment preserves the exact immutable config revision for
-      // legacy Payments. New Payments override those historical settings with
-      // their complete refund-policy snapshot below.
-      const resolved = await this.registry.resolveForPayment(tx, payment);
-      const policy = resolvePaymentRefundPolicy(payment, resolved.settings);
-      const settings = {
-        ...resolved.settings,
-        refundStrategy: policy.refundStrategy,
-        manualRefundSlaHours: policy.manualRefundSlaHours,
-      };
+      // A complete snapshot is authoritative and a partial snapshot fails closed
+      // before any historical credential/config resolution. Only legacy Payments
+      // with `(null, null)` consult their immutable gateway revision settings.
+      let policy = paymentRefundPolicySnapshot(payment);
+      if (!policy) {
+        const resolved = await this.registry.resolveForPayment(tx, payment);
+        policy = resolvePaymentRefundPolicy(payment, resolved.settings);
+      }
+
       const planned = Refund.plan({
         payment: {
           id: payment.id,
@@ -66,7 +68,7 @@ export class ExecuteRefundUseCase {
         amount,
         reason,
         affectsBookingStatus,
-        settings,
+        settings: policy,
         now: new Date(),
       });
       const refund = await this.refunds.create(tx, tenantId, planned);
