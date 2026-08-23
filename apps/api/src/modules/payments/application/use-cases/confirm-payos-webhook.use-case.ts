@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { GatewayOperationError } from '../../domain/errors/gateway-operation-error';
 import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
@@ -9,7 +10,13 @@ import {
   PAYOS_WEBHOOK_CONFIGURATOR,
   type PayosWebhookConfirmation,
   type PayosWebhookConfiguratorPort,
+  type PayosWebhookCredentials,
 } from '../../domain/ports/payos-webhook-configurator.port';
+import {
+  PayosWebhookConfirmationFailed,
+  PayosWebhookConfirmationUnavailable,
+  PayosWebhookNotConfigured,
+} from '../payment-http-errors';
 
 @Injectable()
 export class ConfirmPayosWebhookUseCase {
@@ -22,10 +29,20 @@ export class ConfirmPayosWebhookUseCase {
   ) {}
 
   async execute(): Promise<PayosWebhookConfirmation> {
-    void this.configs;
-    void this.tenantContext;
-    void this.tenantDb;
-    void this.configurator;
-    throw new Error('Not implemented');
+    const tenantId = this.tenantContext.requireTenantId();
+    const config = await this.tenantDb.forTenant(tenantId, (tx) =>
+      this.configs.findActiveByGateway(tx, tenantId, 'payos'),
+    );
+    if (!config) throw new PayosWebhookNotConfigured();
+
+    try {
+      return await this.configurator.confirm(config.credentials as PayosWebhookCredentials);
+    } catch (error) {
+      if (error instanceof GatewayOperationError) {
+        if (error.kind === 'retryable') throw new PayosWebhookConfirmationUnavailable();
+        throw new PayosWebhookConfirmationFailed();
+      }
+      throw error;
+    }
   }
 }
