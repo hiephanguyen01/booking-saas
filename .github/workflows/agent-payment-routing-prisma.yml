@@ -1,0 +1,45 @@
+name: Agent Payment Routing Prisma Patch
+
+on:
+  push:
+    branches:
+      - refactor/payment-provider-routing-separation
+    paths:
+      - .github/workflows/agent-payment-routing-prisma.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/payment-provider-routing-separation
+          fetch-depth: 0
+      - name: Patch Prisma schema
+        run: python scripts/agent-patch-payment-routing-prisma.py
+      - name: Remove one-shot helpers
+        run: rm scripts/agent-patch-payment-routing-prisma.py .github/workflows/agent-payment-routing-prisma.yml
+      - name: Commit schema patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat(payments): add routing and refund policy schema"
+          git push origin HEAD:refactor/payment-provider-routing-separation
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm --filter=@booking/api prisma:generate
+      - name: Typecheck API
+        run: pnpm --filter=@booking/api typecheck
