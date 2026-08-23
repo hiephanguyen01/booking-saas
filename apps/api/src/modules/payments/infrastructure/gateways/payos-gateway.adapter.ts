@@ -83,9 +83,6 @@ function parseLookupData(value: unknown): PayosPaymentData | null {
     );
   }
   if (value.code !== '00' || !isRecord(value.data)) {
-    if (value.data === null || value.data === undefined) {
-      return null;
-    }
     throw new GatewayRequestError(
       'final',
       typeof value.desc === 'string' ? value.desc : 'payOS rejected the payment request',
