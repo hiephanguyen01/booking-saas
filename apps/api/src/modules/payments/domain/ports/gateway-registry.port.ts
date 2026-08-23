@@ -27,20 +27,8 @@ export interface GatewayRegistryPort {
     tenantId: string,
     method: CustomerPaymentMethod,
   ): Promise<ResolvedGateway>;
-  /** Temporary compatibility seam removed after every checkout caller migrates. */
-  resolveActiveForCheckout(
-    tx: PrismaTx,
-    tenantId: string,
-    gateway?: GatewayKey,
-  ): Promise<ResolvedGateway>;
   resolveForPayment(
     tx: PrismaTx,
     payment: PaymentGatewayResolutionInput,
   ): Promise<ResolvedGateway>;
-  /** Temporary compatibility seam for legacy callers not yet migrated. */
-  resolveForTenant(
-    tx: PrismaTx,
-    tenantId: string,
-    gateway?: GatewayKey,
-  ): Promise<PaymentGatewayPort>;
 }
