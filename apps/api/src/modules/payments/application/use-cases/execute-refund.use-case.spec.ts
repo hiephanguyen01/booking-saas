@@ -5,6 +5,7 @@ import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 import type { PaymentGatewayPort } from '../../domain/ports/payment-gateway.port';
 import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';
+import type { IRefundBatchRepository, RefundBatchRecord } from '../../domain/ports/refund-batch-repository.port';
 import type {
   CreateRefundData,
   IRefundRepository,
@@ -36,8 +37,23 @@ function payment(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
     paymentMethod: 'BANK',
     idempotencyKey: 'key-1',
     paidAt: new Date('2026-08-01T10:00:00Z'),
+    createdAt: new Date('2026-08-01T09:59:00Z'),
     ...overrides,
   } as PaymentRecord;
+}
+
+function batch(overrides: Partial<RefundBatchRecord> = {}): RefundBatchRecord {
+  return {
+    id: 'refund-batch-1',
+    tenantId: TENANT_ID,
+    bookingId: BOOKING_ID,
+    requestedAmount: 100_000n,
+    reason: 'booking_cancellation',
+    affectsBookingStatus: true,
+    status: 'processing',
+    completedAt: null,
+    ...overrides,
+  };
 }
 
 const MANUAL: GatewayPaymentSettings = {
@@ -102,18 +118,29 @@ function harness(options: Options = {}): Harness {
       calls.push('lock');
       return Promise.resolve();
     },
-    existsForBooking: () => {
-      calls.push('exists');
-      return Promise.resolve(options.existing ?? false);
-    },
+    existsForBooking: () => Promise.resolve(options.existing ?? false),
+    reservedAmountForPayment: () => Promise.resolve(0n),
     create: (_tx, _tenantId, data) => {
       calls.push('create');
       created.push(data);
       return Promise.resolve({ id: 'refund-1', ...data } as unknown as RefundRecord);
     },
   });
+  const refundBatches = fakePort<IRefundBatchRepository>({
+    findByBookingReason: (_tx, _bookingId, reason) => {
+      calls.push('exists');
+      return Promise.resolve(options.existing ? batch({ reason }) : null);
+    },
+    create: (_tx, tenantId, data) => Promise.resolve(batch({ tenantId, ...data })),
+    refreshStatus: () => Promise.resolve(null),
+  });
   const payments = fakePort<IPaymentRepository>({
-    findSucceededByBooking: () => {
+    findSucceededRefundSources: () => {
+      calls.push('payment');
+      const source = options.succeeded === undefined ? payment() : options.succeeded;
+      return Promise.resolve(source ? [source] : []);
+    },
+    findSecurityDepositSource: () => {
       calls.push('payment');
       return Promise.resolve(options.succeeded === undefined ? payment() : options.succeeded);
     },
@@ -122,6 +149,7 @@ function harness(options: Options = {}): Harness {
   return {
     useCase: new ExecuteRefundUseCase(
       payments,
+      refundBatches,
       refunds,
       registryFor(options, resolvedPayments),
       tenantDb.service,
@@ -163,18 +191,27 @@ describe('ExecuteRefundUseCase', () => {
     const tenantDb = fakeTenantDb({
       tx: fakeTx({ outboxEvent: { create: () => Promise.resolve({}) } }),
     });
+    const refundBatches = fakePort<IRefundBatchRepository>({
+      findByBookingReason: (_tx, _bookingId, reason) => {
+        reasons.push(reason);
+        return Promise.resolve(reason === 'booking_cancellation' ? batch({ reason }) : null);
+      },
+      create: (_tx, tenantId, data) => Promise.resolve(batch({ tenantId, ...data })),
+      refreshStatus: () => Promise.resolve(null),
+    });
     const refunds = fakePort<IRefundRepository>({
       lockForBooking: () => Promise.resolve(),
-      existsForBooking: (_tx, _bookingId, reason) => {
-        reasons.push(reason);
-        return Promise.resolve(reason === 'booking_cancellation');
-      },
+      reservedAmountForPayment: () => Promise.resolve(0n),
       create: (_tx, _tenantId, data) =>
-        Promise.resolve({ id: 'refund-1', ...data } as unknown as RefundRecord),
+        Promise.resolve({ id: 'refund-1', refundBatchId: null, ...data } as unknown as RefundRecord),
     });
     const resolvedPayments: string[] = [];
     const useCase = new ExecuteRefundUseCase(
-      fakePort<IPaymentRepository>({ findSucceededByBooking: () => Promise.resolve(payment()) }),
+      fakePort<IPaymentRepository>({
+        findSucceededRefundSources: () => Promise.resolve([payment()]),
+        findSecurityDepositSource: () => Promise.resolve(payment()),
+      }),
+      refundBatches,
       refunds,
       registryFor({}, resolvedPayments),
       tenantDb.service,
