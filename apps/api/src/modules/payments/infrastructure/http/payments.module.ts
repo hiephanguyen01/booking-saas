@@ -18,7 +18,6 @@ import { HandleWebhookUseCase } from '../../application/use-cases/handle-webhook
 import { ListPlatformPaymentsUseCase } from '../../application/use-cases/list-platform-payments.use-case';
 import { ListTenantPaymentsUseCase } from '../../application/use-cases/list-tenant-payments.use-case';
 import { ListTenantRefundsUseCase } from '../../application/use-cases/list-tenant-refunds.use-case';
-import { UpdateGatewayPaymentSettingsUseCase } from '../../application/use-cases/update-gateway-payment-settings.use-case';
 import { UpdatePaymentRoutingUseCase } from '../../application/use-cases/update-payment-routing.use-case';
 import { UpdateRefundPolicyUseCase } from '../../application/use-cases/update-refund-policy.use-case';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
@@ -86,7 +85,6 @@ import { WebhookController } from './webhook.controller';
     ListPlatformPaymentsUseCase,
     ConfirmManualRefundUseCase,
     ListTenantRefundsUseCase,
-    UpdateGatewayPaymentSettingsUseCase,
     GetPublicPaymentOptionsUseCase,
     ExecuteAutomaticRefundUseCase,
   ],
@@ -108,8 +106,6 @@ export class PaymentsModule implements OnModuleInit {
       const p = event.payload as { refundId: string };
       return this.automaticRefunds.execute(tenantId, p.refundId);
     });
-    // Execute refunds when a booking is cancelled (policy refund) or an inventory
-    // rental is returned (deposit refund). Ledger entries are Task 1.10.
     this.registry.register('booking.cancelled', (event) => {
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);
       if (!tenantId) return Promise.resolve();
