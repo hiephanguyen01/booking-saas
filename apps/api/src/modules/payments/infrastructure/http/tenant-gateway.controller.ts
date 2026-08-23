@@ -2,9 +2,20 @@ import {
   gatewayKeySchema,
   type GatewayConfigResponse,
   type GatewayKey,
+  type PayosWebhookConfirmationResponse,
   type UpsertGatewayConfigInput,
 } from '@booking/contracts';
-import { Body, Controller, Delete, Get, HttpCode, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
@@ -13,6 +24,7 @@ import { GatewayConfigValidationPipe } from './gateway-config-validation.pipe';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
 import { GetGatewayConfigUseCase } from '../../application/use-cases/get-gateway-config.use-case';
 import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate-gateway.use-case';
+import { ConfirmPayosWebhookUseCase } from '../../application/use-cases/confirm-payos-webhook.use-case';
 import { toGatewayConfigResponse } from '../../application/payments.mapper';
 import { GatewayConfigResponseDto } from './dto/payments.dto';
 
@@ -24,6 +36,7 @@ export class TenantGatewayController {
     private readonly getConfig: GetGatewayConfigUseCase,
     private readonly upsert: UpsertGatewayConfigUseCase,
     private readonly deactivate: DeactivateGatewayUseCase,
+    private readonly confirmPayosWebhook: ConfirmPayosWebhookUseCase,
   ) {}
 
   @RequirePermissions('tenant.settings.manage')
@@ -44,6 +57,14 @@ export class TenantGatewayController {
     input: UpsertGatewayConfigInput,
   ): Promise<GatewayConfigResponse> {
     return toGatewayConfigResponse(await this.upsert.execute(input));
+  }
+
+  @RequirePermissions('tenant.settings.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Post('payos/confirm-webhook')
+  @ApiOperation({ summary: 'Confirm the tenant PayOS webhook with PayOS' })
+  async confirmPayos(): Promise<PayosWebhookConfirmationResponse> {
+    return this.confirmPayosWebhook.execute();
   }
 
   @RequirePermissions('tenant.settings.manage')
