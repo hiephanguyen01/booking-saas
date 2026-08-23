@@ -1,5 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
+import {
+  DEFAULT_GATEWAY_PAYMENT_SETTINGS,
+  GATEWAY_SUPPORTED_METHODS,
+  type CustomerPaymentMethod,
+} from '@booking/contracts';
 import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service';
 import type { GatewayKey, PaymentGatewayPort } from '../domain/ports/payment-gateway.port';
 import type {
@@ -12,13 +16,18 @@ import {
   type GatewayConfigRecord,
   type IGatewayConfigRepository,
 } from '../domain/ports/gateway-config-repository.port';
+import {
+  PAYMENT_METHOD_ROUTE_REPOSITORY,
+  type IPaymentMethodRouteRepository,
+} from '../domain/ports/payment-method-route-repository.port';
+import { PaymentMethodUnavailable } from '../domain/errors/payment-errors';
 import { MockGatewayAdapter } from './gateways/mock-gateway.adapter';
 import { MomoGatewayAdapter } from './gateways/momo-gateway.adapter';
 import { PayosGatewayAdapter } from './gateways/payos-gateway.adapter';
 import { SepayGatewayAdapter } from './gateways/sepay-gateway.adapter';
 import { ZalopayGatewayAdapter } from './gateways/zalopay-gateway.adapter';
 
-/** Resolves active checkout config separately from immutable historical payment config. */
+/** Resolves explicit checkout routes separately from immutable historical payment config. */
 @Injectable()
 export class GatewayRegistry implements GatewayRegistryPort {
   private readonly logger = new Logger(GatewayRegistry.name);
@@ -26,6 +35,7 @@ export class GatewayRegistry implements GatewayRegistryPort {
   constructor(
     private readonly mock: MockGatewayAdapter,
     @Inject(GATEWAY_CONFIG_REPOSITORY) private readonly configs: IGatewayConfigRepository,
+    @Inject(PAYMENT_METHOD_ROUTE_REPOSITORY) private readonly routes: IPaymentMethodRouteRepository,
   ) {}
 
   /** Creds-free adapter for `peekReference` (before the tenant is known). */
@@ -54,14 +64,49 @@ export class GatewayRegistry implements GatewayRegistryPort {
     return this.mock;
   }
 
+  async resolveActiveForMethod(
+    tx: PrismaTx,
+    tenantId: string,
+    method: CustomerPaymentMethod,
+  ): Promise<ResolvedGateway> {
+    const route = await this.routes.findEnabledByMethod(tx, tenantId, method);
+    if (!route) {
+      const hasConfiguredRoutes = await this.routes.hasConfiguredRoutes(tx, tenantId);
+      if (
+        !hasConfiguredRoutes &&
+        process.env.NODE_ENV !== 'production' &&
+        process.env.ALLOW_MOCK_PAYMENTS === 'true'
+      ) {
+        return this.resolveConfig(null);
+      }
+      throw new PaymentMethodUnavailable();
+    }
+
+    if (!GATEWAY_SUPPORTED_METHODS[route.gateway].includes(method)) {
+      throw new Error(
+        `Invalid tenant payment routing: ${route.gateway} does not support ${method}`,
+      );
+    }
+    if (
+      route.gateway === 'mock' &&
+      (process.env.NODE_ENV === 'production' || process.env.ALLOW_MOCK_PAYMENTS !== 'true')
+    ) {
+      throw new PaymentMethodUnavailable();
+    }
+
+    const cfg = await this.configs.findActiveByGateway(tx, tenantId, route.gateway);
+    if (!cfg) throw new PaymentMethodUnavailable();
+    return this.resolveConfig(cfg);
+  }
+
+  /** Compatibility-only legacy active lookup while old callers migrate. */
   async resolveActiveForCheckout(
     tx: PrismaTx,
     tenantId: string,
     gateway?: GatewayKey,
   ): Promise<ResolvedGateway> {
     const cfg = gateway
-      ? (await this.configs.findActiveAll(tx, tenantId)).find((candidate) => candidate.gateway === gateway) ??
-        null
+      ? await this.configs.findActiveByGateway(tx, tenantId, gateway)
       : await this.configs.findActiveBase(tx, tenantId);
     return this.resolveConfig(cfg);
   }
@@ -96,7 +141,7 @@ export class GatewayRegistry implements GatewayRegistryPort {
     return this.resolveConfig(cfg);
   }
 
-  /** Temporary PR1 compatibility seam; all payment-lifecycle callers use resolveForPayment. */
+  /** Temporary compatibility seam; payment-lifecycle callers use resolveForPayment. */
   async resolveForTenant(
     tx: PrismaTx,
     tenantId: string,
