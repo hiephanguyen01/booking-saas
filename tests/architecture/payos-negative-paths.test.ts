@@ -10,6 +10,10 @@ const paymentRepositoryPath = resolve(
   process.cwd(),
   'apps/api/src/modules/payments/infrastructure/repositories/prisma-payment.repository.ts',
 );
+const checkoutUseCasePath = resolve(
+  process.cwd(),
+  'apps/api/src/modules/payments/application/use-cases/checkout.use-case.ts',
+);
 
 function between(source: string, startMarker: string, endMarker: string): string {
   const start = source.indexOf(startMarker);
@@ -49,5 +53,16 @@ describe('PayOS negative-path architecture', () => {
 
     expect(validateExisting).toContain("data.status === 'CANCELLED' || data.status === 'EXPIRED'");
     expect(validateExisting).toContain('payOS payment resource is no longer payable');
+  });
+
+  it('revalidates a ready PayOS checkout instead of returning its cached handoff', () => {
+    const source = readFileSync(checkoutUseCasePath, 'utf8');
+    const cachedReadyFastPath = between(
+      source,
+      '    // A previously completed Phase C is a pure local fast path:',
+      '\n    // Resolve the exact immutable config revision recorded in Phase A.',
+    );
+
+    expect(cachedReadyFastPath).toContain("prepared.payment.gateway !== 'payos'");
   });
 });
