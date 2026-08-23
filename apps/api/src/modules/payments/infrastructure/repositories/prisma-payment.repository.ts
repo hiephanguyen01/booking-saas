@@ -196,7 +196,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
 
   async markCheckoutCreateFailed(tx: PrismaTx, paymentId: string): Promise<boolean> {
     const result = await tx.payment.updateMany({
-      where: { id: paymentId, status: 'pending', checkoutState: 'creating' },
+      where: { id: paymentId, status: 'pending', checkoutState: { in: ['creating', 'ready'] } },
       data: { checkoutState: 'create_failed' },
     });
     return result.count > 0;
