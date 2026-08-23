@@ -1,0 +1,73 @@
+name: PayOS Smoke Preflight
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify exact source head
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HEAD=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "cc8c9866ff3fc535f11268ea02a1cb7759dcff7d" || {
+            echo "::error::diagnostic branch no longer points at PR #202 head"
+            exit 1
+          }
+
+      - name: Verify outbound PayOS connectivity
+        shell: bash
+        run: |
+          set -euo pipefail
+          getent hosts api-merchant.payos.vn
+          code=$(curl -sS -o /tmp/payos-body -w '%{http_code}' \
+            --connect-timeout 10 --max-time 20 \
+            https://api-merchant.payos.vn/ || true)
+          echo "payos_http_status=${code}"
+          test "$code" != "000" || {
+            echo "::error::cannot establish HTTPS connectivity to api-merchant.payos.vn"
+            exit 1
+          }
+
+      - name: Verify disposable public tunnel capability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 18080 --bind 127.0.0.1 >/tmp/diag-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true; kill ${tunnel_pid:-0} 2>/dev/null || true' EXIT
+
+          curl -fsSLo /tmp/cloudflared \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x /tmp/cloudflared
+          /tmp/cloudflared tunnel --url http://127.0.0.1:18080 \
+            --no-autoupdate >/tmp/cloudflared.log 2>&1 &
+          tunnel_pid=$!
+
+          for _ in $(seq 1 30); do
+            tunnel_url=$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' /tmp/cloudflared.log | head -n1 || true)
+            if [ -n "$tunnel_url" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          test -n "${tunnel_url:-}" || {
+            echo "::error::cloudflared quick tunnel did not produce a public HTTPS URL"
+            sed -n '1,120p' /tmp/cloudflared.log
+            exit 1
+          }
+
+          echo "public_tunnel_origin_resolved=true"
+          curl -fsS --retry 5 --retry-delay 1 --max-time 20 "$tunnel_url" >/dev/null
+          echo "public_tunnel_roundtrip=true"
