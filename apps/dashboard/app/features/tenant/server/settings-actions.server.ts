@@ -27,6 +27,8 @@ import { handleLegalSettingsAction, isLegalIntent } from '~/features/legal/serve
 import { apiPaths } from '~/constants/api-paths';
 import { actionMessages } from '~/constants/messages';
 
+type PayosWebhookConfirmation = { verified: true; webhookUrl: string };
+
 /**
  * The tenant settings route's multi-intent action, kept out of the route module.
  * Handles every settings mutation while keeping the route module focused on composition.
@@ -106,7 +108,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
       if (raw.gateway === 'payos') {
         const parsed = payosGatewaySettingsFormSchema.safeParse({
-          environment: raw.environment,
+          environment: 'production',
           clientId: raw.credentials?.clientId,
           apiKey: raw.credentials?.apiKey,
           checksumKey: raw.credentials?.checksumKey,
@@ -119,7 +121,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
         }
         const payload: UpsertGatewayConfigInput = {
           gateway: 'payos',
-          environment: parsed.data.environment,
+          environment: 'production',
           credentials: {
             clientId: parsed.data.clientId,
             apiKey: parsed.data.apiKey,
@@ -300,6 +302,25 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
   // card uses to decide banner ownership (`tenant-domains-card.tsx`).
   const domainRowKind: TenantDomainKind =
     formData.get('kind') === 'dashboard' ? 'dashboard' : 'storefront';
+
+  if (intent === 'confirm-payos-webhook') {
+    const res = await apiPost<PayosWebhookConfirmation>(apiPaths.tenant.payosConfirmWebhook, {}, auth);
+    if (
+      !res.ok ||
+      !res.data ||
+      res.data.verified !== true ||
+      typeof res.data.webhookUrl !== 'string'
+    ) {
+      return routeData(
+        {
+          form: 'payos-webhook',
+          error: res.error ?? 'Không xác nhận được webhook PayOS.',
+        },
+        { status: res.status >= 400 && res.status <= 599 ? res.status : 400 },
+      );
+    }
+    return { form: 'payos-webhook', ok: true, webhookUrl: res.data.webhookUrl };
+  }
 
   if (intent === 'disable-gateway') {
     const gateway = String(formData.get('gateway') ?? '').trim();
