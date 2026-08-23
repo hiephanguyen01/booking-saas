@@ -8,19 +8,25 @@ on:
 permissions:
   contents: read
 
+env:
+  PR202_SOURCE_SHA: cc8c9866ff3fc535f11268ea02a1cb7759dcff7d
+
 jobs:
   preflight:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PR202_SOURCE_SHA }}
 
-      - name: Report diagnostic source
+      - name: Verify exact product source
         shell: bash
         run: |
           set -euo pipefail
-          echo "diagnostic_head=$(git rev-parse HEAD)"
-          echo "PR202_SOURCE=cc8c9866ff3fc535f11268ea02a1cb7759dcff7d"
+          actual=$(git rev-parse HEAD)
+          echo "checked_product_head=${actual}"
+          test "$actual" = "$PR202_SOURCE_SHA"
 
       - name: Report smoke credential prerequisites
         shell: bash
@@ -92,6 +98,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PR202_SOURCE_SHA }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.13.1
@@ -99,6 +107,14 @@ jobs:
         with:
           node-version: 22.22.0
           cache: pnpm
+
+      - name: Verify exact product source
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual=$(git rev-parse HEAD)
+          echo "checked_product_head=${actual}"
+          test "$actual" = "$PR202_SOURCE_SHA"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
