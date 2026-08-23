@@ -723,7 +723,7 @@ SESSION_COOKIE_SECURE=true
 
 ALLOW_MOCK_PAYMENTS=false
 PAYMENT_STALE_SEC=600
-PAYMENT_REDIRECT_ORIGINS=https://pay-sandbox.sepay.vn,https://pay.sepay.vn,https://test-payment.momo.vn,https://payment.momo.vn,https://sbgateway.zalopay.vn,https://gateway.zalopay.vn
+PAYMENT_REDIRECT_ORIGINS=https://pay-sandbox.sepay.vn,https://pay.sepay.vn,https://test-payment.momo.vn,https://payment.momo.vn,https://sbgateway.zalopay.vn,https://gateway.zalopay.vn,https://pay.payos.vn
 
 S3_ENDPOINT=https://REPLACE_WITH_R2_ACCOUNT_ID.r2.cloudflarestorage.com
 S3_REGION=auto

@@ -67,9 +67,29 @@ function parseOptionalNonNegativeSafeInteger(value: unknown, field: string): num
   return number;
 }
 
-function parsePaymentData(value: unknown): PayosPaymentData {
-  if (!isRecord(value) || value.code !== '00' || !isRecord(value.data)) {
-    throw new GatewayRequestError('final', 'payOS rejected the payment request');
+function parseLookupData(value: unknown): PayosPaymentData | null {
+  if (!isRecord(value)) {
+    throw new GatewayRequestError('retryable', 'payOS returned an invalid response');
+  }
+  // payOS response codes when a payment request does not exist:
+  // '101' ("Mã thanh toán không tồn tại"), '231' ("Payment link not found"), '20'
+  if (value.code === '101' || value.code === '231' || value.code === '20') {
+    return null;
+  }
+  if (value.code === '214' || value.code === '401' || value.code === '403') {
+    throw new GatewayRequestError(
+      'configuration',
+      typeof value.desc === 'string' ? value.desc : 'payOS channel not available or invalid credentials',
+    );
+  }
+  if (value.code !== '00' || !isRecord(value.data)) {
+    if (value.data === null || value.data === undefined) {
+      return null;
+    }
+    throw new GatewayRequestError(
+      'final',
+      typeof value.desc === 'string' ? value.desc : 'payOS rejected the payment request',
+    );
   }
   const id = typeof value.data.id === 'string' ? value.data.id : '';
   const status = typeof value.data.status === 'string' ? value.data.status : '';
@@ -86,8 +106,20 @@ function parsePaymentData(value: unknown): PayosPaymentData {
 }
 
 function parseCreateData(value: unknown): PayosCreateData {
-  if (!isRecord(value) || value.code !== '00' || !isRecord(value.data)) {
-    throw new GatewayRequestError('final', 'payOS rejected the payment request');
+  if (!isRecord(value)) {
+    throw new GatewayRequestError('retryable', 'payOS returned an invalid response');
+  }
+  if (value.code === '214' || value.code === '401' || value.code === '403') {
+    throw new GatewayRequestError(
+      'configuration',
+      typeof value.desc === 'string' ? value.desc : 'payOS channel not available or invalid credentials',
+    );
+  }
+  if (value.code !== '00' || !isRecord(value.data)) {
+    throw new GatewayRequestError(
+      'final',
+      typeof value.desc === 'string' ? value.desc : 'payOS rejected the payment request',
+    );
   }
   const paymentLinkId =
     typeof value.data.paymentLinkId === 'string' ? value.data.paymentLinkId : '';
@@ -160,7 +192,7 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
         url: `${PAYOS_API_BASE}/v2/payment-requests/${encodeURIComponent(reference)}`,
         init: { headers: this.headers() },
         timeoutMs: PAYOS_TIMEOUT_MS,
-        parse: parsePaymentData,
+        parse: parseLookupData,
       });
     } catch (error) {
       if (error instanceof GatewayRequestError && error.status === 404) return null;
