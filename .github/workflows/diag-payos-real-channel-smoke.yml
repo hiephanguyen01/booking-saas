@@ -1,0 +1,288 @@
+# Diagnostic-only workflow for PR #202. Do not merge this branch.
+# This workflow mutates the webhook URL of the supplied PayOS channel.
+# It MUST only be used with a disposable PayOS payment channel.
+name: PayOS Real Channel Smoke
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PR202_SOURCE_SHA: cc8c9866ff3fc535f11268ea02a1cb7759dcff7d
+
+jobs:
+  credentials-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      PAYOS_SMOKE_DISPOSABLE_CHANNEL: ${{ secrets.PAYOS_SMOKE_DISPOSABLE_CHANNEL }}
+      PAYOS_CLIENT_ID: ${{ secrets.PAYOS_CLIENT_ID }}
+      PAYOS_API_KEY: ${{ secrets.PAYOS_API_KEY }}
+      PAYOS_CHECKSUM_KEY: ${{ secrets.PAYOS_CHECKSUM_KEY }}
+    steps:
+      - name: Require disposable channel and real credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${PAYOS_SMOKE_DISPOSABLE_CHANNEL:-}" != "true" ]; then
+            echo "::error::PAYOS_SMOKE_DISPOSABLE_CHANNEL=true is required. Real smoke changes the channel webhook URL, so production/live channels are forbidden."
+            exit 1
+          fi
+
+          missing=0
+          for name in PAYOS_CLIENT_ID PAYOS_API_KEY PAYOS_CHECKSUM_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::${name} is missing"
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+          echo "real_channel_secret_gate=true"
+
+  real-channel-smoke:
+    needs: credentials-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PAYOS_CLIENT_ID: ${{ secrets.PAYOS_CLIENT_ID }}
+      PAYOS_API_KEY: ${{ secrets.PAYOS_API_KEY }}
+      PAYOS_CHECKSUM_KEY: ${{ secrets.PAYOS_CHECKSUM_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PR202_SOURCE_SHA }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+
+      - name: Verify exact PR #202 product source
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual=$(git rev-parse HEAD)
+          echo "checked_product_head=${actual}"
+          test "$actual" = "$PR202_SOURCE_SHA"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Confirm PayOS webhook on disposable real channel
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+
+          # Everything in this job is ephemeral. Use a fresh encryption key and
+          # disable the local mock fallback so the exercised provider is PayOS.
+          ephemeral_enc_key=$(openssl rand -base64 48 | tr -d '\n')
+          sed -i "s|^PAYMENTS_ENC_KEY=.*|PAYMENTS_ENC_KEY=${ephemeral_enc_key}|" .env
+          sed -i 's|^ALLOW_MOCK_PAYMENTS=.*|ALLOW_MOCK_PAYMENTS=false|' .env
+
+          docker compose up -d postgres redis minio mailpit
+          for _ in $(seq 1 30); do
+            if docker compose exec -T postgres pg_isready -U postgres -d booking >/dev/null 2>&1 \
+              && docker compose exec -T redis redis-cli ping | grep -q PONG; then
+              break
+            fi
+            sleep 1
+          done
+          docker compose exec -T postgres pg_isready -U postgres -d booking
+          docker compose exec -T redis redis-cli ping | grep -q PONG
+
+          pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api prisma:generate
+          pnpm --filter=@booking/api seed
+
+          # Log every public request before forwarding it to the API. payOS docs
+          # state confirm-webhook sends a sample webhook; this proxy lets the smoke
+          # assert that the callback actually reached /webhooks/payos.
+          cat >/tmp/payos-smoke-proxy.mjs <<'NODE'
+          import http from 'node:http';
+
+          const server = http.createServer((req, res) => {
+            console.log(`${req.method} ${req.url}`);
+            const upstream = http.request(
+              {
+                hostname: '127.0.0.1',
+                port: 3000,
+                method: req.method,
+                path: req.url,
+                headers: req.headers,
+              },
+              (upstreamResponse) => {
+                res.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+                upstreamResponse.pipe(res);
+              },
+            );
+            upstream.on('error', () => {
+              if (!res.headersSent) res.writeHead(502);
+              res.end('bad gateway');
+            });
+            req.pipe(upstream);
+          });
+
+          server.listen(18081, '127.0.0.1');
+          NODE
+          node /tmp/payos-smoke-proxy.mjs >/tmp/payos-smoke-proxy.log 2>&1 &
+          proxy_pid=$!
+
+          curl -fsSLo /tmp/cloudflared \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x /tmp/cloudflared
+          /tmp/cloudflared tunnel --url http://127.0.0.1:18081 \
+            --no-autoupdate >/tmp/cloudflared-api.log 2>&1 &
+          tunnel_pid=$!
+
+          cleanup() {
+            rm -f /tmp/payos-real-config.json /tmp/login.json /tmp/config.json /tmp/config-list.json /tmp/confirm.json
+            kill ${api_pid:-0} 2>/dev/null || true
+            kill ${tunnel_pid:-0} 2>/dev/null || true
+            kill ${proxy_pid:-0} 2>/dev/null || true
+            docker compose down -v >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 30); do
+            tunnel_url=$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' /tmp/cloudflared-api.log | head -n1 || true)
+            [ -n "$tunnel_url" ] && break
+            sleep 1
+          done
+          test -n "${tunnel_url:-}" || {
+            echo "::error::API tunnel URL was not created"
+            sed -n '1,120p' /tmp/cloudflared-api.log
+            exit 1
+          }
+          sed -i "s|^PUBLIC_API_URL=.*|PUBLIC_API_URL=${tunnel_url}|" .env
+
+          pnpm --filter=@booking/api dev >/tmp/booking-api.log 2>&1 &
+          api_pid=$!
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/health/ready >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then
+              echo "::error::API process exited before becoming ready"
+              tail -n 160 /tmp/booking-api.log
+              exit 1
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000/health/ready >/dev/null
+          echo "local_api_ready=true"
+
+          curl -fsS --retry 10 --retry-delay 1 --max-time 20 \
+            "${tunnel_url}/health/ready" >/dev/null
+          echo "public_api_tunnel_ready=true"
+
+          tenant_id=$(docker compose exec -T postgres psql -U postgres -d booking -Atc \
+            "select id from tenants where slug='studiohub' limit 1")
+          test -n "$tenant_id" || {
+            echo "::error::StudioHub tenant was not seeded"
+            exit 1
+          }
+          echo "tenant_seed_resolved=true"
+
+          login_status=$(curl -sS -o /tmp/login.json -c /tmp/cookies.txt -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            -d '{"email":"owner@studiohub.vn","password":"demo-password"}' \
+            http://127.0.0.1:3000/auth/login)
+          if [ "$login_status" != "200" ]; then
+            echo "::error::owner login failed with HTTP ${login_status}"
+            exit 1
+          fi
+          echo "tenant_owner_login=true"
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          fs.writeFileSync(
+            '/tmp/payos-real-config.json',
+            JSON.stringify({
+              gateway: 'payos',
+              environment: 'production',
+              credentials: {
+                clientId: process.env.PAYOS_CLIENT_ID,
+                apiKey: process.env.PAYOS_API_KEY,
+                checksumKey: process.env.PAYOS_CHECKSUM_KEY,
+              },
+            }),
+          );
+          NODE
+
+          config_status=$(curl -sS -o /tmp/config.json -b /tmp/cookies.txt -w '%{http_code}' \
+            -X PUT \
+            -H 'content-type: application/json' \
+            -H "x-tenant-id: ${tenant_id}" \
+            --data-binary @/tmp/payos-real-config.json \
+            http://127.0.0.1:3000/tenant/gateway-config)
+          if [ "$config_status" != "200" ]; then
+            echo "::error::real PayOS config write failed with HTTP ${config_status}"
+            exit 1
+          fi
+          echo "payos_real_config_write=true"
+
+          get_status=$(curl -sS -o /tmp/config-list.json -b /tmp/cookies.txt -w '%{http_code}' \
+            -H "x-tenant-id: ${tenant_id}" \
+            http://127.0.0.1:3000/tenant/gateway-config)
+          if [ "$get_status" != "200" ]; then
+            echo "::error::active PayOS config read failed with HTTP ${get_status}"
+            exit 1
+          fi
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync('/tmp/config-list.json', 'utf8');
+          const body = JSON.parse(raw);
+          if (!Array.isArray(body) || !body.some((item) => item?.gateway === 'payos' && item?.isActive === true)) {
+            throw new Error('active PayOS config not present after write');
+          }
+          for (const secret of [process.env.PAYOS_CLIENT_ID, process.env.PAYOS_API_KEY, process.env.PAYOS_CHECKSUM_KEY]) {
+            if (secret && raw.includes(secret)) throw new Error('gateway read endpoint leaked credential material');
+          }
+          console.log('payos_real_config_read_redacted=true');
+          NODE
+
+          confirm_status=$(curl -sS -o /tmp/confirm.json -b /tmp/cookies.txt -w '%{http_code}' \
+            -X POST \
+            -H "x-tenant-id: ${tenant_id}" \
+            http://127.0.0.1:3000/tenant/gateway-config/payos/confirm-webhook)
+          echo "confirm_http_status=${confirm_status}"
+          if [ "$confirm_status" != "200" ]; then
+            echo "::error::real PayOS webhook confirmation failed with HTTP ${confirm_status}"
+            cat /tmp/confirm.json
+            tail -n 160 /tmp/booking-api.log
+            exit 1
+          fi
+
+          export TUNNEL_URL="$tunnel_url"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/confirm.json', 'utf8'));
+          const expected = `${process.env.TUNNEL_URL}/webhooks/payos`;
+          if (body?.verified !== true) throw new Error('PayOS confirmation did not return verified=true');
+          if (body?.webhookUrl !== expected) {
+            throw new Error(`PayOS confirmed unexpected webhook URL: ${body?.webhookUrl ?? '<missing>'}`);
+          }
+          console.log('payos_real_confirmation_verified=true');
+          NODE
+
+          for _ in $(seq 1 10); do
+            if grep -q '^POST /webhooks/payos' /tmp/payos-smoke-proxy.log; then
+              break
+            fi
+            sleep 1
+          done
+          grep -q '^POST /webhooks/payos' /tmp/payos-smoke-proxy.log || {
+            echo "::error::PayOS confirmation succeeded but no sample POST /webhooks/payos was observed"
+            sed -n '1,120p' /tmp/payos-smoke-proxy.log
+            exit 1
+          }
+          echo "payos_sample_webhook_observed=true"
+          echo "real_channel_smoke=true"
