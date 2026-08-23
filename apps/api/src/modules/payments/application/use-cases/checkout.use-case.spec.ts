@@ -457,4 +457,30 @@ describe('CheckoutUseCase', () => {
       paymentMethod: 'PROVIDER_BANK_TRANSFER',
     });
   });
+
+  it('uses the explicitly routed bank-transfer provider instead of the first active base config', async () => {
+    const { useCase, routedTo } = harness({
+      configs: [
+        config('sepay', ['bank_transfer']),
+        config('payos', ['bank_transfer']),
+      ],
+      gatewayKey: 'payos',
+    });
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(routedTo).toEqual(['payos']);
+  });
+
+  it('snapshots the current refund policy onto every new durable payment', async () => {
+    const { useCase, created } = harness();
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]).toMatchObject({
+      refundStrategySnapshot: 'manual',
+      manualRefundSlaHoursSnapshot: 72,
+    });
+  });
+
 });
