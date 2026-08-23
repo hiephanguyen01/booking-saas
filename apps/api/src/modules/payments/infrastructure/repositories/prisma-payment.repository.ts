@@ -196,7 +196,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
 
   async markCheckoutCreateFailed(tx: PrismaTx, paymentId: string): Promise<boolean> {
     const result = await tx.payment.updateMany({
-      where: { id: paymentId, status: 'pending', checkoutState: 'creating' },
+      where: { id: paymentId, status: 'pending', checkoutState: { in: ['creating', 'ready'] } },
       data: { checkoutState: 'create_failed' },
     });
     return result.count > 0;
@@ -260,7 +260,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
           payment_method = COALESCE(${paymentMethod}, payment_method),
           gateway_payload = COALESCE(gateway_payload, '{}'::jsonb) || ${completionPayload}::jsonb,
           updated_at = now()
-      WHERE id = ${id}::uuid AND status <> 'succeeded'`);
+      WHERE id = ${id}::uuid AND status = 'pending'`);
     return affected > 0;
   }
 
