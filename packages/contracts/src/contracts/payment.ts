@@ -69,15 +69,6 @@ export const paymentRoutingResponseSchema = z.object({
 });
 export type PaymentRoutingResponse = z.infer<typeof paymentRoutingResponseSchema>;
 
-/** Legacy helpers retained only for compatibility until implicit routing callers are removed. */
-export const WALLET_GATEWAYS = ['momo', 'zalopay'] as const;
-export function isWalletGateway(gateway: GatewayKey): boolean {
-  return (WALLET_GATEWAYS as readonly string[]).includes(gateway);
-}
-export function walletGatewayForMethod(method: CustomerPaymentMethod): GatewayKey | null {
-  return method === 'momo_wallet' ? 'momo' : method === 'zalopay_wallet' ? 'zalopay' : null;
-}
-
 export const refundStrategySchema = z.enum(['manual', 'automatic_preferred']);
 export type RefundStrategy = z.infer<typeof refundStrategySchema>;
 
