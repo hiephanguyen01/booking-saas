@@ -1,0 +1,39 @@
+name: Author Checkout CreatedAt Fix
+
+on:
+  push:
+    branches: [feat/refund-allocation]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/refund-allocation
+      - name: Patch checkout fixture
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          p = Path('apps/api/src/modules/payments/application/use-cases/checkout.use-case.spec.ts')
+          text = p.read_text()
+          old = "    paidAt: null,\n    ...overrides,\n"
+          new = "    paidAt: null,\n    createdAt: new Date('2026-08-01T09:59:00Z'),\n    ...overrides,\n"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected checkout payment fixture insertion once, found {text.count(old)}')
+          p.write_text(text.replace(old, new, 1))
+          PY
+          git diff --check
+      - name: Commit fixture fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/api/src/modules/payments/application/use-cases/checkout.use-case.spec.ts
+          git diff --cached --quiet && { echo 'No fixture change produced'; exit 1; }
+          git commit -m 'test(payments): add payment fixture creation time'
+          git push origin HEAD:feat/refund-allocation
