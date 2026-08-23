@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { GatewayOperationError } from '../../domain/errors/gateway-operation-error';
 import type {
   PayosWebhookConfirmation,
@@ -62,8 +62,11 @@ function parseConfirmation(value: unknown): PayosWebhookConfirmation {
 
 @Injectable()
 export class PayosWebhookConfigurator implements PayosWebhookConfiguratorPort {
+  private readonly logger = new Logger(PayosWebhookConfigurator.name);
+
   async confirm(credentials: PayosWebhookCredentials): Promise<PayosWebhookConfirmation> {
     const webhookUrl = resolveWebhookUrl();
+    this.logger.log(`Confirming PayOS webhook with URL: ${webhookUrl}`);
     return providerJson({
       url: `${PAYOS_API_BASE}/confirm-webhook`,
       timeoutMs: PROVIDER_TIMEOUT_MS,

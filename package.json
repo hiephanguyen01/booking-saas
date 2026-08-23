@@ -15,6 +15,7 @@
     "test:api": "vitest run --project api",
     "smoke:local": "node --env-file-if-exists=.env scripts/smoke-local.mjs",
     "smoke:infra:local": "node --env-file-if-exists=.env scripts/smoke-infra-local.mjs",
+    "smoke:payos:local": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.smoke --env-file-if-exists=.env scripts/smoke-payos-local.mjs",
     "format": "prettier --write ."
   },
   "devDependencies": {

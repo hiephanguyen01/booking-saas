@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { GatewayOperationError } from '../../domain/errors/gateway-operation-error';
@@ -20,6 +20,8 @@ import {
 
 @Injectable()
 export class ConfirmPayosWebhookUseCase {
+  private readonly logger = new Logger(ConfirmPayosWebhookUseCase.name);
+
   constructor(
     @Inject(GATEWAY_CONFIG_REPOSITORY) private readonly configs: IGatewayConfigRepository,
     private readonly tenantContext: TenantContextService,
@@ -38,6 +40,10 @@ export class ConfirmPayosWebhookUseCase {
     try {
       return await this.configurator.confirm(config.credentials as PayosWebhookCredentials);
     } catch (error) {
+      this.logger.error(
+        `PayOS confirmation error: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       if (error instanceof GatewayOperationError) {
         if (error.kind === 'retryable') throw new PayosWebhookConfirmationUnavailable();
         throw new PayosWebhookConfirmationFailed();
