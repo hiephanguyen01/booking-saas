@@ -856,6 +856,8 @@ model Tenant {
   taxCertificates           TaxWithholdingCertificate[]
   taxDocumentUploads        TaxDocumentUpload[]
 
+  paymentMethodRoutes       TenantPaymentMethodRoute[]
+  refundPolicy              TenantRefundPolicy?
   @@map("tenants")
 }
 
@@ -1870,6 +1872,8 @@ model Payment {
   status                  PaymentStatus         @default(pending)
   checkoutState           PaymentCheckoutState? @map("checkout_state")
   gatewayConfigRevisionId String?               @map("gateway_config_revision_id") @db.Uuid
+  refundStrategySnapshot       String?               @map("refund_strategy_snapshot")
+  manualRefundSlaHoursSnapshot Int?                  @map("manual_refund_sla_hours_snapshot")
   gatewayOrderRef         String?               @map("gateway_order_ref")
   gatewayOrderId          String?               @map("gateway_order_id")
   gatewayTxnId            String?               @map("gateway_txn_id")
@@ -1924,6 +1928,36 @@ model Refund {
 
 /// Per-tenant gateway credentials — credentials jsonb is AES-256-GCM encrypted at
 /// the app layer, never returned by the API (§7.6/§20).
+
+model TenantPaymentMethodRoute {
+  id        String         @id @default(uuid(7)) @db.Uuid
+  tenantId  String         @map("tenant_id") @db.Uuid
+  method    String
+  gateway   PaymentGateway
+  enabled   Boolean        @default(true)
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, method])
+  @@index([tenantId, gateway])
+  @@map("tenant_payment_method_routes")
+}
+
+model TenantRefundPolicy {
+  tenantId             String   @id @map("tenant_id") @db.Uuid
+  refundStrategy       String   @map("refund_strategy")
+  manualRefundSlaHours Int      @map("manual_refund_sla_hours")
+  updatedBy            String?  @map("updated_by") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_refund_policies")
+}
+
 model TenantGatewayConfig {
   id          String             @id @default(uuid(7)) @db.Uuid
   tenantId    String             @map("tenant_id") @db.Uuid
