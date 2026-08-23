@@ -6,6 +6,7 @@ import { BookingModule } from '../../../booking/infrastructure/http/booking.modu
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { CheckoutUseCase } from '../../application/use-cases/checkout.use-case';
 import { ConfirmManualRefundUseCase } from '../../application/use-cases/confirm-manual-refund.use-case';
+import { ConfirmPayosWebhookUseCase } from '../../application/use-cases/confirm-payos-webhook.use-case';
 import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate-gateway.use-case';
 import { ExecuteAutomaticRefundUseCase } from '../../application/use-cases/execute-automatic-refund.use-case';
 import { ExecuteRefundUseCase } from '../../application/use-cases/execute-refund.use-case';
@@ -24,6 +25,7 @@ import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-g
 import { CRYPTO } from '../../domain/ports/crypto.port';
 import { GATEWAY_CONFIG_REPOSITORY } from '../../domain/ports/gateway-config-repository.port';
 import { GATEWAY_REGISTRY } from '../../domain/ports/gateway-registry.port';
+import { PAYOS_WEBHOOK_CONFIGURATOR } from '../../domain/ports/payos-webhook-configurator.port';
 import { PAYMENT_BOOKING_READER } from '../../domain/ports/payment-booking-reader.port';
 import { PAYMENT_CONFIGURATION_LOCK } from '../../domain/ports/payment-configuration-lock.port';
 import { PAYMENT_METHOD_ROUTE_REPOSITORY } from '../../domain/ports/payment-method-route-repository.port';
@@ -33,6 +35,7 @@ import { REFUND_REPOSITORY } from '../../domain/ports/refund-repository.port';
 import { AesGcmCryptoService } from '../aes-gcm-crypto.service';
 import { GatewayRegistry } from '../gateway-registry';
 import { MockGatewayAdapter } from '../gateways/mock-gateway.adapter';
+import { PayosWebhookConfigurator } from '../gateways/payos-webhook.configurator';
 import { PostgresPaymentConfigurationLock } from '../postgres-payment-configuration-lock';
 import { ReconciliationWorker } from '../reconciliation.worker';
 import { PrismaGatewayConfigRepository } from '../repositories/prisma-gateway-config.repository';
@@ -67,6 +70,7 @@ import { WebhookController } from './webhook.controller';
     { provide: REFUND_POLICY_REPOSITORY, useClass: PrismaRefundPolicyRepository },
     { provide: REFUND_REPOSITORY, useClass: PrismaRefundRepository },
     { provide: GATEWAY_CONFIG_REPOSITORY, useClass: PrismaGatewayConfigRepository },
+    { provide: PAYOS_WEBHOOK_CONFIGURATOR, useClass: PayosWebhookConfigurator },
     MockGatewayAdapter,
     { provide: GATEWAY_REGISTRY, useClass: GatewayRegistry },
     ReconciliationWorker,
@@ -76,6 +80,7 @@ import { WebhookController } from './webhook.controller';
     GetPaymentStatusUseCase,
     UpsertGatewayConfigUseCase,
     GetGatewayConfigUseCase,
+    ConfirmPayosWebhookUseCase,
     GetPaymentRoutingUseCase,
     UpdatePaymentRoutingUseCase,
     GetRefundPolicyUseCase,
