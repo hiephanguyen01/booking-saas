@@ -12,19 +12,25 @@ import {
   PaymentMethodUnavailable,
   PaymentStorefrontSuspended,
 } from '../../domain/errors/payment-errors';
-import type { GatewayConfigRecord } from '../../domain/ports/gateway-config-repository.port';
+import type {
+  GatewayConfigRecord,
+  IGatewayConfigRepository,
+} from '../../domain/ports/gateway-config-repository.port';
 import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 import type { GatewayKey, PaymentGatewayPort } from '../../domain/ports/payment-gateway.port';
 import type {
   IPaymentBookingReader,
   PaymentBookingRecord,
 } from '../../domain/ports/payment-booking-reader.port';
+import type { IPaymentMethodRouteRepository } from '../../domain/ports/payment-method-route-repository.port';
 import type {
   CreatePendingCheckoutData,
   IPaymentRepository,
   PaymentRecord,
 } from '../../domain/ports/payment-repository.port';
 import type { IRefundPolicyRepository } from '../../domain/ports/refund-policy-repository.port';
+import { GatewayRegistry } from '../../infrastructure/gateway-registry';
+import { MockGatewayAdapter } from '../../infrastructure/gateways/mock-gateway.adapter';
 import { CheckoutUseCase } from './checkout.use-case';
 
 const HOST = 'studiohub.localhost';
@@ -335,6 +341,66 @@ describe('CheckoutUseCase', () => {
     expect(routedTo).toEqual([undefined]);
   });
 
+  it('snapshots the exact config revision for an explicit mock route', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('ALLOW_MOCK_PAYMENTS', 'true');
+
+    const mockConfig = config('mock', ['bank_transfer']);
+    const created: CreatePendingCheckoutData[] = [];
+    const tenantDb = fakeTenantDb();
+    const registry = new GatewayRegistry(
+      new MockGatewayAdapter(),
+      fakePort<IGatewayConfigRepository>({
+        findActiveAll: () => Promise.resolve([mockConfig]),
+        findActiveByGateway: (_tx, _tenantId, gateway) =>
+          Promise.resolve(gateway === 'mock' ? mockConfig : null),
+        findById: (_tx, _tenantId, id) => Promise.resolve(id === mockConfig.id ? mockConfig : null),
+        findByGateway: () => Promise.resolve(mockConfig),
+      }),
+      fakePort<IPaymentMethodRouteRepository>({
+        findEnabledByMethod: (_tx, _tenantId, method) =>
+          Promise.resolve(
+            method === 'bank_transfer' ? { method, gateway: 'mock', enabled: true } : null,
+          ),
+        hasConfiguredRoutes: () => Promise.resolve(true),
+      }),
+    );
+
+    const useCase = new CheckoutUseCase(
+      fakePort<IPaymentBookingReader>({
+        findById: () => Promise.resolve(booking()),
+      }),
+      fakePort<IPaymentRepository>({
+        lockCheckoutAttempt: () => Promise.resolve(),
+        findReusableCheckoutAttempt: () => Promise.resolve(null),
+        findLatestByBooking: () => Promise.resolve(null),
+        createPendingCheckout: (_tx, _tenantId, data) => {
+          created.push(data);
+          return Promise.resolve(paymentRecord(data));
+        },
+        markCheckoutReady: () => Promise.resolve(true),
+        markCheckoutCreateFailed: () => Promise.resolve(true),
+      }),
+      registry,
+      fakePort<IRefundPolicyRepository>({
+        get: () => Promise.resolve({ refundStrategy: 'manual', manualRefundSlaHours: 72 }),
+      }),
+      fakeCollaborator<ResolveTenantByHostUseCase>({
+        execute: () => Promise.resolve({ id: TENANT_ID, live: true }),
+      }),
+      tenantDb.service,
+    );
+
+    await useCase.execute(HOST, BOOKING_ID, 'bank_transfer');
+
+    expect(created[0]).toMatchObject({
+      gateway: 'mock',
+      gatewayConfigRevisionId: 'config-mock',
+      refundStrategySnapshot: 'manual',
+      manualRefundSlaHoursSnapshot: 72,
+    });
+  });
+
   it('refuses the mock gateway in production', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const { useCase } = harness({ configs: [], gatewayKey: 'mock' });
@@ -475,10 +541,7 @@ describe('CheckoutUseCase', () => {
 
   it('uses the explicitly routed bank-transfer provider instead of the first active base config', async () => {
     const { useCase, routedTo } = harness({
-      configs: [
-        config('sepay', ['bank_transfer']),
-        config('payos', ['bank_transfer']),
-      ],
+      configs: [config('sepay', ['bank_transfer']), config('payos', ['bank_transfer'])],
       gatewayKey: 'payos',
     });
 
@@ -497,5 +560,4 @@ describe('CheckoutUseCase', () => {
       manualRefundSlaHoursSnapshot: 72,
     });
   });
-
 });
