@@ -47,14 +47,14 @@ export class GetPublicPaymentOptionsUseCase {
         const route = routes.find((candidate) => candidate.method === method);
         if (!route?.enabled) return false;
         if (!GATEWAY_SUPPORTED_METHODS[route.gateway].includes(method)) return false;
-        if (route.gateway === 'mock') return allowMock;
+        if (route.gateway === 'mock' && !allowMock) return false;
         return activeGateways.has(route.gateway);
       });
       if (methods.length > 0) return { methods };
 
       // Preserve the existing local-dev convenience only for a truly unconfigured
-      // tenant. Any stored route row — including all-disabled rows — is explicit
-      // tenant intent and must never resurrect mock checkout.
+      // tenant. Any stored route row — including all-disabled rows — or active
+      // provider connection is explicit tenant state and must never resurrect mock checkout.
       if (routes.length === 0 && configs.length === 0 && allowMock) {
         return { methods: DEFAULT_GATEWAY_PAYMENT_SETTINGS.enabledMethods };
       }
