@@ -163,9 +163,10 @@ export class CheckoutUseCase {
       throw new Error('Unable to allocate a unique checkout order reference');
     });
 
-    // A previously completed Phase C is a pure local fast path: double-clicks and
-    // retries never touch the provider again.
-    if (prepared.destination) {
+    // A previously completed Phase C stays a pure local fast path for providers
+    // whose handoff cannot become terminal behind our back. PayOS resources can be
+    // cancelled or expire provider-side, so revalidate them by their stable orderCode.
+    if (prepared.destination && prepared.payment.gateway !== 'payos') {
       return { paymentId: prepared.payment.id, destination: prepared.destination };
     }
 
