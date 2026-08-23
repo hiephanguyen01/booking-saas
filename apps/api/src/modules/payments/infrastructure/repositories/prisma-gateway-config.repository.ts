@@ -4,8 +4,6 @@ import {
   gatewayKeySchema,
   gatewayPaymentSettingsSchema,
   upsertGatewayConfigInputSchema,
-  WALLET_GATEWAYS,
-  type GatewayPaymentSettings,
 } from '@booking/contracts';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -28,7 +26,8 @@ type Row = Prisma.TenantGatewayConfigGetPayload<Record<string, never>>;
 export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
   constructor(
     @Inject(CRYPTO) private readonly crypto: CryptoPort,
-    @Inject(PAYMENT_CONFIGURATION_LOCK) private readonly configurationLock: PaymentConfigurationLockPort,
+    @Inject(PAYMENT_CONFIGURATION_LOCK)
+    private readonly configurationLock: PaymentConfigurationLockPort,
   ) {}
 
   private toRecord(c: Row): GatewayConfigRecord {
@@ -44,8 +43,6 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
       credentials,
     });
     if (!parsed.success) {
-      // Stored/decrypted secrets are a trust boundary. Never coerce missing
-      // fields to empty strings and send them to a provider.
       throw new Error(`Invalid stored ${gateway.data} gateway credentials`);
     }
     const parsedSettings = gatewayPaymentSettingsSchema.safeParse(c.settings);
@@ -61,15 +58,6 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
       orderBy: { createdAt: 'asc' },
     });
     return rows.map((c) => this.toRecord(c));
-  }
-
-  /** Compatibility-only base lookup while old callers migrate to explicit routes. */
-  async findActiveBase(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null> {
-    const c = await tx.tenantGatewayConfig.findFirst({
-      where: { tenantId, isActive: true, gateway: { notIn: [...WALLET_GATEWAYS] } },
-      orderBy: { createdAt: 'asc' },
-    });
-    return c ? this.toRecord(c) : null;
   }
 
   async findActiveByGateway(
@@ -147,38 +135,5 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
       where: { tenantId, isActive: true, ...(gateway ? { gateway } : {}) },
       data: { isActive: false },
     });
-  }
-
-  async updateSettings(
-    tx: PrismaTx,
-    tenantId: string,
-    gateway: GatewayKey,
-    settings: GatewayPaymentSettings,
-  ): Promise<GatewayConfigRecord | null> {
-    await this.configurationLock.acquire(tx, tenantId);
-
-    const current = await tx.tenantGatewayConfig.findFirst({
-      where: { tenantId, gateway, isActive: true },
-      orderBy: { updatedAt: 'desc' },
-    });
-    if (!current) return null;
-    const currentRecord = this.toRecord(current);
-
-    await tx.tenantGatewayConfig.updateMany({
-      where: { tenantId, gateway, isActive: true },
-      data: { isActive: false },
-    });
-
-    const successor = await tx.tenantGatewayConfig.create({
-      data: {
-        tenantId,
-        gateway: currentRecord.gateway,
-        environment: currentRecord.environment,
-        credentials: { enc: this.crypto.encrypt(JSON.stringify(currentRecord.credentials)) },
-        settings: settings as Prisma.InputJsonObject,
-        isActive: true,
-      },
-    });
-    return this.toRecord(successor);
   }
 }
