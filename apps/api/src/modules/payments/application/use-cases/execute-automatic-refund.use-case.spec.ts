@@ -78,6 +78,8 @@ function payment(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
     status: 'succeeded',
     checkoutState: 'ready',
     gatewayConfigRevisionId: 'config-1',
+    refundStrategySnapshot: null,
+    manualRefundSlaHoursSnapshot: null,
     gatewayOrderRef: 'ORDER-9',
     gatewayOrderId: null,
     gatewayTxnId: 'TXN-9',
@@ -414,6 +416,34 @@ describe('ExecuteAutomaticRefundUseCase', () => {
     });
     await useCase.execute(TENANT_ID, REFUND_ID);
     expect(dueDates).toEqual([new Date(NOW.getTime() + 72 * 60 * 60 * 1000)]);
+  });
+
+  it('takes the manual SLA from the complete Payment snapshot before historical settings', async () => {
+    const { useCase, dueDates } = harness({
+      providerResult: { status: 'unsupported' },
+      succeeded: payment({
+        refundStrategySnapshot: 'automatic_preferred',
+        manualRefundSlaHoursSnapshot: 12,
+      }),
+    });
+
+    await useCase.execute(TENANT_ID, REFUND_ID);
+
+    expect(dueDates).toEqual([new Date(NOW.getTime() + 12 * 60 * 60 * 1000)]);
+  });
+
+  it('fails closed on a half-populated Payment refund snapshot before provider I/O', async () => {
+    const { useCase, calls } = harness({
+      succeeded: payment({
+        refundStrategySnapshot: 'automatic_preferred',
+        manualRefundSlaHoursSnapshot: null,
+      }),
+    });
+
+    await expect(useCase.execute(TENANT_ID, REFUND_ID)).rejects.toThrow(
+      'Invalid refund policy snapshot',
+    );
+    expect(calls).not.toContain('gatewayRefund');
   });
 
   it('writes nothing when the refund stopped being executable while the provider was called', async () => {
