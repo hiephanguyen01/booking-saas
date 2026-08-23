@@ -1,7 +1,7 @@
 # Payment Provider / Routing / Refund Policy Separation Design
 
 **Date:** 2026-08-23  
-**Status:** Approved design, implementation not started  
+**Status:** Design direction approved; written spec pending user review  
 **Base:** `main` at `75ff9de3c799bf7f41f678218620fb5c5c53a3b8`
 
 ## 1. Problem
@@ -20,7 +20,7 @@ The redesign separates the concerns:
 
 > **Provider Connection != Payment Method Routing != Refund Policy**
 
-A tenant may connect every supported provider independently. Each customer-facing payment method routes to exactly one active provider. Refund behavior is a tenant policy, snapshotted onto the Payment so later policy edits do not retroactively alter historical transactions.
+A tenant can connect every supported provider independently. Each customer-facing payment method routes to exactly one provider when enabled. Refund behavior is a tenant policy, snapshotted onto the Payment so later policy edits do not retroactively alter historical transactions.
 
 ## 2. Goals
 
@@ -56,7 +56,7 @@ The current design uses these concepts:
 - base methods are resolved by whichever active base config advertises the method;
 - `GatewayPaymentSettings` stores `enabledMethods`, `refundStrategy` and `manualRefundSlaHours` with the credential revision.
 
-After migration, gateway type remains a provider capability identifier only. It no longer determines activation exclusivity.
+After migration, gateway type is a provider capability identifier only. It no longer determines activation exclusivity.
 
 ## 5. Target domain model
 
@@ -77,13 +77,13 @@ New invariant:
 
 > At most one active revision per `(tenant_id, gateway)`.
 
-There is no cross-gateway exclusivity. Active SePay, PayOS, MoMo and ZaloPay rows may coexist.
+There is no cross-gateway exclusivity. Active SePay, PayOS, MoMo and ZaloPay rows can coexist.
 
-`settings` is no longer authoritative for checkout routing or refund policy. During the compatibility phase the JSON column may remain populated/readable for old rows, but new behavior must not depend on it. Removal of the column can be a later cleanup migration after all application references are gone.
+`settings` is no longer authoritative for checkout routing or refund policy. During the compatibility release the JSON column remains readable for old rows because legacy Payments can still need its historical refund policy. New checkout/routing/refund-policy writes do not use it as the source of truth. Dropping the column is explicitly deferred to a later migration.
 
 ### 5.2 Payment method routing
 
-Introduce a tenant-scoped table conceptually named `TenantPaymentMethodRoute`:
+Add the Prisma model `TenantPaymentMethodRoute`:
 
 ```prisma
 model TenantPaymentMethodRoute {
@@ -103,20 +103,29 @@ model TenantPaymentMethodRoute {
 }
 ```
 
-`method` is validated against `customerPaymentMethodSchema`. The implementation may introduce a database enum if the project prefers DB-level method validation, but the application contract remains the source of truth.
+`method` stays a string at the Prisma layer so it reuses `customerPaymentMethodSchema` without introducing a second generated TypeScript enum. The hand-written SQL migration adds a CHECK constraint limiting values to:
+
+- `bank_transfer`;
+- `napas_qr`;
+- `international_card`;
+- `momo_wallet`;
+- `zalopay_wallet`.
+
+The migration also adds a gateway CHECK for the currently implemented keys used by the application contract: `sepay`, `payos`, `momo`, `zalopay`, `mock`. The existing `PaymentGateway` DB enum contains `vnpay`, but routing to it stays invalid until the contracts and adapter actually support it.
 
 The unique `(tenant_id, method)` constraint makes routing deterministic: a payment method has zero or one configured provider.
 
 An enabled route is effective only when:
 
 1. the route's gateway supports the method according to `GATEWAY_SUPPORTED_METHODS`;
-2. that tenant currently has an active credential revision for the gateway.
+2. that tenant currently has an active credential revision for the gateway;
+3. mock routing is allowed by the current non-production mock-payment guard.
 
 A disabled provider does not delete routes. Routes remain configured but ineffective, so reconnecting the provider can restore the previous routing choice without reconfiguration.
 
 ### 5.3 Refund policy
 
-Introduce a tenant-scoped current policy conceptually named `TenantRefundPolicy`:
+Add the Prisma model `TenantRefundPolicy`:
 
 ```prisma
 model TenantRefundPolicy {
@@ -133,12 +142,12 @@ model TenantRefundPolicy {
 }
 ```
 
-Contract validation remains:
+The SQL migration adds CHECK constraints for:
 
-- `refundStrategy`: `manual | automatic_preferred`;
-- `manualRefundSlaHours`: integer `1..720`.
+- `refund_strategy IN ('manual', 'automatic_preferred')`;
+- `manual_refund_sla_hours BETWEEN 1 AND 720`.
 
-The current policy is not used directly for historical refunds. It is the source for new Payment snapshots.
+The current policy is the source for new Payment snapshots; it is not read dynamically when planning a refund for an existing Payment.
 
 ### 5.4 Payment refund-policy snapshot
 
@@ -149,11 +158,13 @@ Add nullable columns to `payments`:
 
 For every new Payment created after the migration, checkout Phase A snapshots the tenant's current refund policy into these fields in the same transaction that persists gateway/gateway revision ownership.
 
-Refund planning reads:
+Refund planning reads in this order:
 
-1. the Payment snapshot when present;
-2. for legacy Payments with null snapshots, the historical `TenantGatewayConfig.settings` referenced by `gatewayConfigRevisionId`;
-3. only for pre-foundation legacy Payments without a revision, the existing legacy gateway-resolution fallback.
+1. Payment snapshot when both snapshot fields are present;
+2. for legacy Payments with null snapshots and a `gatewayConfigRevisionId`, the historical `TenantGatewayConfig.settings` for that exact revision;
+3. for pre-foundation legacy Payments without a revision, the existing legacy gateway-resolution fallback and its settings.
+
+A half-populated snapshot is invalid data and must fail closed rather than mixing current and historical policies.
 
 This preserves behavior of existing payments and makes future refund policy edits apply only to future payments.
 
@@ -169,19 +180,19 @@ This preserves behavior of existing payments and makes future refund policy edit
 - ZaloPay -> `zalopay_wallet`;
 - mock -> local/test methods only as currently defined.
 
-The special `WALLET_GATEWAYS`, `isWalletGateway()` and `walletGatewayForMethod()` concepts must no longer participate in production routing.
+`WALLET_GATEWAYS`, `isWalletGateway()` and `walletGatewayForMethod()` are removed from checkout/public-option routing after callers migrate. They must not determine production provider selection.
 
 ### 6.2 No implicit provider selection
 
-Checkout must never choose the first matching active provider.
+Checkout never chooses the first matching active provider.
 
-For `bank_transfer`, if both SePay and PayOS are connected, the tenant must explicitly select one route. If no enabled route exists, `bank_transfer` is not shown and checkout rejects it as not configured.
+For `bank_transfer`, if both SePay and PayOS are connected, the tenant explicitly selects one route. If no enabled effective route exists, `bank_transfer` is not shown and checkout rejects it as not configured.
 
 ### 6.3 No provider fallback
 
 If a route is `bank_transfer -> payos` and PayOS fails or times out, BookingOS does not automatically create a second SePay payment.
 
-Reason: provider create may have succeeded even when BookingOS did not receive the response. Cross-provider retry would create duplicate payable resources and violate the durable checkout/idempotency guarantees added in PR #190.
+Reason: provider create can have succeeded even when BookingOS did not receive the response. Cross-provider retry would create duplicate payable resources and violate the durable checkout/idempotency guarantees added in PR #190.
 
 Provider-specific recovery remains inside the selected adapter using the already-persisted Payment and stable provider identity.
 
@@ -198,7 +209,17 @@ After Phase A, provider I/O resolves from the Payment revision, not from the cur
 
 ## 7. Repository and application boundaries
 
-### 7.1 Gateway config repository
+### 7.1 One payment-configuration lock
+
+All tenant payment-configuration writes use the existing advisory-lock namespace `gateway-config:<tenantId>`:
+
+- provider credential revision upsert/deactivate;
+- payment-route replacement;
+- refund-policy update.
+
+Keeping one existing lock namespace avoids a rolling-deploy window where old and new code would take different locks. Route validation (`route -> active provider`) happens while this lock is held, so a provider cannot be disabled concurrently between validation and route persistence.
+
+### 7.2 Gateway config repository
 
 Change `PrismaGatewayConfigRepository.upsert()`:
 
@@ -209,17 +230,20 @@ Current behavior:
 
 New behavior:
 
-- always deactivate only active revisions for the same `(tenant, gateway)`;
+- acquire `gateway-config:<tenantId>` lock;
+- deactivate only active revisions for the same `(tenant, gateway)`;
 - create a new active revision;
 - never deactivate another gateway as a side effect.
 
-`findActiveBase()` becomes obsolete and should be removed after callers migrate.
+`findActiveBase()` becomes obsolete and is removed after callers migrate.
+
+Add/standardize a lookup for the active revision of an exact gateway, for example `findActiveByGateway(tx, tenantId, gateway)`.
 
 `findActiveAll()` and `findById()` remain useful.
 
-### 7.2 Payment method route repository
+### 7.3 Payment method route repository
 
-Add a new port/repository responsible only for routes, for example:
+Add a new port/repository responsible only for routes:
 
 ```ts
 interface IPaymentMethodRouteRepository {
@@ -229,13 +253,18 @@ interface IPaymentMethodRouteRepository {
 }
 ```
 
-`replaceAll` is preferred over independent toggle writes so a dashboard save is atomic and validation can reject the whole configuration before changing any route.
+`replaceAll` is the only dashboard write path. It validates the complete submitted state and applies it atomically under `gateway-config:<tenantId>`.
 
-The repository uses a per-tenant advisory lock for routing writes. An implementation may share a broader payment-configuration lock with gateway config writes if that makes validation of `route -> active gateway` atomic; avoid unrelated lock ordering.
+Request semantics are full replacement of the configured route rows:
 
-### 7.3 Refund policy repository
+- a submitted enabled row creates/updates that method route;
+- a submitted disabled row preserves its gateway selection but makes it ineffective;
+- an omitted method removes any stored route for that method;
+- zero enabled routes is valid and intentionally disables online checkout for the tenant.
 
-Add a small port/repository for the current tenant policy:
+### 7.4 Refund policy repository
+
+Add a port/repository for the current tenant policy:
 
 ```ts
 interface IRefundPolicyRepository {
@@ -244,11 +273,11 @@ interface IRefundPolicyRepository {
 }
 ```
 
-Absence uses the current default behavior (`manual`, 72 hours) without requiring every tenant to be backfilled before the app can start.
+Absence returns the current default behavior (`manual`, 72 hours). Writes acquire `gateway-config:<tenantId>`.
 
-### 7.4 Gateway registry
+### 7.5 Gateway registry
 
-Replace checkout resolution based on active base/wallet inference with explicit method resolution, for example:
+Replace checkout resolution based on active base/wallet inference with explicit method resolution:
 
 ```ts
 resolveActiveForMethod(tx, tenantId, method): Promise<ResolvedGateway>
@@ -259,11 +288,12 @@ Algorithm:
 1. find enabled route for method;
 2. reject if absent;
 3. validate `GATEWAY_SUPPORTED_METHODS[route.gateway]` contains method;
-4. load the tenant's active config for `route.gateway`;
-5. reject if no active provider connection exists;
-6. construct adapter and return exact config revision id.
+4. validate mock use if the route gateway is `mock`;
+5. load the tenant's active config for `route.gateway`;
+6. reject if no active provider connection exists;
+7. construct adapter and return the exact config revision id.
 
-`resolveForPayment()` remains unchanged in principle and remains the only lifecycle resolution path for already-created Payments.
+`resolveForPayment()` remains unchanged in principle and remains the lifecycle resolution path for already-created Payments.
 
 ## 8. Contracts and HTTP API
 
@@ -277,6 +307,8 @@ Keep:
 
 Behavior change: `PUT` activates/revises only the submitted provider. It does not disable any other provider.
 
+`DELETE` with a gateway disables only that provider. Existing no-gateway disable-all behavior can remain for emergency/maintenance use, but it does not delete routes.
+
 The response remains credential-free.
 
 ### 8.2 Payment routing API
@@ -286,7 +318,7 @@ Add:
 - `GET /tenant/payment-routing`;
 - `PUT /tenant/payment-routing`.
 
-Suggested request:
+Request:
 
 ```json
 {
@@ -305,8 +337,10 @@ Validation before write:
 - method values are unique;
 - each route gateway supports that method;
 - every enabled route references an active tenant provider connection;
+- disabled routes can reference a currently inactive provider so the selection can be restored later;
+- mock routes are rejected when mock payments are not permitted;
 - unknown providers/methods are rejected;
-- an empty route list is allowed only if product behavior explicitly permits disabling all online payment methods; otherwise require at least one enabled route. For this design, **at least one enabled route is required** to preserve the existing tenant payment-configuration expectation.
+- an empty list and a list with zero enabled routes are valid.
 
 ### 8.3 Refund policy API
 
@@ -315,7 +349,7 @@ Add:
 - `GET /tenant/refund-policy`;
 - `PUT /tenant/refund-policy`.
 
-Suggested body:
+Body:
 
 ```json
 {
@@ -336,7 +370,7 @@ It returns methods that have an enabled route and an active provider connection.
 }
 ```
 
-`ALLOW_MOCK_PAYMENTS=true` remains a non-production fallback only when a tenant has no configured effective routes/providers, preserving current local development behavior. Explicit configured routes take precedence over mock fallback.
+`ALLOW_MOCK_PAYMENTS=true` remains a non-production fallback only when the tenant has no effective real route/provider configuration. Explicit configured effective routes take precedence over mock fallback.
 
 ## 9. Dashboard UX
 
@@ -361,11 +395,11 @@ Each card owns only:
 
 Saving PayOS must not visually or technically disable SePay.
 
-Mock is a development facility and should not be shown as a normal production provider card.
+Mock is a development facility and is not shown as a normal production provider card.
 
 ### 9.2 Checkout Methods
 
-Render the customer-facing methods independently from provider credentials.
+Render customer-facing methods independently from provider credentials.
 
 Example:
 
@@ -377,9 +411,11 @@ Example:
 [on] ZaloPay wallet        Provider: ZaloPay
 ```
 
-Provider selector options are capability-filtered and connected-provider-filtered. If only one connected provider supports the method, display it without an unnecessary dropdown.
+Provider selector options are capability-filtered and connected-provider-filtered. If only one connected provider supports a method, display it without an unnecessary dropdown.
 
-If a selected provider is later disabled, keep the stored route but surface an invalid/inactive state and remove the method from public checkout until the provider is reconnected or the route is changed.
+If a selected provider is later disabled, keep the stored route, display an inactive-provider warning in Dashboard, and remove the method from public checkout until the provider is reconnected or the route is changed.
+
+The method list includes all five contract methods; the current card's omission of `zalopay_wallet` is corrected as part of this refactor.
 
 ### 9.3 Refund Policy
 
@@ -389,7 +425,7 @@ Render refund policy as its own tenant-level card:
 - automatic preferred;
 - manual SLA hours.
 
-The UI should explain that `automatic_preferred` still falls back to manual handling where the selected payment provider or transaction type cannot execute an automatic refund.
+The UI explains that `automatic_preferred` still falls back to manual handling where the Payment's selected provider or transaction type cannot execute an automatic refund.
 
 ## 10. Migration strategy
 
@@ -400,7 +436,7 @@ Use one explicit Prisma/SQL migration with no destructive rewrite of payment his
 1. create `tenant_payment_method_routes`;
 2. create `tenant_refund_policies`;
 3. add nullable Payment refund snapshot columns;
-4. add indexes/constraints;
+4. add unique/index/CHECK constraints;
 5. enable and FORCE RLS on both new tenant tables;
 6. add tenant-isolation policies following existing repository conventions.
 
@@ -409,34 +445,44 @@ Use one explicit Prisma/SQL migration with no destructive rewrite of payment his
 For every tenant:
 
 1. read all active gateway configs;
-2. for wallet methods, preserve current behavior by preferring the exact wallet gateway (`momo_wallet -> momo`, `zalopay_wallet -> zalopay`) when that active gateway currently enables the method;
-3. for non-wallet methods, preserve current behavior by using the currently active non-wallet/base config when its legacy `settings.enabledMethods` contains the method and capability map permits it;
-4. create at most one route per method;
-5. do not create a route for a legacy setting that claims a method the provider capability map does not support.
+2. for `momo_wallet`, create `momo_wallet -> momo` only when active MoMo currently enables that method;
+3. for `zalopay_wallet`, create `zalopay_wallet -> zalopay` only when active ZaloPay currently enables that method;
+4. for each non-wallet method, use the single active non-wallet/base config when its legacy `settings.enabledMethods` contains the method and `GATEWAY_SUPPORTED_METHODS` permits it;
+5. create at most one route per method;
+6. ignore legacy settings that claim a method the provider capability map does not support.
 
-This intentionally mirrors current `pickConfigForMethod()` behavior during migration so the storefront method list does not change merely because the schema changed.
+This exactly mirrors current `pickConfigForMethod()` selection semantics during migration, including wallet preference over a mock/base config that may advertise wallet methods.
 
-### 10.3 Backfill refund policy
+### 10.3 Backfill current tenant refund policy
 
-For each tenant with at least one active config, choose the legacy policy currently presented by the payment settings UI for the active checkout configuration. If there is no usable config, insert/default to:
+Historical Payments are unaffected because they retain null snapshot columns and continue to read the settings of their exact historical gateway revision.
 
-```text
-refundStrategy = manual
-manualRefundSlaHours = 72
-```
+The new current tenant policy is only the starting policy for Payments created after the release. Backfill it deterministically:
 
-Do not backfill Payment snapshot columns. Existing Payments retain null snapshots and use the legacy historical gateway-revision settings fallback. New Payments always write non-null snapshots.
+1. if an active non-wallet/base config exists, copy its legacy `refundStrategy` and `manualRefundSlaHours`;
+2. otherwise if active MoMo exists, copy MoMo's legacy policy;
+3. otherwise if active ZaloPay exists, copy ZaloPay's legacy policy;
+4. otherwise use `manual` / `72`.
 
-### 10.4 Compatibility window
+This precedence is deterministic and reflects the old UI's base-checkout policy when a base provider exists. Any historical provider-specific difference remains preserved for old Payments through their gateway revision fallback.
+
+### 10.4 Payment snapshot backfill
+
+Do **not** backfill the new Payment snapshot columns.
+
+Existing Payments keep null snapshots and resolve historical policy from the gateway config revision. New Payments always write both snapshot fields. This avoids rewriting payment history and avoids guessing which tenant policy should have applied at an earlier date.
+
+### 10.5 Compatibility window
 
 During the first release after migration:
 
 - old `TenantGatewayConfig.settings` remains readable for legacy Payment refund fallback;
 - new checkout/public-option logic ignores legacy `enabledMethods`;
-- new dashboard writes routes/refund policy through the new APIs;
-- credential rotation no longer copies checkout/refund settings into the new revision as an authoritative behavior source.
+- new Dashboard writes routes/refund policy through the new APIs;
+- credential rotation no longer copies checkout/refund settings as an authoritative behavior source;
+- old application versions remain rollback-compatible with the additive schema.
 
-A later cleanup can remove the legacy settings column only after no Payment can require that fallback, or after a separate historical backfill makes the fallback unnecessary.
+A later cleanup can remove legacy settings only after historical refund fallback is eliminated by a separately reviewed migration.
 
 ## 11. Error handling
 
@@ -444,12 +490,13 @@ Use domain-specific errors rather than silent fallback:
 
 - route missing -> payment method not configured;
 - route gateway unsupported for method -> invalid tenant payment routing configuration;
-- enabled route references inactive provider -> payment method temporarily unavailable/configuration invalid;
+- enabled route references inactive provider -> payment method unavailable/configuration invalid;
+- half-populated Payment refund snapshot -> invariant violation/fail closed;
 - duplicate method in PUT payload -> validation error;
 - provider credential config invalid -> existing invalid gateway config behavior;
 - provider request failures -> existing gateway-specific retry/final/configuration classification.
 
-Public endpoints must not expose credential details or internal provider error bodies.
+Public endpoints do not expose credential details or internal provider error bodies.
 
 ## 12. Concurrency and correctness invariants
 
@@ -458,14 +505,15 @@ The implementation must prove these invariants:
 1. A tenant can have active SePay and PayOS revisions simultaneously.
 2. A tenant cannot have two active revisions of the same gateway.
 3. A method has at most one configured route per tenant.
-4. An enabled route must reference a gateway capable of the method.
-5. Checkout persists gateway + exact gateway config revision before provider I/O.
-6. Route changes after Payment claim do not change that Payment's provider.
-7. Credential rotation after Payment claim does not change that Payment's provider credentials.
-8. Refund policy changes after Payment creation do not change that Payment's refund policy.
-9. No cross-provider retry occurs after an ambiguous provider response.
-10. Webhook/refund lifecycle continues resolving by Payment's historical gateway revision.
-11. RLS and FORCE RLS apply to both new tenant-scoped tables.
+4. An enabled route references a gateway capable of the method.
+5. Enabled route validation and provider activation/deactivation serialize under the same tenant advisory lock.
+6. Checkout persists gateway + exact gateway config revision before provider I/O.
+7. Route changes after Payment claim do not change that Payment's provider.
+8. Credential rotation after Payment claim does not change that Payment's provider credentials.
+9. Refund policy changes after Payment creation do not change that Payment's refund policy.
+10. No cross-provider retry occurs after an ambiguous provider response.
+11. Webhook/refund lifecycle continues resolving by Payment's historical gateway revision.
+12. RLS and FORCE RLS apply to both new tenant-scoped tables.
 
 ## 13. Testing strategy
 
@@ -473,8 +521,9 @@ The implementation must prove these invariants:
 
 Add tests for:
 
-- routing request schema;
+- routing request/response schemas;
 - duplicate/unsupported method-provider pairs;
+- mock-route environment guard;
 - refund policy schema;
 - capability map behavior.
 
@@ -485,27 +534,31 @@ TDD coverage for:
 - SePay and PayOS both remain active after independent upserts;
 - rotating PayOS deactivates only the previous PayOS revision;
 - route uniqueness and atomic replacement;
-- inactive provider route validation;
+- zero enabled routes;
+- disabled route preserving an inactive provider selection;
+- enabled route/inactive provider rejection under the shared advisory lock;
 - tenant isolation and RLS architecture checks;
 - refund policy read/write defaults.
 
 ### 13.3 Application
 
-Checkout tests must cover:
+Checkout tests cover:
 
 - `bank_transfer -> payos` while SePay is also connected;
 - switch route to SePay affects only subsequent Payments;
 - in-flight Payment stays on PayOS after route switch;
 - provider credential rotation does not alter historical Payment resolution;
-- payment stores refund policy snapshot;
+- Payment stores both refund policy snapshot fields;
 - later policy edit does not alter old Payment refund planning;
-- legacy Payment without snapshot uses historical gateway settings fallback.
+- legacy Payment without snapshot uses historical gateway settings fallback;
+- half-populated snapshot fails closed.
 
-Public option tests must cover:
+Public option tests cover:
 
-- all four providers active with five explicit methods;
+- all four real providers active with five explicit methods;
 - provider disabled makes its routed methods disappear;
 - reconnect restores stored enabled routes;
+- zero enabled routes gives no real methods;
 - no configured effective route gives existing mock fallback only in allowed local mode.
 
 ### 13.4 Dashboard
@@ -516,8 +569,9 @@ Test:
 - PayOS save does not deactivate/remove SePay UI state;
 - checkout method selectors only show connected capable providers;
 - routing save is atomic;
+- disabled route warning state;
 - refund policy form is independent from provider credential forms;
-- ZaloPay method is included in the method list (the current card omits it from its local `METHODS` display list).
+- ZaloPay method appears in the method list.
 
 ### 13.5 Regression gates
 
@@ -530,7 +584,7 @@ Before integration:
 - `pnpm smoke:infra:local`;
 - focused live sandbox checkout tests for every configured real provider for which credentials are available locally.
 
-No production deployment is part of this implementation plan unless separately authorized.
+No production deployment is part of this work unless separately authorized.
 
 ## 14. Local test target after implementation
 
@@ -569,17 +623,17 @@ Expected public response:
 }
 ```
 
-The tenant may later change only `bank_transfer -> sepay` without disconnecting PayOS and without affecting any Payment already created.
+The tenant can later change only `bank_transfer -> sepay` without disconnecting PayOS and without affecting any Payment already created.
 
 ## 15. Rollout / rollback
 
 ### Rollout
 
-1. deploy schema + compatibility reads;
-2. backfill routes and tenant refund policies in migration;
-3. deploy API routing/refund snapshot behavior;
+1. deploy additive schema and compatibility reads;
+2. backfill routes and tenant refund policies in the migration;
+3. deploy API explicit routing/refund snapshot behavior;
 4. deploy Dashboard split UI;
-5. verify local/staging-equivalent smoke and real sandbox flows;
+5. verify regression gates and real sandbox flows;
 6. only then consider production release with explicit authorization.
 
 ### Rollback
@@ -595,6 +649,7 @@ The change is complete only when all are true:
 - SePay and PayOS can both be active for one tenant.
 - All real providers can remain connected simultaneously.
 - Every enabled checkout method has exactly one explicit provider route.
+- Zero enabled routes is a supported tenant state.
 - No checkout method is inferred from `base` versus `wallet` grouping.
 - No provider save disables a different provider.
 - Public payment options are derived from explicit effective routes.
