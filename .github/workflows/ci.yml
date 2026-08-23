@@ -38,3 +38,130 @@ jobs:
         # Keep this separate from typecheck: React Router typegen and build both
         # write generated route files and should not race within the same app.
         run: pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
+
+  runtime-mock-revision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Boot isolated local dependencies
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          docker compose up -d postgres redis minio mailpit
+          for i in $(seq 1 30); do
+            if docker compose exec -T postgres pg_isready -U postgres -d booking >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose ps
+          exit 1
+      - name: Migrate, seed, and build API
+        run: |
+          set -euo pipefail
+          pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api seed
+          pnpm turbo run build --filter=@booking/api...
+      - name: Explicit mock checkout snapshots exact config revision
+        run: |
+          set -euo pipefail
+          psqlq() {
+            docker compose exec -T postgres psql -U postgres -d booking -Atq "$@"
+          }
+
+          TENANT_ID=$(psqlq -c "select id from tenants where slug='studiohub' limit 1")
+          test -n "$TENANT_ID"
+
+          BOOKING_ROW=$(psqlq -F '|' -c "
+            select b.id, b.code, u.email
+            from bookings b
+            join users u on u.id = b.customer_id
+            where b.tenant_id = '$TENANT_ID'
+              and b.status = 'pending_payment'
+              and b.final_amount > 0
+            order by b.created_at desc
+            limit 1
+          ")
+          test -n "$BOOKING_ROW"
+          IFS='|' read -r BOOKING_ID BOOKING_CODE CUSTOMER_EMAIL <<< "$BOOKING_ROW"
+
+          CONFIG_ID=$(psqlq -c "select gen_random_uuid()")
+          psqlq -c "
+            update tenant_gateway_configs
+               set is_active = false, updated_at = now()
+             where tenant_id = '$TENANT_ID' and gateway = 'mock' and is_active = true;
+            insert into tenant_gateway_configs
+              (id, tenant_id, gateway, credentials, settings, is_active, environment, created_at, updated_at)
+            values
+              ('$CONFIG_ID', '$TENANT_ID', 'mock', '{}'::jsonb,
+               '{\"enabledMethods\":[\"bank_transfer\"],\"refundStrategy\":\"manual\",\"manualRefundSlaHours\":72}'::jsonb,
+               true, 'sandbox', now(), now());
+            insert into tenant_payment_method_routes
+              (id, tenant_id, method, gateway, enabled, created_at, updated_at)
+            values
+              (gen_random_uuid(), '$TENANT_ID', 'bank_transfer', 'mock', true, now(), now())
+            on conflict (tenant_id, method)
+            do update set gateway = excluded.gateway, enabled = true, updated_at = now();
+          "
+
+          ALLOW_MOCK_PAYMENTS=true NODE_ENV=development pnpm --filter=@booking/api start >/tmp/booking-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill "$API_PID" 2>/dev/null || true; docker compose down -v >/dev/null 2>&1 || true' EXIT
+
+          READY=false
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3000/health/ready >/dev/null 2>&1; then
+              READY=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" != true ]; then
+            cat /tmp/booking-api.log
+            exit 1
+          fi
+
+          LOGIN_BODY=$(node -e 'console.log(JSON.stringify({email:process.argv[1],password:"demo-password"}))' "$CUSTOMER_EMAIL")
+          curl -fsS -c /tmp/cookies.txt \
+            -H 'content-type: application/json' \
+            --data "$LOGIN_BODY" \
+            http://127.0.0.1:3000/auth/login >/tmp/login.json
+
+          CHECKOUT_BODY='{"paymentMethod":"bank_transfer"}'
+          curl -fsS -b /tmp/cookies.txt \
+            -H 'content-type: application/json' \
+            -H 'x-forwarded-host: studiohub.localhost' \
+            -H "x-booking-code: $BOOKING_CODE" \
+            --data "$CHECKOUT_BODY" \
+            "http://127.0.0.1:3000/public/bookings/$BOOKING_ID/checkout" >/tmp/checkout.json
+
+          PAYMENT_ID=$(node -e 'const x=require("fs").readFileSync("/tmp/checkout.json","utf8"); const j=JSON.parse(x); if(!j.paymentId) process.exit(2); process.stdout.write(j.paymentId)')
+          PAYMENT_URL=$(node -e 'const j=JSON.parse(require("fs").readFileSync("/tmp/checkout.json","utf8")); process.stdout.write(j.destination?.paymentUrl||"")')
+          case "$PAYMENT_URL" in mock://pay/*) ;; *) echo "unexpected checkout destination: $PAYMENT_URL"; cat /tmp/checkout.json; exit 1;; esac
+
+          PAYMENT_ROW=$(psqlq -F '|' -c "
+            select gateway::text,
+                   coalesce(gateway_config_revision_id::text, ''),
+                   coalesce(payment_method, ''),
+                   coalesce(refund_strategy_snapshot, ''),
+                   coalesce(manual_refund_sla_hours_snapshot::text, ''),
+                   coalesce(checkout_state::text, '')
+              from payments
+             where id = '$PAYMENT_ID'
+          ")
+          IFS='|' read -r GATEWAY REVISION METHOD REFUND_STRATEGY REFUND_SLA CHECKOUT_STATE <<< "$PAYMENT_ROW"
+
+          test "$GATEWAY" = mock
+          test "$REVISION" = "$CONFIG_ID"
+          test "$METHOD" = bank_transfer
+          test "$REFUND_STRATEGY" = manual
+          test "$REFUND_SLA" = 72
+          test "$CHECKOUT_STATE" = ready
+
+          echo "runtime proof: payment=$PAYMENT_ID gateway=$GATEWAY revision=$REVISION method=$METHOD refund=$REFUND_STRATEGY/$REFUND_SLA checkout_state=$CHECKOUT_STATE"
