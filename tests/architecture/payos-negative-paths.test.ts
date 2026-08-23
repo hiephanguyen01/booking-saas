@@ -42,4 +42,12 @@ describe('PayOS negative-path architecture', () => {
     expect(markSucceeded).toContain("AND status = 'pending'");
     expect(markSucceeded).not.toContain("status <> 'succeeded'");
   });
+
+  it('never reuses an existing cancelled or expired PayOS payment resource', () => {
+    const source = readFileSync(payosAdapterPath, 'utf8');
+    const validateExisting = between(source, '  private validateExisting(', '\n  private existingResult(');
+
+    expect(validateExisting).toContain("data.status === 'CANCELLED' || data.status === 'EXPIRED'");
+    expect(validateExisting).toContain('payOS payment resource is no longer payable');
+  });
 });
