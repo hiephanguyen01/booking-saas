@@ -57,12 +57,7 @@ describe('PayOS negative-path architecture', () => {
 
   it('revalidates a ready PayOS checkout instead of returning its cached handoff', () => {
     const source = readFileSync(checkoutUseCasePath, 'utf8');
-    const cachedReadyFastPath = between(
-      source,
-      '    // A previously completed Phase C is a pure local fast path:',
-      '\n    // Resolve the exact immutable config revision recorded in Phase A.',
-    );
 
-    expect(cachedReadyFastPath).toContain("prepared.payment.gateway !== 'payos'");
+    expect(source).toContain("if (prepared.destination && prepared.payment.gateway !== 'payos')");
   });
 });
