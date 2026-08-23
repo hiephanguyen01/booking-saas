@@ -252,11 +252,15 @@ export class FinanceModule implements OnModuleInit {
     });
     this.registry.register('refund.requested', (event) => {
       const p = event.payload as {
+        refundBatchId?: string;
         bookingId: string;
         amount: string;
         reason?: string;
         affectsBookingStatus?: boolean;
       };
+      // Batched child requests are operational execution units. The full business
+      // amount was already prepared by cancellation/dispute handling.
+      if (p.refundBatchId) return Promise.resolve();
       if (p.affectsBookingStatus === false) return Promise.resolve();
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);
       if (!tenantId) return Promise.resolve();
