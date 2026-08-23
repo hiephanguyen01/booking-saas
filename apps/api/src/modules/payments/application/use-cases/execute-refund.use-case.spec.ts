@@ -26,7 +26,12 @@ function payment(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
     gateway: 'sepay',
     kind: 'deposit',
     amount: PAID,
+    capturedAmount: PAID,
     status: 'succeeded',
+    checkoutState: 'ready',
+    gatewayConfigRevisionId: null,
+    refundStrategySnapshot: null,
+    manualRefundSlaHoursSnapshot: null,
     gatewayOrderRef: null,
     gatewayOrderId: null,
     gatewayTxnId: null,
@@ -66,8 +71,10 @@ interface Harness {
   readonly calls: string[];
   readonly created: CreateRefundData[];
   readonly events: Array<{ eventType: string; payload: Record<string, unknown> }>;
-  /** Gateways the config lookup was asked about. */
+  /** Gateways the legacy config lookup was asked about. */
   readonly configLookups: string[];
+  /** Exact immutable config revisions requested for historical fallback. */
+  readonly revisionLookups: string[];
 }
 
 function harness(options: Options = {}): Harness {
@@ -75,6 +82,7 @@ function harness(options: Options = {}): Harness {
   const created: CreateRefundData[] = [];
   const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   const configLookups: string[] = [];
+  const revisionLookups: string[] = [];
 
   const tx = fakeTx({
     outboxEvent: {
@@ -113,6 +121,10 @@ function harness(options: Options = {}): Harness {
       configLookups.push(gateway);
       return Promise.resolve(options.settings ? configWith(options.settings) : null);
     },
+    findById: (_tx, _tenantId, id) => {
+      revisionLookups.push(id);
+      return Promise.resolve(options.settings ? configWith(options.settings) : null);
+    },
   });
 
   return {
@@ -128,6 +140,7 @@ function harness(options: Options = {}): Harness {
     created,
     events,
     configLookups,
+    revisionLookups,
   };
 }
 
@@ -143,9 +156,6 @@ describe('ExecuteRefundUseCase', () => {
   });
 
   it('takes the per-booking lock before checking whether a refund exists', async () => {
-    // `booking.cancelled` and `booking.returned` both trigger this. If the
-    // exists-check ran first, two deliveries could both pass it and double-refund
-    // at the gateway.
     const { useCase, calls } = harness();
 
     await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n);
@@ -164,9 +174,6 @@ describe('ExecuteRefundUseCase', () => {
   });
 
   it('scopes idempotency to the reason, so a deposit refund still goes through', async () => {
-    // A cancellation refund and a security-deposit refund are two separate
-    // movements on the same booking; deduplicating on bookingId alone would
-    // swallow the second.
     const reasons: string[] = [];
     const tenantDb = fakeTenantDb({
       tx: fakeTx({ outboxEvent: { create: () => Promise.resolve({}) } }),
@@ -203,9 +210,7 @@ describe('ExecuteRefundUseCase', () => {
     expect(events).toEqual([]);
   });
 
-  it("reads the config of the PAYMENT's gateway, not the tenant's base gateway", async () => {
-    // With parallel gateways the base config does not describe a wallet payment's
-    // own refund strategy.
+  it("reads the config of the PAYMENT's gateway for a pre-foundation legacy payment", async () => {
     const { useCase, configLookups } = harness({ succeeded: payment({ gateway: 'momo' }) });
 
     await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n);
@@ -291,5 +296,50 @@ describe('ExecuteRefundUseCase', () => {
       reason: 'booking_cancellation',
       affectsBookingStatus: true,
     });
+  });
+
+  it('uses the complete Payment snapshot before consulting any gateway config', async () => {
+    const { useCase, created, configLookups, revisionLookups } = harness({
+      succeeded: payment({
+        gatewayConfigRevisionId: 'config-1',
+        refundStrategySnapshot: 'manual',
+        manualRefundSlaHoursSnapshot: 24,
+      }),
+      settings: AUTOMATIC,
+    });
+
+    await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n);
+
+    expect(created[0]).toMatchObject({ executionMode: 'manual', status: 'manual_required' });
+    expect(configLookups).toEqual([]);
+    expect(revisionLookups).toEqual([]);
+  });
+
+  it('uses the exact historical config revision for a legacy Payment with null snapshots', async () => {
+    const { useCase, created, configLookups, revisionLookups } = harness({
+      succeeded: payment({ gatewayConfigRevisionId: 'config-1' }),
+      settings: AUTOMATIC,
+    });
+
+    await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n);
+
+    expect(created[0]).toMatchObject({ executionMode: 'automatic' });
+    expect(revisionLookups).toEqual(['config-1']);
+    expect(configLookups).toEqual([]);
+  });
+
+  it('fails closed when only half of the refund policy snapshot is populated', async () => {
+    const { useCase, created } = harness({
+      succeeded: payment({
+        refundStrategySnapshot: 'automatic_preferred',
+        manualRefundSlaHoursSnapshot: null,
+      }),
+      settings: AUTOMATIC,
+    });
+
+    await expect(useCase.execute(TENANT_ID, BOOKING_ID, 100_000n)).rejects.toThrow(
+      'Invalid refund policy snapshot',
+    );
+    expect(created).toEqual([]);
   });
 });
