@@ -66,6 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api prisma:generate
           pnpm --filter=@booking/api seed
           pnpm turbo run build --filter=@booking/api...
       - name: Explicit mock checkout snapshots exact config revision
