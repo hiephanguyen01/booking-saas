@@ -367,8 +367,14 @@ export class PrismaPaymentRepository implements IPaymentRepository {
              (b.status IN ('cancelled', 'refunded') OR EXISTS (
                 SELECT 1 FROM refunds r
                 WHERE r.booking_id = b.id
+                  AND r.refund_batch_id IS NULL
                   AND r.status = 'succeeded'::refund_status
                   AND r.reason <> 'security_deposit'
+              ) OR EXISTS (
+                SELECT 1 FROM refund_batches rb
+                WHERE rb.booking_id = b.id
+                  AND rb.status = 'completed'::refund_batch_status
+                  AND rb.affects_booking_status = true
               )) AS "skipBookingConfirmation"
       FROM payments p
       JOIN bookings b ON b.id = p.booking_id
@@ -378,8 +384,14 @@ export class PrismaPaymentRepository implements IPaymentRepository {
           (b.status IN ('pending_payment', 'expired') AND NOT EXISTS (
             SELECT 1 FROM refunds r
             WHERE r.booking_id = b.id
+              AND r.refund_batch_id IS NULL
               AND r.status = 'succeeded'::refund_status
               AND r.reason <> 'security_deposit'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM refund_batches rb
+            WHERE rb.booking_id = b.id
+              AND rb.status = 'completed'::refund_batch_status
+              AND rb.affects_booking_status = true
           ))
           OR bs.id IS NULL
         )

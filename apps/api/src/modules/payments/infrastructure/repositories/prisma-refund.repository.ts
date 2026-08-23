@@ -204,6 +204,7 @@ export class PrismaRefundRepository implements IRefundRepository {
           affects_booking_status, updated_at, created_at
         FROM refunds
         WHERE status = 'succeeded'::refund_status
+          AND refund_batch_id IS NULL
           AND reason IS DISTINCT FROM 'security_deposit'
         ORDER BY booking_id, updated_at DESC, created_at DESC, id DESC
       )
