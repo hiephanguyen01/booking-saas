@@ -14,6 +14,11 @@ export class GatewayConfigValidationPipe
   transform(value: unknown): UpsertGatewayConfigInput {
     const parsed = upsertGatewayConfigInputSchema.safeParse(value);
     if (!parsed.success) throw new InvalidGatewayConfig(parsed.error.flatten());
+    if (parsed.data.gateway === 'payos' && parsed.data.environment !== 'production') {
+      throw new InvalidGatewayConfig({
+        fieldErrors: { environment: ['PayOS chỉ hỗ trợ môi trường production'] },
+      });
+    }
     return parsed.data;
   }
 }
