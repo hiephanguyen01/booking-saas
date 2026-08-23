@@ -1,3 +1,6 @@
+# Diagnostic-only workflow for PR #202. Do not merge this branch.
+# Both jobs explicitly checkout PR #202 product SHA so diagnostic workflow commits
+# cannot affect the application source under test.
 name: PayOS Smoke Preflight
 
 on:
