@@ -1,7 +1,7 @@
 # Payment Provider / Routing / Refund Policy Separation Design
 
 **Date:** 2026-08-23  
-**Status:** Design direction approved; written spec pending user review  
+**Status:** Spec ready for user review; implementation not started  
 **Base:** `main` at `75ff9de3c799bf7f41f678218620fb5c5c53a3b8`
 
 ## 1. Problem
@@ -237,7 +237,7 @@ New behavior:
 
 `findActiveBase()` becomes obsolete and is removed after callers migrate.
 
-Add/standardize a lookup for the active revision of an exact gateway, for example `findActiveByGateway(tx, tenantId, gateway)`.
+Add `findActiveByGateway(tx, tenantId, gateway)` for the active revision of one exact provider.
 
 `findActiveAll()` and `findById()` remain useful.
 
@@ -307,7 +307,7 @@ Keep:
 
 Behavior change: `PUT` activates/revises only the submitted provider. It does not disable any other provider.
 
-`DELETE` with a gateway disables only that provider. Existing no-gateway disable-all behavior can remain for emergency/maintenance use, but it does not delete routes.
+`DELETE` with a gateway disables only that provider. Existing no-gateway disable-all behavior remains for emergency/maintenance use and does not delete routes.
 
 The response remains credential-free.
 
@@ -451,7 +451,7 @@ For every tenant:
 5. create at most one route per method;
 6. ignore legacy settings that claim a method the provider capability map does not support.
 
-This exactly mirrors current `pickConfigForMethod()` selection semantics during migration, including wallet preference over a mock/base config that may advertise wallet methods.
+This exactly mirrors current `pickConfigForMethod()` selection semantics during migration, including wallet preference over a mock/base config that advertises wallet methods.
 
 ### 10.3 Backfill current tenant refund policy
 
