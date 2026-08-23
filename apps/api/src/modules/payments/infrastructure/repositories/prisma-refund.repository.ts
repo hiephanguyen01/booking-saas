@@ -29,6 +29,7 @@ function toRecord(r: Row): RefundRecord {
   return {
     id: r.id,
     tenantId: r.tenantId,
+    refundBatchId: r.refundBatchId,
     paymentId: r.paymentId,
     bookingId: r.bookingId,
     amount: r.amount,
@@ -51,6 +52,7 @@ export class PrismaRefundRepository implements IRefundRepository {
       await tx.refund.create({
         data: {
           tenantId,
+          refundBatchId: data.refundBatchId ?? null,
           paymentId: data.paymentId,
           bookingId: data.bookingId,
           amount: data.amount,
@@ -68,6 +70,14 @@ export class PrismaRefundRepository implements IRefundRepository {
 
   async existsForBooking(tx: PrismaTx, bookingId: string, reason: string): Promise<boolean> {
     return (await tx.refund.count({ where: { bookingId, reason } })) > 0;
+  }
+
+  async reservedAmountForPayment(tx: PrismaTx, paymentId: string): Promise<bigint> {
+    const result = await tx.refund.aggregate({
+      where: { paymentId, status: { in: ['pending', 'manual_required', 'succeeded'] } },
+      _sum: { amount: true },
+    });
+    return result._sum.amount ?? 0n;
   }
 
   async findById(tx: PrismaTx, id: string): Promise<RefundRecord | null> {

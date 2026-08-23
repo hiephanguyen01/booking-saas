@@ -44,6 +44,7 @@ function toRecord(p: Row): PaymentRecord {
     paymentMethod: p.paymentMethod,
     idempotencyKey: p.idempotencyKey,
     paidAt: p.paidAt,
+    createdAt: p.createdAt,
   };
 }
 
@@ -234,6 +235,25 @@ export class PrismaPaymentRepository implements IPaymentRepository {
       orderBy: { createdAt: 'desc' },
     });
     return p ? toRecord(p) : null;
+  }
+
+  async findSucceededRefundSources(tx: PrismaTx, bookingId: string): Promise<PaymentRecord[]> {
+    const rows = await tx.payment.findMany({
+      where: { bookingId, status: 'succeeded' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+    return rows.map(toRecord);
+  }
+
+  async findSecurityDepositSource(
+    tx: PrismaTx,
+    bookingId: string,
+  ): Promise<PaymentRecord | null> {
+    const payment = await tx.payment.findFirst({
+      where: { bookingId, status: 'succeeded', kind: { in: ['deposit', 'full'] } },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return payment ? toRecord(payment) : null;
   }
 
   /** Atomic: only the first concurrent webhook flips pending → succeeded (§11.2). */
