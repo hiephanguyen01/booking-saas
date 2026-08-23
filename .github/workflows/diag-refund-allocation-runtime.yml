@@ -1,0 +1,523 @@
+name: Refund Allocation Runtime Smoke
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-db-runtime:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'feat/refund-allocation'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: booking
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      MIGRATE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/booking
+      DATABASE_URL: postgresql://app_user:app_user_dev_pw@127.0.0.1:5432/booking
+      ADMIN_DATABASE_URL: postgresql://app_admin:app_admin_dev_pw@127.0.0.1:5432/booking
+      REDIS_URL: redis://127.0.0.1:6379
+      PAYMENTS_ENC_KEY: pr4-runtime-smoke-encryption-key-change-me
+      OUTBOX_RELAY_DISABLED: 'true'
+      ALLOW_MOCK_PAYMENTS: 'true'
+      NODE_ENV: test
+      PORT: '18080'
+      PUBLIC_API_URL: http://127.0.0.1:18080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply hand-written migration and seed
+        run: |
+          cp .env.example .env
+          pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api prisma:generate
+          pnpm --filter=@booking/api seed
+      - name: Current-repo static gate
+        run: |
+          pnpm test
+          pnpm turbo run lint typecheck build
+      - name: Start API and verify health
+        run: |
+          pnpm --filter=@booking/api start >/tmp/pr4-api.log 2>&1 &
+          echo $! >/tmp/pr4-api.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:18080/health/ready >/dev/null; then
+              echo 'local_api_ready=true'
+              exit 0
+            fi
+            sleep 1
+          done
+          tail -n 120 /tmp/pr4-api.log || true
+          exit 1
+      - name: Run real-DB refund allocation scenarios
+        working-directory: apps/api
+        run: |
+          cat > pr4-refund-runtime-smoke.ts <<'TS'
+          import 'reflect-metadata';
+          import assert from 'node:assert/strict';
+          import { randomUUID } from 'node:crypto';
+          import { NestFactory } from '@nestjs/core';
+          import { AppModule } from './src/app.module';
+          import { PrismaService } from './src/shared/prisma/prisma.service';
+          import { TenantDbService } from './src/shared/tenant-context/tenant-db.service';
+          import { OutboxHandlerRegistry } from './src/shared/outbox/outbox-handler.registry';
+          import { ExecuteRefundUseCase } from './src/modules/payments/application/use-cases/execute-refund.use-case';
+          import { ConfirmManualRefundUseCase } from './src/modules/payments/application/use-cases/confirm-manual-refund.use-case';
+          import {
+            REFUND_REPOSITORY,
+            type IRefundRepository,
+            type RefundRecord,
+          } from './src/modules/payments/domain/ports/refund-repository.port';
+          import {
+            REFUND_BATCH_REPOSITORY,
+            type IRefundBatchRepository,
+            type RefundBatchRecord,
+          } from './src/modules/payments/domain/ports/refund-batch-repository.port';
+          import { RefundAmountExceedsPayment } from './src/modules/payments/domain/errors/refund-errors';
+          import { ReconciliationWorker } from './src/modules/payments/infrastructure/reconciliation.worker';
+          import { RecordHeldSettlementUseCase } from './src/modules/finance/application/use-cases/record-held-settlement.use-case';
+          import { PrepareSettlementRefundUseCase } from './src/modules/finance/application/use-cases/prepare-settlement-refund.use-case';
+
+          type Gateway = 'payos' | 'momo';
+          type Strategy = 'manual' | 'automatic_preferred';
+
+          async function main() {
+            const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+            const prisma = app.get(PrismaService);
+            const tenantDb = app.get(TenantDbService);
+            const registry = app.get(OutboxHandlerRegistry);
+            const executeRefund = app.get(ExecuteRefundUseCase);
+            const confirmManual = app.get(ConfirmManualRefundUseCase);
+            const refunds = app.get<IRefundRepository>(REFUND_REPOSITORY, { strict: false });
+            const batches = app.get<IRefundBatchRepository>(REFUND_BATCH_REPOSITORY, { strict: false });
+            const reconciliation = app.get(ReconciliationWorker);
+            const recordHeld = app.get(RecordHeldSettlementUseCase, { strict: false });
+            const prepareSettlementRefund = app.get(PrepareSettlementRefundUseCase, { strict: false });
+
+            const tenant = await prisma.admin.tenant.findUnique({ where: { slug: 'studiohub' } });
+            const owner = await prisma.admin.user.findUnique({ where: { email: 'owner@studiohub.vn' } });
+            const template = tenant
+              ? await prisma.admin.booking.findFirst({ where: { tenantId: tenant.id } })
+              : null;
+            if (!tenant || !owner || !template) throw new Error('StudioHub seed prerequisites missing');
+
+            const check = (name: string, condition: unknown) => {
+              assert.ok(condition, name);
+              console.log(`PASS ${name}`);
+            };
+
+            async function createBooking(
+              label: string,
+              options: { securityDeposit?: bigint; refundDueAmount?: bigint | null } = {},
+            ) {
+              const {
+                id: _id,
+                code: _code,
+                idempotencyKey: _idem,
+                createdAt: _created,
+                updatedAt: _updated,
+                ...copy
+              } = template;
+              const suffix = `${Date.now()}-${randomUUID().slice(0, 8)}`;
+              return prisma.admin.booking.create({
+                data: {
+                  ...copy,
+                  code: `PR4-${label}-${suffix}`,
+                  idempotencyKey: `pr4-${label}-${suffix}`,
+                  status: 'cancelled',
+                  securityDeposit: options.securityDeposit ?? 0n,
+                  refundDueAmount: options.refundDueAmount ?? null,
+                  refundPercent: options.refundDueAmount ? 100 : null,
+                  paidAmount: 0n,
+                },
+              });
+            }
+
+            async function createPayment(input: {
+              bookingId: string;
+              gateway: Gateway;
+              kind: 'deposit' | 'balance' | 'full';
+              amount: bigint;
+              strategy: Strategy;
+              paymentMethod: string;
+              createdAt: Date;
+            }) {
+              return prisma.admin.payment.create({
+                data: {
+                  tenantId: tenant.id,
+                  bookingId: input.bookingId,
+                  gateway: input.gateway,
+                  kind: input.kind,
+                  amount: input.amount,
+                  capturedAmount: input.amount,
+                  status: 'succeeded',
+                  checkoutState: 'ready',
+                  refundStrategySnapshot: input.strategy,
+                  manualRefundSlaHoursSnapshot: 72,
+                  paymentMethod: input.paymentMethod,
+                  idempotencyKey: `pr4-payment-${randomUUID()}`,
+                  paidAt: input.createdAt,
+                  createdAt: input.createdAt,
+                },
+              });
+            }
+
+            async function readBatch(bookingId: string, reason: string) {
+              return tenantDb.forTenant(tenant.id, (tx) =>
+                batches.findByBookingReason(tx, bookingId, reason),
+              );
+            }
+
+            async function readChildren(batchId: string): Promise<RefundRecord[]> {
+              return tenantDb.forTenant(tenant.id, async (tx) => {
+                const rows = await tx.refund.findMany({
+                  where: { refundBatchId: batchId },
+                  orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+                });
+                const records: RefundRecord[] = [];
+                for (const row of rows) {
+                  const record = await refunds.findById(tx, row.id);
+                  if (record) records.push(record);
+                }
+                return records;
+              });
+            }
+
+            async function businessEvents(batchId: string) {
+              const rows = await prisma.admin.outboxEvent.findMany({
+                where: { tenantId: tenant.id, eventType: 'refund.completed' },
+                orderBy: { createdAt: 'asc' },
+              });
+              return rows.filter(
+                (row) =>
+                  row.payload &&
+                  typeof row.payload === 'object' &&
+                  !Array.isArray(row.payload) &&
+                  (row.payload as Record<string, unknown>).refundBatchId === batchId,
+              );
+            }
+
+            async function deliver(eventType: string, payload: unknown) {
+              for (const handler of registry.handlersFor(eventType)) {
+                await handler({
+                  id: randomUUID(),
+                  tenantId: tenant.id,
+                  eventType,
+                  payload,
+                  attempts: 0,
+                  createdAt: new Date(),
+                });
+              }
+            }
+
+            // Scenario 1 + Finance guard: mixed providers, newest balance first.
+            const mixed = await createBooking('mixed', { refundDueAmount: 800_000n });
+            const oldDeposit = await createPayment({
+              bookingId: mixed.id,
+              gateway: 'momo',
+              kind: 'deposit',
+              amount: 400_000n,
+              strategy: 'manual',
+              paymentMethod: 'momo_wallet',
+              createdAt: new Date(Date.now() - 120_000),
+            });
+            const newBalance = await createPayment({
+              bookingId: mixed.id,
+              gateway: 'payos',
+              kind: 'balance',
+              amount: 600_000n,
+              strategy: 'manual',
+              paymentMethod: 'bank_transfer',
+              createdAt: new Date(Date.now() - 60_000),
+            });
+            await recordHeld.execute(tenant.id, oldDeposit.id);
+            await recordHeld.execute(tenant.id, newBalance.id);
+            await prepareSettlementRefund.execute(
+              tenant.id,
+              mixed.id,
+              800_000n,
+              'cancellation_fee',
+            );
+            await executeRefund.execute(tenant.id, mixed.id, 800_000n, 'booking_cancellation');
+            const mixedBatch = await readBatch(mixed.id, 'booking_cancellation');
+            assert.ok(mixedBatch);
+            const mixedChildren = await readChildren(mixedBatch.id);
+            check('mixed-provider creates two child allocations', mixedChildren.length === 2);
+            const balanceChild = mixedChildren.find((child) => child.paymentId === newBalance.id);
+            const depositChild = mixedChildren.find((child) => child.paymentId === oldDeposit.id);
+            check('newest balance allocated first for 600000', balanceChild?.amount === 600_000n);
+            check('older deposit supplies remaining 200000', depositChild?.amount === 200_000n);
+
+            const childRequested = await prisma.admin.outboxEvent.findFirst({
+              where: { tenantId: tenant.id, eventType: 'refund.requested' },
+              orderBy: { createdAt: 'desc' },
+            });
+            if (!childRequested) throw new Error('batched refund.requested missing');
+            await deliver('refund.requested', childRequested.payload);
+            const financeAfterChild = await prisma.admin.bookingSettlement.findUnique({
+              where: { bookingId: mixed.id },
+            });
+            check(
+              'Finance keeps full business refund_pending amount after child event',
+              financeAfterChild?.refundedAmount === 800_000n,
+            );
+
+            if (!balanceChild || !depositChild) throw new Error('mixed children missing');
+            await confirmManual.execute(
+              tenant.id,
+              balanceChild.id,
+              { reference: `PR4-${randomUUID()}` } as never,
+              owner.id,
+            );
+            check('first child does not emit business completion', (await businessEvents(mixedBatch.id)).length === 0);
+            const bookingAfterFirst = await prisma.admin.booking.findUnique({ where: { id: mixed.id } });
+            check('booking not finalized after first child', bookingAfterFirst?.status === 'cancelled');
+
+            await confirmManual.execute(
+              tenant.id,
+              depositChild.id,
+              { reference: `PR4-${randomUUID()}` } as never,
+              owner.id,
+            );
+            const mixedEvents = await businessEvents(mixedBatch.id);
+            check('batch emits exactly one business completion', mixedEvents.length === 1);
+            const mixedPayload = mixedEvents[0]?.payload;
+            await deliver('refund.completed', mixedPayload);
+            const mixedDone = await prisma.admin.refundBatch.findUnique({ where: { id: mixedBatch.id } });
+            const mixedBookingDone = await prisma.admin.booking.findUnique({ where: { id: mixed.id } });
+            const mixedSettlementDone = await prisma.admin.bookingSettlement.findUnique({
+              where: { bookingId: mixed.id },
+            });
+            check('mixed batch completed only after all child amount succeeds', mixedDone?.status === 'completed');
+            check('business completion finalizes booking once', mixedBookingDone?.status === 'refunded');
+            check(
+              'business completion finalizes settlement with batch id',
+              mixedSettlementDone?.refundId === mixedBatch.id && mixedSettlementDone.refundedAmount === 800_000n,
+            );
+
+            // Scenario 2: concurrent duplicate trigger converges to one batch/plan.
+            const duplicate = await createBooking('duplicate');
+            await createPayment({
+              bookingId: duplicate.id,
+              gateway: 'payos',
+              kind: 'full',
+              amount: 500_000n,
+              strategy: 'manual',
+              paymentMethod: 'bank_transfer',
+              createdAt: new Date(),
+            });
+            await Promise.all([
+              executeRefund.execute(tenant.id, duplicate.id, 300_000n, 'booking_cancellation'),
+              executeRefund.execute(tenant.id, duplicate.id, 300_000n, 'booking_cancellation'),
+            ]);
+            const duplicateBatches = await prisma.admin.refundBatch.findMany({
+              where: { bookingId: duplicate.id, reason: 'booking_cancellation' },
+            });
+            const duplicateChildren = duplicateBatches[0]
+              ? await readChildren(duplicateBatches[0].id)
+              : [];
+            check('concurrent duplicate trigger creates one batch', duplicateBatches.length === 1);
+            check('concurrent duplicate trigger creates one child plan', duplicateChildren.length === 1);
+
+            // Scenario 3: mixed automatic/manual remains manual_required until manual success.
+            const mixedMode = await createBooking('mixed-mode');
+            const manualSource = await createPayment({
+              bookingId: mixedMode.id,
+              gateway: 'payos',
+              kind: 'deposit',
+              amount: 400_000n,
+              strategy: 'manual',
+              paymentMethod: 'bank_transfer',
+              createdAt: new Date(Date.now() - 120_000),
+            });
+            const automaticSource = await createPayment({
+              bookingId: mixedMode.id,
+              gateway: 'momo',
+              kind: 'balance',
+              amount: 600_000n,
+              strategy: 'automatic_preferred',
+              paymentMethod: 'momo_wallet',
+              createdAt: new Date(Date.now() - 60_000),
+            });
+            await executeRefund.execute(tenant.id, mixedMode.id, 800_000n, 'booking_cancellation');
+            let mixedModeBatch = await readBatch(mixedMode.id, 'booking_cancellation');
+            assert.ok(mixedModeBatch);
+            let mixedModeChildren = await readChildren(mixedModeBatch.id);
+            const automaticChild = mixedModeChildren.find((child) => child.paymentId === automaticSource.id);
+            const manualChild = mixedModeChildren.find((child) => child.paymentId === manualSource.id);
+            check(
+              'mixed automatic/manual batch starts manual_required',
+              mixedModeBatch.status === 'manual_required' &&
+                automaticChild?.executionMode === 'automatic' &&
+                manualChild?.executionMode === 'manual',
+            );
+            if (!automaticChild || !manualChild) throw new Error('mixed-mode children missing');
+            await tenantDb.forTenant(tenant.id, async (tx) => {
+              await refunds.lockForBooking(tx, mixedMode.id);
+              await refunds.completeAutomatic(tx, automaticChild.id, 'runtime-smoke-auto');
+              await batches.refreshStatus(tx, mixedModeBatch!.id);
+            });
+            mixedModeBatch = await readBatch(mixedMode.id, 'booking_cancellation');
+            check('automatic child success does not complete mixed batch', mixedModeBatch?.status === 'manual_required');
+            await confirmManual.execute(
+              tenant.id,
+              manualChild.id,
+              { reference: `PR4-${randomUUID()}` } as never,
+              owner.id,
+            );
+            mixedModeBatch = await readBatch(mixedMode.id, 'booking_cancellation');
+            check('manual confirmation completes mixed batch', mixedModeBatch?.status === 'completed');
+            const mixedModeEvents = await businessEvents(mixedModeBatch!.id);
+            check('mixed batch emits one final business completion', mixedModeEvents.length === 1);
+            await deliver('refund.completed', mixedModeEvents[0]?.payload);
+
+            // Scenario 4: security deposit must stay on original deposit/full source.
+            const security = await createBooking('security', { securityDeposit: 300_000n });
+            const securityDepositSource = await createPayment({
+              bookingId: security.id,
+              gateway: 'payos',
+              kind: 'deposit',
+              amount: 500_000n,
+              strategy: 'manual',
+              paymentMethod: 'bank_transfer',
+              createdAt: new Date(Date.now() - 120_000),
+            });
+            await createPayment({
+              bookingId: security.id,
+              gateway: 'momo',
+              kind: 'balance',
+              amount: 700_000n,
+              strategy: 'automatic_preferred',
+              paymentMethod: 'momo_wallet',
+              createdAt: new Date(Date.now() - 60_000),
+            });
+            await executeRefund.execute(
+              tenant.id,
+              security.id,
+              250_000n,
+              'security_deposit',
+              false,
+            );
+            const securityBatch = await readBatch(security.id, 'security_deposit');
+            assert.ok(securityBatch);
+            const securityChildren = await readChildren(securityBatch.id);
+            check(
+              'security deposit creates one child on original deposit/full source',
+              securityChildren.length === 1 &&
+                securityChildren[0]?.paymentId === securityDepositSource.id,
+            );
+            check(
+              'security deposit does not affect booking status',
+              securityBatch.affectsBookingStatus === false &&
+                securityChildren[0]?.affectsBookingStatus === false,
+            );
+
+            // Scenario 5: pending/manual/succeeded work reserves refundable capacity.
+            const reserved = await createBooking('reserved');
+            const reservedPayment = await createPayment({
+              bookingId: reserved.id,
+              gateway: 'payos',
+              kind: 'full',
+              amount: 500_000n,
+              strategy: 'manual',
+              paymentMethod: 'bank_transfer',
+              createdAt: new Date(),
+            });
+            await tenantDb.forTenant(tenant.id, (tx) =>
+              refunds.create(tx, tenant.id, {
+                paymentId: reservedPayment.id,
+                bookingId: reserved.id,
+                amount: 300_000n,
+                status: 'manual_required',
+                affectsBookingStatus: true,
+                reason: 'legacy_reserve',
+                executionMode: 'manual',
+                dueAt: new Date(Date.now() + 86_400_000),
+              }),
+            );
+            let capacityBlocked = false;
+            try {
+              await executeRefund.execute(
+                tenant.id,
+                reserved.id,
+                300_000n,
+                'booking_cancellation',
+              );
+            } catch (error) {
+              capacityBlocked = error instanceof RefundAmountExceedsPayment;
+            }
+            check('reserved child capacity blocks over-refund planning', capacityBlocked);
+            check(
+              'capacity failure writes no batch',
+              (await readBatch(reserved.id, 'booking_cancellation')) === null,
+            );
+
+            // Scenario 6/7: two reconciliation sweeps after convergence do not
+            // replay the already-finalized batch into Finance.
+            const businessCountBeforeSweep = (await businessEvents(mixedBatch.id)).length;
+            const settlementBeforeSweep = await prisma.admin.bookingSettlement.findUnique({
+              where: { bookingId: mixed.id },
+            });
+            await reconciliation.sweep();
+            await reconciliation.sweep();
+            const businessCountAfterSweep = (await businessEvents(mixedBatch.id)).length;
+            const settlementAfterSweep = await prisma.admin.bookingSettlement.findUnique({
+              where: { bookingId: mixed.id },
+            });
+            check(
+              'double reconciliation sweep emits no duplicate completed business event',
+              businessCountAfterSweep === businessCountBeforeSweep,
+            );
+            check(
+              'double reconciliation sweep does not double-apply Finance refund',
+              settlementAfterSweep?.refundId === mixedBatch.id &&
+                settlementAfterSweep.refundedAmount === settlementBeforeSweep?.refundedAmount,
+            );
+
+            console.log('REFUND_ALLOCATION_RUNTIME_SMOKE=PASS');
+            await app.close();
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exitCode = 1;
+          });
+          TS
+          node ./node_modules/ts-node/dist/bin.js --transpile-only pr4-refund-runtime-smoke.ts
+          rm pr4-refund-runtime-smoke.ts
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f apps/api/pr4-refund-runtime-smoke.ts
+          if [ -f /tmp/pr4-api.pid ]; then kill "$(cat /tmp/pr4-api.pid)" 2>/dev/null || true; fi
