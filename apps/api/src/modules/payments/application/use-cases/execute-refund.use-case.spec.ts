@@ -281,12 +281,12 @@ describe('ExecuteRefundUseCase', () => {
 
   it('uses the exact historical config revision for a legacy Payment with null snapshots', async () => {
     const { useCase, created, resolvedPayments } = harness({
-      succeeded: payment({ gatewayConfigRevisionId: 'config-1' }),
+      succeeded: payment({ gatewayConfigRevisionId: 'config-1', gateway: 'momo' }),
       settings: AUTOMATIC,
     });
     await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n);
     expect(created[0]).toMatchObject({ executionMode: 'automatic' });
-    expect(resolvedPayments).toEqual(['sepay:config-1']);
+    expect(resolvedPayments).toEqual(['momo:config-1']);
   });
 
   it('fails closed when only half of the refund policy snapshot is populated', async () => {

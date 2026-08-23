@@ -149,7 +149,7 @@ export function CheckoutMethodSettingsCard({
                   </div>
 
                   {current && !selectedConnected ? (
-                    <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-amber-700 dark:text-amber-400">
+                    <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-warning">
                       <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                       {PROVIDER_LABELS[current.gateway]} đang ngắt kết nối. Route được giữ nguyên,
                       nhưng phương thức này sẽ không xuất hiện công khai cho tới khi provider được
