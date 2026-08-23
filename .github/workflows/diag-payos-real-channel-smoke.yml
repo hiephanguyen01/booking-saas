@@ -29,19 +29,20 @@ jobs:
         run: |
           set -euo pipefail
 
+          failed=0
           if [ "${PAYOS_SMOKE_DISPOSABLE_CHANNEL:-}" != "true" ]; then
             echo "::error::PAYOS_SMOKE_DISPOSABLE_CHANNEL=true is required. Real smoke changes the channel webhook URL, so production/live channels are forbidden."
-            exit 1
+            failed=1
           fi
 
-          missing=0
           for name in PAYOS_CLIENT_ID PAYOS_API_KEY PAYOS_CHECKSUM_KEY; do
             if [ -z "${!name:-}" ]; then
               echo "::error::${name} is missing"
-              missing=1
+              failed=1
             fi
           done
-          test "$missing" -eq 0
+
+          test "$failed" -eq 0
           echo "real_channel_secret_gate=true"
 
   real-channel-smoke:
@@ -81,8 +82,6 @@ jobs:
           set -euo pipefail
           cp .env.example .env
 
-          # Everything in this job is ephemeral. Use a fresh encryption key and
-          # disable the local mock fallback so the exercised provider is PayOS.
           ephemeral_enc_key=$(openssl rand -base64 48 | tr -d '\n')
           sed -i "s|^PAYMENTS_ENC_KEY=.*|PAYMENTS_ENC_KEY=${ephemeral_enc_key}|" .env
           sed -i 's|^ALLOW_MOCK_PAYMENTS=.*|ALLOW_MOCK_PAYMENTS=false|' .env
@@ -102,32 +101,42 @@ jobs:
           pnpm --filter=@booking/api prisma:generate
           pnpm --filter=@booking/api seed
 
-          # Log every public request before forwarding it to the API. payOS docs
-          # state confirm-webhook sends a sample webhook; this proxy lets the smoke
-          # assert that the callback actually reached /webhooks/payos.
+          # Capture the exact raw sample webhook PayOS sends during confirmation,
+          # while forwarding the same bytes to the API. The payload stays in /tmp
+          # and is never printed to Actions logs.
           cat >/tmp/payos-smoke-proxy.mjs <<'NODE'
+          import fs from 'node:fs';
           import http from 'node:http';
 
           const server = http.createServer((req, res) => {
-            console.log(`${req.method} ${req.url}`);
-            const upstream = http.request(
-              {
-                hostname: '127.0.0.1',
-                port: 3000,
-                method: req.method,
-                path: req.url,
-                headers: req.headers,
-              },
-              (upstreamResponse) => {
-                res.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
-                upstreamResponse.pipe(res);
-              },
-            );
-            upstream.on('error', () => {
-              if (!res.headersSent) res.writeHead(502);
-              res.end('bad gateway');
+            const chunks = [];
+            req.on('data', (chunk) => chunks.push(chunk));
+            req.on('end', () => {
+              const body = Buffer.concat(chunks);
+              console.log(`${req.method} ${req.url}`);
+              if (req.method === 'POST' && req.url === '/webhooks/payos') {
+                fs.writeFileSync('/tmp/payos-sample-webhook.bin', body);
+              }
+
+              const upstream = http.request(
+                {
+                  hostname: '127.0.0.1',
+                  port: 3000,
+                  method: req.method,
+                  path: req.url,
+                  headers: { ...req.headers, 'content-length': String(body.length) },
+                },
+                (upstreamResponse) => {
+                  res.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+                  upstreamResponse.pipe(res);
+                },
+              );
+              upstream.on('error', () => {
+                if (!res.headersSent) res.writeHead(502);
+                res.end('bad gateway');
+              });
+              upstream.end(body);
             });
-            req.pipe(upstream);
           });
 
           server.listen(18081, '127.0.0.1');
@@ -143,7 +152,14 @@ jobs:
           tunnel_pid=$!
 
           cleanup() {
-            rm -f /tmp/payos-real-config.json /tmp/login.json /tmp/config.json /tmp/config-list.json /tmp/confirm.json
+            rm -f \
+              /tmp/payos-real-config.json \
+              /tmp/payos-sample-webhook.bin \
+              /tmp/login.json \
+              /tmp/config.json \
+              /tmp/config-list.json \
+              /tmp/confirm.json \
+              apps/api/payos-real-signature-smoke.ts
             kill ${api_pid:-0} 2>/dev/null || true
             kill ${tunnel_pid:-0} 2>/dev/null || true
             kill ${proxy_pid:-0} 2>/dev/null || true
@@ -256,8 +272,6 @@ jobs:
           echo "confirm_http_status=${confirm_status}"
           if [ "$confirm_status" != "200" ]; then
             echo "::error::real PayOS webhook confirmation failed with HTTP ${confirm_status}"
-            cat /tmp/confirm.json
-            tail -n 160 /tmp/booking-api.log
             exit 1
           fi
 
@@ -274,15 +288,41 @@ jobs:
           NODE
 
           for _ in $(seq 1 10); do
-            if grep -q '^POST /webhooks/payos' /tmp/payos-smoke-proxy.log; then
+            if grep -q '^POST /webhooks/payos' /tmp/payos-smoke-proxy.log \
+              && [ -s /tmp/payos-sample-webhook.bin ]; then
               break
             fi
             sleep 1
           done
           grep -q '^POST /webhooks/payos' /tmp/payos-smoke-proxy.log || {
             echo "::error::PayOS confirmation succeeded but no sample POST /webhooks/payos was observed"
-            sed -n '1,120p' /tmp/payos-smoke-proxy.log
+            exit 1
+          }
+          test -s /tmp/payos-sample-webhook.bin || {
+            echo "::error::PayOS sample webhook arrived without a captured raw body"
             exit 1
           }
           echo "payos_sample_webhook_observed=true"
+
+          cat >apps/api/payos-real-signature-smoke.ts <<'TS'
+          import { readFileSync } from 'node:fs';
+          import { PayosGatewayAdapter } from './src/modules/payments/infrastructure/gateways/payos-gateway.adapter';
+
+          const checksumKey = process.env.PAYOS_CHECKSUM_KEY;
+          if (!checksumKey) throw new Error('PAYOS_CHECKSUM_KEY missing in signature verifier');
+
+          const adapter = new PayosGatewayAdapter({
+            clientId: process.env.PAYOS_CLIENT_ID ?? '',
+            apiKey: process.env.PAYOS_API_KEY ?? '',
+            checksumKey,
+          });
+          const verification = adapter.verifyWebhook(readFileSync('/tmp/payos-sample-webhook.bin'));
+          if (!verification.valid) throw new Error('PayOS sample webhook signature failed product verification');
+          console.log('payos_sample_signature_verified=true');
+          TS
+          (
+            cd apps/api
+            node ./node_modules/ts-node/dist/bin.js --transpile-only payos-real-signature-smoke.ts
+          )
+
           echo "real_channel_smoke=true"
