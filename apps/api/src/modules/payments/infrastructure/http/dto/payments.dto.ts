@@ -12,7 +12,6 @@ import {
   refundHistoryQuerySchema,
   publicPaymentOptionsSchema,
   startCheckoutInputSchema,
-  updateGatewayPaymentSettingsInputSchema,
   paymentRoutingInputSchema,
   paymentRoutingResponseSchema,
   tenantRefundPolicySchema,
@@ -25,9 +24,6 @@ export class PaymentHistoryQueryDto extends createZodDto(paymentHistoryQuerySche
 export class ConfirmManualRefundDto extends createZodDto(confirmManualRefundInputSchema) {}
 export class RefundHistoryQueryDto extends createZodDto(refundHistoryQuerySchema) {}
 export class StartCheckoutDto extends createZodDto(startCheckoutInputSchema) {}
-export class UpdateGatewayPaymentSettingsDto extends createZodDto(
-  updateGatewayPaymentSettingsInputSchema,
-) {}
 export class PaymentRoutingInputDto extends createZodDto(paymentRoutingInputSchema) {}
 export class UpdateTenantRefundPolicyDto extends createZodDto(updateTenantRefundPolicyInputSchema) {}
 
