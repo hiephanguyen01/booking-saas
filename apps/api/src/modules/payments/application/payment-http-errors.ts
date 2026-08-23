@@ -15,6 +15,38 @@ export class PaymentNotConfigured extends ServiceUnavailableException {
   }
 }
 
+export class InvalidPaymentRouting extends BadRequestException {
+  constructor(details?: unknown) {
+    super({
+      statusCode: 400,
+      code: 'INVALID_PAYMENT_ROUTING',
+      message: 'Cấu hình định tuyến thanh toán không hợp lệ',
+      ...(details === undefined ? {} : { details }),
+    });
+  }
+}
+
+export class PaymentRoutingProviderInactive extends BadRequestException {
+  constructor(gateway: string) {
+    super({
+      statusCode: 400,
+      code: 'PAYMENT_ROUTING_PROVIDER_INACTIVE',
+      message: `Cổng thanh toán ${gateway} chưa được kết nối`,
+    });
+  }
+}
+
+export class InvalidRefundPolicy extends BadRequestException {
+  constructor(details?: unknown) {
+    super({
+      statusCode: 400,
+      code: 'INVALID_REFUND_POLICY',
+      message: 'Chính sách hoàn tiền không hợp lệ',
+      ...(details === undefined ? {} : { details }),
+    });
+  }
+}
+
 export class BadWebhook extends BadRequestException {
   constructor() {
     super({
