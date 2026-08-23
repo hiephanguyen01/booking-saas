@@ -2,6 +2,7 @@ import { data as routeData } from 'react-router';
 import {
   addDomainInputSchema,
   momoGatewaySettingsFormSchema,
+  payosGatewaySettingsFormSchema,
   sepayGatewaySettingsFormSchema,
   zalopayGatewaySettingsFormSchema,
   themeConfigSchema,
@@ -12,7 +13,9 @@ import {
   type TenantDomainKind,
   type TenantThemeResponse,
   payoutPolicySchema,
-  updateGatewayPaymentSettingsInputSchema,
+  customerPaymentMethodSchema,
+  paymentRoutingInputSchema,
+  updateTenantRefundPolicyInputSchema,
   createCancellationPolicyInputSchema,
   gatewayConfigResponseSchema,
   type GatewayConfigResponse,
@@ -92,11 +95,48 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
           secretKey?: unknown;
           partnerCode?: unknown;
           accessKey?: unknown;
+          clientId?: unknown;
+          apiKey?: unknown;
+          checksumKey?: unknown;
           appId?: unknown;
           key1?: unknown;
           key2?: unknown;
         };
       };
+
+      if (raw.gateway === 'payos') {
+        const parsed = payosGatewaySettingsFormSchema.safeParse({
+          environment: raw.environment,
+          clientId: raw.credentials?.clientId,
+          apiKey: raw.credentials?.apiKey,
+          checksumKey: raw.credentials?.checksumKey,
+        });
+        if (!parsed.success) {
+          return routeData(
+            { form: 'payos', fieldErrors: parsed.error.flatten().fieldErrors },
+            { status: 400 },
+          );
+        }
+        const payload: UpsertGatewayConfigInput = {
+          gateway: 'payos',
+          environment: parsed.data.environment,
+          credentials: {
+            clientId: parsed.data.clientId,
+            apiKey: parsed.data.apiKey,
+            checksumKey: parsed.data.checksumKey,
+          },
+        };
+        const res = await apiPut<GatewayConfigResponse>(apiPaths.tenant.gatewayConfig, payload, auth, {
+          schema: gatewayConfigResponseSchema,
+        });
+        if (!res.ok) {
+          return routeData(
+            { form: 'payos', error: res.error ?? 'Không lưu được cấu hình PayOS.' },
+            { status: res.status >= 400 && res.status <= 599 ? res.status : 400 },
+          );
+        }
+        return { form: 'payos', ok: true };
+      }
 
       if (raw.gateway === 'zalopay') {
         const parsed = zalopayGatewaySettingsFormSchema.safeParse({
@@ -275,27 +315,48 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
     return { form: 'gateway-off', ok: true };
   }
 
-  if (intent === 'payment-settings') {
-    const parsed = updateGatewayPaymentSettingsInputSchema.safeParse({
-      gateway: formData.get('gateway'),
-      enabledMethods: formData.getAll('enabledMethods'),
+  if (intent === 'payment-routing') {
+    const enabled = new Set(formData.getAll('enabledMethods').map(String));
+    const routes = customerPaymentMethodSchema.options.flatMap((method) => {
+      const gateway = String(formData.get(`gateway:${method}`) ?? '').trim();
+      return gateway ? [{ method, gateway, enabled: enabled.has(method) }] : [];
+    });
+    const parsed = paymentRoutingInputSchema.safeParse({ routes });
+    if (!parsed.success) {
+      return routeData(
+        { form: 'payment-routing', error: 'Định tuyến phương thức thanh toán không hợp lệ.' },
+        { status: 400 },
+      );
+    }
+    const res = await apiPut(apiPaths.tenant.paymentRouting, parsed.data, auth);
+    if (!res.ok) {
+      return routeData(
+        { form: 'payment-routing', error: res.error ?? 'Không lưu được định tuyến thanh toán.' },
+        { status: 400 },
+      );
+    }
+    return { form: 'payment-routing', ok: true };
+  }
+
+  if (intent === 'refund-policy') {
+    const parsed = updateTenantRefundPolicyInputSchema.safeParse({
       refundStrategy: formData.get('refundStrategy'),
       manualRefundSlaHours: Number(formData.get('manualRefundSlaHours')),
     });
     if (!parsed.success) {
       return routeData(
-        { form: 'payment-settings', error: 'Hãy bật ít nhất một phương thức thanh toán.' },
+        { form: 'refund-policy', error: 'Chính sách hoàn tiền không hợp lệ.' },
         { status: 400 },
       );
     }
-    const res = await apiPut(apiPaths.tenant.gatewayConfigSettings, parsed.data, auth);
+    const res = await apiPut(apiPaths.tenant.refundPolicy, parsed.data, auth);
     if (!res.ok) {
       return routeData(
-        { form: 'payment-settings', error: res.error ?? 'Không lưu được cài đặt thanh toán.' },
+        { form: 'refund-policy', error: res.error ?? 'Không lưu được chính sách hoàn tiền.' },
         { status: 400 },
       );
     }
-    return { form: 'payment-settings', ok: true };
+    return { form: 'refund-policy', ok: true };
   }
 
   if (intent === 'toggle-partner-promos') {

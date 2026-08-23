@@ -12,7 +12,10 @@ import {
   refundHistoryQuerySchema,
   publicPaymentOptionsSchema,
   startCheckoutInputSchema,
-  updateGatewayPaymentSettingsInputSchema,
+  paymentRoutingInputSchema,
+  paymentRoutingResponseSchema,
+  tenantRefundPolicySchema,
+  updateTenantRefundPolicyInputSchema,
   zaloPayWebhookAcknowledgementResponseSchema,
 } from '@booking/contracts';
 
@@ -21,9 +24,8 @@ export class PaymentHistoryQueryDto extends createZodDto(paymentHistoryQuerySche
 export class ConfirmManualRefundDto extends createZodDto(confirmManualRefundInputSchema) {}
 export class RefundHistoryQueryDto extends createZodDto(refundHistoryQuerySchema) {}
 export class StartCheckoutDto extends createZodDto(startCheckoutInputSchema) {}
-export class UpdateGatewayPaymentSettingsDto extends createZodDto(
-  updateGatewayPaymentSettingsInputSchema,
-) {}
+export class PaymentRoutingInputDto extends createZodDto(paymentRoutingInputSchema) {}
+export class UpdateTenantRefundPolicyDto extends createZodDto(updateTenantRefundPolicyInputSchema) {}
 
 // Responses
 export class CheckoutResponseDto extends createZodDto(checkoutResponseSchema) {}
@@ -33,6 +35,8 @@ export class PaymentHistoryItemDto extends createZodDto(paymentHistoryItemSchema
 export class RefundResponseDto extends createZodDto(refundResponseSchema) {}
 export class RefundHistoryItemDto extends createZodDto(refundHistoryItemSchema) {}
 export class PublicPaymentOptionsDto extends createZodDto(publicPaymentOptionsSchema) {}
+export class PaymentRoutingResponseDto extends createZodDto(paymentRoutingResponseSchema) {}
+export class TenantRefundPolicyDto extends createZodDto(tenantRefundPolicySchema) {}
 
 export class GenericWebhookAcknowledgementResponseDto extends createZodDto(
   genericWebhookAcknowledgementResponseSchema,

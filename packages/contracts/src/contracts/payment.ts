@@ -28,18 +28,59 @@ export const GATEWAY_SUPPORTED_METHODS: Record<GatewayKey, CustomerPaymentMethod
   mock: ['bank_transfer', 'napas_qr', 'international_card', 'momo_wallet', 'zalopay_wallet'],
 };
 
-/** Wallet gateways can be enabled in parallel; base gateways stay single-active. */
-export const WALLET_GATEWAYS = ['momo', 'zalopay'] as const;
-export function isWalletGateway(gateway: GatewayKey): boolean {
-  return (WALLET_GATEWAYS as readonly string[]).includes(gateway);
-}
-/** 1:1 wallet-method → wallet-gateway routing; null = base-gateway method. */
-export function walletGatewayForMethod(method: CustomerPaymentMethod): GatewayKey | null {
-  return method === 'momo_wallet' ? 'momo' : method === 'zalopay_wallet' ? 'zalopay' : null;
-}
+export const paymentMethodRouteSchema = z
+  .object({
+    method: customerPaymentMethodSchema,
+    gateway: gatewayKeySchema,
+    enabled: z.boolean(),
+  })
+  .strict()
+  .superRefine((route, ctx) => {
+    if (!GATEWAY_SUPPORTED_METHODS[route.gateway].includes(route.method)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['gateway'],
+        message: `${route.gateway} does not support ${route.method}`,
+      });
+    }
+  });
+export type PaymentMethodRoute = z.infer<typeof paymentMethodRouteSchema>;
+
+export const paymentRoutingInputSchema = z
+  .object({ routes: z.array(paymentMethodRouteSchema).max(5) })
+  .strict()
+  .superRefine(({ routes }, ctx) => {
+    const seen = new Set<CustomerPaymentMethod>();
+    routes.forEach((route, index) => {
+      if (seen.has(route.method)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['routes', index, 'method'],
+          message: `Duplicate route for ${route.method}`,
+        });
+      }
+      seen.add(route.method);
+    });
+  });
+export type PaymentRoutingInput = z.infer<typeof paymentRoutingInputSchema>;
+
+export const paymentRoutingResponseSchema = z.object({
+  routes: z.array(paymentMethodRouteSchema),
+});
+export type PaymentRoutingResponse = z.infer<typeof paymentRoutingResponseSchema>;
 
 export const refundStrategySchema = z.enum(['manual', 'automatic_preferred']);
 export type RefundStrategy = z.infer<typeof refundStrategySchema>;
+
+export const tenantRefundPolicySchema = z
+  .object({
+    refundStrategy: refundStrategySchema,
+    manualRefundSlaHours: z.number().int().min(1).max(720),
+  })
+  .strict();
+export type TenantRefundPolicy = z.infer<typeof tenantRefundPolicySchema>;
+export const updateTenantRefundPolicyInputSchema = tenantRefundPolicySchema;
+export type UpdateTenantRefundPolicyInput = z.infer<typeof updateTenantRefundPolicyInputSchema>;
 
 export const gatewayPaymentSettingsSchema = z.object({
   enabledMethods: z.array(customerPaymentMethodSchema).min(1).max(5),
@@ -58,11 +99,7 @@ export const DEFAULT_GATEWAY_PAYMENT_SETTINGS: GatewayPaymentSettings = {
   manualRefundSlaHours: 72,
 };
 
-/**
- * Sensible defaults when a gateway is first configured: enable exactly the methods
- * it supports, and turn on automatic refunds for gateways that can push money back
- * (MoMo wallet, ZaloPay wallet, SePay card). Tenants can still override via the settings card.
- */
+/** Legacy gateway-settings default retained for historical Payment compatibility. */
 export function defaultGatewayPaymentSettings(gateway: GatewayKey): GatewayPaymentSettings {
   const enabledMethods = GATEWAY_SUPPORTED_METHODS[gateway];
   return {
@@ -106,6 +143,14 @@ export const sepayGatewaySettingsFormSchema = z.object({
   secretKey: z.string().trim().min(16, 'Secret key phải có ít nhất 16 ký tự').max(500),
 });
 export type SepayGatewaySettingsForm = z.infer<typeof sepayGatewaySettingsFormSchema>;
+
+export const payosGatewaySettingsFormSchema = z.object({
+  environment: gatewayEnvironmentSchema,
+  clientId: z.string().trim().min(1, 'Client ID là bắt buộc').max(200),
+  apiKey: z.string().trim().min(1, 'API Key là bắt buộc').max(500),
+  checksumKey: z.string().trim().min(16, 'Checksum Key phải có ít nhất 16 ký tự').max(500),
+});
+export type PayosGatewaySettingsForm = z.infer<typeof payosGatewaySettingsFormSchema>;
 
 /** MoMo credentials (partnerCode/accessKey/secretKey from MoMo Business). */
 export const momoGatewayConfigInputSchema = z.object({
@@ -156,20 +201,13 @@ export const mockGatewayConfigInputSchema = z.object({
 export type MockGatewayConfigInput = z.infer<typeof mockGatewayConfigInputSchema>;
 export type MockGatewayCredentials = MockGatewayConfigInput['credentials'];
 
-const withOptionalSettings = <T extends z.ZodRawShape>(shape: z.ZodObject<T>) =>
-  shape.extend({ settings: gatewayPaymentSettingsSchema.optional() });
-
-/**
- * Tenant admin stores provider credentials (encrypted at rest, §11.1).
- * `gateway` is the discriminator: credentials for one provider cannot cross the
- * HTTP boundary under another provider key.
- */
+/** Provider credential writes no longer carry current routing/refund policy. */
 export const upsertGatewayConfigInputSchema = z.discriminatedUnion('gateway', [
-  withOptionalSettings(sepayGatewayConfigInputSchema),
-  withOptionalSettings(payosGatewayConfigInputSchema),
-  withOptionalSettings(momoGatewayConfigInputSchema),
-  withOptionalSettings(zalopayGatewayConfigInputSchema),
-  withOptionalSettings(mockGatewayConfigInputSchema),
+  sepayGatewayConfigInputSchema,
+  payosGatewayConfigInputSchema,
+  momoGatewayConfigInputSchema,
+  zalopayGatewayConfigInputSchema,
+  mockGatewayConfigInputSchema,
 ]);
 export type UpsertGatewayConfigInput = z.infer<typeof upsertGatewayConfigInputSchema>;
 export type GatewayCredentialsFor<K extends GatewayKey> = Extract<
@@ -177,6 +215,7 @@ export type GatewayCredentialsFor<K extends GatewayKey> = Extract<
   { gateway: K }
 >['credentials'];
 
+/** Compatibility contract retained until the old combined write endpoint is removed. */
 export const updateGatewayPaymentSettingsInputSchema = gatewayPaymentSettingsSchema.extend({
   gateway: gatewayKeySchema,
 });

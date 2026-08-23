@@ -1,10 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import {
-  GATEWAY_SUPPORTED_METHODS,
-  type CustomerPaymentMethod,
-  type GatewayKey,
-  type GatewayPaymentSettings,
-} from '@booking/contracts';
+import type { TenantRefundPolicy } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Card,
@@ -13,42 +8,29 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
-import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
-import { CreditCard, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { Form, useNavigation, useSubmit } from 'react-router';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
-const METHODS = [
-  ['bank_transfer', 'Chuyển khoản ngân hàng', 'VietQR và chuyển khoản theo thông tin đơn hàng.'],
-  ['napas_qr', 'Napas QR và thẻ nội địa', 'Cho phép khách thanh toán qua mạng lưới Napas.'],
-  ['international_card', 'Thẻ quốc tế', 'Visa, Mastercard và JCB khi merchant hỗ trợ.'],
-  ['momo_wallet', 'Ví MoMo', 'Khách thanh toán bằng ví MoMo (chuyển hướng sang MoMo).'],
-] as const satisfies readonly (readonly [CustomerPaymentMethod, string, string])[];
-
-export function PaymentMethodSettingsCard({
-  settings,
-  gateway,
+export function RefundPolicyCard({
+  policy,
   readOnly,
   error,
   success,
 }: {
-  settings: GatewayPaymentSettings;
-  /** Active base gateway — only its supported methods are offered. */
-  gateway: GatewayKey;
+  policy: TenantRefundPolicy;
   readOnly: boolean;
   error: string | null;
   success: boolean;
 }) {
-  const supported = GATEWAY_SUPPORTED_METHODS[gateway];
-  const visibleMethods = METHODS.filter(([value]) => supported.includes(value));
   const navigation = useNavigation();
   const submit = useSubmit();
   const { busy: isSubmitting, run } = useSubmissionGuard(navigation.state);
-  const [refundStrategy, setRefundStrategy] = useState(settings.refundStrategy);
+  const [refundStrategy, setRefundStrategy] = useState(policy.refundStrategy);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -60,56 +42,26 @@ export function PaymentMethodSettingsCard({
     <Card className="shadow-none" aria-busy={isSubmitting}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CreditCard className="size-4 text-primary" aria-hidden="true" /> Phương thức thanh toán
+          <RotateCcw className="size-4 text-primary" aria-hidden="true" /> Chính sách hoàn tiền
         </CardTitle>
         <CardDescription>
-          Chọn cách khách thanh toán và cách đội ngũ xử lý yêu cầu hoàn tiền.
+          Chính sách này được chụp vào từng Payment mới, nên thay đổi sau này không làm đổi cách xử
+          lý các giao dịch đã tạo.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form method="post" className="space-y-6" onSubmit={handleSubmit}>
-          <input type="hidden" name="intent" value="payment-settings" />
-          <input type="hidden" name="gateway" value={gateway} />
+          <input type="hidden" name="intent" value="refund-policy" />
           <ErrorBanner error={error} />
-          <SuccessBanner message={success ? 'Đã lưu phương thức thanh toán và hoàn tiền.' : null} />
+          <SuccessBanner message={success ? 'Đã lưu chính sách hoàn tiền.' : null} />
 
           <fieldset disabled={readOnly || isSubmitting} className="space-y-3">
-            <legend className="text-sm font-semibold">Hiển thị tại trang thanh toán</legend>
-            <p className="text-xs leading-5 text-muted-foreground">
-              Khách chỉ nhìn thấy các phương thức được bật và được tài khoản merchant hỗ trợ.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {visibleMethods.map(([value, label, description]) => (
-                <Label
-                  key={value}
-                  className="flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border bg-muted/15 p-4 font-normal transition-colors hover:bg-muted/35 has-data-[state=checked]:border-primary/35 has-data-[state=checked]:bg-primary/[0.035]"
-                >
-                  <Checkbox
-                    name="enabledMethods"
-                    value={value}
-                    defaultChecked={settings.enabledMethods.includes(value)}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="block text-sm font-semibold">{label}</span>
-                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                      {description}
-                    </span>
-                  </span>
-                </Label>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset disabled={readOnly || isSubmitting} className="space-y-3">
-            <legend className="flex items-center gap-2 text-sm font-semibold">
-              <RotateCcw className="size-4 text-primary" aria-hidden="true" /> Xử lý hoàn tiền
-            </legend>
+            <legend className="text-sm font-semibold">Cách xử lý</legend>
             <RadioGroup
               name="refundStrategy"
               value={refundStrategy}
               onValueChange={(value) =>
-                setRefundStrategy(value as GatewayPaymentSettings['refundStrategy'])
+                setRefundStrategy(value as TenantRefundPolicy['refundStrategy'])
               }
               className="grid gap-3 sm:grid-cols-2"
             >
@@ -118,7 +70,7 @@ export function PaymentMethodSettingsCard({
                 <span>
                   <strong className="text-sm">Xử lý thủ công</strong>
                   <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                    Nhân viên chuyển tiền và xác nhận mã giao dịch sau khi hoàn tất.
+                    Nhân viên chuyển tiền và xác nhận sau khi hoàn tất.
                   </span>
                 </span>
               </Label>
@@ -127,8 +79,7 @@ export function PaymentMethodSettingsCard({
                 <span>
                   <strong className="text-sm">Ưu tiên tự động</strong>
                   <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                    Tự động hoàn các giao dịch đủ điều kiện; phần còn lại chuyển sang xử lý thủ
-                    công.
+                    Tự động hoàn khi provider hỗ trợ; trường hợp không hỗ trợ chuyển sang thủ công.
                   </span>
                 </span>
               </Label>
@@ -144,7 +95,7 @@ export function PaymentMethodSettingsCard({
                 type="number"
                 min={1}
                 max={720}
-                defaultValue={settings.manualRefundSlaHours}
+                defaultValue={policy.manualRefundSlaHours}
                 disabled={readOnly || isSubmitting}
                 className="pr-14 tabular-nums"
               />
@@ -153,12 +104,12 @@ export function PaymentMethodSettingsCard({
               </span>
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
-              Áp dụng cho mọi yêu cầu cần nhân viên chuyển tiền, kể cả khi đang ưu tiên tự động.
+              Áp dụng khi hoàn tiền cần nhân viên xử lý thủ công.
             </p>
           </div>
 
           <Button type="submit" size="control" disabled={readOnly || isSubmitting}>
-            {isSubmitting ? 'Đang lưu...' : 'Lưu phương thức thanh toán'}
+            {isSubmitting ? 'Đang lưu...' : 'Lưu chính sách hoàn tiền'}
           </Button>
         </Form>
       </CardContent>

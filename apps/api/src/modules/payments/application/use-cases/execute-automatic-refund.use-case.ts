@@ -14,6 +14,7 @@ import {
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
 import { Refund } from '../../domain/entities/refund.entity';
+import { resolvePaymentRefundPolicy } from '../../domain/refund-policy-resolution';
 
 /** Executes the provider call after the refund intent is durably committed. */
 @Injectable()
@@ -38,11 +39,12 @@ export class ExecuteAutomaticRefundUseCase {
       const payment = await this.payments.findById(tx, refund.paymentId);
       if (!payment || payment.status !== 'succeeded' || !entity.isForPayment(payment)) return null;
       const resolved = await this.registry.resolveForPayment(tx, payment);
+      const policy = resolvePaymentRefundPolicy(payment, resolved.settings);
       return {
         refund,
         payment,
         gateway: resolved.gateway,
-        manualRefundSlaHours: resolved.settings.manualRefundSlaHours,
+        manualRefundSlaHours: policy.manualRefundSlaHours,
       };
     });
     if (!prepared) return;

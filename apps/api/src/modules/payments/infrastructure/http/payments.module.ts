@@ -10,31 +10,41 @@ import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate
 import { ExecuteAutomaticRefundUseCase } from '../../application/use-cases/execute-automatic-refund.use-case';
 import { ExecuteRefundUseCase } from '../../application/use-cases/execute-refund.use-case';
 import { GetGatewayConfigUseCase } from '../../application/use-cases/get-gateway-config.use-case';
+import { GetPaymentRoutingUseCase } from '../../application/use-cases/get-payment-routing.use-case';
 import { GetPaymentStatusUseCase } from '../../application/use-cases/get-payment-status.use-case';
 import { GetPublicPaymentOptionsUseCase } from '../../application/use-cases/get-public-payment-options.use-case';
+import { GetRefundPolicyUseCase } from '../../application/use-cases/get-refund-policy.use-case';
 import { HandleWebhookUseCase } from '../../application/use-cases/handle-webhook.use-case';
 import { ListPlatformPaymentsUseCase } from '../../application/use-cases/list-platform-payments.use-case';
 import { ListTenantPaymentsUseCase } from '../../application/use-cases/list-tenant-payments.use-case';
 import { ListTenantRefundsUseCase } from '../../application/use-cases/list-tenant-refunds.use-case';
-import { UpdateGatewayPaymentSettingsUseCase } from '../../application/use-cases/update-gateway-payment-settings.use-case';
+import { UpdatePaymentRoutingUseCase } from '../../application/use-cases/update-payment-routing.use-case';
+import { UpdateRefundPolicyUseCase } from '../../application/use-cases/update-refund-policy.use-case';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
 import { CRYPTO } from '../../domain/ports/crypto.port';
 import { GATEWAY_CONFIG_REPOSITORY } from '../../domain/ports/gateway-config-repository.port';
 import { GATEWAY_REGISTRY } from '../../domain/ports/gateway-registry.port';
 import { PAYMENT_BOOKING_READER } from '../../domain/ports/payment-booking-reader.port';
+import { PAYMENT_CONFIGURATION_LOCK } from '../../domain/ports/payment-configuration-lock.port';
+import { PAYMENT_METHOD_ROUTE_REPOSITORY } from '../../domain/ports/payment-method-route-repository.port';
 import { PAYMENT_REPOSITORY } from '../../domain/ports/payment-repository.port';
+import { REFUND_POLICY_REPOSITORY } from '../../domain/ports/refund-policy-repository.port';
 import { REFUND_REPOSITORY } from '../../domain/ports/refund-repository.port';
 import { AesGcmCryptoService } from '../aes-gcm-crypto.service';
 import { GatewayRegistry } from '../gateway-registry';
 import { MockGatewayAdapter } from '../gateways/mock-gateway.adapter';
+import { PostgresPaymentConfigurationLock } from '../postgres-payment-configuration-lock';
 import { ReconciliationWorker } from '../reconciliation.worker';
 import { PrismaGatewayConfigRepository } from '../repositories/prisma-gateway-config.repository';
 import { PrismaPaymentBookingReader } from '../repositories/prisma-payment-booking.reader';
+import { PrismaPaymentMethodRouteRepository } from '../repositories/prisma-payment-method-route.repository';
 import { PrismaPaymentRepository } from '../repositories/prisma-payment.repository';
+import { PrismaRefundPolicyRepository } from '../repositories/prisma-refund-policy.repository';
 import { PrismaRefundRepository } from '../repositories/prisma-refund.repository';
 import { PlatformPaymentController } from './platform-payment.controller';
 import { PublicPaymentController } from './public-payment.controller';
 import { TenantGatewayController } from './tenant-gateway.controller';
+import { TenantPaymentConfigurationController } from './tenant-payment-configuration.controller';
 import { TenantPaymentController } from './tenant-payment.controller';
 import { WebhookController } from './webhook.controller';
 
@@ -44,13 +54,17 @@ import { WebhookController } from './webhook.controller';
     PublicPaymentController,
     WebhookController,
     TenantGatewayController,
+    TenantPaymentConfigurationController,
     TenantPaymentController,
     PlatformPaymentController,
   ],
   providers: [
     { provide: CRYPTO, useClass: AesGcmCryptoService },
+    { provide: PAYMENT_CONFIGURATION_LOCK, useClass: PostgresPaymentConfigurationLock },
     { provide: PAYMENT_REPOSITORY, useClass: PrismaPaymentRepository },
     { provide: PAYMENT_BOOKING_READER, useClass: PrismaPaymentBookingReader },
+    { provide: PAYMENT_METHOD_ROUTE_REPOSITORY, useClass: PrismaPaymentMethodRouteRepository },
+    { provide: REFUND_POLICY_REPOSITORY, useClass: PrismaRefundPolicyRepository },
     { provide: REFUND_REPOSITORY, useClass: PrismaRefundRepository },
     { provide: GATEWAY_CONFIG_REPOSITORY, useClass: PrismaGatewayConfigRepository },
     MockGatewayAdapter,
@@ -62,12 +76,15 @@ import { WebhookController } from './webhook.controller';
     GetPaymentStatusUseCase,
     UpsertGatewayConfigUseCase,
     GetGatewayConfigUseCase,
+    GetPaymentRoutingUseCase,
+    UpdatePaymentRoutingUseCase,
+    GetRefundPolicyUseCase,
+    UpdateRefundPolicyUseCase,
     DeactivateGatewayUseCase,
     ListTenantPaymentsUseCase,
     ListPlatformPaymentsUseCase,
     ConfirmManualRefundUseCase,
     ListTenantRefundsUseCase,
-    UpdateGatewayPaymentSettingsUseCase,
     GetPublicPaymentOptionsUseCase,
     ExecuteAutomaticRefundUseCase,
   ],
@@ -89,8 +106,6 @@ export class PaymentsModule implements OnModuleInit {
       const p = event.payload as { refundId: string };
       return this.automaticRefunds.execute(tenantId, p.refundId);
     });
-    // Execute refunds when a booking is cancelled (policy refund) or an inventory
-    // rental is returned (deposit refund). Ledger entries are Task 1.10.
     this.registry.register('booking.cancelled', (event) => {
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);
       if (!tenantId) return Promise.resolve();
@@ -148,12 +163,6 @@ export class PaymentsModule implements OnModuleInit {
     });
   }
 
-  /**
-   * A tenant-scoped payments event without a tenant id cannot be routed: skip it
-   * (and say so) instead of running `forTenant('')`, which crashes on the RLS
-   * policy's uuid cast. Skipping — not throwing — avoids wasting the event's
-   * finite retry budget and eventually dead-lettering a structurally invalid row.
-   */
   private requireTenantId(eventType: string, tenantId: string | null): string | null {
     if (tenantId) return tenantId;
     this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);

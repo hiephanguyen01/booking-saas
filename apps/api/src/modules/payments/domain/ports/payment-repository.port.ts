@@ -1,4 +1,8 @@
-import type { PaymentHistoryQuery, CheckoutDestination } from '@booking/contracts';
+import type {
+  CheckoutDestination,
+  PaymentHistoryQuery,
+  RefundStrategy,
+} from '@booking/contracts';
 import type { PaymentCheckoutState, PaymentKind, PaymentStatus } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RepoPage } from '../../../../shared/pagination/pagination';
@@ -17,6 +21,8 @@ export interface PaymentRecord {
   status: PaymentStatus;
   checkoutState: PaymentCheckoutState | null;
   gatewayConfigRevisionId: string | null;
+  refundStrategySnapshot: RefundStrategy | null;
+  manualRefundSlaHoursSnapshot: number | null;
   gatewayOrderRef: string | null;
   gatewayOrderId: string | null;
   gatewayTxnId: string | null;
@@ -34,6 +40,8 @@ export interface CreatePaymentData {
   capturedAmount?: bigint | null;
   checkoutState?: PaymentCheckoutState | null;
   gatewayConfigRevisionId?: string | null;
+  refundStrategySnapshot?: RefundStrategy | null;
+  manualRefundSlaHoursSnapshot?: number | null;
   gatewayTxnId?: string | null;
   gatewayOrderRef?: string | null;
   paymentMethod?: string | null;
@@ -45,6 +53,8 @@ export interface CreatePendingCheckoutData extends CreatePaymentData {
   id: string;
   checkoutState: 'creating';
   gatewayConfigRevisionId: string | null;
+  refundStrategySnapshot: RefundStrategy;
+  manualRefundSlaHoursSnapshot: number;
   gatewayOrderRef?: string | null;
 }
 

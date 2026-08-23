@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -11,23 +10,26 @@ import {
   type IRefundRepository,
 } from '../../domain/ports/refund-repository.port';
 import {
-  GATEWAY_CONFIG_REPOSITORY,
-  type IGatewayConfigRepository,
-} from '../../domain/ports/gateway-config-repository.port';
+  GATEWAY_REGISTRY,
+  type GatewayRegistryPort,
+} from '../../domain/ports/gateway-registry.port';
 import { Refund } from '../../domain/entities/refund.entity';
+import {
+  paymentRefundPolicySnapshot,
+  resolvePaymentRefundPolicy,
+} from '../../domain/refund-policy-resolution';
 
 /**
- * Execute a refund (§11.3). Triggered by `booking.cancelled` / `booking.returned`
- * outbox events (registered in the module). Calls the gateway's refund API; when
- * unsupported it records `manual_required` for the tenant to transfer by hand.
- * Idempotent per booking. Ledger entries are Task 1.10.
+ * Plan a refund intent from the source Payment's frozen policy. Provider execution
+ * happens later in ExecuteAutomaticRefundUseCase; this transaction only creates
+ * the durable intent and its outbox request.
  */
 @Injectable()
 export class ExecuteRefundUseCase {
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
-    @Inject(GATEWAY_CONFIG_REPOSITORY) private readonly configs: IGatewayConfigRepository,
+    @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -41,19 +43,20 @@ export class ExecuteRefundUseCase {
   ): Promise<void> {
     if (amount <= 0n) return;
     await this.tenantDb.forTenant(tenantId, async (tx) => {
-      // Serialise concurrent refund handlers for a booking (cancelled + returned
-      // both trigger this) so two deliveries can't both pass the exists-check and
-      // double-refund at the gateway.
       await this.refunds.lockForBooking(tx, bookingId);
-      if (await this.refunds.existsForBooking(tx, bookingId, reason)) return; // idempotent
+      if (await this.refunds.existsForBooking(tx, bookingId, reason)) return;
       const payment = await this.payments.findSucceededByBooking(tx, bookingId);
-      if (!payment) return; // nothing was paid to refund
+      if (!payment) return;
 
-      // With parallel gateways the base config's settings don't reflect a wallet
-      // payment's own refund strategy — always read the config for the PAYMENT's
-      // own gateway.
-      const config = await this.configs.findByGateway(tx, tenantId, payment.gateway);
-      const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
+      // A complete snapshot is authoritative and a partial snapshot fails closed
+      // before any historical credential/config resolution. Only legacy Payments
+      // with `(null, null)` consult their immutable gateway revision settings.
+      let policy = paymentRefundPolicySnapshot(payment);
+      if (!policy) {
+        const resolved = await this.registry.resolveForPayment(tx, payment);
+        policy = resolvePaymentRefundPolicy(payment, resolved.settings);
+      }
+
       const planned = Refund.plan({
         payment: {
           id: payment.id,
@@ -65,7 +68,7 @@ export class ExecuteRefundUseCase {
         amount,
         reason,
         affectsBookingStatus,
-        settings,
+        settings: policy,
         now: new Date(),
       });
       const refund = await this.refunds.create(tx, tenantId, planned);

@@ -154,7 +154,8 @@ export const apiPaths = {
     defaultCancellationPolicy: tenantPath('/settings/default-cancellation-policy'),
 
     gatewayConfig: tenantPath('/gateway-config'),
-    gatewayConfigSettings: tenantPath('/gateway-config/settings'),
+    paymentRouting: tenantPath('/payment-routing'),
+    refundPolicy: tenantPath('/refund-policy'),
 
     legal: tenantPath('/legal'),
     legalDraft: (docType: string) => tenantPath(`/legal/${segment(docType)}/draft`),
