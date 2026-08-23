@@ -1,5 +1,7 @@
 import {
   gatewayConfigsResponseSchema,
+  paymentRoutingResponseSchema,
+  tenantRefundPolicySchema,
   type CancellationPolicyResponse,
   type DomainResponse,
   type PayoutPolicyDto,
@@ -40,35 +42,38 @@ export async function loadTenantSettings(request: Request) {
     flagsRes,
     policiesRes,
     gatewayRes,
+    paymentRoutingRes,
+    refundPolicyRes,
     payoutPolicyRes,
     legalRes,
-  ] =
-    await Promise.all([
-      canTheme ? apiGet<TenantThemeResponse>(apiPaths.tenant.theme, auth) : Promise.resolve(null),
-      canSettings ? apiGet<DomainResponse[]>(apiPaths.tenant.domains, auth) : Promise.resolve(null),
-      canSettings
-        ? apiGet<TenancyConfigResponse>(apiPaths.tenant.tenancyConfig, auth)
-        : Promise.resolve(null),
-      canSettings ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth) : Promise.resolve(null),
-      canSettings
-        ? apiGet<CancellationPolicyResponse[]>(apiPaths.tenant.cancellationPolicies, auth)
-        : Promise.resolve(null),
-      canSettings
-        ? apiGet(apiPaths.tenant.gatewayConfig, auth, { schema: gatewayConfigsResponseSchema })
-        : Promise.resolve(null),
-      canFinance
-        ? apiGet<PayoutPolicyDto>(apiPaths.tenant.payoutPolicy, auth)
-        : Promise.resolve(null),
-      canLegal ? fetchTenantLegalOverview(auth) : Promise.resolve(null),
-    ]);
+  ] = await Promise.all([
+    canTheme ? apiGet<TenantThemeResponse>(apiPaths.tenant.theme, auth) : Promise.resolve(null),
+    canSettings ? apiGet<DomainResponse[]>(apiPaths.tenant.domains, auth) : Promise.resolve(null),
+    canSettings
+      ? apiGet<TenancyConfigResponse>(apiPaths.tenant.tenancyConfig, auth)
+      : Promise.resolve(null),
+    canSettings ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth) : Promise.resolve(null),
+    canSettings
+      ? apiGet<CancellationPolicyResponse[]>(apiPaths.tenant.cancellationPolicies, auth)
+      : Promise.resolve(null),
+    canSettings
+      ? apiGet(apiPaths.tenant.gatewayConfig, auth, { schema: gatewayConfigsResponseSchema })
+      : Promise.resolve(null),
+    canSettings
+      ? apiGet(apiPaths.tenant.paymentRouting, auth, { schema: paymentRoutingResponseSchema })
+      : Promise.resolve(null),
+    canSettings
+      ? apiGet(apiPaths.tenant.refundPolicy, auth, { schema: tenantRefundPolicySchema })
+      : Promise.resolve(null),
+    canFinance ? apiGet<PayoutPolicyDto>(apiPaths.tenant.payoutPolicy, auth) : Promise.resolve(null),
+    canLegal ? fetchTenantLegalOverview(auth) : Promise.resolve(null),
+  ]);
 
   return {
     theme: themeRes?.ok ? themeRes.data : null,
     themeError: apiError(themeRes, 'Không tải được cấu hình thương hiệu.'),
     domains: domainsRes?.ok ? (domainsRes.data ?? []) : null,
     domainsError: apiError(domainsRes, 'Không tải được danh sách tên miền.'),
-    // Null only fails the "point your domain here" instructions, not the whole
-    // card — the TXT step still works without it.
     tenancyConfig: tenancyConfigRes?.ok ? (tenancyConfigRes.data ?? null) : null,
     canTheme,
     canSettings,
@@ -78,7 +83,11 @@ export async function loadTenantSettings(request: Request) {
     cancellationPolicies: policiesRes?.ok ? (policiesRes.data ?? []) : null,
     cancellationPoliciesError: apiError(policiesRes, 'Không tải được chính sách huỷ.'),
     gatewayConfigs: gatewayRes?.ok ? (gatewayRes.data ?? []) : null,
-    gatewayError: apiError(gatewayRes, 'Không tải được cấu hình thanh toán.'),
+    gatewayError: apiError(gatewayRes, 'Không tải được cấu hình provider thanh toán.'),
+    paymentRouting: paymentRoutingRes?.ok ? (paymentRoutingRes.data ?? null) : null,
+    paymentRoutingError: apiError(paymentRoutingRes, 'Không tải được định tuyến thanh toán.'),
+    refundPolicy: refundPolicyRes?.ok ? (refundPolicyRes.data ?? null) : null,
+    refundPolicyError: apiError(refundPolicyRes, 'Không tải được chính sách hoàn tiền.'),
     payoutPolicy: payoutPolicyRes?.ok ? (payoutPolicyRes.data ?? null) : null,
     payoutPolicyError: apiError(payoutPolicyRes, 'Không tải được chính sách chi trả.'),
     canManagePayoutPolicy: can('tenant.payouts.manage'),
