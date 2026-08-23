@@ -15,6 +15,7 @@ interface GatewayConfigRecordBase<K extends GatewayKey> {
   environment: GatewayEnvironment;
   /** Decrypted credentials — the repository decrypts on read. */
   credentials: GatewayCredentialsFor<K>;
+  /** Legacy revision settings retained for historical Payment refund fallback only. */
   settings: GatewayPaymentSettings;
 }
 
@@ -25,10 +26,16 @@ export type GatewayConfigRecord = {
 export type UpsertGatewayConfigData = UpsertGatewayConfigInput;
 
 export interface IGatewayConfigRepository {
-  /** Every active gateway config (decrypted) for the tenant — base + wallets. */
+  /** Every active provider revision for the tenant. Providers are independent. */
   findActiveAll(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord[]>;
-  /** Cổng BASE (sepay/payos/mock) đang active — tối đa 1; ví KHÔNG tính. */
+  /** Temporary compatibility lookup; remove after implicit base routing callers migrate. */
   findActiveBase(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null>;
+  /** Exact active revision for one provider. */
+  findActiveByGateway(
+    tx: PrismaTx,
+    tenantId: string,
+    gateway: GatewayKey,
+  ): Promise<GatewayConfigRecord | null>;
   /** Provider-specific config, preferring the active revision for legacy callers. */
   findByGateway(
     tx: PrismaTx,
@@ -37,18 +44,15 @@ export interface IGatewayConfigRepository {
   ): Promise<GatewayConfigRecord | null>;
   /** Exact immutable revision lookup. Tenant scope is mandatory. */
   findById(tx: PrismaTx, tenantId: string, id: string): Promise<GatewayConfigRecord | null>;
-  /**
-   * Tenant-facing save operation. Persistence creates a successor revision rather
-   * than mutating historical credentials/settings in place.
-   */
+  /** Create a successor revision without deactivating any other provider. */
   upsert(
     tx: PrismaTx,
     tenantId: string,
     data: UpsertGatewayConfigData,
   ): Promise<GatewayConfigRecord>;
-  /** Tắt 1 cổng (gateway) hoặc tắt hết (không truyền). */
+  /** Disable one provider or every provider when no gateway is supplied. */
   deactivate(tx: PrismaTx, tenantId: string, gateway?: GatewayKey): Promise<void>;
-  /** Creates a successor revision carrying the same credentials/environment. */
+  /** Compatibility write path removed after routing/refund APIs migrate. */
   updateSettings(
     tx: PrismaTx,
     tenantId: string,
