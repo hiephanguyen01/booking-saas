@@ -2,7 +2,6 @@ import {
   gatewayKeySchema,
   type GatewayConfigResponse,
   type GatewayKey,
-  type PayosWebhookConfirmationResponse,
   type UpsertGatewayConfigInput,
 } from '@booking/contracts';
 import {
@@ -26,6 +25,7 @@ import { GetGatewayConfigUseCase } from '../../application/use-cases/get-gateway
 import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate-gateway.use-case';
 import { ConfirmPayosWebhookUseCase } from '../../application/use-cases/confirm-payos-webhook.use-case';
 import { toGatewayConfigResponse } from '../../application/payments.mapper';
+import type { PayosWebhookConfirmation } from '../../domain/ports/payos-webhook-configurator.port';
 import { GatewayConfigResponseDto } from './dto/payments.dto';
 
 /** Tenant-side provider credential management. Routing and refund policy are separate resources. */
@@ -63,7 +63,7 @@ export class TenantGatewayController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post('payos/confirm-webhook')
   @ApiOperation({ summary: 'Confirm the tenant PayOS webhook with PayOS' })
-  async confirmPayos(): Promise<PayosWebhookConfirmationResponse> {
+  async confirmPayos(): Promise<PayosWebhookConfirmation> {
     return this.confirmPayosWebhook.execute();
   }
 
