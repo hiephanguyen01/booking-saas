@@ -29,7 +29,7 @@ export class ConfirmPayosWebhookUseCase {
   ) {}
 
   async execute(): Promise<PayosWebhookConfirmation> {
-    const tenantId = this.tenantContext.requireTenantId();
+    const tenantId = this.tenantContext.tenantIdOrThrow();
     const config = await this.tenantDb.forTenant(tenantId, (tx) =>
       this.configs.findActiveByGateway(tx, tenantId, 'payos'),
     );
