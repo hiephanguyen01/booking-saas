@@ -2,10 +2,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const contractPath = resolve(process.cwd(), 'packages/contracts/src/contracts/payment.ts');
 const payosCardPath = resolve(
   process.cwd(),
   'apps/dashboard/app/features/tenant/components/settings/payos-gateway-card.tsx',
+);
+const validationPipePath = resolve(
+  process.cwd(),
+  'apps/api/src/modules/payments/infrastructure/http/gateway-config-validation.pipe.ts',
 );
 const controllerPath = resolve(
   process.cwd(),
@@ -21,31 +24,14 @@ const actionsPath = resolve(
 );
 const apiPathsPath = resolve(process.cwd(), 'apps/dashboard/app/constants/api-paths.ts');
 
-function between(source: string, startMarker: string, endMarker: string): string {
-  const start = source.indexOf(startMarker);
-  const end = source.indexOf(endMarker, start + startMarker.length);
-  expect(start).toBeGreaterThanOrEqual(0);
-  expect(end).toBeGreaterThan(start);
-  return source.slice(start, end);
-}
-
 describe('PayOS production readiness architecture', () => {
   it('treats PayOS as production-only without exposing a sandbox setting', () => {
-    const contract = readFileSync(contractPath, 'utf8');
-    const configSchema = between(
-      contract,
-      'export const payosGatewayConfigInputSchema',
-      'export type PayosGatewayConfigInput',
-    );
-    const formSchema = between(
-      contract,
-      'export const payosGatewaySettingsFormSchema',
-      'export type PayosGatewaySettingsForm',
-    );
+    const validationPipe = readFileSync(validationPipePath, 'utf8');
     const card = readFileSync(payosCardPath, 'utf8');
 
-    expect(configSchema).toContain("environment: z.literal('production').default('production')");
-    expect(formSchema).not.toContain('environment:');
+    expect(validationPipe).toContain(
+      "parsed.data.gateway === 'payos' && parsed.data.environment !== 'production'",
+    );
     expect(card).not.toContain("name: 'environment'");
     expect(card).not.toContain('Sandbox');
     expect(card).toContain("environment: 'production'");
