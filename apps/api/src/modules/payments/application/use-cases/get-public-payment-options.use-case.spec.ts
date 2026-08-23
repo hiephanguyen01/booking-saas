@@ -85,7 +85,9 @@ describe('GetPublicPaymentOptionsUseCase', () => {
   });
 
   it('restores a method when its selected provider reconnects without rewriting the route', async () => {
-    const routes = [{ method: 'bank_transfer', gateway: 'payos', enabled: true }] satisfies PaymentMethodRoute[];
+    const routes = [
+      { method: 'bank_transfer', gateway: 'payos', enabled: true },
+    ] satisfies PaymentMethodRoute[];
 
     await expect(harness([config('sepay')], routes).execute(HOST)).rejects.toBeInstanceOf(
       PaymentNotConfigured,
@@ -114,6 +116,19 @@ describe('GetPublicPaymentOptionsUseCase', () => {
     );
 
     await expect(useCase.execute(HOST)).rejects.toBeInstanceOf(PaymentNotConfigured);
+  });
+
+  it('requires an active mock provider connection for an explicit mock route', async () => {
+    vi.stubEnv('ALLOW_MOCK_PAYMENTS', 'true');
+    vi.stubEnv('NODE_ENV', 'development');
+    const routes = [
+      { method: 'bank_transfer', gateway: 'mock', enabled: true },
+    ] satisfies PaymentMethodRoute[];
+
+    await expect(harness([], routes).execute(HOST)).rejects.toBeInstanceOf(PaymentNotConfigured);
+    await expect(harness([config('mock')], routes).execute(HOST)).resolves.toEqual({
+      methods: ['bank_transfer'],
+    });
   });
 
   it('offers local mock only when the tenant is truly unconfigured and explicitly opted in', async () => {
