@@ -1,0 +1,32 @@
+name: Agent Checkout Routing RED Patch
+
+on:
+  push:
+    branches:
+      - refactor/payment-provider-routing-separation
+    paths:
+      - .github/workflows/agent-checkout-routing-tests.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/payment-provider-routing-separation
+          fetch-depth: 0
+      - name: Patch checkout use-case spec
+        run: python scripts/agent-patch-checkout-routing-tests.py
+      - name: Remove one-shot helpers
+        run: rm scripts/agent-patch-checkout-routing-tests.py .github/workflows/agent-checkout-routing-tests.yml
+      - name: Commit RED expectations
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "test(payments): define explicit checkout routing snapshots"
+          git push origin HEAD:refactor/payment-provider-routing-separation
