@@ -6,6 +6,11 @@ import {
   type IPaymentRepository,
 } from '../../domain/ports/payment-repository.port';
 import {
+  REFUND_BATCH_REPOSITORY,
+  type IRefundBatchRepository,
+  type RefundBatchRecord,
+} from '../../domain/ports/refund-batch-repository.port';
+import {
   REFUND_REPOSITORY,
   type IRefundRepository,
 } from '../../domain/ports/refund-repository.port';
@@ -21,6 +26,7 @@ import { resolvePaymentRefundPolicy } from '../../domain/refund-policy-resolutio
 export class ExecuteAutomaticRefundUseCase {
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
+    @Inject(REFUND_BATCH_REPOSITORY) private readonly refundBatches: IRefundBatchRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
     @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
     private readonly tenantDb: TenantDbService,
@@ -75,6 +81,13 @@ export class ExecuteAutomaticRefundUseCase {
       if (result.status === 'succeeded') {
         const updated = await this.refunds.completeAutomatic(tx, refundId, gatewayRefundId);
         if (!updated) return;
+        if (updated.refundBatchId) {
+          const refreshed = await this.refundBatches.refreshStatus(tx, updated.refundBatchId);
+          if (refreshed?.transitionedToCompleted) {
+            await this.emitBatchCompletion(tx, tenantId, refreshed.batch);
+          }
+          return;
+        }
         await this.outbox.emit(tx, {
           tenantId,
           eventType: 'refund.completed',
@@ -96,18 +109,25 @@ export class ExecuteAutomaticRefundUseCase {
       }
 
       if (result.status === 'failed') {
-        await this.refunds.failAutomatic(tx, refundId, gatewayRefundId);
+        const updated = await this.refunds.failAutomatic(tx, refundId, gatewayRefundId);
+        if (updated?.refundBatchId) {
+          await this.refundBatches.refreshStatus(tx, updated.refundBatchId);
+        }
         return;
       }
 
       const dueAt = Refund.manualDueAt(prepared.manualRefundSlaHours, new Date());
       const updated = await this.refunds.requireManual(tx, refundId, dueAt);
       if (!updated) return;
+      if (updated.refundBatchId) {
+        await this.refundBatches.refreshStatus(tx, updated.refundBatchId);
+      }
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'refund.requested',
         payload: {
           refundId: updated.id,
+          ...(updated.refundBatchId ? { refundBatchId: updated.refundBatchId } : {}),
           paymentId: updated.paymentId,
           bookingId: updated.bookingId,
           amount: updated.amount.toString(),
@@ -115,6 +135,25 @@ export class ExecuteAutomaticRefundUseCase {
           affectsBookingStatus: updated.affectsBookingStatus,
         },
       });
+    });
+  }
+
+  private emitBatchCompletion(
+    tx: Parameters<IRefundBatchRepository['refreshStatus']>[0],
+    tenantId: string,
+    batch: RefundBatchRecord,
+  ): Promise<unknown> {
+    return this.outbox.emit(tx, {
+      tenantId,
+      eventType: 'refund.completed',
+      payload: {
+        refundId: batch.id,
+        refundBatchId: batch.id,
+        bookingId: batch.bookingId,
+        amount: batch.requestedAmount.toString(),
+        reason: batch.reason,
+        affectsBookingStatus: batch.affectsBookingStatus,
+      },
     });
   }
 }
