@@ -29,6 +29,7 @@ export interface PaymentRecord {
   paymentMethod: string | null;
   idempotencyKey: string;
   paidAt: Date | null;
+  createdAt: Date;
 }
 
 export interface CreatePaymentData {
@@ -162,6 +163,10 @@ export interface IPaymentRepository {
     paymentMethod: string,
   ): Promise<{ id: string; destination: CheckoutDestination } | null>;
   findSucceededByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
+  /** All succeeded refundable captures, deterministic newest-first. */
+  findSucceededRefundSources(tx: PrismaTx, bookingId: string): Promise<PaymentRecord[]>;
+  /** Original successful deposit/full capture used for security-deposit source preservation. */
+  findSecurityDepositSource(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   /** Atomically mark succeeded (only if not already) — the webhook idempotency guard. */
   markSucceeded(
     tx: PrismaTx,

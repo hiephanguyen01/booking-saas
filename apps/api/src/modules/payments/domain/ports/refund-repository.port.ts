@@ -8,6 +8,7 @@ export const REFUND_REPOSITORY = Symbol('REFUND_REPOSITORY');
 export interface RefundRecord {
   id: string;
   tenantId: string;
+  refundBatchId: string | null;
   paymentId: string;
   bookingId: string;
   amount: bigint;
@@ -22,6 +23,7 @@ export interface RefundRecord {
 }
 
 export interface CreateRefundData {
+  refundBatchId?: string | null;
   paymentId: string;
   bookingId: string;
   amount: bigint;
@@ -64,6 +66,7 @@ export interface MissingRefundRecord {
 export interface IRefundRepository {
   create(tx: PrismaTx, tenantId: string, data: CreateRefundData): Promise<RefundRecord>;
   existsForBooking(tx: PrismaTx, bookingId: string, reason: string): Promise<boolean>;
+  reservedAmountForPayment(tx: PrismaTx, paymentId: string): Promise<bigint>;
   findById(tx: PrismaTx, id: string): Promise<RefundRecord | null>;
   manualReferenceExists(tx: PrismaTx, tenantId: string, reference: string): Promise<boolean>;
   completeAutomatic(
@@ -94,6 +97,7 @@ export interface IRefundRepository {
     query: RefundHistoryQuery,
   ): Promise<RepoPage<RefundHistoryRecord>>;
   findPendingAutomatic(limit: number): Promise<PendingAutomaticRefundRecord[]>;
+  /** Legacy non-batched succeeded refunds whose business effects need replay. */
   findSucceededNeedingRecovery(limit: number): Promise<RefundRecoveryRecord[]>;
   findBookingsMissingRefund(limit: number): Promise<MissingRefundRecord[]>;
 }
