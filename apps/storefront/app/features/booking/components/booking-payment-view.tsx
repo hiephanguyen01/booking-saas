@@ -18,6 +18,7 @@ interface BookingPaymentViewProps {
   locale: 'en' | 'vi';
   status: PaymentStatusResponse;
   bookingStatus: BookingStatus | null;
+  isBalancePayment: boolean;
   paymentFailed: boolean;
   isSuccess: boolean;
   isPending: boolean;
@@ -38,6 +39,7 @@ export function BookingPaymentView({
   locale,
   status,
   bookingStatus,
+  isBalancePayment,
   paymentFailed,
   isSuccess,
   isPending,
@@ -67,6 +69,7 @@ export function BookingPaymentView({
         recommendations={recommendations}
         showDetail={showDetail}
         submitting={submitting}
+        isBalancePayment={isBalancePayment}
       />
     );
   }
@@ -74,12 +77,26 @@ export function BookingPaymentView({
   // Only offer the mock button while awaiting payment (not partner approval).
   const showMockPay = isPending && mockEnabled && status.bookingStatus === 'pending_payment';
   const retryLabel = submitting ? t('payment.redirecting') : t('payment.payNow');
+  const title = isBalancePayment
+    ? isPending
+      ? t('payment.balanceTitle')
+      : t('payment.balanceFailedTitle')
+    : isPending
+      ? t('payment.title')
+      : t('payment.failedTitle');
+  const description = isBalancePayment
+    ? isPending
+      ? t('payment.balanceChecking')
+      : t('payment.balanceFailedNote')
+    : isPending
+      ? t('payment.checking')
+      : t('payment.failedNote');
 
   return (
     <BookingOutcomeLayout
       locale={locale}
-      title={isPending ? t('payment.title') : t('payment.failedTitle')}
-      description={isPending ? t('payment.checking') : t('payment.failedNote')}
+      title={title}
+      description={description}
       code={code}
       bookingStatus={bookingStatus}
       paidAmount={status.paidAmount}
