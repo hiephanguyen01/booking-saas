@@ -1,5 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { CheckoutResponse, CustomerPaymentMethod } from '@booking/contracts';
+import {
+  isNewCheckoutPaymentMethod,
+  type CheckoutResponse,
+  type CustomerPaymentMethod,
+} from '@booking/contracts';
 import { v7 as uuidv7 } from 'uuid';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
@@ -25,6 +29,7 @@ import {
 import { Payment } from '../../domain/entities/payment.entity';
 import {
   InvalidStorefrontHost,
+  PaymentMethodUnavailable,
   PaymentStorefrontSuspended,
 } from '../../domain/errors/payment-errors';
 import { GatewayOperationError } from '../../domain/errors/gateway-operation-error';
@@ -80,6 +85,10 @@ export class CheckoutUseCase {
     bookingId: string,
     paymentMethod: CustomerPaymentMethod,
   ): Promise<CheckoutResponse> {
+    if (!isNewCheckoutPaymentMethod(paymentMethod)) {
+      throw new PaymentMethodUnavailable();
+    }
+
     const tenant = await this.resolveTenant.execute(host);
     if (!tenant.live) throw new PaymentStorefrontSuspended();
 
