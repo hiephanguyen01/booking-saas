@@ -249,11 +249,14 @@ export const checkoutResponseSchema = z.object({
 });
 export type CheckoutResponse = z.infer<typeof checkoutResponseSchema>;
 
+export const paymentKindSchema = z.enum(['deposit', 'balance', 'full', 'security_deposit']);
+
 export const paymentStatusResponseSchema = z.object({
   bookingCode: z.string(),
   bookingStatus: z.string(),
   /** none = no payment yet. */
   paymentStatus: z.enum(['none', 'pending', 'succeeded', 'failed', 'expired']),
+  paymentKind: paymentKindSchema.nullable(),
   paidAmount: z.string(),
 });
 export type PaymentStatusResponse = z.infer<typeof paymentStatusResponseSchema>;
@@ -294,7 +297,6 @@ export type GatewayConfigResponse = z.infer<typeof gatewayConfigResponseSchema>;
 export const gatewayConfigsResponseSchema = z.array(gatewayConfigResponseSchema);
 export type GatewayConfigsResponse = z.infer<typeof gatewayConfigsResponseSchema>;
 
-export const paymentKindSchema = z.enum(['deposit', 'balance', 'full', 'security_deposit']);
 export const paymentRecordStatusSchema = z.enum(['pending', 'succeeded', 'failed', 'expired']);
 
 export const paymentHistoryQuerySchema = paginationQuerySchema.extend({
