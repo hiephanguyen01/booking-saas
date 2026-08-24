@@ -11,6 +11,10 @@ import {
 } from '../domain/ports/payment-repository.port';
 import { GATEWAY_REGISTRY, type GatewayRegistryPort } from '../domain/ports/gateway-registry.port';
 import { amountMatches } from '../domain/payment-status';
+import {
+  REFUND_BATCH_REPOSITORY,
+  type IRefundBatchRepository,
+} from '../domain/ports/refund-batch-repository.port';
 import { REFUND_REPOSITORY, type IRefundRepository } from '../domain/ports/refund-repository.port';
 
 export const RECONCILIATION_QUEUE = 'payment-reconciliation';
@@ -26,6 +30,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
+    @Inject(REFUND_BATCH_REPOSITORY) private readonly refundBatches: IRefundBatchRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
@@ -156,6 +161,32 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       } catch (err) {
         this.logger.debug(
           `refund recovery emit ${refund.id} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const batchRecoveries = await this.refundBatches.findCompletedNeedingRecovery(100);
+    for (const batch of batchRecoveries) {
+      try {
+        await this.tenantDb.forTenant(batch.tenantId, async (tx) => {
+          await this.outbox.emit(tx, {
+            tenantId: batch.tenantId,
+            eventType: 'refund.completed',
+            payload: {
+              refundId: batch.id,
+              refundBatchId: batch.id,
+              bookingId: batch.bookingId,
+              amount: batch.requestedAmount.toString(),
+              reason: batch.reason,
+              affectsBookingStatus: batch.affectsBookingStatus,
+              recovery: true,
+            },
+          });
+        });
+        reconciled++;
+      } catch (err) {
+        this.logger.debug(
+          `refund batch recovery emit ${batch.id} failed: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }

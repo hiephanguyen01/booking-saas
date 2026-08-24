@@ -12,6 +12,7 @@ import type {
   RefundStatusInput,
 } from '../../domain/ports/payment-gateway.port';
 import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';
+import type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';
 import type { IRefundRepository, RefundRecord } from '../../domain/ports/refund-repository.port';
 import { ExecuteAutomaticRefundUseCase } from './execute-automatic-refund.use-case';
 
@@ -51,6 +52,7 @@ function refund(overrides: Partial<RefundRecord> = {}): RefundRecord {
   return {
     id: REFUND_ID,
     tenantId: TENANT_ID,
+    refundBatchId: null,
     paymentId: PAYMENT_ID,
     bookingId: BOOKING_ID,
     amount: AMOUNT,
@@ -233,10 +235,15 @@ function harness(options: Options = {}): Harness {
       manualRefundSlaHours: 72,
     } as GatewayPaymentSettings);
 
+  const refundBatches = fakePort<IRefundBatchRepository>({
+    refreshStatus: () => Promise.resolve(null),
+  });
+
   const useCase = new ExecuteAutomaticRefundUseCase(
     fakePort<IPaymentRepository>({
       findById: () => Promise.resolve(options.succeeded === undefined ? payment() : options.succeeded),
     }),
+    refundBatches,
     refunds,
     fakePort<GatewayRegistryPort>({
       resolveForPayment: (_tx, sourcePayment) => {

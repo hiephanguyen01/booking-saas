@@ -30,6 +30,7 @@ import { PAYMENT_BOOKING_READER } from '../../domain/ports/payment-booking-reade
 import { PAYMENT_CONFIGURATION_LOCK } from '../../domain/ports/payment-configuration-lock.port';
 import { PAYMENT_METHOD_ROUTE_REPOSITORY } from '../../domain/ports/payment-method-route-repository.port';
 import { PAYMENT_REPOSITORY } from '../../domain/ports/payment-repository.port';
+import { REFUND_BATCH_REPOSITORY } from '../../domain/ports/refund-batch-repository.port';
 import { REFUND_POLICY_REPOSITORY } from '../../domain/ports/refund-policy-repository.port';
 import { REFUND_REPOSITORY } from '../../domain/ports/refund-repository.port';
 import { AesGcmCryptoService } from '../aes-gcm-crypto.service';
@@ -42,6 +43,7 @@ import { PrismaGatewayConfigRepository } from '../repositories/prisma-gateway-co
 import { PrismaPaymentBookingReader } from '../repositories/prisma-payment-booking.reader';
 import { PrismaPaymentMethodRouteRepository } from '../repositories/prisma-payment-method-route.repository';
 import { PrismaPaymentRepository } from '../repositories/prisma-payment.repository';
+import { PrismaRefundBatchRepository } from '../repositories/prisma-refund-batch.repository';
 import { PrismaRefundPolicyRepository } from '../repositories/prisma-refund-policy.repository';
 import { PrismaRefundRepository } from '../repositories/prisma-refund.repository';
 import { PlatformPaymentController } from './platform-payment.controller';
@@ -67,6 +69,7 @@ import { WebhookController } from './webhook.controller';
     { provide: PAYMENT_REPOSITORY, useClass: PrismaPaymentRepository },
     { provide: PAYMENT_BOOKING_READER, useClass: PrismaPaymentBookingReader },
     { provide: PAYMENT_METHOD_ROUTE_REPOSITORY, useClass: PrismaPaymentMethodRouteRepository },
+    { provide: REFUND_BATCH_REPOSITORY, useClass: PrismaRefundBatchRepository },
     { provide: REFUND_POLICY_REPOSITORY, useClass: PrismaRefundPolicyRepository },
     { provide: REFUND_REPOSITORY, useClass: PrismaRefundRepository },
     { provide: GATEWAY_CONFIG_REPOSITORY, useClass: PrismaGatewayConfigRepository },

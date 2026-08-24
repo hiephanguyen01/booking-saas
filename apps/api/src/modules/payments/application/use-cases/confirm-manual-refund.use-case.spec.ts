@@ -9,6 +9,7 @@ import {
   RefundNotFound,
   RefundReferenceAlreadyUsed,
 } from '../../domain/errors/refund-errors';
+import type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';
 import type { IRefundRepository, RefundRecord } from '../../domain/ports/refund-repository.port';
 import { ConfirmManualRefundUseCase } from './confirm-manual-refund.use-case';
 
@@ -20,6 +21,7 @@ const refund = (overrides: Partial<RefundRecord> = {}): RefundRecord =>
   ({
     id: REFUND_ID,
     tenantId: TENANT_ID,
+    refundBatchId: null,
     paymentId: 'payment-1',
     bookingId: BOOKING_ID,
     amount: 300_000n,
@@ -78,8 +80,13 @@ function harness(options: Options = {}) {
     },
   });
 
+  const refundBatches = fakePort<IRefundBatchRepository>({
+    refreshStatus: () => Promise.resolve(null),
+  });
+
   return {
     useCase: new ConfirmManualRefundUseCase(
+      refundBatches,
       refunds,
       fakePort<IAuditWriter>({
         write: (_tx, entry) => {

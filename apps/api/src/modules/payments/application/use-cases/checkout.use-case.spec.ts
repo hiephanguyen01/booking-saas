@@ -86,6 +86,7 @@ function paymentRecord(
     paymentMethod: data.paymentMethod ?? null,
     idempotencyKey: data.idempotencyKey,
     paidAt: null,
+    createdAt: new Date('2026-08-01T09:59:00Z'),
     ...overrides,
   };
 }

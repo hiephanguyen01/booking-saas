@@ -44,6 +44,7 @@ function toRecord(p: Row): PaymentRecord {
     paymentMethod: p.paymentMethod,
     idempotencyKey: p.idempotencyKey,
     paidAt: p.paidAt,
+    createdAt: p.createdAt,
   };
 }
 
@@ -236,6 +237,25 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     return p ? toRecord(p) : null;
   }
 
+  async findSucceededRefundSources(tx: PrismaTx, bookingId: string): Promise<PaymentRecord[]> {
+    const rows = await tx.payment.findMany({
+      where: { bookingId, status: 'succeeded' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+    return rows.map(toRecord);
+  }
+
+  async findSecurityDepositSource(
+    tx: PrismaTx,
+    bookingId: string,
+  ): Promise<PaymentRecord | null> {
+    const payment = await tx.payment.findFirst({
+      where: { bookingId, status: 'succeeded', kind: { in: ['deposit', 'full'] } },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return payment ? toRecord(payment) : null;
+  }
+
   /** Atomic: only the first concurrent webhook flips pending → succeeded (§11.2). */
   async markSucceeded(
     tx: PrismaTx,
@@ -347,8 +367,14 @@ export class PrismaPaymentRepository implements IPaymentRepository {
              (b.status IN ('cancelled', 'refunded') OR EXISTS (
                 SELECT 1 FROM refunds r
                 WHERE r.booking_id = b.id
+                  AND r.refund_batch_id IS NULL
                   AND r.status = 'succeeded'::refund_status
                   AND r.reason <> 'security_deposit'
+              ) OR EXISTS (
+                SELECT 1 FROM refund_batches rb
+                WHERE rb.booking_id = b.id
+                  AND rb.status = 'completed'::refund_batch_status
+                  AND rb.affects_booking_status = true
               )) AS "skipBookingConfirmation"
       FROM payments p
       JOIN bookings b ON b.id = p.booking_id
@@ -358,8 +384,14 @@ export class PrismaPaymentRepository implements IPaymentRepository {
           (b.status IN ('pending_payment', 'expired') AND NOT EXISTS (
             SELECT 1 FROM refunds r
             WHERE r.booking_id = b.id
+              AND r.refund_batch_id IS NULL
               AND r.status = 'succeeded'::refund_status
               AND r.reason <> 'security_deposit'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM refund_batches rb
+            WHERE rb.booking_id = b.id
+              AND rb.status = 'completed'::refund_batch_status
+              AND rb.affects_booking_status = true
           ))
           OR bs.id IS NULL
         )
