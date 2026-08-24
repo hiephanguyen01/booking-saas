@@ -19,6 +19,21 @@ export const customerPaymentMethodSchema = z.enum([
 ]);
 export type CustomerPaymentMethod = z.infer<typeof customerPaymentMethodSchema>;
 
+/**
+ * Methods eligible for newly-created checkout attempts. `napas_qr` remains in the
+ * parser/provider compatibility contracts so historical rows and settings still load.
+ */
+export const NEW_CHECKOUT_PAYMENT_METHODS = [
+  'bank_transfer',
+  'international_card',
+  'momo_wallet',
+  'zalopay_wallet',
+] as const satisfies readonly CustomerPaymentMethod[];
+
+export function isNewCheckoutPaymentMethod(method: CustomerPaymentMethod): boolean {
+  return (NEW_CHECKOUT_PAYMENT_METHODS as readonly string[]).includes(method);
+}
+
 /** Which storefront methods each gateway can actually process. */
 export const GATEWAY_SUPPORTED_METHODS: Record<GatewayKey, CustomerPaymentMethod[]> = {
   sepay: ['bank_transfer', 'napas_qr', 'international_card'],
