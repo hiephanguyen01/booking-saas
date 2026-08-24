@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: refactor/storefront-payment-cleanup
-          fetch-depth: 2
+          fetch-depth: 1
       - name: Record exact tested head
         run: echo "pr5_runtime_head=$(git rev-parse HEAD)"
       - uses: pnpm/action-setup@v4
@@ -68,29 +68,254 @@ jobs:
           pnpm --filter=@booking/api seed
       - name: Full static gate
         run: pnpm test && pnpm turbo lint typecheck build
-      - name: Restore exact PR5 runtime assertions from parent diagnostic commit
+      - name: Prepare named PR5 runtime assertions
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import subprocess
+          cat > apps/api/scripts/pr5-storefront-payment-cleanup-smoke.ts <<'TS'
+          import assert from 'node:assert/strict';
+          import { randomUUID } from 'node:crypto';
+          import { readFileSync } from 'node:fs';
+          import { resolve } from 'node:path';
+          import {
+            GATEWAY_SUPPORTED_METHODS,
+            customerPaymentMethodSchema,
+            gatewayPaymentSettingsSchema,
+            isNewCheckoutPaymentMethod,
+            paymentMethodRouteSchema,
+            type PaymentStatusResponse,
+          } from '@booking/contracts';
+          import { deriveBookingPaymentState } from '../../storefront/app/features/booking/lib/booking-payment-state';
+          import { CheckoutUseCase } from '../src/modules/payments/application/use-cases/checkout.use-case';
+          import { GetPublicPaymentOptionsUseCase } from '../src/modules/payments/application/use-cases/get-public-payment-options.use-case';
+          import { PaymentNotConfigured } from '../src/modules/payments/application/payment-http-errors';
+          import { PaymentMethodUnavailable } from '../src/modules/payments/domain/errors/payment-errors';
+          import { SepayGatewayAdapter } from '../src/modules/payments/infrastructure/gateways/sepay-gateway.adapter';
+          import { PrismaPaymentRepository } from '../src/modules/payments/infrastructure/repositories/prisma-payment.repository';
+          import { PrismaService } from '../src/shared/prisma/prisma.service';
 
-          workflow = subprocess.check_output(
-              ['git', 'show', 'HEAD^:.github/workflows/diag-pr5-storefront-payment-cleanup.yml'],
-              text=True,
-          )
-          start = "          cat > apps/api/scripts/pr5-storefront-payment-cleanup-smoke.ts <<'TS'\n"
-          end = "          TS\n"
-          begin = workflow.index(start) + len(start)
-          finish = workflow.index(end, begin)
-          embedded = workflow[begin:finish]
-          lines = embedded.splitlines()
-          script = '\n'.join(
-              line[10:] if line.startswith('          ') else line for line in lines
-          ) + '\n'
-          assert 'PR5 RUNTIME SMOKE COMPLETE' in script
-          Path('apps/api/scripts/pr5-storefront-payment-cleanup-smoke.ts').write_text(script)
-          PY
-      - name: Run PR5 runtime assertions
-        run: |
-          pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts
-          rm apps/api/scripts/pr5-storefront-payment-cleanup-smoke.ts
+          const check = (name: string, condition: unknown) => {
+            assert.ok(condition, name);
+            console.log(`PASS ${name}`);
+          };
+
+          const status = (
+            paymentStatus: PaymentStatusResponse['paymentStatus'],
+            paymentKind: PaymentStatusResponse['paymentKind'],
+            bookingStatus = 'confirmed',
+          ): PaymentStatusResponse => ({
+            bookingCode: 'PR5-SMOKE',
+            bookingStatus,
+            paymentStatus,
+            paymentKind,
+            paidAmount: '400000',
+          });
+
+          async function balanceState() {
+            const emptySearch = new URLSearchParams();
+            const initialSuccess = deriveBookingPaymentState(status('succeeded', 'deposit'), emptySearch);
+            check('initial booking success remains success', initialSuccess.isSuccess);
+            check('initial booking success is not balance', !initialSuccess.isBalancePayment);
+            const balancePending = deriveBookingPaymentState(status('pending', 'balance'), emptySearch);
+            check('confirmed + balance pending is balance', balancePending.isBalancePayment);
+            check('confirmed + balance pending is not success', !balancePending.isSuccess);
+            check('confirmed + balance pending is pending', balancePending.isPending);
+            check('confirmed + balance pending polls provider truth', balancePending.shouldPoll);
+            const balanceFailed = deriveBookingPaymentState(status('failed', 'balance'), emptySearch);
+            check('confirmed + balance failed is not success', !balanceFailed.isSuccess);
+            check('confirmed + balance failed is failed', balanceFailed.paymentFailed);
+            check('confirmed + balance failed stops polling', !balanceFailed.shouldPoll);
+            const balanceSucceeded = deriveBookingPaymentState(status('succeeded', 'balance'), emptySearch);
+            check('confirmed + balance succeeded is success', balanceSucceeded.isSuccess);
+            const legacyConfirmed = deriveBookingPaymentState(status('pending', null), emptySearch);
+            check('paymentKind null preserves confirmed booking fallback', legacyConfirmed.isSuccess);
+            const spoofedReturn = deriveBookingPaymentState(
+              status('pending', 'balance'),
+              new URLSearchParams('payment=success'),
+            );
+            check('payment=success query marker never creates success', !spoofedReturn.isSuccess);
+            check('spoofed balance return still polls', spoofedReturn.shouldPoll);
+          }
+
+          async function napasContracts() {
+            check('legacy napas_qr parser remains valid', customerPaymentMethodSchema.parse('napas_qr') === 'napas_qr');
+            check(
+              'legacy Napas settings remain parseable',
+              gatewayPaymentSettingsSchema.parse({
+                enabledMethods: ['napas_qr'],
+                refundStrategy: 'manual',
+                manualRefundSlaHours: 72,
+              }).enabledMethods[0] === 'napas_qr',
+            );
+            check(
+              'legacy Napas routing row remains parseable',
+              paymentMethodRouteSchema.parse({ method: 'napas_qr', gateway: 'sepay', enabled: true }).method === 'napas_qr',
+            );
+            check('napas_qr is not eligible for new checkout', !isNewCheckoutPaymentMethod('napas_qr'));
+            check('SePay compatibility map retains napas_qr', GATEWAY_SUPPORTED_METHODS.sepay.includes('napas_qr'));
+            const sepay = new SepayGatewayAdapter({
+              merchantId: 'legacy-merchant',
+              secretKey: '0123456789abcdef0123456789abcdef',
+              environment: 'sandbox',
+            });
+            check(
+              'SePay maps legacy napas_qr to NAPAS_BANK_TRANSFER',
+              sepay.providerPaymentMethod('napas_qr') === 'NAPAS_BANK_TRANSFER',
+            );
+          }
+
+          async function publicOptions() {
+            const tenantDb = {
+              forTenant: async (_tenantId: string, operation: (tx: object) => unknown) => operation({}),
+            };
+            const visibleUseCase = new GetPublicPaymentOptionsUseCase(
+              { findActiveAll: async () => [{ gateway: 'sepay' }] } as never,
+              { execute: async () => ({ id: 'tenant-pr5', live: true }) } as never,
+              tenantDb as never,
+              {
+                list: async () => [
+                  { method: 'napas_qr', gateway: 'sepay', enabled: true },
+                  { method: 'bank_transfer', gateway: 'sepay', enabled: true },
+                ],
+              } as never,
+            );
+            const visible = await visibleUseCase.execute('studiohub.localhost');
+            check(
+              'public options omit legacy Napas while preserving bank transfer',
+              visible.methods.length === 1 && visible.methods[0] === 'bank_transfer',
+            );
+            const napasOnly = new GetPublicPaymentOptionsUseCase(
+              { findActiveAll: async () => [{ gateway: 'sepay' }] } as never,
+              { execute: async () => ({ id: 'tenant-pr5', live: true }) } as never,
+              tenantDb as never,
+              { list: async () => [{ method: 'napas_qr', gateway: 'sepay', enabled: true }] } as never,
+            );
+            await assert.rejects(
+              () => napasOnly.execute('studiohub.localhost'),
+              (error: unknown) => error instanceof PaymentNotConfigured,
+            );
+            console.log('PASS legacy Napas-only route does not resurrect checkout');
+          }
+
+          async function directCheckout() {
+            let dependencyTouched = false;
+            const poison = new Proxy(
+              {},
+              {
+                get() {
+                  dependencyTouched = true;
+                  throw new Error('checkout dependency touched before Napas guard');
+                },
+              },
+            );
+            const checkout = new CheckoutUseCase(
+              poison as never,
+              poison as never,
+              poison as never,
+              poison as never,
+              poison as never,
+              poison as never,
+            );
+            await assert.rejects(
+              () => checkout.execute('studiohub.localhost', randomUUID(), 'napas_qr'),
+              (error: unknown) => error instanceof PaymentMethodUnavailable,
+            );
+            check('direct Napas checkout is rejected before tenant/provider work', !dependencyTouched);
+          }
+
+          async function sourceUi() {
+            const dashboardSource = readFileSync(
+              resolve(__dirname, '../../dashboard/app/features/tenant/components/settings/checkout-method-settings-card.tsx'),
+              'utf8',
+            );
+            check('dashboard new-checkout settings contain no Napas row', !dashboardSource.includes("['napas_qr'"));
+            const storefrontRenderer = readFileSync(
+              resolve(__dirname, '../../storefront/app/features/checkout/hooks/use-checkout-form-controller.ts'),
+              'utf8',
+            );
+            check(
+              'legacy storefront renderer remains total for Napas data',
+              storefrontRenderer.includes("napas_qr: { icon: QrCode"),
+            );
+            const successSource = readFileSync(
+              resolve(__dirname, '../../storefront/app/features/booking/components/booking-success-view.tsx'),
+              'utf8',
+            );
+            check(
+              'balance success uses balance-specific copy',
+              successSource.includes("isBalancePayment ? t('payment.balanceSucceeded')"),
+            );
+            check(
+              'balance success suppresses initial-booking email confirmation paragraph',
+              successSource.includes('{!isBalancePayment ? ('),
+            );
+          }
+
+          async function dbReadability() {
+            const prisma = new PrismaService();
+            await prisma.onModuleInit();
+            let legacyPaymentId: string | null = null;
+            try {
+              const booking = await prisma.admin.booking.findFirst({ orderBy: { createdAt: 'asc' } });
+              assert.ok(booking, 'seeded booking required');
+              legacyPaymentId = randomUUID();
+              const legacyRef = `PR5-NAPAS-${randomUUID()}`;
+              await prisma.admin.payment.create({
+                data: {
+                  id: legacyPaymentId,
+                  tenantId: booking.tenantId,
+                  bookingId: booking.id,
+                  gateway: 'sepay',
+                  kind: 'balance',
+                  amount: 1000n,
+                  capturedAmount: 1000n,
+                  status: 'succeeded',
+                  checkoutState: 'ready',
+                  gatewayOrderRef: legacyRef,
+                  paymentMethod: 'NAPAS_BANK_TRANSFER',
+                  idempotencyKey: `pr5-legacy-napas:${legacyPaymentId}`,
+                  paidAt: new Date(),
+                },
+              });
+              const repository = new PrismaPaymentRepository(prisma);
+              const page = await repository.listPlatform({ page: 1, pageSize: 10, search: legacyRef });
+              const historical = page.items.find((item) => item.id === legacyPaymentId);
+              check('legacy Napas payment row remains readable through history repository', historical);
+              check('legacy Napas provider method is preserved in history', historical?.paymentMethod === 'NAPAS_BANK_TRANSFER');
+            } finally {
+              if (legacyPaymentId) await prisma.admin.payment.deleteMany({ where: { id: legacyPaymentId } });
+              await prisma.onModuleDestroy();
+            }
+          }
+
+          const groups: Record<string, () => Promise<void>> = {
+            'balance-state': balanceState,
+            'napas-contracts': napasContracts,
+            'public-options': publicOptions,
+            'direct-checkout': directCheckout,
+            'source-ui': sourceUi,
+            'db-readability': dbReadability,
+          };
+          const group = process.argv[2];
+          const run = group ? groups[group] : undefined;
+          if (!run) throw new Error(`Unknown PR5 smoke group: ${group ?? '<missing>'}`);
+          void run()
+            .then(() => console.log(`PR5 RUNTIME GROUP COMPLETE ${group}`))
+            .catch((error) => {
+              console.error(error);
+              process.exitCode = 1;
+            });
+          TS
+      - name: Balance payment state assertions
+        run: pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts balance-state
+      - name: Napas compatibility contract assertions
+        run: pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts napas-contracts
+      - name: Public options Napas filtering assertions
+        run: pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts public-options
+      - name: Direct Napas checkout guard assertion
+        run: pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts direct-checkout
+      - name: Storefront and dashboard source compatibility assertions
+        run: pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts source-ui
+      - name: Historical Napas real-DB readability assertions
+        run: pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts db-readability
+      - name: Cleanup temporary PR5 smoke script
+        if: always()
+        run: rm -f apps/api/scripts/pr5-storefront-payment-cleanup-smoke.ts
