@@ -70,49 +70,112 @@ jobs:
         run: pnpm test && pnpm turbo lint typecheck build
       - name: Prepare isolated PR5 runtime assertions
         run: |
-          cat > scripts/pr5-storefront-balance-state-smoke.mjs <<'JS'
-          import assert from 'node:assert/strict';
-          import { deriveBookingPaymentState } from '../apps/storefront/app/features/booking/lib/booking-payment-state.ts';
+          cat > scripts/pr5-storefront-balance-state.vitest.config.mts <<'TS'
+          import { defineConfig } from 'vitest/config';
 
-          const check = (name, condition) => {
-            assert.ok(condition, name);
-            console.log(`PASS ${name}`);
-          };
+          export default defineConfig({
+            test: {
+              include: ['apps/storefront/app/features/booking/lib/pr5-booking-payment-state-smoke.test.ts'],
+              environment: 'node',
+            },
+          });
+          TS
 
-          const status = (paymentStatus, paymentKind, bookingStatus = 'confirmed') => ({
+          cat > apps/storefront/app/features/booking/lib/pr5-booking-payment-state-smoke.test.ts <<'TS'
+          import { describe, expect, it } from 'vitest';
+
+          import { deriveBookingPaymentState } from './booking-payment-state';
+
+          const status = (
+            paymentStatus: 'pending' | 'succeeded' | 'failed' | 'expired',
+            paymentKind: 'deposit' | 'balance' | null,
+            bookingStatus = 'confirmed',
+          ) => ({
             bookingCode: 'PR5-SMOKE',
             bookingStatus,
             paymentStatus,
             paymentKind,
             paidAmount: '400000',
           });
-          const emptySearch = new URLSearchParams();
-          const initialSuccess = deriveBookingPaymentState(status('succeeded', 'deposit'), emptySearch);
-          check('initial booking success remains success', initialSuccess.isSuccess);
-          check('initial booking success is not balance', !initialSuccess.isBalancePayment);
-          const balancePending = deriveBookingPaymentState(status('pending', 'balance'), emptySearch);
-          check('confirmed + balance pending is balance', balancePending.isBalancePayment);
-          check('confirmed + balance pending is not success', !balancePending.isSuccess);
-          check('confirmed + balance pending is pending', balancePending.isPending);
-          check('confirmed + balance pending polls provider truth', balancePending.shouldPoll);
-          const balanceFailed = deriveBookingPaymentState(status('failed', 'balance'), emptySearch);
-          check('confirmed + balance failed is not success', !balanceFailed.isSuccess);
-          check('confirmed + balance failed is failed', balanceFailed.paymentFailed);
-          check('confirmed + balance failed stops polling', !balanceFailed.shouldPoll);
-          const balanceExpired = deriveBookingPaymentState(status('expired', 'balance'), emptySearch);
-          check('confirmed + balance expired is failed', balanceExpired.paymentFailed);
-          const balanceSucceeded = deriveBookingPaymentState(status('succeeded', 'balance'), emptySearch);
-          check('confirmed + balance succeeded is success', balanceSucceeded.isSuccess);
-          const legacyConfirmed = deriveBookingPaymentState(status('pending', null), emptySearch);
-          check('paymentKind null preserves confirmed booking fallback', legacyConfirmed.isSuccess);
-          const spoofedReturn = deriveBookingPaymentState(
-            status('pending', 'balance'),
-            new URLSearchParams('payment=success'),
-          );
-          check('payment=success query marker never creates success', !spoofedReturn.isSuccess);
-          check('spoofed balance return still polls', spoofedReturn.shouldPoll);
-          console.log('PR5 RUNTIME GROUP COMPLETE balance-state');
-          JS
+
+          describe('PR5 storefront balance payment state', () => {
+            it('keeps initial booking success as success', () => {
+              const result = deriveBookingPaymentState(status('succeeded', 'deposit'), new URLSearchParams());
+              expect(result.isSuccess).toBe(true);
+            });
+
+            it('does not mark initial booking success as balance', () => {
+              const result = deriveBookingPaymentState(status('succeeded', 'deposit'), new URLSearchParams());
+              expect(result.isBalancePayment).toBe(false);
+            });
+
+            it('marks confirmed + balance pending as balance', () => {
+              const result = deriveBookingPaymentState(status('pending', 'balance'), new URLSearchParams());
+              expect(result.isBalancePayment).toBe(true);
+            });
+
+            it('does not mark confirmed + balance pending as success', () => {
+              const result = deriveBookingPaymentState(status('pending', 'balance'), new URLSearchParams());
+              expect(result.isSuccess).toBe(false);
+            });
+
+            it('marks confirmed + balance pending as pending', () => {
+              const result = deriveBookingPaymentState(status('pending', 'balance'), new URLSearchParams());
+              expect(result.isPending).toBe(true);
+            });
+
+            it('polls provider truth for confirmed + balance pending', () => {
+              const result = deriveBookingPaymentState(status('pending', 'balance'), new URLSearchParams());
+              expect(result.shouldPoll).toBe(true);
+            });
+
+            it('does not mark confirmed + balance failed as success', () => {
+              const result = deriveBookingPaymentState(status('failed', 'balance'), new URLSearchParams());
+              expect(result.isSuccess).toBe(false);
+            });
+
+            it('marks confirmed + balance failed as failed', () => {
+              const result = deriveBookingPaymentState(status('failed', 'balance'), new URLSearchParams());
+              expect(result.paymentFailed).toBe(true);
+            });
+
+            it('stops polling confirmed + balance failed', () => {
+              const result = deriveBookingPaymentState(status('failed', 'balance'), new URLSearchParams());
+              expect(result.shouldPoll).toBe(false);
+            });
+
+            it('marks confirmed + balance expired as failed', () => {
+              const result = deriveBookingPaymentState(status('expired', 'balance'), new URLSearchParams());
+              expect(result.paymentFailed).toBe(true);
+            });
+
+            it('marks confirmed + balance succeeded as success', () => {
+              const result = deriveBookingPaymentState(status('succeeded', 'balance'), new URLSearchParams());
+              expect(result.isSuccess).toBe(true);
+            });
+
+            it('preserves confirmed booking fallback when paymentKind is null', () => {
+              const result = deriveBookingPaymentState(status('pending', null), new URLSearchParams());
+              expect(result.isSuccess).toBe(true);
+            });
+
+            it('does not let payment=success query marker create success', () => {
+              const result = deriveBookingPaymentState(
+                status('pending', 'balance'),
+                new URLSearchParams('payment=success'),
+              );
+              expect(result.isSuccess).toBe(false);
+            });
+
+            it('continues polling after spoofed balance return', () => {
+              const result = deriveBookingPaymentState(
+                status('pending', 'balance'),
+                new URLSearchParams('payment=success'),
+              );
+              expect(result.shouldPoll).toBe(true);
+            });
+          });
+          TS
 
           cat > apps/api/scripts/pr5-storefront-payment-cleanup-smoke.ts <<'TS'
           import assert from 'node:assert/strict';
@@ -310,7 +373,7 @@ jobs:
             });
           TS
       - name: Balance payment state assertions
-        run: node scripts/pr5-storefront-balance-state-smoke.mjs
+        run: pnpm exec vitest run --config scripts/pr5-storefront-balance-state.vitest.config.mts
       - name: Napas compatibility contract assertions
         run: pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts napas-contracts
       - name: Public options Napas filtering assertions
@@ -323,4 +386,8 @@ jobs:
         run: pnpm --filter=@booking/api exec ts-node --transpile-only scripts/pr5-storefront-payment-cleanup-smoke.ts db-readability
       - name: Cleanup temporary PR5 smoke scripts
         if: always()
-        run: rm -f scripts/pr5-storefront-balance-state-smoke.mjs apps/api/scripts/pr5-storefront-payment-cleanup-smoke.ts
+        run: >-
+          rm -f
+          scripts/pr5-storefront-balance-state.vitest.config.mts
+          apps/storefront/app/features/booking/lib/pr5-booking-payment-state-smoke.test.ts
+          apps/api/scripts/pr5-storefront-payment-cleanup-smoke.ts
