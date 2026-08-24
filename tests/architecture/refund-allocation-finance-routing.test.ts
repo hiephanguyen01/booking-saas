@@ -19,6 +19,10 @@ function between(source: string, startMarker: string, endMarker: string): string
   return source.slice(start, end);
 }
 
+function normalized(source: string): string {
+  return source.replace(/\s+/g, ' ').trim();
+}
+
 describe('refund allocation Finance routing architecture', () => {
   it('finalizes partial dispute refunds without treating security-deposit completion as settlement work', () => {
     const source = readFileSync(financeModulePath, 'utf8');
@@ -33,11 +37,18 @@ describe('refund allocation Finance routing architecture', () => {
     );
   });
 
-  it('recovers completed partial-dispute batches while leaving security-deposit batches out', () => {
+  it('uses distinct convergence rules for status-changing and partial-dispute batch recovery', () => {
     const source = readFileSync(refundBatchRepositoryPath, 'utf8');
+    const recovery = normalized(
+      between(
+        source,
+        '  async findCompletedNeedingRecovery(',
+        '\n  }\n}',
+      ),
+    );
 
-    expect(source).toMatch(
-      /AND\s+\(rb\.affects_booking_status = true\s+OR rb\.reason = 'dispute_refund'\)/,
+    expect(recovery).toContain(
+      "WHERE rb.status = 'completed'::refund_batch_status AND ( ( rb.affects_booking_status = true AND ( b.status <> 'refunded'::booking_status OR bs.refund_id IS DISTINCT FROM rb.id ) ) OR ( rb.reason = 'dispute_refund' AND bs.refund_id IS DISTINCT FROM rb.id ) ) ORDER BY",
     );
   });
 });
