@@ -82,9 +82,30 @@ jobs:
           };
 
           async function balanceState() {
-            const { deriveBookingPaymentState } = await import(
-              '../../storefront/app/features/booking/lib/booking-payment-state'
-            );
+            const ts = await import('typescript');
+            const contracts = await import('@booking/contracts');
+            const filePath = resolve(__dirname, '../../storefront/app/features/booking/lib/booking-payment-state.ts');
+            const source = readFileSync(filePath, 'utf8');
+            const transpiled = ts.transpileModule(source, {
+              compilerOptions: { module: ts.ModuleKind.CommonJS },
+            });
+            const customRequire = (id: string) => {
+              if (id === '@booking/contracts') return contracts;
+              return require(id);
+            };
+            const mod = { exports: {} as Record<string, unknown> };
+            const fn = new Function('module', 'exports', 'require', transpiled.outputText);
+            fn(mod, mod.exports, customRequire);
+            const deriveBookingPaymentState = mod.exports.deriveBookingPaymentState as (
+              status: unknown,
+              searchParams: URLSearchParams,
+            ) => {
+              isSuccess: boolean;
+              isBalancePayment: boolean;
+              isPending: boolean;
+              shouldPoll: boolean;
+              paymentFailed: boolean;
+            };
             const status = (paymentStatus: string, paymentKind: string | null, bookingStatus = 'confirmed') => ({
               bookingCode: 'PR5-SMOKE',
               bookingStatus,
