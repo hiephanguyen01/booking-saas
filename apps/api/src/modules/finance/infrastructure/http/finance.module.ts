@@ -280,7 +280,7 @@ export class FinanceModule implements OnModuleInit {
         reason?: string | null;
         affectsBookingStatus?: boolean;
       };
-      if (p.affectsBookingStatus === false) return;
+      if (p.affectsBookingStatus === false && p.reason !== 'dispute_refund') return;
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);
       if (!tenantId) return;
       await this.finalizeRefund.execute(
