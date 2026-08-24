@@ -3,6 +3,7 @@ import {
   customerPaymentMethodSchema,
   DEFAULT_GATEWAY_PAYMENT_SETTINGS,
   GATEWAY_SUPPORTED_METHODS,
+  isNewCheckoutPaymentMethod,
   type PublicPaymentOptions,
 } from '@booking/contracts';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
@@ -44,6 +45,7 @@ export class GetPublicPaymentOptionsUseCase {
       const allowMock = mockAllowed();
 
       const methods = customerPaymentMethodSchema.options.filter((method) => {
+        if (!isNewCheckoutPaymentMethod(method)) return false;
         const route = routes.find((candidate) => candidate.method === method);
         if (!route?.enabled) return false;
         if (!GATEWAY_SUPPORTED_METHODS[route.gateway].includes(method)) return false;
