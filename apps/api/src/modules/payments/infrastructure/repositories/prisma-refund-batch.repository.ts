@@ -109,8 +109,19 @@ export class PrismaRefundBatchRepository implements IRefundBatchRepository {
       JOIN bookings b ON b.id = rb.booking_id
       LEFT JOIN booking_settlements bs ON bs.booking_id = rb.booking_id
       WHERE rb.status = 'completed'::refund_batch_status
-        AND rb.affects_booking_status = true
-        AND (b.status <> 'refunded'::booking_status OR bs.refund_id IS DISTINCT FROM rb.id)
+        AND (
+          (
+            rb.affects_booking_status = true
+            AND (
+              b.status <> 'refunded'::booking_status
+              OR bs.refund_id IS DISTINCT FROM rb.id
+            )
+          )
+          OR (
+            rb.reason = 'dispute_refund'
+            AND bs.refund_id IS DISTINCT FROM rb.id
+          )
+        )
       ORDER BY rb.updated_at, rb.id
       LIMIT ${limit}`);
     return rows;
