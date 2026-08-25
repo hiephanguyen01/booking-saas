@@ -33,6 +33,7 @@ export class GetPaymentStatusUseCase {
         bookingCode: code,
         bookingStatus: booking.status,
         paymentStatus: publicPaymentStatus(payment?.status ?? null),
+        paymentKind: payment?.kind ?? null,
         paidAmount: booking.paidAmount.toString(),
       };
     });

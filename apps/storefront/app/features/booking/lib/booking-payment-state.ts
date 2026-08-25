@@ -9,6 +9,7 @@ const SUCCESS = new Set<BookingStatus>(['confirmed', 'completed']);
 
 export interface BookingPaymentState {
   bookingStatus: BookingStatus | null;
+  isBalancePayment: boolean;
   paymentFailed: boolean;
   isSuccess: boolean;
   isPending: boolean;
@@ -27,8 +28,11 @@ export function deriveBookingPaymentState(
 ): BookingPaymentState {
   const bookingStatus = normalizeBookingStatus(status.bookingStatus);
   const paymentOutcome = searchParams.get('payment');
-  const isSuccess =
-    status.paymentStatus === 'succeeded' || (bookingStatus !== null && SUCCESS.has(bookingStatus));
+  const isBalancePayment = status.paymentKind === 'balance';
+  const providerSucceeded = status.paymentStatus === 'succeeded';
+  const bookingSucceeded = bookingStatus !== null && SUCCESS.has(bookingStatus);
+  const isSuccess = providerSucceeded || (!isBalancePayment && bookingSucceeded);
+
   const serverFailed =
     status.paymentStatus === 'failed' ||
     status.paymentStatus === 'expired' ||
@@ -40,10 +44,19 @@ export function deriveBookingPaymentState(
     // Backward compatibility for checkout links created before the SePay redirect normalization.
     searchParams.get('cancelled') === '1';
   const paymentFailed = !isSuccess && (serverFailed || redirectFailed);
-  const isPending =
-    !paymentFailed && !isSuccess && bookingStatus !== null && PENDING.has(bookingStatus);
+  const isBalancePending = isBalancePayment && status.paymentStatus === 'pending';
+  const initialPending =
+    !isBalancePayment && bookingStatus !== null && PENDING.has(bookingStatus);
+  const isPending = !paymentFailed && !isSuccess && (isBalancePending || initialPending);
   const shouldPoll =
-    !isSuccess && !serverFailed && bookingStatus !== null && PENDING.has(bookingStatus);
+    !isSuccess && !serverFailed && (isBalancePending || initialPending);
 
-  return { bookingStatus, paymentFailed, isSuccess, isPending, shouldPoll };
+  return {
+    bookingStatus,
+    isBalancePayment,
+    paymentFailed,
+    isSuccess,
+    isPending,
+    shouldPoll,
+  };
 }

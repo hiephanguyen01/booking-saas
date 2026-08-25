@@ -56,20 +56,14 @@ describe('GetPublicPaymentOptionsUseCase', () => {
     vi.unstubAllEnvs();
   });
 
-  it('publishes all five methods when four providers and five explicit routes are effective', async () => {
+  it('publishes only new-checkout methods when all explicit routes are effective', async () => {
     const useCase = harness(
       [config('sepay'), config('payos'), config('momo'), config('zalopay')],
       ALL_ROUTES,
     );
 
     await expect(useCase.execute(HOST)).resolves.toEqual({
-      methods: [
-        'bank_transfer',
-        'napas_qr',
-        'international_card',
-        'momo_wallet',
-        'zalopay_wallet',
-      ],
+      methods: ['bank_transfer', 'international_card', 'momo_wallet', 'zalopay_wallet'],
     });
   });
 
@@ -80,7 +74,7 @@ describe('GetPublicPaymentOptionsUseCase', () => {
     );
 
     await expect(useCase.execute(HOST)).resolves.toEqual({
-      methods: ['napas_qr', 'international_card', 'momo_wallet', 'zalopay_wallet'],
+      methods: ['international_card', 'momo_wallet', 'zalopay_wallet'],
     });
   });
 
@@ -141,7 +135,7 @@ describe('GetPublicPaymentOptionsUseCase', () => {
     await expect(harness([], []).execute(HOST)).rejects.toBeInstanceOf(PaymentNotConfigured);
   });
 
-  it('prefers an explicit effective real route over local mock fallback', async () => {
+  it('omits an effective legacy Napas route and does not resurrect mock fallback', async () => {
     vi.stubEnv('ALLOW_MOCK_PAYMENTS', 'true');
     vi.stubEnv('NODE_ENV', 'development');
 
@@ -150,6 +144,6 @@ describe('GetPublicPaymentOptionsUseCase', () => {
       [{ method: 'napas_qr', gateway: 'sepay', enabled: true }],
     );
 
-    await expect(useCase.execute(HOST)).resolves.toEqual({ methods: ['napas_qr'] });
+    await expect(useCase.execute(HOST)).rejects.toBeInstanceOf(PaymentNotConfigured);
   });
 });

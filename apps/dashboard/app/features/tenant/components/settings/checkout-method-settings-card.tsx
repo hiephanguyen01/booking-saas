@@ -23,7 +23,6 @@ import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 const METHODS = [
   ['bank_transfer', 'Chuyển khoản ngân hàng', 'Chuyển khoản/VietQR theo provider đã chọn.'],
-  ['napas_qr', 'Napas QR và thẻ nội địa', 'Thanh toán qua mạng lưới Napas.'],
   ['international_card', 'Thẻ quốc tế', 'Visa, Mastercard và JCB khi merchant hỗ trợ.'],
   ['momo_wallet', 'Ví MoMo', 'Thanh toán bằng ví MoMo.'],
   ['zalopay_wallet', 'Ví ZaloPay', 'Thanh toán bằng ví ZaloPay.'],

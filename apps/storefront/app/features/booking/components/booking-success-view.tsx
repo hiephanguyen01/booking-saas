@@ -27,6 +27,7 @@ interface BookingSuccessViewProps {
   recommendations: DiscoveryListingCardData[];
   showDetail: boolean;
   submitting: boolean;
+  isBalancePayment: boolean;
 }
 
 export function BookingSuccessView({
@@ -40,6 +41,7 @@ export function BookingSuccessView({
   recommendations,
   showDetail,
   submitting,
+  isBalancePayment,
 }: BookingSuccessViewProps) {
   const { t } = useTranslation(NsI18n.Booking);
   const mobilePrimaryHref = signedIn
@@ -92,6 +94,7 @@ export function BookingSuccessView({
             recommendations={recommendations}
             primaryHref={desktopPrimaryHref}
             PrimaryIcon={PrimaryIcon}
+            isBalancePayment={isBalancePayment}
           />
         </div>
       </>
@@ -108,6 +111,7 @@ export function BookingSuccessView({
           booking={booking}
           primaryHref={mobilePrimaryHref}
           recommendations={recommendations}
+          isBalancePayment={isBalancePayment}
         />
       </div>
       <div className="hidden md:block">
@@ -122,6 +126,7 @@ export function BookingSuccessView({
           recommendations={recommendations}
           primaryHref={desktopPrimaryHref}
           PrimaryIcon={PrimaryIcon}
+          isBalancePayment={isBalancePayment}
         />
       </div>
     </>
@@ -139,6 +144,7 @@ function DesktopSuccess({
   recommendations,
   primaryHref,
   PrimaryIcon,
+  isBalancePayment,
 }: Omit<BookingSuccessViewProps, 'showDetail' | 'submitting'> & {
   primaryHref: string;
   PrimaryIcon: typeof History;
@@ -147,8 +153,8 @@ function DesktopSuccess({
   return (
     <BookingOutcomeLayout
       locale={locale}
-      title={t('success.title')}
-      description={t('success.thanks')}
+      title={isBalancePayment ? t('payment.balanceSucceeded') : t('success.title')}
+      description={isBalancePayment ? t('payment.balanceSucceededNote') : t('success.thanks')}
       code={code}
       bookingStatus={bookingStatus}
       paidAmount={paidAmount}
@@ -189,20 +195,22 @@ function DesktopSuccess({
         </div>
       }
     >
-      <p className="mt-4 rounded-lg bg-muted/40 px-5 py-4 text-sm leading-6 text-foreground">
-        {maskedEmail ? (
-          <>
-            {t('success.bookingCodePrefix')} <span className="font-mono font-semibold">{code}</span>{' '}
-            {t('success.sentToEmail')} <span className="font-semibold">{maskedEmail}</span>
-          </>
-        ) : (
-          <>
-            {t('success.bookingCodeFallbackPrefix')}{' '}
-            <span className="font-mono font-semibold">{code}</span>.{' '}
-            {t('success.emailSentFallback')}
-          </>
-        )}
-      </p>
+      {!isBalancePayment ? (
+        <p className="mt-4 rounded-lg bg-muted/40 px-5 py-4 text-sm leading-6 text-foreground">
+          {maskedEmail ? (
+            <>
+              {t('success.bookingCodePrefix')} <span className="font-mono font-semibold">{code}</span>{' '}
+              {t('success.sentToEmail')} <span className="font-semibold">{maskedEmail}</span>
+            </>
+          ) : (
+            <>
+              {t('success.bookingCodeFallbackPrefix')}{' '}
+              <span className="font-mono font-semibold">{code}</span>.{' '}
+              {t('success.emailSentFallback')}
+            </>
+          )}
+        </p>
+      ) : null}
     </BookingOutcomeLayout>
   );
 }
@@ -214,6 +222,7 @@ function MobileSuccess({
   booking,
   primaryHref,
   recommendations,
+  isBalancePayment,
 }: {
   code: string;
   locale: 'en' | 'vi';
@@ -221,12 +230,13 @@ function MobileSuccess({
   booking: BookingDetailViewModel | null;
   primaryHref: string;
   recommendations: DiscoveryListingCardData[];
+  isBalancePayment: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Booking);
   return (
     <div className="min-h-dvh bg-muted/45 font-studio">
       <MobileFlowHeader
-        title={t('success.mobileTitle')}
+        title={isBalancePayment ? t('payment.balanceTitle') : t('success.mobileTitle')}
         backHref={storefrontPaths.home(locale)}
         backLabel={t('mobile.backHome')}
       />
@@ -235,8 +245,12 @@ function MobileSuccess({
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-success text-success-foreground shadow-lg">
             <BadgeCheck className="size-9" strokeWidth={1.8} aria-hidden="true" />
           </span>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight">{t('success.title')}</h1>
-          <p className="mt-2 text-sm text-background/70">{t('success.thanks')}</p>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight">
+            {isBalancePayment ? t('payment.balanceSucceeded') : t('success.title')}
+          </h1>
+          <p className="mt-2 text-sm text-background/70">
+            {isBalancePayment ? t('payment.balanceSucceededNote') : t('success.thanks')}
+          </p>
         </section>
 
         <section className={cn(PANEL_SURFACE, 'relative -mt-5 mx-3 bg-card p-(--sf-surface-pad)')}>
@@ -245,9 +259,11 @@ function MobileSuccess({
           </p>
           <p className="mt-1 text-center font-mono text-xl font-bold text-foreground">{code}</p>
           <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">
-            {maskedEmail
-              ? t('success.mobileEmail', { email: maskedEmail })
-              : t('success.emailSentFallback')}
+            {isBalancePayment
+              ? t('payment.balanceSucceededNote')
+              : maskedEmail
+                ? t('success.mobileEmail', { email: maskedEmail })
+                : t('success.emailSentFallback')}
           </p>
 
           {booking ? (

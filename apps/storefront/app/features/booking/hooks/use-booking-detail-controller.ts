@@ -66,6 +66,7 @@ export function useBookingDetailController({
       locale,
       status,
       bookingStatus: paymentState.bookingStatus,
+      isBalancePayment: paymentState.isBalancePayment,
       paymentFailed: paymentState.paymentFailed,
       isSuccess: paymentState.isSuccess,
       isPending: paymentState.isPending,

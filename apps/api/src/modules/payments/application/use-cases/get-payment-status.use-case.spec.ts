@@ -28,7 +28,9 @@ function harness(record: PaymentBookingRecord | null, paymentStatus: string | nu
     fakePort<IPaymentBookingReader>({ findByCode: () => Promise.resolve(record) }),
     fakePort<IPaymentRepository>({
       findLatestByBooking: () =>
-        Promise.resolve(paymentStatus === null ? null : ({ status: paymentStatus } as never)),
+        Promise.resolve(
+          paymentStatus === null ? null : ({ status: paymentStatus, kind: 'deposit' } as never),
+        ),
     }),
     fakeCollaborator<ResolveTenantByHostUseCase>({
       execute: () => Promise.resolve({ id: TENANT_ID, live: true }),
@@ -53,6 +55,7 @@ describe('GetPaymentStatusUseCase', () => {
       bookingCode: CODE,
       bookingStatus: 'pending_payment',
       paymentStatus: 'succeeded',
+      paymentKind: 'deposit',
       paidAmount: '500000',
     });
     expect(tenantDb.openedFor).toEqual([TENANT_ID]);
@@ -61,6 +64,9 @@ describe('GetPaymentStatusUseCase', () => {
   it("reports 'none' when the booking has no payment attempt yet", async () => {
     const { useCase } = harness(booking(), null);
 
-    await expect(useCase.execute(HOST, CODE)).resolves.toMatchObject({ paymentStatus: 'none' });
+    await expect(useCase.execute(HOST, CODE)).resolves.toMatchObject({
+      paymentStatus: 'none',
+      paymentKind: null,
+    });
   });
 });

@@ -19,6 +19,21 @@ export const customerPaymentMethodSchema = z.enum([
 ]);
 export type CustomerPaymentMethod = z.infer<typeof customerPaymentMethodSchema>;
 
+/**
+ * Methods eligible for newly-created checkout attempts. `napas_qr` remains in the
+ * parser/provider compatibility contracts so historical rows and settings still load.
+ */
+export const NEW_CHECKOUT_PAYMENT_METHODS = [
+  'bank_transfer',
+  'international_card',
+  'momo_wallet',
+  'zalopay_wallet',
+] as const satisfies readonly CustomerPaymentMethod[];
+
+export function isNewCheckoutPaymentMethod(method: CustomerPaymentMethod): boolean {
+  return (NEW_CHECKOUT_PAYMENT_METHODS as readonly string[]).includes(method);
+}
+
 /** Which storefront methods each gateway can actually process. */
 export const GATEWAY_SUPPORTED_METHODS: Record<GatewayKey, CustomerPaymentMethod[]> = {
   sepay: ['bank_transfer', 'napas_qr', 'international_card'],
@@ -249,11 +264,14 @@ export const checkoutResponseSchema = z.object({
 });
 export type CheckoutResponse = z.infer<typeof checkoutResponseSchema>;
 
+export const paymentKindSchema = z.enum(['deposit', 'balance', 'full', 'security_deposit']);
+
 export const paymentStatusResponseSchema = z.object({
   bookingCode: z.string(),
   bookingStatus: z.string(),
   /** none = no payment yet. */
   paymentStatus: z.enum(['none', 'pending', 'succeeded', 'failed', 'expired']),
+  paymentKind: paymentKindSchema.nullable(),
   paidAmount: z.string(),
 });
 export type PaymentStatusResponse = z.infer<typeof paymentStatusResponseSchema>;
@@ -294,7 +312,6 @@ export type GatewayConfigResponse = z.infer<typeof gatewayConfigResponseSchema>;
 export const gatewayConfigsResponseSchema = z.array(gatewayConfigResponseSchema);
 export type GatewayConfigsResponse = z.infer<typeof gatewayConfigsResponseSchema>;
 
-export const paymentKindSchema = z.enum(['deposit', 'balance', 'full', 'security_deposit']);
 export const paymentRecordStatusSchema = z.enum(['pending', 'succeeded', 'failed', 'expired']);
 
 export const paymentHistoryQuerySchema = paginationQuerySchema.extend({
