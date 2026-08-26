@@ -1,0 +1,56 @@
+name: Diagnostic Local Verification Bundle
+
+on:
+  push:
+    branches:
+      - diag/local-fetch-main-10803f1
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact main product commit
+        uses: actions/checkout@v4
+        with:
+          ref: 10803f184172d0878eca9eb9657bc904a2e717da
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+          run_install: false
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build portable local bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle=/tmp/booking-saas-local-bundle
+          mkdir -p "$bundle/project" "$bundle/toolchain"
+          cp -a . "$bundle/project/"
+          printf '%s\n' '10803f184172d0878eca9eb9657bc904a2e717da' > "$bundle/MAIN_COMMIT.txt"
+          cp "$(command -v node)" "$bundle/toolchain/node"
+          pnpm_real="$(readlink -f "$(command -v pnpm)")"
+          pnpm_pkg="$(dirname "$(dirname "$pnpm_real")")"
+          cp "$pnpm_pkg/dist/pnpm.cjs" "$bundle/toolchain/pnpm.cjs"
+          "$bundle/toolchain/node" "$bundle/toolchain/pnpm.cjs" --version
+          tar -C /tmp -czf /tmp/booking-saas-local-bundle.tgz booking-saas-local-bundle
+          ls -lh /tmp/booking-saas-local-bundle.tgz
+
+      - name: Upload local bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: booking-saas-local-bundle
+          path: /tmp/booking-saas-local-bundle.tgz
+          retention-days: 1
