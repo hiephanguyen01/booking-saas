@@ -41,9 +41,9 @@ jobs:
           cp -a . "$bundle/project/"
           printf '%s\n' '10803f184172d0878eca9eb9657bc904a2e717da' > "$bundle/MAIN_COMMIT.txt"
           cp "$(command -v node)" "$bundle/toolchain/node"
-          pnpm_real="$(readlink -f "$(command -v pnpm)")"
-          pnpm_pkg="$(dirname "$(dirname "$pnpm_real")")"
-          cp "$pnpm_pkg/dist/pnpm.cjs" "$bundle/toolchain/pnpm.cjs"
+          pnpm_cjs="$(find /home/runner/setup-pnpm -path '*/pnpm/dist/pnpm.cjs' -type f -print -quit)"
+          test -n "$pnpm_cjs"
+          cp "$pnpm_cjs" "$bundle/toolchain/pnpm.cjs"
           "$bundle/toolchain/node" "$bundle/toolchain/pnpm.cjs" --version
           tar -C /tmp -czf /tmp/booking-saas-local-bundle.tgz booking-saas-local-bundle
           ls -lh /tmp/booking-saas-local-bundle.tgz
