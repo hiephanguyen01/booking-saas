@@ -1,0 +1,214 @@
+name: Pilot 0C Runtime Smoke
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-smoke:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'diag/pilot-182-runtime-main-10803f1'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: booking
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      MIGRATE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/booking
+      DATABASE_URL: postgresql://app_user:app_user_dev_pw@127.0.0.1:5432/booking
+      ADMIN_DATABASE_URL: postgresql://app_admin:app_admin_dev_pw@127.0.0.1:5432/booking
+      REDIS_URL: redis://127.0.0.1:6379
+      PAYMENTS_ENC_KEY: pilot-182-runtime-key-change-me
+      MOCK_WEBHOOK_SECRET: pilot-182-mock-webhook-secret
+      ALLOW_MOCK_PAYMENTS: 'true'
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag/pilot-182-runtime-main-10803f1
+          fetch-depth: 1
+      - name: Record exact tested head
+        run: echo "pilot182_runtime_head=$(git rev-parse HEAD)"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply migrations, seed, and build API
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api prisma:generate
+          pnpm --filter=@booking/api seed
+          pnpm turbo run build --filter=@booking/api...
+      - name: Static gate
+        run: pnpm test && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls
+      - name: Prepare Pilot 0C house-partner fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          psqlq() { psql "$MIGRATE_DATABASE_URL" -Atq "$@"; }
+          TENANT_ID=$(psqlq -c "select id from tenants where slug='studiohub' limit 1")
+          HOUSE_ID=$(psqlq -c "select id from partners where tenant_id='$TENANT_ID' and slug='studiohub-house' limit 1")
+          OWNER_ID=$(psqlq -c "select id from users where email='owner@studiohub.vn' limit 1")
+          PARTNER_ROLE_ID=$(psqlq -c "select id from roles where name='Partner Owner' and scope_level='partner' limit 1")
+          test -n "$TENANT_ID"; test -n "$HOUSE_ID"; test -n "$OWNER_ID"; test -n "$PARTNER_ROLE_ID"
+
+          mapfile -t LISTINGS < <(psqlq -c "
+            select l.id
+            from listings l
+            join listing_types lt on lt.id=l.listing_type_id
+            where l.tenant_id='$TENANT_ID'
+              and l.status='published'
+              and 'hourly' = any(l.booking_modes)
+              and not exists (select 1 from bookings b where b.listing_id=l.id)
+            order by l.created_at asc
+            limit 3
+          ")
+          test "${#LISTINGS[@]}" -eq 3
+          for ID in "${LISTINGS[@]}"; do
+            RESOURCE_ID=$(psqlq -c "select resource_id from listings where id='$ID'")
+            BOOKING_COUNT=$(psqlq -c "select count(*) from bookings where listing_id='$ID'")
+            test "$BOOKING_COUNT" = 0
+            psqlq -c "update listings set partner_id='$HOUSE_ID' where id='$ID'; update resources set partner_id='$HOUSE_ID' where id='$RESOURCE_ID';"
+          done
+
+          psqlq -c "
+            insert into partner_members (id, tenant_id, partner_id, user_id, created_at)
+            select gen_random_uuid(), '$TENANT_ID', '$HOUSE_ID', '$OWNER_ID', now()
+            where not exists (select 1 from partner_members where partner_id='$HOUSE_ID' and user_id='$OWNER_ID');
+            insert into role_assignments (id, user_id, role_id, tenant_id, partner_id, created_at)
+            select gen_random_uuid(), '$OWNER_ID', '$PARTNER_ROLE_ID', '$TENANT_ID', '$HOUSE_ID', now()
+            where not exists (select 1 from role_assignments where user_id='$OWNER_ID' and role_id='$PARTNER_ROLE_ID' and tenant_id='$TENANT_ID' and partner_id='$HOUSE_ID');
+          "
+          printf '%s\n' "$TENANT_ID" > /tmp/pilot182-tenant-id
+          printf '%s\n' "$HOUSE_ID" > /tmp/pilot182-house-id
+          printf '%s\n' "${LISTINGS[0]}" > /tmp/pilot182-listing-id
+      - name: Start API
+        run: |
+          set -euo pipefail
+          pnpm --filter=@booking/api start >/tmp/pilot182-api.log 2>&1 &
+          echo $! >/tmp/pilot182-api.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/health/ready >/dev/null 2>&1; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pilot182-api.log
+          exit 1
+      - name: Run Pilot 0C booking journey
+        shell: bash
+        run: |
+          set -euo pipefail
+          API=http://127.0.0.1:3000
+          HOST=studiohub.localhost
+          TENANT_ID=$(cat /tmp/pilot182-tenant-id)
+          HOUSE_ID=$(cat /tmp/pilot182-house-id)
+          LISTING_ID=$(cat /tmp/pilot182-listing-id)
+          psqlq() { psql "$MIGRATE_DATABASE_URL" -Atq "$@"; }
+
+          SLUG=$(psqlq -c "select slug from listings where id='$LISTING_ID'")
+          RESOURCE_ID=$(psqlq -c "select resource_id from listings where id='$LISTING_ID'")
+          test -n "$SLUG"; test -n "$RESOURCE_ID"
+
+          DAY=''
+          FROM=''
+          TO=''
+          EXPECTED=''
+          for OFFSET in $(seq 3 30); do
+            D=$(date -u -d "+$OFFSET day" +%F)
+            curl -fsS -H "x-forwarded-host: $HOST" "$API/public/listings/$SLUG/availability?mode=hourly&from=$D&to=$D" >/tmp/avail.json || continue
+            read -r FROM TO EXPECTED < <(node - <<'NODE'
+const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/avail.json','utf8'));
+const s=j.days?.flatMap(d=>d.slots||[]).find(x=>x.available);
+if (s) process.stdout.write(`${s.startUtc} ${s.endUtc} ${s.price}`);
+NODE
+)
+            if [ -n "${FROM:-}" ]; then DAY=$D; break; fi
+          done
+          test -n "$DAY"; test -n "$FROM"; test -n "$TO"
+          node -e 'const j=JSON.parse(require("fs").readFileSync("/tmp/avail.json","utf8")); if(j.mode!=="hourly"||j.timezone!=="Asia/Ho_Chi_Minh") process.exit(1)'
+
+          IDEMPOTENCY="pilot182-$(date +%s)-$RANDOM"
+          BODY=$(node -e 'console.log(JSON.stringify({listingId:process.argv[1],mode:"hourly",from:process.argv[2],to:process.argv[3],quantity:1,guestCount:1,guest:{fullName:"Pilot 182 Guest",email:`pilot182-${Date.now()}@example.com`,phone:"0901234567"}}))' "$LISTING_ID" "$FROM" "$TO")
+          curl -fsS -H "x-forwarded-host: $HOST" -H 'content-type: application/json' -H "idempotency-key: $IDEMPOTENCY" --data "$BODY" "$API/public/bookings" >/tmp/booking1.json
+          curl -fsS -H "x-forwarded-host: $HOST" -H 'content-type: application/json' -H "idempotency-key: $IDEMPOTENCY" --data "$BODY" "$API/public/bookings" >/tmp/booking2.json
+          BOOKING_ID=$(node -e 'const a=require("/tmp/booking1.json"),b=require("/tmp/booking2.json"); if(a.id!==b.id||a.code!==b.code) process.exit(1); process.stdout.write(a.id)')
+          BOOKING_CODE=$(node -e 'process.stdout.write(require("/tmp/booking1.json").code)')
+          ACCESS_GRANT=$(node -e 'process.stdout.write(require("/tmp/booking1.json").accessGrant||"")')
+          test -n "$BOOKING_ID"; test -n "$BOOKING_CODE"; test -n "$ACCESS_GRANT"
+          test "$(psqlq -c "select count(*) from bookings where tenant_id='$TENANT_ID' and idempotency_key='$IDEMPOTENCY'")" = 1
+
+          HTTP_CODE=$(curl -sS -o /tmp/compete.json -w '%{http_code}' -H "x-forwarded-host: $HOST" -H 'content-type: application/json' -H "idempotency-key: $IDEMPOTENCY-compete" --data "$BODY" "$API/public/bookings")
+          test "$HTTP_CODE" = 409
+          grep -Eq 'SLOT_(TAKEN|HELD)' /tmp/compete.json
+
+          curl -fsS -H "x-forwarded-host: $HOST" -H "x-booking-access-grant: $ACCESS_GRANT" "$API/public/bookings/$BOOKING_CODE" >/tmp/reopen.json
+          node -e 'const j=require("/tmp/reopen.json"); if(j.id!==process.argv[1]||j.code!==process.argv[2]) process.exit(1)' "$BOOKING_ID" "$BOOKING_CODE"
+
+          curl -fsS -H "x-forwarded-host: $HOST" -H "x-booking-code: $BOOKING_CODE" -H "x-booking-access-grant: $ACCESS_GRANT" -H 'content-type: application/json' --data '{"paymentMethod":"bank_transfer"}' "$API/public/bookings/$BOOKING_ID/checkout" >/tmp/checkout.json
+          PAYMENT_ID=$(node -e 'const j=require("/tmp/checkout.json"); if(!j.paymentId) process.exit(1); process.stdout.write(j.paymentId)')
+          PAYMENT_TXN=$(psqlq -c "select gateway_txn_id from payments where id='$PAYMENT_ID'")
+          PAYMENT_AMOUNT=$(psqlq -c "select amount from payments where id='$PAYMENT_ID'")
+          test -n "$PAYMENT_TXN"; test -n "$PAYMENT_AMOUNT"
+          SIG=$(node -e 'const c=require("crypto"); const [txn,amt,sec]=process.argv.slice(1); process.stdout.write(c.createHmac("sha256",sec).update(`${txn}.succeeded.${amt}`).digest("hex"))' "$PAYMENT_TXN" "$PAYMENT_AMOUNT" "$MOCK_WEBHOOK_SECRET")
+          WEBHOOK=$(node -e 'console.log(JSON.stringify({gatewayTxnId:process.argv[1],event:"succeeded",amountVnd:process.argv[2],signature:process.argv[3]}))' "$PAYMENT_TXN" "$PAYMENT_AMOUNT" "$SIG")
+          curl -fsS -H 'content-type: application/json' --data "$WEBHOOK" "$API/webhooks/mock" >/tmp/webhook.json
+          for i in $(seq 1 45); do
+            STATUS=$(psqlq -c "select status::text from bookings where id='$BOOKING_ID'")
+            [ "$STATUS" = confirmed ] && break
+            sleep 1
+          done
+          test "$(psqlq -c "select status::text from bookings where id='$BOOKING_ID'")" = confirmed
+          curl -fsS -H "x-forwarded-host: $HOST" -H "x-booking-access-grant: $ACCESS_GRANT" "$API/public/bookings/$BOOKING_CODE/payment-status" >/tmp/payment-status.json
+          node -e 'const j=require("/tmp/payment-status.json"); if(j.bookingStatus!=="confirmed"||j.paymentStatus!=="succeeded") process.exit(1)'
+
+          LOGIN='{"email":"owner@studiohub.vn","password":"demo-password"}'
+          curl -fsS -c /tmp/owner.cookies -H 'content-type: application/json' --data "$LOGIN" "$API/auth/login" >/tmp/login.json
+          curl -fsS -b /tmp/owner.cookies -H "x-tenant-id: $TENANT_ID" "$API/tenant/bookings/$BOOKING_ID" >/tmp/tenant-detail.json
+          curl -fsS -b /tmp/owner.cookies -H "x-tenant-id: $TENANT_ID" "$API/tenant/bookings/$BOOKING_ID/history" >/tmp/tenant-history.json
+          node -e 'const d=require("/tmp/tenant-detail.json"),h=require("/tmp/tenant-history.json"); if(d.id!==process.argv[1]||!Array.isArray(h)||!h.some(x=>x.toStatus==="confirmed")) process.exit(1)' "$BOOKING_ID"
+
+          NOTIFY_COUNT=$(psqlq -c "select count(*) from notifications where tenant_id='$TENANT_ID' and target_id='$BOOKING_ID'")
+          OUTBOX_COUNT=$(psqlq -c "select count(*) from outbox_events where tenant_id='$TENANT_ID' and payload->>'bookingId'='$BOOKING_ID'")
+          test "$OUTBOX_COUNT" -ge 1
+          echo "notifications_for_booking=$NOTIFY_COUNT outbox_for_booking=$OUTBOX_COUNT"
+
+          psqlq -c "update bookings set timeslot=tstzrange(now()-interval '3 hours', now()-interval '1 hour', '[)'), blocked_period=tstzrange(now()-interval '3 hours 30 minutes', now()-interval '30 minutes', '[)') where id='$BOOKING_ID'"
+          BALANCE=$(psqlq -c "select greatest(final_amount-paid_amount,0) from bookings where id='$BOOKING_ID'")
+          COMPLETE=$(node -e 'console.log(JSON.stringify({onsiteCollectedAmount:process.argv[1],note:"Pilot 0C runtime completion"}))' "$BALANCE")
+          curl -fsS -b /tmp/owner.cookies -H "x-tenant-id: $TENANT_ID" -H "x-partner-id: $HOUSE_ID" -H 'content-type: application/json' --data "$COMPLETE" "$API/partner/bookings/$BOOKING_ID/complete" >/tmp/complete.json
+          node -e 'const j=require("/tmp/complete.json"); if(j.status!=="completed") process.exit(1)'
+          curl -fsS -b /tmp/owner.cookies -H "x-tenant-id: $TENANT_ID" "$API/tenant/bookings/$BOOKING_ID/history" >/tmp/final-history.json
+          node -e 'const h=require("/tmp/final-history.json"); if(!h.some(x=>x.toStatus==="completed")) process.exit(1)'
+
+          echo "PILOT182 PASS tenant=$TENANT_ID house=$HOUSE_ID listing=$LISTING_ID resource=$RESOURCE_ID slot=$FROM..$TO booking=$BOOKING_CODE payment=$PAYMENT_ID status=completed"
+      - name: Dump API log on failure
+        if: failure()
+        run: cat /tmp/pilot182-api.log || true
