@@ -1,0 +1,48 @@
+name: Pilot 0C RLS Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rls:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'diag/pilot-182-runtime-main-10803f1'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: booking
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      MIGRATE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/booking
+      DATABASE_URL: postgresql://app_user:app_user_dev_pw@127.0.0.1:5432/booking
+      ADMIN_DATABASE_URL: postgresql://app_admin:app_admin_dev_pw@127.0.0.1:5432/booking
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations and verify RLS
+        run: |
+          set -euo pipefail
+          pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api prisma:generate
+          pnpm --filter=@booking/api check:rls
