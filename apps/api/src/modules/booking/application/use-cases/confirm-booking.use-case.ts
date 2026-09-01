@@ -111,6 +111,13 @@ export class ConfirmBookingUseCase {
       this.logger.warn(
         `late webhook for booking ${bookingId}: slot taken — auto-refunding the service and security deposits`,
       );
+      const refundAmount = aggregate.lateSlotRefundAmount();
+      const refundPending = await this.bookings.recordRefundIntent(tx, {
+        id: bookingId,
+        expectedStatus: 'expired',
+        refundDueAmount: refundAmount,
+        refundPercent: 100,
+      });
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'booking.cancelled',
@@ -120,11 +127,11 @@ export class ConfirmBookingUseCase {
           // Checkout charged both amounts in one gateway transaction. Omitting
           // the security deposit here would leave customer money stranded after
           // a late webhook loses the slot.
-          refundAmount: aggregate.lateSlotRefundAmount().toString(),
+          refundAmount: refundAmount.toString(),
           refundPercent: 100,
         },
       });
-      return booking;
+      return refundPending;
     });
   }
 }

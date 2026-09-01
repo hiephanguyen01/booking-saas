@@ -8,6 +8,7 @@ import { BookingNotFound } from '../../domain/errors/booking-domain-errors';
 import type {
   BookingRecord,
   IBookingRepository,
+  RefundIntentParams,
   TransitionParams,
 } from '../../domain/ports/booking-repository.port';
 import { ConfirmBookingUseCase } from './confirm-booking.use-case';
@@ -51,18 +52,21 @@ interface Options {
   reserveError?: Error;
   /** The record the auto-refund path re-reads in its own transaction. */
   secondRead?: BookingRecord | null;
+  refundIntentError?: Error;
 }
 
 interface Harness {
   readonly useCase: ConfirmBookingUseCase;
   readonly tenantDb: ReturnType<typeof fakeTenantDb>;
   readonly transitions: TransitionParams[];
+  readonly refundIntents: RefundIntentParams[];
   readonly reservations: unknown[];
   readonly events: Array<{ eventType: string; payload: Record<string, unknown> }>;
 }
 
 function harness(options: Options = {}): Harness {
   const transitions: TransitionParams[] = [];
+  const refundIntents: RefundIntentParams[] = [];
   const reservations: unknown[] = [];
   const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   let reads = 0;
@@ -88,6 +92,17 @@ function harness(options: Options = {}): Harness {
       if (options.transitionError) throw options.transitionError;
       return Promise.resolve({ ...booking(), ...params, code: CODE } as unknown as BookingRecord);
     },
+    recordRefundIntent: (_tx, params) => {
+      refundIntents.push(params);
+      if (options.refundIntentError) throw options.refundIntentError;
+      return Promise.resolve(
+        booking({
+          status: params.expectedStatus,
+          refundDueAmount: params.refundDueAmount,
+          refundPercent: params.refundPercent,
+        }),
+      );
+    },
   });
   const reservePromotion = fakeCollaborator<ReservePromotionUseCase>({
     execute: (_tx: unknown, _tenantId: unknown, data: unknown) => {
@@ -106,6 +121,7 @@ function harness(options: Options = {}): Harness {
     ),
     tenantDb,
     transitions,
+    refundIntents,
     reservations,
     events,
   };
@@ -218,15 +234,28 @@ describe('ConfirmBookingUseCase', () => {
   });
 
   it('auto-refunds instead of 500ing when a late webhook finds the slot taken', async () => {
-    const { useCase, tenantDb, events } = harness({
+    const { useCase, tenantDb, refundIntents, events } = harness({
       record: booking({ status: 'expired' }),
       transitionError: new SlotTakenError(),
     });
 
-    await useCase.execute(TENANT_ID, BOOKING_ID);
+    const result = await useCase.execute(TENANT_ID, BOOKING_ID);
 
     // A second transaction: the confirm tx is poisoned by the exclusion violation.
     expect(tenantDb.openedFor).toEqual([TENANT_ID, TENANT_ID]);
+    expect(refundIntents).toEqual([
+      {
+        id: BOOKING_ID,
+        expectedStatus: 'expired',
+        refundDueAmount: DEPOSIT + SECURITY_DEPOSIT,
+        refundPercent: 100,
+      },
+    ]);
+    expect(result).toMatchObject({
+      status: 'expired',
+      refundDueAmount: DEPOSIT + SECURITY_DEPOSIT,
+      refundPercent: 100,
+    });
     expect(events).toEqual([
       {
         eventType: 'booking.cancelled',
@@ -240,6 +269,18 @@ describe('ConfirmBookingUseCase', () => {
         },
       },
     ]);
+  });
+
+  it('does not announce a late-slot refund unless its durable intent was recorded', async () => {
+    const persistenceError = new Error('refund intent write failed');
+    const { useCase, events } = harness({
+      record: booking({ status: 'expired' }),
+      transitionError: new SlotTakenError(),
+      refundIntentError: persistenceError,
+    });
+
+    await expect(useCase.execute(TENANT_ID, BOOKING_ID)).rejects.toBe(persistenceError);
+    expect(events).toEqual([]);
   });
 
   it('rejects the auto-refund when the booking vanished between the transactions', async () => {

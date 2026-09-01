@@ -227,6 +227,13 @@ export interface TransitionParams {
   refundPercent?: number;
 }
 
+export interface RefundIntentParams {
+  id: string;
+  expectedStatus: 'expired';
+  refundDueAmount: bigint;
+  refundPercent: number;
+}
+
 export interface IBookingRepository {
   /** Insert a `draft` booking (raw SQL — writes timeslot + blocked_period). */
   insertDraft(tx: PrismaTx, tenantId: string, data: InsertBookingData): Promise<BookingRecord>;
@@ -236,6 +243,11 @@ export interface IBookingRepository {
    * exclusion constraint rejects entry into an active state (§10).
    */
   applyTransition(tx: PrismaTx, params: TransitionParams): Promise<BookingRecord>;
+  /**
+   * Durably record a late-slot refund without changing booking status. The CAS
+   * guard prevents a stale webhook from overwriting a later terminal state.
+   */
+  recordRefundIntent(tx: PrismaTx, params: RefundIntentParams): Promise<BookingRecord>;
   /**
    * Add a balance payment to `paid_amount` (§8.3). Never overwrites — confirmation
    * already SET it to the deposit. Must not double-count a redelivered outbox

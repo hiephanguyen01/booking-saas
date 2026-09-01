@@ -123,4 +123,14 @@ describe('MarkNoShowUseCase', () => {
     await expect(useCase.execute(ctx, BOOKING_ID)).rejects.toThrow();
     expect(transitions).toEqual([]);
   });
+
+  it('returns a conflict when a refunded booking is marked no-show', async () => {
+    const { useCase, events } = harness(booking({ status: 'refunded' }), hoursAfterEnd(1));
+
+    await expect(useCase.execute(ctx, BOOKING_ID)).rejects.toMatchObject({
+      code: 'INVALID_TRANSITION',
+      httpStatus: 409,
+    });
+    expect(events).toEqual([]);
+  });
 });
