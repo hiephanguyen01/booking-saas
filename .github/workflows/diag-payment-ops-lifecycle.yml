@@ -76,7 +76,7 @@ jobs:
           printf 'diagnostic_changed=%s\n' "${changed[*]}"
           for f in "${changed[@]}"; do
             case "$f" in
-              .github/workflows/diag-payment-ops-lifecycle.yml|scripts/diag-payment-ops-lifecycle.mjs|scripts/diag-fake-zalopay-provider.mjs) ;;
+              .github/workflows/diag-payment-ops-lifecycle.yml|scripts/diag-payment-ops-lifecycle.mjs|scripts/diag-fake-zalopay-provider.mjs|scripts/diag-payment-ops-followup.mjs) ;;
               *) echo "Unexpected product-tree change: $f" >&2; exit 1 ;;
             esac
           done
@@ -184,10 +184,30 @@ jobs:
           exit 1
 
       - name: Run 15-state payment operations lifecycle
+        id: lifecycle
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           node scripts/diag-payment-ops-lifecycle.mjs 2>&1 | tee /tmp/payment-ops-lifecycle.log
+
+      - name: Capture late-refund and all terminal guard evidence
+        id: followup
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/diag-payment-ops-followup.mjs 2>&1 | tee /tmp/payment-ops-followup.log
+
+      - name: Enforce diagnostic outcome
+        if: always()
+        shell: bash
+        run: |
+          echo "lifecycle_outcome=${{ steps.lifecycle.outcome }}"
+          echo "followup_outcome=${{ steps.followup.outcome }}"
+          test "${{ steps.lifecycle.outcome }}" = success
+          test "${{ steps.followup.outcome }}" = success
 
       - name: Show diagnostics on failure
         if: failure()
@@ -195,12 +215,14 @@ jobs:
         run: |
           echo '=== lifecycle ==='
           cat /tmp/payment-ops-lifecycle.log 2>/dev/null || true
+          echo '=== followup ==='
+          cat /tmp/payment-ops-followup.log 2>/dev/null || true
           echo '=== API ==='
           tail -n 500 /tmp/payment-ops-api.log 2>/dev/null || true
           echo '=== fake ZaloPay ==='
           tail -n 500 /tmp/fake-zalo.log 2>/dev/null || true
           echo '=== current booking/payment/refund state ==='
-          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,code,status,final_amount,paid_amount,refund_percent from bookings order by created_at desc limit 30" || true
+          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,code,status,final_amount,paid_amount,refund_due_amount,refund_percent from bookings order by created_at desc limit 30" || true
           psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,booking_id,gateway,kind,status,amount,captured_amount,gateway_txn_id,gateway_order_ref from payments order by created_at desc limit 40" || true
           psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,booking_id,payment_id,status,execution_mode,amount,reason,gateway_refund_id from refunds order by created_at desc limit 40" || true
           psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select * from refund_batches order by created_at desc limit 30" || true
@@ -213,7 +235,9 @@ jobs:
           name: payment-ops-lifecycle-evidence
           path: |
             /tmp/payment-ops-results.json
+            /tmp/payment-ops-followup.json
             /tmp/payment-ops-lifecycle.log
+            /tmp/payment-ops-followup.log
             /tmp/payment-ops-api.log
             /tmp/fake-zalo.log
           if-no-files-found: ignore
