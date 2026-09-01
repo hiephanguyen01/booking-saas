@@ -3,7 +3,7 @@ name: Payment Ops Lifecycle Smoke
 on:
   push:
     branches:
-      - diag/payment-ops-lifecycle-main-10803f1
+      - diag/payment-ops-postfix-d2e3b192
   pull_request:
     branches:
       - main
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  MAIN_COMMIT: 10803f184172d0878eca9eb9657bc904a2e717da
+  MAIN_COMMIT: d2e3b1928a554e2752a497b535441df6f89b3c53
   MIGRATE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/booking
   DATABASE_URL: postgresql://app_user:app_user_dev_pw@127.0.0.1:5432/booking
   ADMIN_DATABASE_URL: postgresql://app_admin:app_admin_dev_pw@127.0.0.1:5432/booking
