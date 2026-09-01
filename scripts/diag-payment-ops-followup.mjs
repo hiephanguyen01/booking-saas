@@ -42,7 +42,7 @@ if (!lateId) {
 } else {
   const booking = sql(`select status::text||'|'||paid_amount::text||'|'||coalesce(refund_due_amount::text,'')||'|'||coalesce(refund_percent::text,'') from bookings where id=${q(lateId)}`).split('|');
   const refund = sql(`select status::text||'|'||amount::text||'|'||coalesce(gateway_refund_id,'') from refunds where booking_id=${q(lateId)} and reason='booking_cancellation' order by created_at desc limit 1`).split('|');
-  const batch = sql(`select status::text||'|'||requested_amount::text||'|'||succeeded_amount::text||'|'||failed_amount::text from refund_batches where booking_id=${q(lateId)} and reason='booking_cancellation' order by created_at desc limit 1`).split('|');
+  const batch = sql(`select status::text||'|'||requested_amount::text from refund_batches where booking_id=${q(lateId)} and reason='booking_cancellation' order by created_at desc limit 1`).split('|');
   const settlement = sql(`select status::text||'|'||refunded_amount::text||'|'||retained_amount::text from booking_settlements where booking_id=${q(lateId)}`).split('|');
   const competitor = sql(`select id||'|'||status::text from bookings where id<>${q(lateId)} and listing_id=(select listing_id from bookings where id=${q(lateId)}) and timeslot=(select timeslot from bookings where id=${q(lateId)}) and status in ('pending_payment','confirmed') order by created_at desc limit 1`).split('|');
   const moneyAndStatePass = booking[0] === 'refunded' && booking[1] === '0' && refund[0] === 'succeeded' && batch[0] === 'completed' && batch[1] === refund[1] && settlement[0] === 'refunded' && settlement[1] === refund[1] && competitor[0] && ['pending_payment','confirmed'].includes(competitor[1]);
@@ -51,7 +51,7 @@ if (!lateId) {
     bookingId: lateId,
     bookingStatus: booking[0], paidAmount: booking[1], refundDueAmount: booking[2] || null, refundPercent: booking[3] || null,
     refundStatus: refund[0], refundAmount: refund[1], gatewayRefundId: refund[2] || null,
-    batchStatus: batch[0], batchRequested: batch[1], batchSucceeded: batch[2], batchFailed: batch[3],
+    batchStatus: batch[0], batchRequested: batch[1],
     settlementStatus: settlement[0], settlementRefunded: settlement[1], settlementRetained: settlement[2],
     competitorId: competitor[0] || null, competitorStatus: competitor[1] || null,
     moneyAndStatePass, metadataPass,
