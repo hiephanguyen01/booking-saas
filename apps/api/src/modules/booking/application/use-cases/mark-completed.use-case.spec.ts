@@ -148,4 +148,14 @@ describe('MarkCompletedUseCase', () => {
 
     expect(transitions[0]).toMatchObject({ reason: 'partner confirmed service completion' });
   });
+
+  it('returns a conflict when a refunded booking is completed again', async () => {
+    const { useCase, events } = harness(booking({ status: 'refunded' }));
+
+    await expect(useCase.execute(ctx, BOOKING_ID, 600_000n)).rejects.toMatchObject({
+      code: 'INVALID_TRANSITION',
+      httpStatus: 409,
+    });
+    expect(events).toEqual([]);
+  });
 });

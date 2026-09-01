@@ -13,7 +13,10 @@ import {
 } from '../../domain/ports/booking-repository.port';
 import { SlotTakenError } from '../../domain/booking-errors';
 import { Booking } from '../../domain/entities/booking.entity';
-import { BookingNotFound } from '../../domain/errors/booking-domain-errors';
+import {
+  BookingNotFound,
+  BookingStateChanged,
+} from '../../domain/errors/booking-domain-errors';
 
 /**
  * Confirm a paid booking (§8.2 pending_payment → confirmed). Task 1.9's webhook
@@ -46,6 +49,9 @@ export class ConfirmBookingUseCase {
       // §8.2 row 665: a late webhook found the slot already taken — the confirm tx
       // rolled back untouched. Don't 500: refund the paid amount + notify (below).
       if (err instanceof SlotTakenError) return this.autoRefundSlotTaken(tenantId, bookingId);
+      if (err instanceof BookingStateChanged) {
+        return this.recoverConfirmationRace(tenantId, bookingId, err);
+      }
       throw err;
     }
   }
@@ -61,7 +67,7 @@ export class ConfirmBookingUseCase {
     const plan = Booking.rehydrate(booking).planConfirmation();
     // Outbox delivery is at-least-once. A later Finance handler may fail after
     // this handler already confirmed the booking, so retries must be harmless.
-    if (plan.kind === 'already_confirmed') return booking;
+    if (plan.kind !== 'transition') return booking;
 
     // Re-entering an active state re-checks the exclusion constraint — for an
     // expired→confirmed restore this throws SlotTakenError if the slot was taken.
@@ -98,6 +104,24 @@ export class ConfirmBookingUseCase {
   }
 
   /**
+   * A refund intent can win after the initial read but before the expired restore
+   * CAS. Re-read in a fresh transaction and accept only a state that no longer
+   * needs confirmation; every unrelated state race keeps the original failure.
+   */
+  private async recoverConfirmationRace(
+    tenantId: string,
+    bookingId: string,
+    cause: BookingStateChanged,
+  ): Promise<BookingRecord> {
+    return this.tenantDb.forTenant(tenantId, async (tx) => {
+      const booking = await this.bookings.findById(tx, bookingId);
+      if (!booking) throw new BookingNotFound();
+      if (Booking.rehydrate(booking).planConfirmation().kind !== 'transition') return booking;
+      throw cause;
+    });
+  }
+
+  /**
    * Slot taken during a late-webhook restore (§8.2 row 665): open a fresh tx (the
    * confirm tx is poisoned by the exclusion violation) and emit `booking.cancelled`
    * with a full refund — reusing the payments module's cancellation→refund handler
@@ -111,6 +135,13 @@ export class ConfirmBookingUseCase {
       this.logger.warn(
         `late webhook for booking ${bookingId}: slot taken — auto-refunding the service and security deposits`,
       );
+      const refundAmount = aggregate.lateSlotRefundAmount();
+      const refundPending = await this.bookings.recordRefundIntent(tx, {
+        id: bookingId,
+        expectedStatus: 'expired',
+        refundDueAmount: refundAmount,
+        refundPercent: 100,
+      });
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'booking.cancelled',
@@ -120,11 +151,11 @@ export class ConfirmBookingUseCase {
           // Checkout charged both amounts in one gateway transaction. Omitting
           // the security deposit here would leave customer money stranded after
           // a late webhook loses the slot.
-          refundAmount: aggregate.lateSlotRefundAmount().toString(),
+          refundAmount: refundAmount.toString(),
           refundPercent: 100,
         },
       });
-      return booking;
+      return refundPending;
     });
   }
 }

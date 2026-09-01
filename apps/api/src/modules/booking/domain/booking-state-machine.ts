@@ -1,4 +1,5 @@
 import type { BookingStatus } from '@booking/contracts';
+import { DomainError } from '../../../shared/domain/domain-error';
 
 /**
  * Booking state machine (TONG-QUAN.md §8.2 — the single source of truth). Every
@@ -8,13 +9,11 @@ import type { BookingStatus } from '@booking/contracts';
  */
 export type TransitionActor = 'customer' | 'partner' | 'tenant' | 'system';
 
-export class BookingTransitionError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'BookingTransitionError';
+export type BookingTransitionErrorCode = 'INVALID_TRANSITION' | 'FORBIDDEN_ACTOR';
+
+export class BookingTransitionError extends DomainError {
+  constructor(code: BookingTransitionErrorCode, message: string) {
+    super(code, code === 'FORBIDDEN_ACTOR' ? 403 : 409, message);
   }
 }
 

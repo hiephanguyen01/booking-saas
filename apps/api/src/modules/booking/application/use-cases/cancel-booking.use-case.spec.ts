@@ -210,6 +210,26 @@ describe('CancelBookingUseCase', () => {
     expect(events).toEqual([]);
   });
 
+  it('returns a conflict when a refunded booking is cancelled again', async () => {
+    const { useCase, events } = harness(booking({ status: 'refunded' }), hoursBeforeStart(48));
+
+    await expect(useCase.execute(TENANT_ID, BOOKING_ID, 'customer')).rejects.toMatchObject({
+      code: 'INVALID_TRANSITION',
+      httpStatus: 409,
+    });
+    expect(events).toEqual([]);
+  });
+
+  it('returns forbidden when an actor cannot perform the transition', async () => {
+    const { useCase, events } = harness(booking(), hoursBeforeStart(48));
+
+    await expect(useCase.execute(TENANT_ID, BOOKING_ID, 'system')).rejects.toMatchObject({
+      code: 'FORBIDDEN_ACTOR',
+      httpStatus: 403,
+    });
+    expect(events).toEqual([]);
+  });
+
   it('refunds nothing when the booking carries no policy snapshot', async () => {
     // An empty snapshot means no tier ever matches, which the policy helper reads
     // as 0% rather than as "unrestricted".

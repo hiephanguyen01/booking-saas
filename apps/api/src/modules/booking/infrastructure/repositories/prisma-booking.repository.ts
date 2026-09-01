@@ -14,6 +14,7 @@ import type {
   PartnerBookingStat,
   PartnerCalendarBooking,
   PartnerCalendarFilters,
+  RefundIntentParams,
   TenantBookingFilters,
   TransitionParams,
 } from '../../domain/ports/booking-repository.port';
@@ -281,9 +282,14 @@ export class PrismaBookingRepository implements IBookingRepository {
 
     let affected: number;
     try {
+      const refundIntentGuard = params.requireNoRefundIntent
+        ? Prisma.sql`AND refund_due_amount IS NULL`
+        : Prisma.empty;
       affected = await tx.$executeRaw(Prisma.sql`
         UPDATE bookings SET ${Prisma.join(sets)}
-        WHERE id = ${params.id}::uuid AND status = ${params.from}::booking_status`);
+        WHERE id = ${params.id}::uuid
+          AND status = ${params.from}::booking_status
+          ${refundIntentGuard}`);
     } catch (err) {
       if (isExclusionViolation(err)) throw new SlotTakenError();
       throw err;
@@ -299,6 +305,18 @@ export class PrismaBookingRepository implements IBookingRepository {
              ${params.actorId ?? null}::uuid, ${params.reason ?? null}
       FROM bookings WHERE id = ${params.id}::uuid`);
 
+    return this.byId(tx, params.id);
+  }
+
+  async recordRefundIntent(tx: PrismaTx, params: RefundIntentParams): Promise<BookingRecord> {
+    const affected = await tx.$executeRaw(Prisma.sql`
+      UPDATE bookings
+         SET refund_due_amount = ${params.refundDueAmount},
+             refund_percent = ${params.refundPercent},
+             updated_at = now()
+       WHERE id = ${params.id}::uuid
+         AND status = ${params.expectedStatus}::booking_status`);
+    if (affected === 0) throw new BookingStateChanged();
     return this.byId(tx, params.id);
   }
 

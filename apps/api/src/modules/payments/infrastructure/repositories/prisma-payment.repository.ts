@@ -364,7 +364,9 @@ export class PrismaPaymentRepository implements IPaymentRepository {
              p.status::text AS status,
              p.gateway_config_revision_id AS "gatewayConfigRevisionId",
              p.gateway_txn_id AS "gatewayTxnId", p.gateway_order_ref AS "gatewayOrderRef",
-             (b.status IN ('cancelled', 'refunded') OR EXISTS (
+             (b.status IN ('cancelled', 'refunded')
+              OR (b.status = 'expired' AND b.refund_due_amount > 0)
+              OR EXISTS (
                 SELECT 1 FROM refunds r
                 WHERE r.booking_id = b.id
                   AND r.refund_batch_id IS NULL
@@ -381,7 +383,9 @@ export class PrismaPaymentRepository implements IPaymentRepository {
       LEFT JOIN booking_settlements bs ON bs.payment_id = p.id
       WHERE p.status = 'succeeded'
         AND (
-          (b.status IN ('pending_payment', 'expired') AND NOT EXISTS (
+          (b.status IN ('pending_payment', 'expired')
+           AND NOT (b.status = 'expired' AND COALESCE(b.refund_due_amount, 0) > 0)
+           AND NOT EXISTS (
             SELECT 1 FROM refunds r
             WHERE r.booking_id = b.id
               AND r.refund_batch_id IS NULL
