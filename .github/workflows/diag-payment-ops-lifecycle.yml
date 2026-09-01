@@ -52,6 +52,11 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
 
     steps:
       - name: Checkout diagnostic branch
@@ -198,8 +203,8 @@ jobs:
           psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,code,status,final_amount,paid_amount,refund_percent from bookings order by created_at desc limit 30" || true
           psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,booking_id,gateway,kind,status,amount,captured_amount,gateway_txn_id,gateway_order_ref from payments order by created_at desc limit 40" || true
           psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,booking_id,payment_id,status,execution_mode,amount,reason,gateway_refund_id from refunds order by created_at desc limit 40" || true
-          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,booking_id,status,total_amount,requested_amount,succeeded_amount,failed_amount from refund_batches order by created_at desc limit 30" || true
-          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select booking_id,status,kind,held_amount,partner_payable,dispute_until from booking_settlements order by updated_at desc limit 30" || true
+          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select * from refund_batches order by created_at desc limit 30" || true
+          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select * from booking_settlements order by updated_at desc limit 30" || true
 
       - name: Upload diagnostic evidence
         if: always()
