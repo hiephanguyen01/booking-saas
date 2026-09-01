@@ -41,6 +41,7 @@ export interface BookingWriteState {
   discountAmount: bigint;
   depositAmount: bigint;
   paidAmount: bigint;
+  refundDueAmount?: bigint | null;
   securityDeposit: bigint;
   additionalCharges: unknown;
   cancellationPolicySnapshot: unknown;
@@ -58,6 +59,8 @@ export interface BookingTransitionIntent {
   paidAmount?: bigint;
   refundDueAmount?: bigint;
   refundPercent?: number;
+  /** CAS guard for expired restores: a persisted refund intent wins over confirmation. */
+  requireNoRefundIntent?: boolean;
 }
 
 /**
@@ -139,7 +142,7 @@ export class Booking {
   }
 
   planConfirmation():
-    | { kind: 'already_confirmed' }
+    | { kind: 'already_confirmed' | 'refund_pending' }
     | {
         kind: 'transition';
         intent: BookingTransitionIntent;
@@ -154,11 +157,15 @@ export class Booking {
     if (['confirmed', 'completed', 'no_show'].includes(this.state.status)) {
       return { kind: 'already_confirmed' };
     }
+    if (this.state.status === 'expired' && (this.state.refundDueAmount ?? 0n) > 0n) {
+      return { kind: 'refund_pending' };
+    }
     return {
       kind: 'transition',
       intent: this.transitionTo('confirmed', 'system', {
         expiresAt: null,
         paidAmount: this.state.depositAmount,
+        ...(this.state.status === 'expired' ? { requireNoRefundIntent: true } : {}),
       }),
       wasExpired: this.state.status === 'expired',
       promoReservation: this.state.promotionId

@@ -282,9 +282,14 @@ export class PrismaBookingRepository implements IBookingRepository {
 
     let affected: number;
     try {
+      const refundIntentGuard = params.requireNoRefundIntent
+        ? Prisma.sql`AND refund_due_amount IS NULL`
+        : Prisma.empty;
       affected = await tx.$executeRaw(Prisma.sql`
         UPDATE bookings SET ${Prisma.join(sets)}
-        WHERE id = ${params.id}::uuid AND status = ${params.from}::booking_status`);
+        WHERE id = ${params.id}::uuid
+          AND status = ${params.from}::booking_status
+          ${refundIntentGuard}`);
     } catch (err) {
       if (isExclusionViolation(err)) throw new SlotTakenError();
       throw err;

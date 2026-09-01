@@ -227,7 +227,7 @@ export class PrismaRefundRepository implements IRefundRepository {
                b.refund_due_amount AS amount, b.refund_percent AS "refundPercent",
                'booking_cancellation'::text AS reason, b.updated_at
         FROM bookings b
-        WHERE b.status IN ('cancelled', 'refunded')
+        WHERE b.status IN ('cancelled', 'refunded', 'expired')
           AND b.refund_due_amount > 0
           AND EXISTS (
             SELECT 1 FROM payments p

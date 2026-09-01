@@ -225,6 +225,7 @@ export interface TransitionParams {
   paidAmount?: bigint;
   refundDueAmount?: bigint;
   refundPercent?: number;
+  requireNoRefundIntent?: boolean;
 }
 
 export interface RefundIntentParams {

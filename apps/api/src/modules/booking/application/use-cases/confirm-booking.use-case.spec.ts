@@ -4,7 +4,10 @@ import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import type { ReservePromotionUseCase } from '../../../promotions/application/use-cases/reserve-promotion.use-case';
 import { PromoRejectionError } from '../../../promotions/domain/errors/promo-rejection-errors';
 import { SlotTakenError } from '../../domain/booking-errors';
-import { BookingNotFound } from '../../domain/errors/booking-domain-errors';
+import {
+  BookingNotFound,
+  BookingStateChanged,
+} from '../../domain/errors/booking-domain-errors';
 import type {
   BookingRecord,
   IBookingRepository,
@@ -53,6 +56,8 @@ interface Options {
   /** The record the auto-refund path re-reads in its own transaction. */
   secondRead?: BookingRecord | null;
   refundIntentError?: Error;
+  /** Simulates a refund intent winning after the use case read but before its confirm CAS. */
+  refundIntentRace?: boolean;
 }
 
 interface Harness {
@@ -89,6 +94,9 @@ function harness(options: Options = {}): Harness {
     },
     applyTransition: (_tx, params) => {
       transitions.push(params);
+      if (options.refundIntentRace && params.requireNoRefundIntent) {
+        throw new BookingStateChanged();
+      }
       if (options.transitionError) throw options.transitionError;
       return Promise.resolve({ ...booking(), ...params, code: CODE } as unknown as BookingRecord);
     },
@@ -205,6 +213,36 @@ describe('ConfirmBookingUseCase', () => {
     await useCase.execute(TENANT_ID, BOOKING_ID);
 
     expect(reservations).toEqual([]);
+  });
+
+  it('does not reconfirm an expired booking with a durable refund intent', async () => {
+    const refundPending = booking({
+      status: 'expired',
+      refundDueAmount: DEPOSIT + SECURITY_DEPOSIT,
+      refundPercent: 100,
+    });
+    const { useCase, transitions, events } = harness({ record: refundPending });
+
+    await expect(useCase.execute(TENANT_ID, BOOKING_ID)).resolves.toBe(refundPending);
+    expect(transitions).toEqual([]);
+    expect(events).toEqual([]);
+  });
+
+  it('does not reconfirm when a refund intent wins the expired confirmation race', async () => {
+    const refundPending = booking({
+      status: 'expired',
+      refundDueAmount: DEPOSIT + SECURITY_DEPOSIT,
+      refundPercent: 100,
+    });
+    const { useCase, tenantDb, events } = harness({
+      record: booking({ status: 'expired' }),
+      secondRead: refundPending,
+      refundIntentRace: true,
+    });
+
+    await expect(useCase.execute(TENANT_ID, BOOKING_ID)).resolves.toBe(refundPending);
+    expect(tenantDb.openedFor).toEqual([TENANT_ID, TENANT_ID]);
+    expect(events).toEqual([]);
   });
 
   it('confirms anyway when the promotion is now exhausted', async () => {
