@@ -33,11 +33,11 @@ const headers = { cookie, 'x-tenant-id': TENANT_ID, 'x-partner-id': HOUSE_ID };
 const findings = { lateRefund: {}, guards: {} };
 let failed = false;
 
-// Re-observe scenario 13 from the same lifecycle run. It is the completed cancellation refund
-// whose booking reached refunded but did not persist the normal cancellation snapshot metadata.
-const lateId = sql(`select b.id from bookings b join refund_batches rb on rb.booking_id=b.id where b.status='refunded' and b.refund_percent is null and rb.reason='booking_cancellation' and rb.status='completed' order by rb.created_at desc limit 1`);
+// Re-observe scenario 13 from the same lifecycle run. Its diagnostic idempotency
+// label remains stable whether refund metadata is missing or correctly persisted.
+const lateId = sql(`select b.id from bookings b join refund_batches rb on rb.booking_id=b.id where b.status='refunded' and b.idempotency_key like 'ops-late-original-%' and rb.reason='booking_cancellation' and rb.status='completed' order by rb.created_at desc limit 1`);
 if (!lateId) {
-  findings.lateRefund = { passed: false, reason: 'late refunded booking with null refund_percent not found' };
+  findings.lateRefund = { passed: false, reason: 'late refunded diagnostic booking not found' };
   failed = true;
 } else {
   const booking = sql(`select status::text||'|'||paid_amount::text||'|'||coalesce(refund_due_amount::text,'')||'|'||coalesce(refund_percent::text,'') from bookings where id=${q(lateId)}`).split('|');
@@ -69,7 +69,7 @@ for (const [name, path, body] of [
 ]) {
   const res = await raw(path, { method:'POST', headers, body });
   findings.guards[name] = { status: res.status, body: res.json ?? res.text };
-  if (![400,409,422].includes(res.status)) failed = true;
+  if (res.status !== 409) failed = true;
 }
 findings.guards.terminalBookingId = terminalId;
 findings.guards.finalStatus = sql(`select status::text from bookings where id=${q(terminalId)}`);

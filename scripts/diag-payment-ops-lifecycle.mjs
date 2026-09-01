@@ -521,8 +521,8 @@ await scenario('G1 repeated cancel/no-show/complete guards reject invalid transi
     [`/partner/bookings/${id}/no-show`, { reason: 'repeat' }],
     [`/partner/bookings/${id}/complete`, { onsiteCollectedAmount: '0', note: 'repeat' }],
   ]) {
-    const res = await request(path, { method: 'POST', headers: partnerHeaders(), body, expected: [400, 409, 422] });
-    assert(res.status >= 400, `${path} unexpectedly accepted invalid transition`);
+    const res = await request(path, { method: 'POST', headers: partnerHeaders(), body, expected: [409] });
+    eq(res.status, 409, `${path} invalid transition status`);
   }
   eq(sql(`select status::text from bookings where id=${q(id)}`), 'refunded', 'terminal status preserved');
 });
