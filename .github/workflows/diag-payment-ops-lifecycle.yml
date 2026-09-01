@@ -1,0 +1,212 @@
+name: Payment Ops Lifecycle Smoke
+
+on:
+  push:
+    branches:
+      - diag/payment-ops-lifecycle-main-10803f1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MAIN_COMMIT: 10803f184172d0878eca9eb9657bc904a2e717da
+  MIGRATE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/booking
+  DATABASE_URL: postgresql://app_user:app_user_dev_pw@127.0.0.1:5432/booking
+  ADMIN_DATABASE_URL: postgresql://app_admin:app_admin_dev_pw@127.0.0.1:5432/booking
+  REDIS_URL: redis://127.0.0.1:6379
+  PAYMENTS_ENC_KEY: payment-ops-runtime-key-change-me
+  MOCK_WEBHOOK_SECRET: payment-ops-mock-secret
+  ALLOW_MOCK_PAYMENTS: 'true'
+  NODE_ENV: development
+  PUBLIC_API_URL: http://127.0.0.1:3000
+  NODE_TLS_REJECT_UNAUTHORIZED: '0'
+  ZALO_KEY2: diagnostic-zalopay-key2-0123456789
+
+jobs:
+  lifecycle-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: booking
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Checkout diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify product baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "diagnostic_head=$(git rev-parse HEAD)"
+          echo "main_baseline=$MAIN_COMMIT"
+          git cat-file -e "$MAIN_COMMIT^{commit}"
+          git merge-base --is-ancestor "$MAIN_COMMIT" HEAD
+          mapfile -t changed < <(git diff --name-only "$MAIN_COMMIT"...HEAD)
+          printf 'diagnostic_changed=%s\n' "${changed[*]}"
+          for f in "${changed[@]}"; do
+            case "$f" in
+              .github/workflows/diag-payment-ops-lifecycle.yml|scripts/diag-payment-ops-lifecycle.mjs|scripts/diag-fake-zalopay-provider.mjs) ;;
+              *) echo "Unexpected product-tree change: $f" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+
+      - name: Install, migrate, seed, build API
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          cp .env.example .env
+          pnpm --filter=@booking/api prisma:deploy
+          pnpm --filter=@booking/api prisma:generate
+          pnpm --filter=@booking/api seed
+          pnpm turbo run build --filter=@booking/api...
+
+      - name: Prepare disposable StudioHub house-partner fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          psqlq() { psql "$MIGRATE_DATABASE_URL" -Atq -v ON_ERROR_STOP=1 "$@"; }
+
+          TENANT_ID=$(psqlq -c "select id from tenants where slug='studiohub' limit 1")
+          HOUSE_ID=$(psqlq -c "select id from partners where tenant_id='$TENANT_ID' and slug='studiohub-house' limit 1")
+          OWNER_ID=$(psqlq -c "select id from users where email='owner@studiohub.vn' limit 1")
+          PARTNER_ROLE_ID=$(psqlq -c "select id from roles where name='Partner Owner' and scope_level='partner' limit 1")
+          test -n "$TENANT_ID"; test -n "$HOUSE_ID"; test -n "$OWNER_ID"; test -n "$PARTNER_ROLE_ID"
+
+          LISTING_ID=$(psqlq -c "select l.id from listings l where l.tenant_id='$TENANT_ID' and l.status='published' and 'hourly'=any(l.booking_modes) and not exists (select 1 from bookings b where b.listing_id=l.id) order by l.created_at asc limit 1")
+          test -n "$LISTING_ID"
+          RESOURCE_ID=$(psqlq -c "select resource_id from listings where id='$LISTING_ID'")
+          LISTING_SLUG=$(psqlq -c "select slug from listings where id='$LISTING_ID'")
+          test -n "$RESOURCE_ID"; test -n "$LISTING_SLUG"
+          test "$(psqlq -c "select count(*) from bookings where listing_id='$LISTING_ID'")" = 0
+
+          psqlq -c "update listings set partner_id='$HOUSE_ID' where id='$LISTING_ID'; update resources set partner_id='$HOUSE_ID' where id='$RESOURCE_ID';"
+          psqlq -c "insert into partner_members (id,tenant_id,partner_id,user_id,created_at) select gen_random_uuid(),'$TENANT_ID','$HOUSE_ID','$OWNER_ID',now() where not exists (select 1 from partner_members where partner_id='$HOUSE_ID' and user_id='$OWNER_ID')"
+          psqlq -c "insert into role_assignments (id,user_id,role_id,tenant_id,partner_id) select gen_random_uuid(),'$OWNER_ID','$PARTNER_ROLE_ID','$TENANT_ID','$HOUSE_ID' where not exists (select 1 from role_assignments where user_id='$OWNER_ID' and role_id='$PARTNER_ROLE_ID' and tenant_id='$TENANT_ID' and partner_id='$HOUSE_ID')"
+
+          PARTNER_TERMS_VERSION=$(psqlq -c "select current_version_id from legal_documents where tenant_id='$TENANT_ID' and doc_type='partner_terms' limit 1")
+          test -n "$PARTNER_TERMS_VERSION"
+          VERSION_NO=$(psqlq -c "select version_no from legal_document_versions where id='$PARTNER_TERMS_VERSION' limit 1")
+          psqlq -c "insert into agreement_acceptances (id,tenant_id,user_id,partner_id,agreement_type,version,accepted_at,document_version_id,accepted_locale) select gen_random_uuid(),'$TENANT_ID','$OWNER_ID','$HOUSE_ID','partner_terms','$VERSION_NO',now(),'$PARTNER_TERMS_VERSION','vi' where not exists (select 1 from agreement_acceptances where tenant_id='$TENANT_ID' and user_id='$OWNER_ID' and partner_id='$HOUSE_ID' and agreement_type='partner_terms' and document_version_id='$PARTNER_TERMS_VERSION')"
+
+          CONFIG_ID=$(psqlq -c "select gen_random_uuid()")
+          psqlq -c "update tenant_gateway_configs set is_active=false,updated_at=now() where tenant_id='$TENANT_ID' and gateway='mock' and is_active=true"
+          psqlq -c "insert into tenant_gateway_configs (id,tenant_id,gateway,credentials,settings,is_active,environment,created_at,updated_at) values ('$CONFIG_ID','$TENANT_ID','mock','{}'::jsonb,'{\"enabledMethods\":[\"bank_transfer\"],\"refundStrategy\":\"manual\",\"manualRefundSlaHours\":72}'::jsonb,true,'sandbox',now(),now())"
+          psqlq -c "insert into tenant_payment_method_routes (id,tenant_id,method,gateway,enabled,created_at,updated_at) values (gen_random_uuid(),'$TENANT_ID','bank_transfer','mock',true,now(),now()) on conflict (tenant_id,method) do update set gateway=excluded.gateway,enabled=true,updated_at=now()"
+
+          echo "TENANT_ID=$TENANT_ID" >> "$GITHUB_ENV"
+          echo "HOUSE_ID=$HOUSE_ID" >> "$GITHUB_ENV"
+          echo "LISTING_ID=$LISTING_ID" >> "$GITHUB_ENV"
+          echo "LISTING_SLUG=$LISTING_SLUG" >> "$GITHUB_ENV"
+          echo "fixture tenant=$TENANT_ID house=$HOUSE_ID listing=$LISTING_ID slug=$LISTING_SLUG"
+
+      - name: Start local fake ZaloPay sandbox provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /tmp/fake-zalo.key \
+            -out /tmp/fake-zalo.crt \
+            -days 1 \
+            -subj '/CN=sb-openapi.zalopay.vn' \
+            -addext 'subjectAltName=DNS:sb-openapi.zalopay.vn' >/tmp/openssl.log 2>&1
+          echo '127.0.0.1 sb-openapi.zalopay.vn' | sudo tee -a /etc/hosts
+          echo success >/tmp/zalo-refund-mode
+          sudo -E "$(command -v node)" scripts/diag-fake-zalopay-provider.mjs >/tmp/fake-zalo.log 2>&1 &
+          echo $! >/tmp/fake-zalo.pid
+          for i in $(seq 1 30); do
+            if curl -ksS -H 'content-type: application/json' --data '{}' https://sb-openapi.zalopay.vn/v2/query >/tmp/fake-zalo-health.json 2>/dev/null; then
+              cat /tmp/fake-zalo-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/fake-zalo.log
+          exit 1
+
+      - name: Start API
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter=@booking/api start >/tmp/payment-ops-api.log 2>&1 &
+          echo $! >/tmp/payment-ops-api.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/health/ready >/tmp/ready.json 2>/dev/null; then
+              cat /tmp/ready.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/payment-ops-api.log
+          exit 1
+
+      - name: Run 15-state payment operations lifecycle
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/diag-payment-ops-lifecycle.mjs 2>&1 | tee /tmp/payment-ops-lifecycle.log
+
+      - name: Show diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '=== lifecycle ==='
+          cat /tmp/payment-ops-lifecycle.log 2>/dev/null || true
+          echo '=== API ==='
+          tail -n 500 /tmp/payment-ops-api.log 2>/dev/null || true
+          echo '=== fake ZaloPay ==='
+          tail -n 500 /tmp/fake-zalo.log 2>/dev/null || true
+          echo '=== current booking/payment/refund state ==='
+          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,code,status,final_amount,paid_amount,refund_percent from bookings order by created_at desc limit 30" || true
+          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,booking_id,gateway,kind,status,amount,captured_amount,gateway_txn_id,gateway_order_ref from payments order by created_at desc limit 40" || true
+          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,booking_id,payment_id,status,execution_mode,amount,reason,gateway_refund_id from refunds order by created_at desc limit 40" || true
+          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select id,booking_id,status,total_amount,requested_amount,succeeded_amount,failed_amount from refund_batches order by created_at desc limit 30" || true
+          psql "$MIGRATE_DATABASE_URL" -P pager=off -c "select booking_id,status,kind,held_amount,partner_payable,dispute_until from booking_settlements order by updated_at desc limit 30" || true
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payment-ops-lifecycle-evidence
+          path: |
+            /tmp/payment-ops-results.json
+            /tmp/payment-ops-lifecycle.log
+            /tmp/payment-ops-api.log
+            /tmp/fake-zalo.log
+          if-no-files-found: ignore
+          retention-days: 1
