@@ -36,7 +36,44 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Capture the current staging API image as a local rollback tag
+        uses: appleboy/ssh-action@v1
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          APP: ${{ inputs.app }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: ENVIRONMENT,APP
+          script_stop: true
+          script: |
+            set -euo pipefail
+            test "$ENVIRONMENT" = "stg"
+            test "$APP" = "api"
+            cd "${{ secrets.DEPLOY_PATH }}"
+
+            ENV_FILE=".env.${ENVIRONMENT}"
+            COMPOSE="docker compose --env-file ${ENV_FILE} -f docker-compose.deploy.yml -f docker-compose.stg-data.yml"
+            container_id=$($COMPOSE ps -q api)
+            test -n "$container_id"
+
+            running_ref=$(docker inspect --format '{{.Config.Image}}' "$container_id")
+            running_image_id=$(docker inspect --format '{{.Image}}' "$container_id")
+            rollback_tag="bookingos/api:rollback-pre-b4a01c9-${{ github.run_id }}"
+
+            docker image tag "$running_image_id" "$rollback_tag"
+            rollback_image_id=$(docker image inspect --format '{{.Id}}' "$rollback_tag")
+            test "$rollback_image_id" = "$running_image_id"
+
+            echo "::notice title=Staging API rollback::tag=${rollback_tag} source_ref=${running_ref} image_id=${running_image_id}"
+
   build:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
