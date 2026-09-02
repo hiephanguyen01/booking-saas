@@ -226,6 +226,16 @@ jobs:
             case "$APP" in
               all)        $COMPOSE up -d ;;
               frontends)  $COMPOSE up -d storefront dashboard ;;
+              api)
+                if [ "$MIGRATE" = "false" ]; then
+                  # The API declares migrate as a depends_on service. Without
+                  # --no-deps, Compose starts it even though the explicit
+                  # migration step above was deliberately skipped.
+                  $COMPOSE up -d --no-deps api
+                else
+                  $COMPOSE up -d api
+                fi
+                ;;
               *)          $COMPOSE up -d "$APP" ;;
             esac
 
