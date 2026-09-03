@@ -250,7 +250,7 @@ jobs:
               # running and holding its published ports. (`compose rm nginx` cannot
               # do this: the service no longer exists to name.)
               echo "recreating edge: caddy"
-              $COMPOSE up -d --remove-orphans --force-recreate caddy
+              $COMPOSE up -d --no-deps --remove-orphans --force-recreate caddy
               echo "$CONFIG_SUM" > .deploy-config.sha
             fi
 
