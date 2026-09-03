@@ -3,9 +3,13 @@ import type { GatewayPaymentSettings } from '@booking/contracts';
 import { fakeCollaborator, fakePort, fakeTenantDb, fakeTx } from '~testing';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
+import type { IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import type { PaymentGatewayPort } from '../../domain/ports/payment-gateway.port';
 import type { IPaymentRepository, PaymentRecord } from '../../domain/ports/payment-repository.port';
-import type { IRefundBatchRepository, RefundBatchRecord } from '../../domain/ports/refund-batch-repository.port';
+import type {
+  IRefundBatchRepository,
+  RefundBatchRecord,
+} from '../../domain/ports/refund-batch-repository.port';
 import type {
   CreateRefundData,
   IRefundRepository,
@@ -71,6 +75,7 @@ interface Options {
   existing?: boolean;
   succeeded?: PaymentRecord | null;
   settings?: GatewayPaymentSettings | null;
+  manualRefundV2Enabled?: boolean;
 }
 
 interface Harness {
@@ -80,6 +85,7 @@ interface Harness {
   readonly created: CreateRefundData[];
   readonly events: Array<{ eventType: string; payload: Record<string, unknown> }>;
   readonly resolvedPayments: string[];
+  readonly initializedOperations: string[];
 }
 
 function registryFor(options: Options, resolvedPayments: string[]): GatewayRegistryPort {
@@ -102,6 +108,7 @@ function harness(options: Options = {}): Harness {
   const created: CreateRefundData[] = [];
   const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   const resolvedPayments: string[] = [];
+  const initializedOperations: string[] = [];
 
   const tx = fakeTx({
     outboxEvent: {
@@ -132,7 +139,20 @@ function harness(options: Options = {}): Harness {
       return Promise.resolve(options.existing ? batch({ reason }) : null);
     },
     create: (_tx, tenantId, data) => Promise.resolve(batch({ tenantId, ...data })),
-    refreshStatus: () => Promise.resolve(null),
+    refreshStatus: () =>
+      Promise.resolve({
+        batch: batch({
+          status: options.settings === AUTOMATIC ? 'processing' : 'manual_required',
+        }),
+        transitionedToCompleted: false,
+      }),
+  });
+  const manualRefundOperations = fakePort<IManualRefundOperationRepository>({
+    isWorkflowEnabled: () => Promise.resolve(options.manualRefundV2Enabled ?? false),
+    createForBatch: (_tx, tenantId, refundBatchId) => {
+      initializedOperations.push(`${tenantId}:${refundBatchId}`);
+      return Promise.resolve();
+    },
   });
   const payments = fakePort<IPaymentRepository>({
     findSucceededRefundSources: () => {
@@ -151,6 +171,7 @@ function harness(options: Options = {}): Harness {
       payments,
       refundBatches,
       refunds,
+      manualRefundOperations,
       registryFor(options, resolvedPayments),
       tenantDb.service,
       new OutboxService(),
@@ -160,6 +181,7 @@ function harness(options: Options = {}): Harness {
     created,
     events,
     resolvedPayments,
+    initializedOperations,
   };
 }
 
@@ -203,7 +225,11 @@ describe('ExecuteRefundUseCase', () => {
       lockForBooking: () => Promise.resolve(),
       reservedAmountForPayment: () => Promise.resolve(0n),
       create: (_tx, _tenantId, data) =>
-        Promise.resolve({ id: 'refund-1', refundBatchId: null, ...data } as unknown as RefundRecord),
+        Promise.resolve({
+          id: 'refund-1',
+          refundBatchId: null,
+          ...data,
+        } as unknown as RefundRecord),
     });
     const resolvedPayments: string[] = [];
     const useCase = new ExecuteRefundUseCase(
@@ -213,6 +239,10 @@ describe('ExecuteRefundUseCase', () => {
       }),
       refundBatches,
       refunds,
+      fakePort<IManualRefundOperationRepository>({
+        isWorkflowEnabled: () => Promise.resolve(false),
+        createForBatch: () => Promise.resolve(),
+      }),
       registryFor({}, resolvedPayments),
       tenantDb.service,
       new OutboxService(),
@@ -241,6 +271,15 @@ describe('ExecuteRefundUseCase', () => {
     await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n);
     expect(created[0]).toMatchObject({ executionMode: 'manual', status: 'manual_required' });
     expect(events[0]?.eventType).toBe('refund.requested');
+  });
+
+  it('initializes the batch-level operation for an opted-in manual refund', async () => {
+    const { useCase, initializedOperations } = harness({
+      settings: MANUAL,
+      manualRefundV2Enabled: true,
+    });
+    await useCase.execute(TENANT_ID, BOOKING_ID, 100_000n);
+    expect(initializedOperations).toEqual([`${TENANT_ID}:refund-batch-1`]);
   });
 
   it('requests automatic execution for a wallet gateway', async () => {

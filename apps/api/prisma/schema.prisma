@@ -385,6 +385,25 @@ enum RefundBatchStatus {
   @@map("refund_batch_status")
 }
 
+enum ManualRefundOperationStatus {
+  awaiting_details
+  verification_required
+  correction_required
+  ready_for_transfer
+  transfer_submitted
+  transfer_rejected
+  completed
+
+  @@map("manual_refund_operation_status")
+}
+
+enum ManualRefundCustomerAcknowledgement {
+  received
+  not_received
+
+  @@map("manual_refund_customer_acknowledgement")
+}
+
 enum GatewayEnvironment {
   sandbox
   production
@@ -840,6 +859,7 @@ model Tenant {
   bookings                  Booking[]
   payments                  Payment[]
   refundBatches             RefundBatch[]
+  manualRefundOperations    ManualRefundOperation[]
   gatewayConfigs            TenantGatewayConfig[]
   commissionRules           CommissionRule[]
   ledgerAccounts            LedgerAccount[]
@@ -1955,10 +1975,68 @@ model RefundBatch {
   tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   refunds Refund[]
+  manualRefundOperation ManualRefundOperation?
 
   @@unique([tenantId, bookingId, reason])
   @@index([tenantId, status, updatedAt])
   @@map("refund_batches")
+}
+
+/// Provider-neutral, maker-checker manual refund workflow. One operation owns
+/// the customer destination and transfer evidence for the entire RefundBatch.
+model ManualRefundOperation {
+  id                              String                               @id @default(uuid(7)) @db.Uuid
+  tenantId                        String                               @map("tenant_id") @db.Uuid
+  refundBatchId                   String                               @unique @map("refund_batch_id") @db.Uuid
+  status                          ManualRefundOperationStatus          @default(awaiting_details)
+  version                         Int                                  @default(1)
+  destinationBankCode             String?                              @map("destination_bank_code")
+  destinationAccountName          String?                              @map("destination_account_name")
+  destinationAccountLast4         String?                              @map("destination_account_last4")
+  destinationAccountCiphertext    String?                              @map("destination_account_ciphertext")
+  destinationEncryptionKeyVersion String?                              @map("destination_encryption_key_version")
+  destinationAccountFingerprint   String?                              @map("destination_account_fingerprint")
+  destinationIsThirdParty         Boolean                              @default(false) @map("destination_is_third_party")
+  destinationConsentAt            DateTime?                            @map("destination_consent_at") @db.Timestamptz(6)
+  destinationSubmittedAt          DateTime?                            @map("destination_submitted_at") @db.Timestamptz(6)
+  verificationResult              String?                              @map("verification_result")
+  verificationMethod              String?                              @map("verification_method")
+  verifiedByUserId                String?                              @map("verified_by_user_id") @db.Uuid
+  verifiedAt                      DateTime?                            @map("verified_at") @db.Timestamptz(6)
+  makerUserId                     String?                              @map("maker_user_id") @db.Uuid
+  claimedAt                       DateTime?                            @map("claimed_at") @db.Timestamptz(6)
+  transferReference               String?                              @map("transfer_reference")
+  transferReferenceNormalized     String?                              @map("transfer_reference_normalized")
+  evidenceObjectKey               String?                              @map("evidence_object_key")
+  evidenceContentType             String?                              @map("evidence_content_type")
+  evidenceSizeBytes               Int?                                 @map("evidence_size_bytes")
+  evidenceSha256                  String?                              @map("evidence_sha256")
+  evidenceVerifiedAt              DateTime?                            @map("evidence_verified_at") @db.Timestamptz(6)
+  transferSubmittedByUserId       String?                              @map("transfer_submitted_by_user_id") @db.Uuid
+  transferSubmittedAt             DateTime?                            @map("transfer_submitted_at") @db.Timestamptz(6)
+  checkedByUserId                 String?                              @map("checked_by_user_id") @db.Uuid
+  checkedAt                       DateTime?                            @map("checked_at") @db.Timestamptz(6)
+  rejectionReason                 String?                              @map("rejection_reason")
+  readyAt                         DateTime?                            @map("ready_at") @db.Timestamptz(6)
+  transferDueAt                   DateTime?                            @map("transfer_due_at") @db.Timestamptz(6)
+  completedAt                     DateTime?                            @map("completed_at") @db.Timestamptz(6)
+  customerAcknowledgement         ManualRefundCustomerAcknowledgement? @map("customer_acknowledgement")
+  customerAcknowledgedAt          DateTime?                            @map("customer_acknowledged_at") @db.Timestamptz(6)
+  customerAcknowledgementNote     String?                              @map("customer_acknowledgement_note")
+  ciphertextPurgedAt              DateTime?                            @map("ciphertext_purged_at") @db.Timestamptz(6)
+  breakGlassByUserId              String?                              @map("break_glass_by_user_id") @db.Uuid
+  breakGlassReason                String?                              @map("break_glass_reason")
+  breakGlassAt                    DateTime?                            @map("break_glass_at") @db.Timestamptz(6)
+  createdAt                       DateTime                             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                       DateTime                             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refundBatch RefundBatch @relation(fields: [refundBatchId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, makerUserId, status])
+  @@index([tenantId, transferDueAt])
+  @@map("manual_refund_operations")
 }
 
 /// Per-tenant gateway credentials — credentials jsonb is AES-256-GCM encrypted at

@@ -15,6 +15,10 @@ import {
   type IRefundRepository,
 } from '../../domain/ports/refund-repository.port';
 import {
+  MANUAL_REFUND_OPERATION_REPOSITORY,
+  type IManualRefundOperationRepository,
+} from '../../domain/ports/manual-refund-operation-repository.port';
+import {
   GATEWAY_REGISTRY,
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
@@ -36,6 +40,8 @@ export class ExecuteRefundUseCase {
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(REFUND_BATCH_REPOSITORY) private readonly refundBatches: IRefundBatchRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
+    @Inject(MANUAL_REFUND_OPERATION_REPOSITORY)
+    private readonly manualRefundOperations: IManualRefundOperationRepository,
     @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
@@ -80,7 +86,8 @@ export class ExecuteRefundUseCase {
 
       for (const allocation of allocations) {
         const payment = sourcesById.get(allocation.paymentId);
-        if (!payment) throw new Error(`Refund allocation source ${allocation.paymentId} disappeared`);
+        if (!payment)
+          throw new Error(`Refund allocation source ${allocation.paymentId} disappeared`);
 
         // A complete Payment snapshot is authoritative. Only legacy Payments with
         // no policy snapshot consult their exact immutable gateway config revision.
@@ -129,7 +136,13 @@ export class ExecuteRefundUseCase {
 
       // Initial manual children must make a mixed/manual batch visible as
       // manual_required immediately; all-automatic batches remain processing.
-      await this.refundBatches.refreshStatus(tx, batch.id);
+      const refreshed = await this.refundBatches.refreshStatus(tx, batch.id);
+      if (
+        refreshed?.batch.status === 'manual_required' &&
+        (await this.manualRefundOperations.isWorkflowEnabled(tx, tenantId))
+      ) {
+        await this.manualRefundOperations.createForBatch(tx, tenantId, batch.id);
+      }
     });
   }
 

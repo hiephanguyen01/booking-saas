@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { paginationQuerySchema } from './common';
+import { paginatedSchema, paginationQuerySchema } from './common';
 
 export const gatewayKeySchema = z.enum(['sepay', 'payos', 'momo', 'zalopay', 'mock']);
 export type GatewayKey = z.infer<typeof gatewayKeySchema>;
@@ -380,3 +380,215 @@ export const refundHistoryItemSchema = refundResponseSchema.extend({
   createdAt: z.string(),
 });
 export type RefundHistoryItem = z.infer<typeof refundHistoryItemSchema>;
+
+// ── Batch-level manual refund workflow ─────────────────────────────────────
+
+export const manualRefundOperationStatusSchema = z.enum([
+  'awaiting_details',
+  'verification_required',
+  'correction_required',
+  'ready_for_transfer',
+  'transfer_submitted',
+  'transfer_rejected',
+  'completed',
+]);
+export type ManualRefundOperationStatus = z.infer<typeof manualRefundOperationStatusSchema>;
+
+export const manualRefundAccountVerificationResultSchema = z.enum([
+  'matched',
+  'mismatch',
+  'unsupported',
+  'error',
+]);
+export type ManualRefundAccountVerificationResult = z.infer<
+  typeof manualRefundAccountVerificationResultSchema
+>;
+
+export const maskedManualRefundDestinationSchema = z
+  .object({
+    bankCode: z.string().min(2).max(20),
+    accountNameMasked: z.string().min(1).max(200),
+    accountNumberLast4: z.string().regex(/^\d{4}$/),
+    isThirdParty: z.boolean(),
+    consentRecordedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type MaskedManualRefundDestination = z.infer<typeof maskedManualRefundDestinationSchema>;
+
+export const submitManualRefundDestinationInputSchema = z
+  .object({
+    bankCode: z
+      .string()
+      .trim()
+      .min(2)
+      .max(20)
+      .regex(/^[A-Z0-9_-]+$/),
+    accountNumber: z
+      .string()
+      .trim()
+      .regex(/^\d{4,34}$/, 'Số tài khoản không hợp lệ'),
+    accountName: z.string().trim().min(2).max(200),
+    isThirdParty: z.boolean().default(false),
+    thirdPartyConsent: z.boolean().default(false),
+    expectedVersion: z.number().int().positive(),
+  })
+  .strict()
+  .superRefine((input, ctx) => {
+    if (input.isThirdParty && !input.thirdPartyConsent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['thirdPartyConsent'],
+        message: 'Phải xác nhận sự đồng ý khi dùng tài khoản của người khác',
+      });
+    }
+  });
+export type SubmitManualRefundDestinationInput = z.infer<
+  typeof submitManualRefundDestinationInputSchema
+>;
+
+export const verifyManualRefundDestinationInputSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    outcome: z.literal('matched'),
+    note: z.string().trim().min(3).max(1000),
+  })
+  .strict();
+export type VerifyManualRefundDestinationInput = z.infer<
+  typeof verifyManualRefundDestinationInputSchema
+>;
+
+export const claimManualRefundInputSchema = z
+  .object({ expectedVersion: z.number().int().positive() })
+  .strict();
+export type ClaimManualRefundInput = z.infer<typeof claimManualRefundInputSchema>;
+
+export const reassignManualRefundInputSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    makerUserId: z.string().uuid(),
+    reason: z.string().trim().min(3).max(1000),
+  })
+  .strict();
+export type ReassignManualRefundInput = z.infer<typeof reassignManualRefundInputSchema>;
+
+export const submitManualRefundTransferInputSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    reference: z.string().trim().min(1).max(200),
+    evidenceObjectKey: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type SubmitManualRefundTransferInput = z.infer<typeof submitManualRefundTransferInputSchema>;
+
+export const approveManualRefundInputSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    note: z.string().trim().max(1000).optional(),
+  })
+  .strict();
+export type ApproveManualRefundInput = z.infer<typeof approveManualRefundInputSchema>;
+
+export const rejectManualRefundInputSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    reason: z.string().trim().min(3).max(1000),
+  })
+  .strict();
+export type RejectManualRefundInput = z.infer<typeof rejectManualRefundInputSchema>;
+
+export const reopenManualRefundInputSchema = rejectManualRefundInputSchema;
+export type ReopenManualRefundInput = z.infer<typeof reopenManualRefundInputSchema>;
+
+export const manualRefundCustomerAcknowledgementSchema = z.enum(['received', 'not_received']);
+export const acknowledgeManualRefundInputSchema = z
+  .object({
+    acknowledgement: manualRefundCustomerAcknowledgementSchema,
+    note: z.string().trim().max(1000).optional(),
+    expectedVersion: z.number().int().positive(),
+  })
+  .strict();
+export type AcknowledgeManualRefundInput = z.infer<typeof acknowledgeManualRefundInputSchema>;
+
+export const manualRefundBreakGlassInputSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    reason: z.string().trim().min(10).max(1000),
+    confirmation: z.literal('BREAK_GLASS'),
+  })
+  .strict();
+export type ManualRefundBreakGlassInput = z.infer<typeof manualRefundBreakGlassInputSchema>;
+
+export const manualRefundStatusResponseSchema = z
+  .object({
+    id: z.string().uuid(),
+    refundBatchId: z.string().uuid(),
+    bookingId: z.string().uuid(),
+    bookingCode: z.string(),
+    amount: z.string().regex(/^\d+$/),
+    status: manualRefundOperationStatusSchema,
+    version: z.number().int().positive(),
+    destination: maskedManualRefundDestinationSchema.nullable(),
+    verificationResult: manualRefundAccountVerificationResultSchema.nullable(),
+    transferDueAt: z.string().datetime().nullable(),
+    transferSubmittedAt: z.string().datetime().nullable(),
+    completedAt: z.string().datetime().nullable(),
+    customerAcknowledgement: manualRefundCustomerAcknowledgementSchema.nullable(),
+    customerAcknowledgedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type ManualRefundStatusResponse = z.infer<typeof manualRefundStatusResponseSchema>;
+
+export const manualRefundListQuerySchema = paginationQuerySchema.extend({
+  status: manualRefundOperationStatusSchema.optional(),
+  search: z.string().trim().max(100).optional(),
+  overdue: z
+    .preprocess(
+      (value) => (value === 'true' ? true : value === 'false' ? false : value),
+      z.boolean(),
+    )
+    .optional(),
+});
+export type ManualRefundListQuery = z.infer<typeof manualRefundListQuerySchema>;
+
+export const manualRefundListItemSchema = manualRefundStatusResponseSchema
+  .omit({ customerAcknowledgement: true, customerAcknowledgedAt: true })
+  .extend({
+    makerUserId: z.string().uuid().nullable(),
+    claimedAt: z.string().datetime().nullable(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type ManualRefundListItem = z.infer<typeof manualRefundListItemSchema>;
+export const manualRefundListResponseSchema = paginatedSchema(manualRefundListItemSchema);
+export type ManualRefundListResponse = z.infer<typeof manualRefundListResponseSchema>;
+
+export const manualRefundEvidenceResponseSchema = z
+  .object({
+    present: z.boolean(),
+    contentType: z.enum(['application/pdf', 'image/jpeg', 'image/png']).nullable(),
+    sizeBytes: z
+      .number()
+      .int()
+      .positive()
+      .max(10 * 1024 * 1024)
+      .nullable(),
+    verifiedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+
+export const manualRefundDetailResponseSchema = manualRefundStatusResponseSchema
+  .extend({
+    makerUserId: z.string().uuid().nullable(),
+    claimedAt: z.string().datetime().nullable(),
+    transferReference: z.string().nullable(),
+    transferSubmittedByUserId: z.string().uuid().nullable(),
+    checkedByUserId: z.string().uuid().nullable(),
+    checkedAt: z.string().datetime().nullable(),
+    rejectionReason: z.string().nullable(),
+    evidence: manualRefundEvidenceResponseSchema,
+    ciphertextPurgedAt: z.string().datetime().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type ManualRefundDetailResponse = z.infer<typeof manualRefundDetailResponseSchema>;

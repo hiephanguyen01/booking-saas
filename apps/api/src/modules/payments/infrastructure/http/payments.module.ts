@@ -33,7 +33,11 @@ import { PAYMENT_REPOSITORY } from '../../domain/ports/payment-repository.port';
 import { REFUND_BATCH_REPOSITORY } from '../../domain/ports/refund-batch-repository.port';
 import { REFUND_POLICY_REPOSITORY } from '../../domain/ports/refund-policy-repository.port';
 import { REFUND_REPOSITORY } from '../../domain/ports/refund-repository.port';
+import { ACCOUNT_NAME_LOOKUP } from '../../domain/ports/account-name-lookup.port';
+import { MANUAL_REFUND_OPERATION_REPOSITORY } from '../../domain/ports/manual-refund-operation-repository.port';
+import { MANUAL_REFUND_PII_CRYPTO } from '../../domain/ports/manual-refund-pii-crypto.port';
 import { AesGcmCryptoService } from '../aes-gcm-crypto.service';
+import { AesGcmManualRefundPiiCryptoAdapter } from '../aes-gcm-manual-refund-pii-crypto.adapter';
 import { GatewayRegistry } from '../gateway-registry';
 import { MockGatewayAdapter } from '../gateways/mock-gateway.adapter';
 import { PayosWebhookConfigurator } from '../gateways/payos-webhook.configurator';
@@ -46,6 +50,9 @@ import { PrismaPaymentRepository } from '../repositories/prisma-payment.reposito
 import { PrismaRefundBatchRepository } from '../repositories/prisma-refund-batch.repository';
 import { PrismaRefundPolicyRepository } from '../repositories/prisma-refund-policy.repository';
 import { PrismaRefundRepository } from '../repositories/prisma-refund.repository';
+import { PrismaManualRefundOperationRepository } from '../repositories/prisma-manual-refund-operation.repository';
+import { UnsupportedAccountNameLookupAdapter } from '../unsupported-account-name-lookup.adapter';
+import { ProtectManualRefundDestinationUseCase } from '../../application/use-cases/protect-manual-refund-destination.use-case';
 import { PlatformPaymentController } from './platform-payment.controller';
 import { PublicPaymentController } from './public-payment.controller';
 import { TenantGatewayController } from './tenant-gateway.controller';
@@ -65,6 +72,8 @@ import { WebhookController } from './webhook.controller';
   ],
   providers: [
     { provide: CRYPTO, useClass: AesGcmCryptoService },
+    { provide: MANUAL_REFUND_PII_CRYPTO, useClass: AesGcmManualRefundPiiCryptoAdapter },
+    { provide: ACCOUNT_NAME_LOOKUP, useClass: UnsupportedAccountNameLookupAdapter },
     { provide: PAYMENT_CONFIGURATION_LOCK, useClass: PostgresPaymentConfigurationLock },
     { provide: PAYMENT_REPOSITORY, useClass: PrismaPaymentRepository },
     { provide: PAYMENT_BOOKING_READER, useClass: PrismaPaymentBookingReader },
@@ -72,6 +81,10 @@ import { WebhookController } from './webhook.controller';
     { provide: REFUND_BATCH_REPOSITORY, useClass: PrismaRefundBatchRepository },
     { provide: REFUND_POLICY_REPOSITORY, useClass: PrismaRefundPolicyRepository },
     { provide: REFUND_REPOSITORY, useClass: PrismaRefundRepository },
+    {
+      provide: MANUAL_REFUND_OPERATION_REPOSITORY,
+      useClass: PrismaManualRefundOperationRepository,
+    },
     { provide: GATEWAY_CONFIG_REPOSITORY, useClass: PrismaGatewayConfigRepository },
     { provide: PAYOS_WEBHOOK_CONFIGURATOR, useClass: PayosWebhookConfigurator },
     MockGatewayAdapter,
@@ -95,6 +108,7 @@ import { WebhookController } from './webhook.controller';
     ListTenantRefundsUseCase,
     GetPublicPaymentOptionsUseCase,
     ExecuteAutomaticRefundUseCase,
+    ProtectManualRefundDestinationUseCase,
   ],
   exports: [ExecuteRefundUseCase],
 })
