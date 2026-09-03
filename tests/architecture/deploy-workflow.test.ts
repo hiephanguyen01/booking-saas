@@ -25,7 +25,7 @@ function executable(path: string, source: string): void {
 }
 
 describe('deploy workflow', () => {
-  it('starts an API deploy without dependencies when migrations are disabled', () => {
+  it('never starts Compose dependencies when API migrations are disabled', () => {
     const fixture = mkdtempSync(join(tmpdir(), 'bookingos-deploy-'));
     const bin = join(fixture, 'bin');
     const deployPath = join(fixture, 'server');
@@ -76,6 +76,9 @@ printf 'fixture-sha  -\\n'
     expect(dockerCalls).not.toContainEqual(expect.stringContaining('run --rm migrate'));
     expect(dockerCalls).toContain(
       'compose --env-file .env.stg -f docker-compose.deploy.yml -f docker-compose.stg-data.yml up -d --no-deps api',
+    );
+    expect(dockerCalls).toContain(
+      'compose --env-file .env.stg -f docker-compose.deploy.yml -f docker-compose.stg-data.yml up -d --no-deps --remove-orphans --force-recreate caddy',
     );
   });
 });
