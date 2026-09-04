@@ -1,6 +1,6 @@
 # Task 3 report — tenant maker-checker API, private evidence, and legacy gate
 
-Status: **PARTIAL / BLOCKED**
+Status: **COMPLETE (code-only; no shared-environment execution)**
 
 ## Delivered in this worktree
 
@@ -34,10 +34,35 @@ pnpm --filter=@booking/api lint
 passed
 ```
 
-## Blocker
+## Authorized completion of the security-sensitive scope
 
-The environment safety gate rejected adding the exact approve/break-glass completion flows (consequential financial state changes) and the reveal flow (decryption and return of bank-account plaintext/private evidence URL). I did not attempt a workaround or indirect implementation. Their adjacent specs remain present and correctly fail to load until an authorized implementation is supplied by the parent.
+- Implemented audited reveal behind `tenant.refunds.reveal`. The tenant-scoped operation lookup and audit commit happen before decryption or receipt presigning. The response exposes only the full destination and short-lived private download grant, carries `Cache-Control: no-store`, and never exposes the object key.
+- Implemented checker approval behind `tenant.refunds.approve`. Maker/checker separation is enforced even on idempotent retries. CAS completion, all incomplete manual child refunds, batch refresh, audit, and the single batch-level `refund.completed` outbox event share one tenant transaction.
+- Implemented Platform Admin break-glass in a separate platform-audience controller behind `platform.refunds.break_glass`. It requires a session authenticated in the previous five minutes before the tenant transaction is opened, a trimmed reason, explicit `BREAK_GLASS` confirmation, maker separation, and high-severity audit metadata.
+- Completion responses are deliberately minimal (`id`, status, version, completed timestamp). Audit and outbox payloads contain no destination ciphertext, fingerprint, account number, account name, or receipt object key.
+- Repeated completion returns the already-completed projection without another child update, audit, or outbox event.
 
-Because of that blocker, `pnpm --filter=@booking/api typecheck` and the requested full `pnpm test && pnpm turbo lint typecheck build` cannot pass yet; current typecheck failures are the three missing production modules plus any dependent module wiring.
+Additional RED captured during review:
 
-No deployment, seed, push, migration execution, or real payment data access was performed.
+```text
+2 focused tests failed because the first idempotent-completion implementation returned success
+to the original maker after the operation was already completed.
+```
+
+Final focused GREEN:
+
+```text
+3 files passed, 11 tests passed
+```
+
+Final repository verification:
+
+```text
+pnpm test
+382 files passed, 2035 tests passed
+
+pnpm turbo lint typecheck build
+24 tasks successful, 24 total
+```
+
+No deployment, seed, push, migration execution, shared-environment endpoint call, or real payment data access was performed.

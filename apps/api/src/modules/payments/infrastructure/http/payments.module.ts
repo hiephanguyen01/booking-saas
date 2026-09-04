@@ -4,6 +4,7 @@ import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { BookingModule } from '../../../booking/infrastructure/http/booking.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
+import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
 import { CheckoutUseCase } from '../../application/use-cases/checkout.use-case';
 import { ConfirmManualRefundUseCase } from '../../application/use-cases/confirm-manual-refund.use-case';
 import { ConfirmPayosWebhookUseCase } from '../../application/use-cases/confirm-payos-webhook.use-case';
@@ -76,9 +77,13 @@ import { CreateManualRefundEvidenceUploadUseCase } from '../../application/use-c
 import { SubmitManualRefundTransferUseCase } from '../../application/use-cases/submit-manual-refund-transfer.use-case';
 import { RejectManualRefundUseCase } from '../../application/use-cases/reject-manual-refund.use-case';
 import { ReopenManualRefundDestinationUseCase } from '../../application/use-cases/reopen-manual-refund-destination.use-case';
+import { RevealManualRefundPrivateDetailsUseCase } from '../../application/use-cases/reveal-manual-refund-private-details.use-case';
+import { ApproveManualRefundUseCase } from '../../application/use-cases/approve-manual-refund.use-case';
+import { BreakGlassCompleteManualRefundUseCase } from '../../application/use-cases/break-glass-complete-manual-refund.use-case';
+import { PlatformManualRefundController } from './platform-manual-refund.controller';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule, BookingModule],
+  imports: [PrismaModule, TenantContextModule, TenancyModule, IdentityAccessModule, BookingModule],
   controllers: [
     PublicPaymentController,
     PublicManualRefundController,
@@ -87,6 +92,7 @@ import { ReopenManualRefundDestinationUseCase } from '../../application/use-case
     TenantPaymentConfigurationController,
     TenantPaymentController,
     TenantManualRefundController,
+    PlatformManualRefundController,
     PlatformPaymentController,
   ],
   providers: [
@@ -142,6 +148,9 @@ import { ReopenManualRefundDestinationUseCase } from '../../application/use-case
     SubmitManualRefundTransferUseCase,
     RejectManualRefundUseCase,
     ReopenManualRefundDestinationUseCase,
+    RevealManualRefundPrivateDetailsUseCase,
+    ApproveManualRefundUseCase,
+    BreakGlassCompleteManualRefundUseCase,
   ],
   exports: [ExecuteRefundUseCase],
 })
