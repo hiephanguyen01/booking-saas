@@ -1,3 +1,5 @@
+import type { ManualRefundListQuery } from '@booking/contracts';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   AccountNameVerificationResult,
@@ -76,6 +78,13 @@ export type ManualRefundOperationPatch = Partial<
   >
 >;
 
+export interface ManualRefundOperationViewRecord {
+  operation: ManualRefundOperationRecord;
+  bookingId: string;
+  bookingCode: string;
+  requestedAmount: bigint;
+}
+
 export interface IManualRefundOperationRepository {
   isWorkflowEnabled(tx: PrismaTx, tenantId: string): Promise<boolean>;
   createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<void>;
@@ -85,6 +94,17 @@ export interface IManualRefundOperationRepository {
     tenantId: string,
     refundBatchId: string,
   ): Promise<ManualRefundOperationRecord | null>;
+  findViewById(
+    tx: PrismaTx,
+    tenantId: string,
+    id: string,
+  ): Promise<ManualRefundOperationViewRecord | null>;
+  listViews(
+    tx: PrismaTx,
+    tenantId: string,
+    query: ManualRefundListQuery,
+    overdueBefore: Date | null,
+  ): Promise<RepoPage<ManualRefundOperationViewRecord>>;
   casUpdate(
     tx: PrismaTx,
     tenantId: string,

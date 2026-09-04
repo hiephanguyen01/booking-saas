@@ -1,4 +1,9 @@
-import type { ManualRefundStatusResponse } from '@booking/contracts';
+import type {
+  ManualRefundDetailResponse,
+  ManualRefundListItem,
+  ManualRefundPrivateDetailsResponse,
+  ManualRefundStatusResponse,
+} from '@booking/contracts';
 import { ManualRefundOperation } from '../domain/entities/manual-refund-operation.entity';
 import type { ManualRefundOperationRecord } from '../domain/ports/manual-refund-operation-repository.port';
 import type { RefundBatchRecord } from '../domain/ports/refund-batch-repository.port';
@@ -71,6 +76,58 @@ export function toCustomerManualRefundStatusResponse(
     customerAcknowledgement: operation.customerAcknowledgement,
     customerAcknowledgedAt: operation.customerAcknowledgedAt?.toISOString() ?? null,
   };
+}
+
+export function toManualRefundListItem(view: import('../domain/ports/manual-refund-operation-repository.port').ManualRefundOperationViewRecord): ManualRefundListItem {
+  const operation = view.operation;
+  return {
+    ...toCustomerManualRefundStatusResponse(operation, {
+      id: operation.refundBatchId,
+      tenantId: operation.tenantId,
+      bookingId: view.bookingId,
+      requestedAmount: view.requestedAmount,
+      reason: '',
+      affectsBookingStatus: true,
+      status: operation.status === 'completed' ? 'completed' : 'manual_required',
+      completedAt: operation.completedAt,
+    }, view.bookingCode),
+    makerUserId: operation.makerUserId,
+    claimedAt: operation.claimedAt?.toISOString() ?? null,
+    updatedAt: operation.updatedAt.toISOString(),
+  };
+}
+
+export function toManualRefundDetailResponse(view: import('../domain/ports/manual-refund-operation-repository.port').ManualRefundOperationViewRecord): ManualRefundDetailResponse {
+  const operation = view.operation;
+  const base = toManualRefundListItem(view);
+  return {
+    ...base,
+    customerAcknowledgement: operation.customerAcknowledgement,
+    customerAcknowledgedAt: operation.customerAcknowledgedAt?.toISOString() ?? null,
+    transferReference: operation.transferReference,
+    transferSubmittedByUserId: operation.transferSubmittedByUserId,
+    checkedByUserId: operation.checkedByUserId,
+    checkedAt: operation.checkedAt?.toISOString() ?? null,
+    rejectionReason: operation.rejectionReason,
+    evidence: {
+      present: Boolean(operation.evidenceObjectKey),
+      contentType: operation.evidenceContentType as 'application/pdf' | 'image/jpeg' | 'image/png' | null,
+      sizeBytes: operation.evidenceSizeBytes,
+      verifiedAt: operation.evidenceVerifiedAt?.toISOString() ?? null,
+    },
+    ciphertextPurgedAt: operation.ciphertextPurgedAt?.toISOString() ?? null,
+    createdAt: operation.createdAt.toISOString(),
+    updatedAt: operation.updatedAt.toISOString(),
+  };
+}
+
+export function toManualRefundPrivateDetailsResponse(input: {
+  bankCode: string;
+  accountName: string;
+  accountNumber: string;
+  evidenceDownload: { downloadUrl: string; expiresInSec: number } | null;
+}): ManualRefundPrivateDetailsResponse {
+  return input;
 }
 
 function maskAccountName(name: string): string {

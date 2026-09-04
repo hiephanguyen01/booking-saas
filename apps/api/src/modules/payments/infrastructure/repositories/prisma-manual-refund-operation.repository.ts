@@ -10,7 +10,11 @@ import type {
   IManualRefundOperationRepository,
   ManualRefundOperationPatch,
   ManualRefundOperationRecord,
+  ManualRefundOperationViewRecord,
 } from '../../domain/ports/manual-refund-operation-repository.port';
+import type { ManualRefundListQuery } from '@booking/contracts';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 type Row = Prisma.ManualRefundOperationGetPayload<Record<string, never>>;
 
@@ -65,6 +69,60 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
   ): Promise<ManualRefundOperationRecord | null> {
     const row = await tx.manualRefundOperation.findUnique({ where: { refundBatchId, tenantId } });
     return row ? toRecord(row) : null;
+  }
+
+  async findViewById(
+    tx: PrismaTx,
+    tenantId: string,
+    id: string,
+  ): Promise<ManualRefundOperationViewRecord | null> {
+    const row = await tx.manualRefundOperation.findFirst({
+      where: { id, tenantId },
+      include: { refundBatch: { include: { booking: { select: { id: true, code: true } } } } },
+    });
+    if (!row) return null;
+    return {
+      operation: toRecord(row),
+      bookingId: row.refundBatch.booking.id,
+      bookingCode: row.refundBatch.booking.code,
+      requestedAmount: row.refundBatch.requestedAmount,
+    };
+  }
+
+  async listViews(
+    tx: PrismaTx,
+    tenantId: string,
+    query: ManualRefundListQuery,
+    overdueBefore: Date | null,
+  ): Promise<RepoPage<ManualRefundOperationViewRecord>> {
+    const where: Prisma.ManualRefundOperationWhereInput = {
+      tenantId,
+      ...(query.status ? { status: query.status } : {}),
+      ...(overdueBefore ? { transferDueAt: { lt: overdueBefore } } : {}),
+      ...(query.search
+        ? { refundBatch: { booking: { code: { contains: query.search, mode: 'insensitive' } } } }
+        : {}),
+    };
+    const { skip, take } = pageOffset(query);
+    const [rows, total] = await Promise.all([
+      tx.manualRefundOperation.findMany({
+        where,
+        include: { refundBatch: { include: { booking: { select: { id: true, code: true } } } } },
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take,
+      }),
+      tx.manualRefundOperation.count({ where }),
+    ]);
+    return {
+      items: rows.map((row) => ({
+        operation: toRecord(row),
+        bookingId: row.refundBatch.booking.id,
+        bookingCode: row.refundBatch.booking.code,
+        requestedAmount: row.refundBatch.requestedAmount,
+      })),
+      total,
+    };
   }
 
   async casUpdate(

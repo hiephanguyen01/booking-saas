@@ -12,6 +12,8 @@ import {
 import type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';
 import type { IRefundRepository, RefundRecord } from '../../domain/ports/refund-repository.port';
 import { ConfirmManualRefundUseCase } from './confirm-manual-refund.use-case';
+import type { IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
+import { ManualRefundBatchWorkflowRequired } from '../../domain/errors/manual-refund-errors';
 
 const TENANT_ID = 'tenant-1';
 const REFUND_ID = 'refund-1';
@@ -42,6 +44,7 @@ interface Options {
   afterLock?: RefundRecord | null;
   referenceUsed?: boolean;
   updated?: RefundRecord | null;
+  workflowEnabled?: boolean;
 }
 
 function harness(options: Options = {}) {
@@ -96,6 +99,9 @@ function harness(options: Options = {}) {
       }),
       tenantDb.service,
       new OutboxService(),
+      fakePort<IManualRefundOperationRepository>({
+        isWorkflowEnabled: () => Promise.resolve(options.workflowEnabled ?? false),
+      }),
     ),
     calls,
     audits,
@@ -106,6 +112,15 @@ function harness(options: Options = {}) {
 const input = { reference: 'VCB-77', evidenceKey: 'uploads/proof.png' } as ConfirmManualRefundInput;
 
 describe('ConfirmManualRefundUseCase', () => {
+  it('blocks the legacy child confirmation endpoint for opted-in tenants', async () => {
+    const { useCase, calls } = harness({ workflowEnabled: true });
+
+    await expect(
+      useCase.execute(TENANT_ID, REFUND_ID, input, 'admin-1'),
+    ).rejects.toBeInstanceOf(ManualRefundBatchWorkflowRequired);
+    expect(calls).toEqual([]);
+  });
+
   it('rejects an unknown refund', async () => {
     const { useCase } = harness({ record: null });
 

@@ -20,6 +20,17 @@ import {
   submitManualRefundDestinationInputSchema,
   acknowledgeManualRefundInputSchema,
   manualRefundStatusResponseSchema,
+  manualRefundListQuerySchema,
+  manualRefundListResponseSchema,
+  manualRefundDetailResponseSchema,
+  verifyManualRefundDestinationInputSchema,
+  claimManualRefundInputSchema,
+  reassignManualRefundInputSchema,
+  submitManualRefundTransferInputSchema,
+  createManualRefundEvidenceUploadInputSchema,
+  manualRefundEvidenceUploadResponseSchema,
+  rejectManualRefundInputSchema,
+  manualRefundPrivateDetailsResponseSchema,
 } from '@booking/contracts';
 
 // Request bodies
@@ -35,6 +46,13 @@ export class SubmitManualRefundDestinationDto extends createZodDto(
   submitManualRefundDestinationInputSchema,
 ) {}
 export class AcknowledgeManualRefundDto extends createZodDto(acknowledgeManualRefundInputSchema) {}
+export class ManualRefundListQueryDto extends createZodDto(manualRefundListQuerySchema) {}
+export class VerifyManualRefundDestinationDto extends createZodDto(verifyManualRefundDestinationInputSchema) {}
+export class ClaimManualRefundDto extends createZodDto(claimManualRefundInputSchema) {}
+export class ReassignManualRefundDto extends createZodDto(reassignManualRefundInputSchema) {}
+export class SubmitManualRefundTransferDto extends createZodDto(submitManualRefundTransferInputSchema) {}
+export class CreateManualRefundEvidenceUploadDto extends createZodDto(createManualRefundEvidenceUploadInputSchema) {}
+export class RejectManualRefundDto extends createZodDto(rejectManualRefundInputSchema) {}
 
 // Responses
 export class CheckoutResponseDto extends createZodDto(checkoutResponseSchema) {}
@@ -47,6 +65,10 @@ export class PublicPaymentOptionsDto extends createZodDto(publicPaymentOptionsSc
 export class PaymentRoutingResponseDto extends createZodDto(paymentRoutingResponseSchema) {}
 export class TenantRefundPolicyDto extends createZodDto(tenantRefundPolicySchema) {}
 export class ManualRefundStatusResponseDto extends createZodDto(manualRefundStatusResponseSchema) {}
+export class ManualRefundListResponseDto extends createZodDto(manualRefundListResponseSchema) {}
+export class ManualRefundDetailResponseDto extends createZodDto(manualRefundDetailResponseSchema) {}
+export class ManualRefundEvidenceUploadResponseDto extends createZodDto(manualRefundEvidenceUploadResponseSchema) {}
+export class ManualRefundPrivateDetailsResponseDto extends createZodDto(manualRefundPrivateDetailsResponseSchema) {}
 
 export class GenericWebhookAcknowledgementResponseDto extends createZodDto(
   genericWebhookAcknowledgementResponseSchema,

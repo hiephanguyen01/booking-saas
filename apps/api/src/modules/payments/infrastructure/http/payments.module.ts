@@ -64,6 +64,18 @@ import { TenantGatewayController } from './tenant-gateway.controller';
 import { TenantPaymentConfigurationController } from './tenant-payment-configuration.controller';
 import { TenantPaymentController } from './tenant-payment.controller';
 import { WebhookController } from './webhook.controller';
+import { TenantManualRefundController } from './tenant-manual-refund.controller';
+import { MANUAL_REFUND_EVIDENCE_REPOSITORY } from '../../domain/ports/manual-refund-evidence-repository.port';
+import { PrismaManualRefundEvidenceRepository } from '../repositories/prisma-manual-refund-evidence.repository';
+import { ListTenantManualRefundsUseCase } from '../../application/use-cases/list-tenant-manual-refunds.use-case';
+import { GetTenantManualRefundUseCase } from '../../application/use-cases/get-tenant-manual-refund.use-case';
+import { VerifyManualRefundDestinationUseCase } from '../../application/use-cases/verify-manual-refund-destination.use-case';
+import { ClaimManualRefundUseCase } from '../../application/use-cases/claim-manual-refund.use-case';
+import { ReassignManualRefundUseCase } from '../../application/use-cases/reassign-manual-refund.use-case';
+import { CreateManualRefundEvidenceUploadUseCase } from '../../application/use-cases/create-manual-refund-evidence-upload.use-case';
+import { SubmitManualRefundTransferUseCase } from '../../application/use-cases/submit-manual-refund-transfer.use-case';
+import { RejectManualRefundUseCase } from '../../application/use-cases/reject-manual-refund.use-case';
+import { ReopenManualRefundDestinationUseCase } from '../../application/use-cases/reopen-manual-refund-destination.use-case';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule, BookingModule],
@@ -74,6 +86,7 @@ import { WebhookController } from './webhook.controller';
     TenantGatewayController,
     TenantPaymentConfigurationController,
     TenantPaymentController,
+    TenantManualRefundController,
     PlatformPaymentController,
   ],
   providers: [
@@ -91,6 +104,7 @@ import { WebhookController } from './webhook.controller';
       provide: MANUAL_REFUND_OPERATION_REPOSITORY,
       useClass: PrismaManualRefundOperationRepository,
     },
+    { provide: MANUAL_REFUND_EVIDENCE_REPOSITORY, useClass: PrismaManualRefundEvidenceRepository },
     { provide: GATEWAY_CONFIG_REPOSITORY, useClass: PrismaGatewayConfigRepository },
     { provide: PAYOS_WEBHOOK_CONFIGURATOR, useClass: PayosWebhookConfigurator },
     MockGatewayAdapter,
@@ -119,6 +133,15 @@ import { WebhookController } from './webhook.controller';
     SubmitCustomerManualRefundDestinationUseCase,
     AcknowledgeCustomerManualRefundReceivedUseCase,
     ReportCustomerManualRefundNotReceivedUseCase,
+    ListTenantManualRefundsUseCase,
+    GetTenantManualRefundUseCase,
+    VerifyManualRefundDestinationUseCase,
+    ClaimManualRefundUseCase,
+    ReassignManualRefundUseCase,
+    CreateManualRefundEvidenceUploadUseCase,
+    SubmitManualRefundTransferUseCase,
+    RejectManualRefundUseCase,
+    ReopenManualRefundDestinationUseCase,
   ],
   exports: [ExecuteRefundUseCase],
 })

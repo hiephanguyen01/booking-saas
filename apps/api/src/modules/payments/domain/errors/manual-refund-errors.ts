@@ -149,3 +149,9 @@ export class ManualRefundInvalidAccountNumber extends DomainError {
     super('MANUAL_REFUND_INVALID_ACCOUNT_NUMBER', 400, 'Receiving account number is invalid');
   }
 }
+
+export class ManualRefundEvidenceUploadInvalid extends DomainError {
+  constructor() {
+    super('MANUAL_REFUND_EVIDENCE_UPLOAD_INVALID', 400, 'Transfer evidence upload is invalid');
+  }
+}

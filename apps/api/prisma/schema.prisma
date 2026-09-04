@@ -860,6 +860,7 @@ model Tenant {
   payments                  Payment[]
   refundBatches             RefundBatch[]
   manualRefundOperations    ManualRefundOperation[]
+  manualRefundEvidenceUploads ManualRefundEvidenceUpload[]
   gatewayConfigs            TenantGatewayConfig[]
   commissionRules           CommissionRule[]
   ledgerAccounts            LedgerAccount[]
@@ -2040,12 +2041,35 @@ model ManualRefundOperation {
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   refundBatch RefundBatch @relation(fields: [tenantId, refundBatchId], references: [tenantId, id], onDelete: Cascade)
+  evidenceUploads ManualRefundEvidenceUpload[]
 
   @@unique([tenantId, refundBatchId])
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, makerUserId, status])
   @@index([tenantId, transferDueAt])
   @@map("manual_refund_operations")
+}
+
+model ManualRefundEvidenceUpload {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  operationId   String   @map("operation_id") @db.Uuid
+  objectKey     String   @map("object_key")
+  checksum      String
+  sizeBytes     Int      @map("size_bytes")
+  contentType   String   @map("content_type")
+  status        String   @default("pending")
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(6)
+  claimedAt     DateTime? @map("claimed_at") @db.Timestamptz(6)
+  quarantinedAt DateTime? @map("quarantined_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  operation ManualRefundOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, objectKey])
+  @@index([tenantId, operationId, status, expiresAt])
+  @@map("manual_refund_evidence_uploads")
 }
 
 /// Per-tenant gateway credentials — credentials jsonb is AES-256-GCM encrypted at

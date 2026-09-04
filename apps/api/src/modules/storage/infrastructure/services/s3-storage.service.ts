@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   DeleteObjectCommand,
+  CopyObjectCommand,
   GetObjectCommand,
   NoSuchKey,
   PutObjectCommand,
@@ -193,6 +194,58 @@ export class S3StorageService implements StoragePort {
       }
       throw error;
     }
+  }
+
+  async inspectPrivateFile(input: {
+    key: string;
+    allowedContentTypes: readonly string[];
+    maxSizeBytes: number;
+  }) {
+    const key = this.normalizePrivateKey(input.key);
+    try {
+      const object = await this.client.send(new GetObjectCommand({ Bucket: this.config.privateBucket, Key: key }));
+      const contentType = object.ContentType ?? '';
+      const sizeBytes = object.ContentLength ?? 0;
+      if (sizeBytes > input.maxSizeBytes || !object.Body) {
+        return { valid: false, reason: sizeBytes > input.maxSizeBytes ? 'too_large' as const : 'not_found' as const, checksum: '', sizeBytes, contentType };
+      }
+      const hash = createHash('sha256');
+      let bytes = 0;
+      let header = Buffer.alloc(0);
+      for await (const rawChunk of object.Body as AsyncIterable<Uint8Array>) {
+        const chunk = Buffer.from(rawChunk);
+        bytes += chunk.byteLength;
+        hash.update(chunk);
+        if (header.byteLength < 12) header = Buffer.concat([header, chunk]).subarray(0, 12);
+      }
+      const checksum = hash.digest('hex');
+      const signatureValid = contentType === 'application/pdf'
+        ? header.subarray(0, 5).toString('ascii') === '%PDF-'
+        : contentType === 'image/png'
+          ? header.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+          : contentType === 'image/jpeg'
+            ? header.subarray(0, 3).equals(Buffer.from([255,216,255]))
+            : false;
+      if (!input.allowedContentTypes.includes(contentType)) return { valid: false, reason: 'wrong_content_type' as const, checksum, sizeBytes: bytes, contentType };
+      if (!signatureValid || bytes === 0) return { valid: false, reason: 'invalid_signature' as const, checksum, sizeBytes: bytes, contentType };
+      return { valid: true, checksum, sizeBytes: bytes, contentType };
+    } catch (error) {
+      if (error instanceof NoSuchKey || (error as { name?: string }).name === 'NoSuchKey') {
+        return { valid: false, reason: 'not_found' as const, checksum: '', sizeBytes: 0, contentType: '' };
+      }
+      throw error;
+    }
+  }
+
+  async quarantinePrivateObject(key: string): Promise<void> {
+    const normalized = this.normalizePrivateKey(key);
+    const quarantineKey = `quarantine/${normalized}`;
+    await this.client.send(new CopyObjectCommand({
+      Bucket: this.config.privateBucket,
+      CopySource: `${this.config.privateBucket}/${normalized}`,
+      Key: quarantineKey,
+    }));
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.config.privateBucket, Key: normalized }));
   }
 
   async deletePrivateObject(key: string): Promise<void> {

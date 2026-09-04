@@ -480,6 +480,61 @@ export const submitManualRefundTransferInputSchema = z
   .strict();
 export type SubmitManualRefundTransferInput = z.infer<typeof submitManualRefundTransferInputSchema>;
 
+export const manualRefundEvidenceContentTypeSchema = z.enum([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+]);
+export const MAX_MANUAL_REFUND_EVIDENCE_SIZE_BYTES = 10 * 1024 * 1024;
+
+export const createManualRefundEvidenceUploadInputSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    contentType: manualRefundEvidenceContentTypeSchema,
+    sizeBytes: z.number().int().positive().max(MAX_MANUAL_REFUND_EVIDENCE_SIZE_BYTES),
+    checksum: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type CreateManualRefundEvidenceUploadInput = z.infer<
+  typeof createManualRefundEvidenceUploadInputSchema
+>;
+
+export const manualRefundEvidenceUploadResponseSchema = z
+  .object({
+    uploadUrl: z.string().url(),
+    key: z.string().trim().min(1).max(500),
+    expiresInSec: z.number().int().positive(),
+  })
+  .strict();
+export type ManualRefundEvidenceUploadResponse = z.infer<
+  typeof manualRefundEvidenceUploadResponseSchema
+>;
+
+export const revealManualRefundPrivateDetailsInputSchema = z
+  .object({ reason: z.string().trim().min(3).max(1000) })
+  .strict();
+export type RevealManualRefundPrivateDetailsInput = z.infer<
+  typeof revealManualRefundPrivateDetailsInputSchema
+>;
+
+export const manualRefundPrivateDetailsResponseSchema = z
+  .object({
+    bankCode: z.string().min(2).max(20),
+    accountName: z.string().min(1).max(200),
+    accountNumber: z.string().regex(/^\d{4,34}$/),
+    evidenceDownload: z
+      .object({
+        downloadUrl: z.string().url(),
+        expiresInSec: z.number().int().positive(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+export type ManualRefundPrivateDetailsResponse = z.infer<
+  typeof manualRefundPrivateDetailsResponseSchema
+>;
+
 export const approveManualRefundInputSchema = z
   .object({
     expectedVersion: z.number().int().positive(),
