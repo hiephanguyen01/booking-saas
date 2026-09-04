@@ -24,6 +24,9 @@ const CACHE_PREFIX = 'bookingos-storefront-';
 const BUILD_ID = new URL(self.location.href).searchParams.get('v') || 'local';
 const SAFE_BUILD_ID = BUILD_ID.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 96) || 'local';
 const CACHE_NAME = `${CACHE_PREFIX}${SAFE_BUILD_ID}`;
+const IMAGE_CACHE_NAME = `${CACHE_PREFIX}images-v1`;
+const MAX_IMAGE_ENTRIES = 80;
+
 /** Public launcher assets used by the fallback and install surfaces. */
 const PRECACHE_URLS = [
   '/pwa/icon-180.png',
@@ -35,11 +38,25 @@ const PRECACHE_URLS = [
 /**
  * Immutable, public, same-origin assets. `/assets/` is Vite's hashed build output,
  * so a URL there never changes meaning; `/pwa/` holds the manifest icons.
- * Anything else — `.data` requests, presign proxies, `/set-locale`, `/healthz`,
- * `/manifest.webmanifest`, the S3/MinIO image origins — is left to the browser.
  */
 function isCacheableAsset(url) {
   return url.pathname.startsWith('/assets/') || url.pathname.startsWith('/pwa/');
+}
+
+/** Check if the request is an image asset (media, covers, avatars, icons). */
+function isImageRequest(request, url) {
+  if (request.destination === 'image') return true;
+  const pathname = url.pathname.toLowerCase();
+  return (
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.jpeg') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.webp') ||
+    pathname.endsWith('.avif') ||
+    pathname.endsWith('.gif') ||
+    pathname.endsWith('.svg') ||
+    url.hostname.includes('picsum.photos')
+  );
 }
 
 self.addEventListener('install', (event) => {
@@ -56,7 +73,12 @@ self.addEventListener('activate', (event) => {
       .then((names) =>
         Promise.all(
           names
-            .filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
+            .filter(
+              (name) =>
+                name.startsWith(CACHE_PREFIX) &&
+                name !== CACHE_NAME &&
+                name !== IMAGE_CACHE_NAME,
+            )
             .map((name) => caches.delete(name)),
         ),
       )
@@ -104,19 +126,65 @@ async function handleAsset(request) {
   return response;
 }
 
+/** Keep image cache bounded so device storage remains light. */
+async function trimImageCache() {
+  try {
+    const cache = await caches.open(IMAGE_CACHE_NAME);
+    const keys = await cache.keys();
+    if (keys.length > MAX_IMAGE_ENTRIES) {
+      const toDelete = keys.slice(0, keys.length - MAX_IMAGE_ENTRIES);
+      await Promise.all(toDelete.map((key) => cache.delete(key)));
+    }
+  } catch {
+    // Best-effort cache trim
+  }
+}
+
+/**
+ * Stale-while-revalidate for images. Serves cached copy immediately (0ms)
+ * and refreshes in the background from network.
+ */
+async function handleImage(request) {
+  const cache = await caches.open(IMAGE_CACHE_NAME);
+  const cached = await cache.match(request);
+
+  const fetchPromise = fetch(request)
+    .then((networkResponse) => {
+      if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
+        void cache.put(request, networkResponse.clone()).then(() => trimImageCache());
+      }
+      return networkResponse;
+    })
+    .catch(() => null);
+
+  if (cached) {
+    return cached;
+  }
+
+  const response = await fetchPromise;
+  if (response) return response;
+
+  return new Response('', { status: 408, statusText: 'Request Timeout' });
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
+    if (url.origin !== self.location.origin) return;
     event.respondWith(handleNavigation(request));
     return;
   }
 
-  if (isCacheableAsset(url)) {
+  if (isImageRequest(request, url)) {
+    event.respondWith(handleImage(request));
+    return;
+  }
+
+  if (url.origin === self.location.origin && isCacheableAsset(url)) {
     event.respondWith(handleAsset(request));
   }
   // Everything else falls through to the browser untouched.

@@ -26,7 +26,7 @@ export function RecommendedSection({
   if (!pending && listings.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-4 sm:gap-6">
+    <section className="sf-deferred-content flex flex-col gap-4 sm:gap-6">
       <div className="bg-card pt-4 sm:pt-6">
         <SectionHeading title={t('home.recommended')} />
         <div className="mt-2">
