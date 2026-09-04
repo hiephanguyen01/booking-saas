@@ -69,8 +69,8 @@ export class PrismaManualRefundEvidenceRepository implements IManualRefundEviden
     quarantinedAt: Date,
   ): Promise<boolean> {
     const result = await tx.manualRefundEvidenceUpload.updateMany({
-      where: { id, tenantId, status: 'pending' },
-      data: { status: 'quarantined', quarantinedAt },
+      where: { id, tenantId, status: { in: ['pending', 'claimed'] } },
+      data: { status: 'quarantined', quarantinedAt, claimedAt: null },
     });
     return result.count === 1;
   }

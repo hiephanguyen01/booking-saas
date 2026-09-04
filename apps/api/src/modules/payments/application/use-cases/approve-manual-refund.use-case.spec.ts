@@ -253,4 +253,26 @@ describe('ApproveManualRefundUseCase', () => {
     );
     await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3 }, MANUAL_REFUND_CHECKER_ID)).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
   });
+
+  it('retires mutated claimed evidence before returning the validation error', async () => {
+    let retired = false;
+    const quarantined: string[] = [];
+    const current = submitted();
+    const useCase = new ApproveManualRefundUseCase(
+      fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(current) }),
+      fakePort<IRefundRepository>({}),
+      fakePort<IRefundBatchRepository>({}),
+      fakePort<IManualRefundEvidenceRepository>({
+        findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: current.evidenceObjectKey as string, status: 'claimed', checksum: 'c'.repeat(64), sizeBytes: 12 }),
+        quarantineUpload: () => { retired = true; return Promise.resolve(true); },
+      }),
+      fakePort<StoragePort>({ quarantinePrivateObject: (key) => { quarantined.push(key); return Promise.reject(new Error('storage unavailable')); } }),
+      fakePort<IAuditWriter>({}),
+      new OutboxService(),
+      fakeTenantDb().service,
+    );
+    await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3 }, MANUAL_REFUND_CHECKER_ID)).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
+    expect(retired).toBe(true);
+    expect(quarantined).toEqual([current.evidenceObjectKey]);
+  });
 });

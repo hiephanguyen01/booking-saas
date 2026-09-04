@@ -91,4 +91,34 @@ Fresh full verification:
 ```text
 pnpm test && pnpm turbo lint typecheck build
 24 turbo tasks successful; Vitest and all checks passed.
+
+## Review fix round 2
+
+Addressed:
+
+- Approval and break-glass now retire a present but mutated/unavailable claimed evidence row inside the tenant transaction, commit that quarantine state, quarantine the opaque object after commit, and preserve the named `ManualRefundEvidenceRequired` 4xx even when storage quarantine fails.
+- The evidence repository quarantine CAS now accepts both pending and claimed rows and clears claim metadata, preventing a failed revalidation from being retried as usable evidence.
+- Reopen now returns its committed safe workflow projection when post-commit object quarantine fails. Quarantined rows retain the opaque key as a durable private retry signal, and a best-effort operational audit records only the failed object count (never an object key or PII).
+
+Review RED:
+
+```text
+pnpm exec vitest run --project api apps/api/src/modules/payments/application/use-cases/approve-manual-refund.use-case.spec.ts apps/api/src/modules/payments/application/use-cases/break-glass-complete-manual-refund.use-case.spec.ts apps/api/src/modules/payments/application/use-cases/reopen-manual-refund-destination.use-case.spec.ts
+3 files failed; 3 tests failed, 12 passed (the two revalidation-retirement assertions and reopen storage-failure assertion).
+```
+
+Review GREEN:
+
+```text
+3 files passed; 15 tests passed.
+```
+
+Full verification:
+
+```text
+pnpm test && pnpm turbo lint typecheck build
+382 test files passed, 2042 tests passed; 24 turbo tasks successful, 24 total.
+```
+
+Operational note: object quarantine is intentionally best-effort after the committed tenant state change; quarantined evidence rows remain unusable and retain an opaque retry signal, while storage failures are audited without sensitive data.
 ```

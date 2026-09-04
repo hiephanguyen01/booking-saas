@@ -23,7 +23,33 @@ export class ReopenManualRefundDestinationUseCase {
       await this.audit.write(tx, { tenantId, actorUserId, action: 'manual_refund.destination_reopened', entityType: 'manual_refund_operation', entityId: operationId, data: { reason: input.reason.trim() } });
       return { response: toManualRefundMutationResponse(updated), keys };
     });
-    await Promise.all(invalidatedKeys.keys.map((key) => this.storage.quarantinePrivateObject(key)));
+    let failedQuarantineCount = 0;
+    await Promise.all(invalidatedKeys.keys.map(async (key) => {
+      try {
+        await this.storage.quarantinePrivateObject(key);
+      } catch {
+        // The committed quarantined row and retained opaque key provide a
+        // durable, private retry signal. Reopen remains successful.
+        failedQuarantineCount += 1;
+      }
+    }));
+    if (failedQuarantineCount > 0) {
+      try {
+        await this.tenantDb.forTenant(tenantId, async (tx) => {
+          await this.audit.write(tx, {
+            tenantId,
+            actorUserId,
+            action: 'manual_refund.evidence_quarantine_failed',
+            entityType: 'manual_refund_operation',
+            entityId: operationId,
+            data: { failedObjectCount: failedQuarantineCount },
+          });
+        });
+      } catch {
+        // Storage retry remains driven by the committed quarantined rows even
+        // if an operational audit append is unavailable.
+      }
+    }
     return invalidatedKeys.response;
   }
 }

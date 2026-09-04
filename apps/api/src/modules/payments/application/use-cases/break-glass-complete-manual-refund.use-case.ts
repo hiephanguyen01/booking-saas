@@ -72,16 +72,17 @@ export class BreakGlassCompleteManualRefundUseCase {
       throw new ManualRefundFreshAuthenticationRequired();
     }
 
-    return this.tenantDb.forTenant(tenantId, async (tx) => {
+    const outcome = await this.tenantDb.forTenant(tenantId, async (tx) => {
       const current = await this.operations.findById(tx, tenantId, operationId);
       if (!current) throw new ManualRefundOperationNotFound();
       if (current.makerUserId === actor.userId) {
         throw new ManualRefundMakerCannotApproveOwnTransfer();
       }
       if (current.status === 'completed') return toCompletionResult(current);
-      await this.assertEvidence(tx, tenantId, current);
-
       const now = await this.tenantDb.databaseNow(tx);
+      const invalidEvidenceKey = await this.retireInvalidEvidence(tx, tenantId, current, now);
+      if (invalidEvidenceKey) return { invalidEvidenceKey } as const;
+
       const operation = toManualRefundOperation(current);
       operation.completeWithBreakGlass({
         actorUserId: actor.userId,
@@ -147,14 +148,42 @@ export class BreakGlassCompleteManualRefundUseCase {
       }
       return toCompletionResult(updated);
     });
+    if ('invalidEvidenceKey' in outcome) {
+      try {
+        await this.storage.quarantinePrivateObject(outcome.invalidEvidenceKey);
+      } catch {
+        // The committed quarantined row is the durable retry signal; never
+        // replace the named validation error with an object-store failure.
+      }
+      throw new ManualRefundEvidenceRequired();
+    }
+    return outcome;
   }
 
-  private async assertEvidence(tx: Parameters<IManualRefundEvidenceRepository['findUpload']>[0], tenantId: string, current: ManualRefundOperationRecord): Promise<void> {
+  private async retireInvalidEvidence(
+    tx: Parameters<IManualRefundEvidenceRepository['findUpload']>[0],
+    tenantId: string,
+    current: ManualRefundOperationRecord,
+    now: Date,
+  ): Promise<string | null> {
     if (!current.evidenceObjectKey || !current.evidenceSha256 || !current.evidenceContentType || !current.evidenceSizeBytes) throw new ManualRefundEvidenceRequired();
     const upload = await this.evidence.findUpload(tx, tenantId, current.id, current.evidenceObjectKey);
-    if (!upload || upload.status !== 'claimed' || upload.checksum !== current.evidenceSha256 || upload.contentType !== current.evidenceContentType || upload.sizeBytes !== current.evidenceSizeBytes) throw new ManualRefundEvidenceRequired();
-    const inspection = await this.storage.inspectPrivateFile({ key: upload.objectKey, allowedContentTypes: ['application/pdf', 'image/jpeg', 'image/png'], maxSizeBytes: 10 * 1024 * 1024 });
-    if (!inspection.valid || inspection.checksum !== upload.checksum || inspection.contentType !== upload.contentType || inspection.sizeBytes !== upload.sizeBytes) throw new ManualRefundEvidenceRequired();
+    if (!upload) throw new ManualRefundEvidenceRequired();
+    if (upload.status !== 'claimed' || upload.checksum !== current.evidenceSha256 || upload.contentType !== current.evidenceContentType || upload.sizeBytes !== current.evidenceSizeBytes) {
+      await this.evidence.quarantineUpload(tx, tenantId, upload.id, now);
+      return upload.objectKey;
+    }
+    let inspection;
+    try {
+      inspection = await this.storage.inspectPrivateFile({ key: upload.objectKey, allowedContentTypes: ['application/pdf', 'image/jpeg', 'image/png'], maxSizeBytes: 10 * 1024 * 1024 });
+    } catch {
+      inspection = null;
+    }
+    if (!inspection || !inspection.valid || inspection.checksum !== upload.checksum || inspection.contentType !== upload.contentType || inspection.sizeBytes !== upload.sizeBytes) {
+      await this.evidence.quarantineUpload(tx, tenantId, upload.id, now);
+      return upload.objectKey;
+    }
+    return null;
   }
 }
 
