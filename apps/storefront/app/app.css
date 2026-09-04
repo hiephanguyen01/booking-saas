@@ -555,10 +555,20 @@ body {
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .sf-scroll-x::-webkit-scrollbar {
   display: none;
+}
+
+/**
+ * Offloads layout and painting for heavy below-the-fold content until scrolled near view.
+ * contain-intrinsic-size provides placeholder dimensions to eliminate scroll jumps.
+ */
+.sf-deferred-content {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 500px;
 }
 
 /*
