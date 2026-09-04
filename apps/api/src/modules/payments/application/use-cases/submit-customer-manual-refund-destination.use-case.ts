@@ -13,6 +13,10 @@ import {
   type IManualRefundOperationRepository,
 } from '../../domain/ports/manual-refund-operation-repository.port';
 import {
+  ACCOUNT_NAME_LOOKUP,
+  type AccountNameLookupPort,
+} from '../../domain/ports/account-name-lookup.port';
+import {
   REFUND_BATCH_REPOSITORY,
   type IRefundBatchRepository,
 } from '../../domain/ports/refund-batch-repository.port';
@@ -29,6 +33,7 @@ export class SubmitCustomerManualRefundDestinationUseCase {
     @Inject(MANUAL_REFUND_OPERATION_REPOSITORY)
     private readonly operations: IManualRefundOperationRepository,
     @Inject(REFUND_BATCH_REPOSITORY) private readonly batches: IRefundBatchRepository,
+    @Inject(ACCOUNT_NAME_LOOKUP) private readonly accountNameLookup: AccountNameLookupPort,
     private readonly protectDestination: ProtectManualRefundDestinationUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -58,20 +63,24 @@ export class SubmitCustomerManualRefundDestinationUseCase {
       const entity = toManualRefundOperation(current);
       entity.assertDestinationReplaceable();
       const bankCode = input.bankCode.trim();
+      const accountNumber = input.accountNumber.trim();
       const accountName = input.accountName.trim().replace(/\s+/gu, ' ');
+      const lookupResult = await this.accountNameLookup.lookup({
+        bankCode,
+        accountNumber,
+        expectedAccountName: accountName,
+      });
       const protectedAccount = this.protectDestination.execute({
         tenantId,
         operationId,
         bankCode,
-        accountNumber: input.accountNumber,
+        accountNumber,
       });
       const now = await this.tenantDb.databaseNow(tx);
 
-      // External account lookup remains disabled until the destination and PII
-      // processing authority are explicitly configured. The safe default is
-      // the existing unsupported outcome, which always requires a checker.
-      entity.recordDestinationVerification('unsupported');
+      entity.recordDestinationVerification(lookupResult.status);
       const next = entity.snapshot();
+      const lookupCompleted = ['matched', 'mismatch'].includes(lookupResult.status);
       const updated = await this.operations.casUpdate(
         tx,
         tenantId,
@@ -89,11 +98,11 @@ export class SubmitCustomerManualRefundDestinationUseCase {
           destinationIsThirdParty: input.isThirdParty,
           destinationConsentAt: input.isThirdParty ? now : null,
           destinationSubmittedAt: now,
-          verificationResult: 'unsupported',
-          verificationMethod: null,
+          verificationResult: lookupResult.status,
+          verificationMethod: lookupResult.status === 'unsupported' ? null : 'lookup',
           verifiedByUserId: null,
-          verifiedAt: null,
-          readyAt: null,
+          verifiedAt: lookupCompleted ? now : null,
+          readyAt: lookupResult.status === 'matched' ? now : null,
           transferDueAt: null,
         },
       );

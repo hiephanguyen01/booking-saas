@@ -7,6 +7,10 @@ import {
   ManualRefundThirdPartyConsentRequired,
 } from '../../domain/errors/manual-refund-errors';
 import type {
+  AccountNameLookupPort,
+  AccountNameLookupResponse,
+} from '../../domain/ports/account-name-lookup.port';
+import type {
   IManualRefundOperationRepository,
   ManualRefundOperationPatch,
   ManualRefundOperationRecord,
@@ -107,10 +111,12 @@ const input: SubmitManualRefundDestinationInput = {
 interface HarnessOptions {
   record?: ManualRefundOperationRecord;
   casMiss?: boolean;
+  lookupResponse?: AccountNameLookupResponse;
 }
 
 function harness(options: HarnessOptions = {}) {
   const cryptoInputs: unknown[] = [];
+  const lookupInputs: unknown[] = [];
   const patches: ManualRefundOperationPatch[] = [];
   const tenantDb = fakeTenantDb({ now: NOW });
   const current = options.record ?? operation();
@@ -135,24 +141,31 @@ function harness(options: HarnessOptions = {}) {
       return Promise.resolve({
         ...current,
         ...patch,
-        status: 'verification_required',
+        status: patch.status ?? current.status,
         version: current.version + 1,
         updatedAt: NOW,
       });
     },
   });
+  const accountNameLookup = fakePort<AccountNameLookupPort>({
+    lookup: (value) => {
+      lookupInputs.push(value);
+      return Promise.resolve(options.lookupResponse ?? { status: 'unsupported' });
+    },
+  });
   const useCase = new SubmitCustomerManualRefundDestinationUseCase(
     operations,
     fakePort<IRefundBatchRepository>({ findById: () => Promise.resolve(batch) }),
+    accountNameLookup,
     crypto,
     tenantDb.service,
   );
-  return { useCase, tenantDb, cryptoInputs, patches };
+  return { useCase, tenantDb, cryptoInputs, lookupInputs, patches };
 }
 
 describe('SubmitCustomerManualRefundDestinationUseCase', () => {
   it('protects the account and requires manual verification without exposing protected fields', async () => {
-    const { useCase, tenantDb, cryptoInputs, patches } = harness();
+    const { useCase, tenantDb, cryptoInputs, lookupInputs, patches } = harness();
 
     const result = await useCase.execute(TENANT_ID, BOOKING_ID, 'BK-0001', OPERATION_ID, input, {
       thirdPartyOtpConsentVerified: false,
@@ -166,6 +179,13 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
         operationId: OPERATION_ID,
         bankCode: 'VCB',
         accountNumber: '0011001234567',
+      },
+    ]);
+    expect(lookupInputs).toEqual([
+      {
+        bankCode: 'VCB',
+        accountNumber: '0011001234567',
+        expectedAccountName: 'NGUYEN VAN AN',
       },
     ]);
     expect(patches).toEqual([
@@ -194,6 +214,87 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
     expect(JSON.stringify(result)).not.toMatch(/safe-ciphertext|safe-fingerprint|0011001234567/);
   });
 
+  it('advances a provider-matched destination directly to ready for transfer', async () => {
+    const { useCase, patches } = harness({
+      lookupResponse: { status: 'matched', registeredName: 'NGUYEN VAN AN' },
+    });
+
+    const result = await useCase.execute(
+      TENANT_ID,
+      BOOKING_ID,
+      'BK-0001',
+      OPERATION_ID,
+      input,
+      { thirdPartyOtpConsentVerified: false },
+    );
+
+    expect(patches).toEqual([
+      expect.objectContaining({
+        status: 'ready_for_transfer',
+        verificationResult: 'matched',
+        verificationMethod: 'lookup',
+        verifiedAt: NOW,
+        readyAt: NOW,
+      }),
+    ]);
+    expect(result.status).toBe('ready_for_transfer');
+    expect(result.verificationResult).toBe('matched');
+  });
+
+  it('blocks a provider-mismatched destination in correction required', async () => {
+    const { useCase, patches } = harness({
+      lookupResponse: { status: 'mismatch', registeredName: 'TRAN VAN B' },
+    });
+
+    const result = await useCase.execute(
+      TENANT_ID,
+      BOOKING_ID,
+      'BK-0001',
+      OPERATION_ID,
+      input,
+      { thirdPartyOtpConsentVerified: false },
+    );
+
+    expect(patches).toEqual([
+      expect.objectContaining({
+        status: 'correction_required',
+        verificationResult: 'mismatch',
+        verificationMethod: 'lookup',
+        verifiedAt: NOW,
+        readyAt: null,
+      }),
+    ]);
+    expect(result.status).toBe('correction_required');
+    expect(result.verificationResult).toBe('mismatch');
+  });
+
+  it('falls back to manual verification when the lookup provider errors', async () => {
+    const { useCase, patches } = harness({
+      lookupResponse: { status: 'error', retryable: true },
+    });
+
+    const result = await useCase.execute(
+      TENANT_ID,
+      BOOKING_ID,
+      'BK-0001',
+      OPERATION_ID,
+      input,
+      { thirdPartyOtpConsentVerified: false },
+    );
+
+    expect(patches).toEqual([
+      expect.objectContaining({
+        status: 'verification_required',
+        verificationResult: 'error',
+        verificationMethod: 'lookup',
+        verifiedAt: null,
+        readyAt: null,
+      }),
+    ]);
+    expect(result.status).toBe('verification_required');
+    expect(result.verificationResult).toBe('error');
+  });
+
   it('requires OTP-backed grant consent for a third-party destination and records DB time', async () => {
     const denied = harness();
     const thirdPartyInput = { ...input, isThirdParty: true, thirdPartyConsent: true };
@@ -203,6 +304,8 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
       }),
     ).rejects.toBeInstanceOf(ManualRefundThirdPartyConsentRequired);
     expect(denied.cryptoInputs).toEqual([]);
+    expect(denied.lookupInputs).toEqual([]);
+    expect(denied.patches).toEqual([]);
 
     const allowed = harness();
     await allowed.useCase.execute(TENANT_ID, BOOKING_ID, 'BK-0001', OPERATION_ID, thirdPartyInput, {
@@ -235,6 +338,8 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
       }),
     ).rejects.toBeInstanceOf(ManualRefundDestinationLocked);
     expect(locked.cryptoInputs).toEqual([]);
+    expect(locked.lookupInputs).toEqual([]);
+    expect(locked.patches).toEqual([]);
   });
 
   it('rejects stale versions before protecting data and reports a CAS race', async () => {
@@ -250,6 +355,8 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
       ),
     ).rejects.toBeInstanceOf(ManualRefundConcurrentUpdate);
     expect(stale.cryptoInputs).toEqual([]);
+    expect(stale.lookupInputs).toEqual([]);
+    expect(stale.patches).toEqual([]);
 
     const raced = harness({ casMiss: true });
     await expect(

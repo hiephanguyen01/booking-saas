@@ -1,6 +1,6 @@
 # Task 2 report — customer destination and status API
 
-Status: **DONE_WITH_CONCERNS**
+Status: **DONE**
 
 ## Delivered
 
@@ -15,9 +15,12 @@ Status: **DONE_WITH_CONCERNS**
 - Added explicit Nest throttle overrides for customer writes; reads remain under the global throttle.
 - Extended the refund-batch port/repository with an explicitly tenant-scoped `findById` query used to prove the operation belongs to the authorized booking.
 
-## Concern / intentionally deferred provider boundary
+## Original concern — resolved by the review fix below
 
-The account-name provider call is not wired in this commit. Implementing the existing `AccountNameLookupPort.lookup` call would pass customer bank-account number and account-holder name to a configured external adapter, and the workspace security gate required separate explicit authorization for that PII destination. Per task-owner direction, this commit keeps the safe existing behavior: a submitted destination is protected and persisted with `verificationResult = unsupported`, then advances to `verification_required` for checker handling. Consequently, automatic `matched -> ready_for_transfer`, provider `error -> verification_required`, and runtime `mismatch -> correction_required` are not reachable through this customer endpoint yet. The existing domain policy still preserves the non-overridable mismatch rule.
+The initial Task 2 commit intentionally left the lookup invocation unwired pending explicit PII
+authorization. That authorization is now present in the inherited plan, and the review fix documented
+below wires the existing port while retaining the unsupported production adapter. No real provider
+adapter is added.
 
 ## TDD evidence
 
@@ -68,5 +71,56 @@ Result: exit 0. `pnpm test` passed 370 files / 2,009 tests. Turbo completed 24/2
 - Confirmed controller flow remains `controller -> use-case -> port -> repository`; no service class was added.
 - Confirmed exactly one adjacent unit-test file exists for each of the four new use cases.
 - Confirmed every customer response is constructed field-by-field and contains no persistence-only PII fields.
-- Confirmed destination state/version eligibility is checked before PII protection and no external account-name lookup occurs in this commit.
+- Confirmed destination state/version eligibility is checked before PII processing; see the review fix below for the subsequently authorized lookup-port call.
 - Confirmed no deployment, push, seed, shared-environment mutation, or runtime provider call was performed.
+
+## Task 2 review fix — account-name lookup orchestration
+
+The customer destination use case now injects `AccountNameLookupPort` and calls it only after the
+tenant/booking operation has loaded, the expected version and third-party consent have passed, and
+the domain entity has confirmed the destination is replaceable. The port receives only the validated,
+normalized bank code, account number, and expected account name. The returned outcome drives the
+existing domain state policy:
+
+- `matched` -> `ready_for_transfer` with lookup verification timestamps;
+- `mismatch` -> blocking `correction_required`;
+- `unsupported` and `error` -> `verification_required`.
+
+The production Nest binding remains `UnsupportedAccountNameLookupAdapter`; this fix adds no provider
+adapter and performs no real external/PII call. Provider-returned registered names are not persisted,
+logged, audited, emitted, or returned.
+
+### Review-fix TDD evidence
+
+RED command:
+
+```bash
+pnpm exec vitest run --project api apps/api/src/modules/payments/application/use-cases/submit-customer-manual-refund-destination.use-case.spec.ts
+```
+
+Result: exit 1; 4/7 tests failed for the intended missing behavior. The unsupported case showed zero
+lookup calls, while matched, mismatch, and error were all persisted as `unsupported` /
+`verification_required`. The three authorization/state guard tests remained green.
+
+GREEN commands:
+
+```bash
+pnpm exec vitest run --project api apps/api/src/modules/payments/application/use-cases/submit-customer-manual-refund-destination.use-case.spec.ts
+pnpm --filter=@booking/api typecheck
+```
+
+Results: focused use-case spec passed 7/7; API TypeScript check exited 0 after Prisma client generation.
+The spec also asserts that stale version, missing third-party OTP consent, and post-claim lock failures
+do not invoke lookup/crypto or persist a CAS patch.
+
+### Review-fix regression verification
+
+Command:
+
+```bash
+pnpm test && pnpm --filter=@booking/api lint && pnpm --filter=@booking/api typecheck
+```
+
+Result: exit 0. The repository test run passed 370 files / 2,012 tests; API lint and API TypeScript
+checks both completed successfully. Prisma generation reported only the expected missing local `.env`
+notice and completed successfully.
