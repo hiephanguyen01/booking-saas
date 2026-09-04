@@ -88,6 +88,16 @@ export class ManualRefundDestinationLocked extends DomainError {
   }
 }
 
+export class ManualRefundThirdPartyConsentRequired extends DomainError {
+  constructor() {
+    super(
+      'MANUAL_REFUND_THIRD_PARTY_CONSENT_REQUIRED',
+      403,
+      'An OTP-verified booking access grant is required for a third-party receiving account',
+    );
+  }
+}
+
 export class ManualRefundEvidenceRequired extends DomainError {
   constructor() {
     super('MANUAL_REFUND_EVIDENCE_REQUIRED', 400, 'Verified transfer evidence is required');
@@ -96,7 +106,11 @@ export class ManualRefundEvidenceRequired extends DomainError {
 
 export class ManualRefundDestinationRequired extends DomainError {
   constructor() {
-    super('MANUAL_REFUND_DESTINATION_REQUIRED', 400, 'A verified receiving destination is required');
+    super(
+      'MANUAL_REFUND_DESTINATION_REQUIRED',
+      400,
+      'A verified receiving destination is required',
+    );
   }
 }
 

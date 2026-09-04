@@ -3,6 +3,7 @@ import {
   ManualRefundActionMetadataRequired,
   ManualRefundAlreadyClaimed,
   ManualRefundDestinationRequired,
+  ManualRefundDestinationLocked,
   ManualRefundEvidenceRequired,
   ManualRefundFreshAuthenticationRequired,
   ManualRefundInvalidTransition,
@@ -46,6 +47,9 @@ export interface ManualRefundOperationState {
   breakGlassReason: string | null;
   breakGlassAuthenticatedAt: Date | null;
   breakGlassAt: Date | null;
+  customerAcknowledgement: 'received' | 'not_received' | null;
+  customerAcknowledgedAt: Date | null;
+  customerAcknowledgementNote: string | null;
 }
 
 export interface ManualRefundControlInput {
@@ -80,7 +84,15 @@ export class ManualRefundOperation {
   }
 
   recordDestinationVerification(result: AccountNameVerificationResult): void {
-    if (!['awaiting_details', 'correction_required'].includes(this.state.status)) {
+    this.assertDestinationReplaceable();
+    if (
+      ![
+        'awaiting_details',
+        'verification_required',
+        'correction_required',
+        'ready_for_transfer',
+      ].includes(this.state.status)
+    ) {
       throw new ManualRefundInvalidTransition(this.state.status, 'submit destination for');
     }
     this.transition(
@@ -90,6 +102,23 @@ export class ManualRefundOperation {
           ? 'correction_required'
           : 'verification_required',
     );
+  }
+
+  assertDestinationReplaceable(): void {
+    if (this.state.makerUserId) throw new ManualRefundDestinationLocked();
+  }
+
+  acknowledgeCustomer(
+    acknowledgement: 'received' | 'not_received',
+    acknowledgedAt: Date,
+    note: string | null,
+  ): void {
+    this.assertStatus('completed', 'acknowledge receipt for');
+    if (!Number.isFinite(acknowledgedAt.getTime())) throw new ManualRefundActionMetadataRequired();
+    this.state.customerAcknowledgement = acknowledgement;
+    this.state.customerAcknowledgedAt = acknowledgedAt;
+    this.state.customerAcknowledgementNote = note;
+    this.state.version += 1;
   }
 
   verifyManually(): void {

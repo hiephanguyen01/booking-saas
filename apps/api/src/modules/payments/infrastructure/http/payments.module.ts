@@ -53,7 +53,12 @@ import { PrismaRefundRepository } from '../repositories/prisma-refund.repository
 import { PrismaManualRefundOperationRepository } from '../repositories/prisma-manual-refund-operation.repository';
 import { UnsupportedAccountNameLookupAdapter } from '../unsupported-account-name-lookup.adapter';
 import { ProtectManualRefundDestinationUseCase } from '../../application/use-cases/protect-manual-refund-destination.use-case';
+import { GetCustomerManualRefundStatusUseCase } from '../../application/use-cases/get-customer-manual-refund-status.use-case';
+import { SubmitCustomerManualRefundDestinationUseCase } from '../../application/use-cases/submit-customer-manual-refund-destination.use-case';
+import { AcknowledgeCustomerManualRefundReceivedUseCase } from '../../application/use-cases/acknowledge-customer-manual-refund-received.use-case';
+import { ReportCustomerManualRefundNotReceivedUseCase } from '../../application/use-cases/report-customer-manual-refund-not-received.use-case';
 import { PlatformPaymentController } from './platform-payment.controller';
+import { PublicManualRefundController } from './public-manual-refund.controller';
 import { PublicPaymentController } from './public-payment.controller';
 import { TenantGatewayController } from './tenant-gateway.controller';
 import { TenantPaymentConfigurationController } from './tenant-payment-configuration.controller';
@@ -64,6 +69,7 @@ import { WebhookController } from './webhook.controller';
   imports: [PrismaModule, TenantContextModule, TenancyModule, BookingModule],
   controllers: [
     PublicPaymentController,
+    PublicManualRefundController,
     WebhookController,
     TenantGatewayController,
     TenantPaymentConfigurationController,
@@ -109,6 +115,10 @@ import { WebhookController } from './webhook.controller';
     GetPublicPaymentOptionsUseCase,
     ExecuteAutomaticRefundUseCase,
     ProtectManualRefundDestinationUseCase,
+    GetCustomerManualRefundStatusUseCase,
+    SubmitCustomerManualRefundDestinationUseCase,
+    AcknowledgeCustomerManualRefundReceivedUseCase,
+    ReportCustomerManualRefundNotReceivedUseCase,
   ],
   exports: [ExecuteRefundUseCase],
 })
