@@ -81,6 +81,10 @@ import { RevealManualRefundPrivateDetailsUseCase } from '../../application/use-c
 import { ApproveManualRefundUseCase } from '../../application/use-cases/approve-manual-refund.use-case';
 import { BreakGlassCompleteManualRefundUseCase } from '../../application/use-cases/break-glass-complete-manual-refund.use-case';
 import { PlatformManualRefundController } from './platform-manual-refund.controller';
+import { ManualRefundSlaWorker } from '../manual-refund-sla.worker';
+import { SendManualRefundCustomerDetailReminderUseCase } from '../../application/use-cases/send-manual-refund-customer-detail-reminder.use-case';
+import { StartManualRefundTransferSlaUseCase } from '../../application/use-cases/start-manual-refund-transfer-sla.use-case';
+import { EscalateManualRefundCheckerWaitingUseCase } from '../../application/use-cases/escalate-manual-refund-checker-waiting.use-case';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule, IdentityAccessModule, BookingModule],
@@ -151,6 +155,10 @@ import { PlatformManualRefundController } from './platform-manual-refund.control
     RevealManualRefundPrivateDetailsUseCase,
     ApproveManualRefundUseCase,
     BreakGlassCompleteManualRefundUseCase,
+    SendManualRefundCustomerDetailReminderUseCase,
+    StartManualRefundTransferSlaUseCase,
+    EscalateManualRefundCheckerWaitingUseCase,
+    ManualRefundSlaWorker,
   ],
   exports: [ExecuteRefundUseCase],
 })

@@ -2,7 +2,8 @@ import type {
   ManualRefundStatusResponse,
   SubmitManualRefundDestinationInput,
 } from '@booking/contracts';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   ManualRefundConcurrentUpdate,
@@ -36,6 +37,7 @@ export class SubmitCustomerManualRefundDestinationUseCase {
     @Inject(ACCOUNT_NAME_LOOKUP) private readonly accountNameLookup: AccountNameLookupPort,
     private readonly protectDestination: ProtectManualRefundDestinationUseCase,
     private readonly tenantDb: TenantDbService,
+    @Optional() private readonly outbox?: OutboxService,
   ) {}
 
   execute(
@@ -107,6 +109,13 @@ export class SubmitCustomerManualRefundDestinationUseCase {
         },
       );
       if (!updated) throw new ManualRefundConcurrentUpdate();
+      if (updated.status === 'ready_for_transfer' && current.status !== 'ready_for_transfer') {
+        await this.outbox?.emit(tx, {
+          tenantId,
+          eventType: 'manual_refund.destination_ready',
+          payload: { operationId, refundBatchId: current.refundBatchId },
+        });
+      }
       return toCustomerManualRefundStatusResponse(updated, batch, bookingCode);
     });
   }

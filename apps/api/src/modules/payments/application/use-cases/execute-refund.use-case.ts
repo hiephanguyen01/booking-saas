@@ -142,6 +142,11 @@ export class ExecuteRefundUseCase {
         (await this.manualRefundOperations.isWorkflowEnabled(tx, tenantId))
       ) {
         await this.manualRefundOperations.createForBatch(tx, tenantId, batch.id);
+        await this.outbox.emit(tx, {
+          tenantId,
+          eventType: 'manual_refund.destination_requested',
+          payload: { refundBatchId: batch.id, bookingId },
+        });
       }
     });
   }

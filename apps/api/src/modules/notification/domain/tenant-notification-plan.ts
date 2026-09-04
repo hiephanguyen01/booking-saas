@@ -88,6 +88,44 @@ export const TENANT_NOTIFICATION_PLAN: Record<string, TenantNotificationPlanItem
     targetType: 'tenant_affiliate', targetIdKey: 'affiliateId',
     subjectIdKey: 'affiliateId', subjectKind: 'affiliate_user_name',
   },
+  // Manual-refund operational state alerts are in-app notifications for finance staff.
+  // Payloads contain only opaque operation/batch identifiers, never destination data.
+  'manual_refund.customer_not_received': {
+    permission: 'tenant.finance.read',
+    title: 'Khách báo chưa nhận được tiền hoàn',
+    targetType: 'tenant_disputes', targetIdKey: null,
+    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+  },
+  'manual_refund.checker_escalated': {
+    permission: 'tenant.finance.read',
+    title: 'Hoàn tiền thủ công chờ checker xử lý',
+    targetType: 'tenant_disputes', targetIdKey: null,
+    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+  },
+  'manual_refund.transfer_submitted': {
+    permission: 'tenant.finance.read',
+    title: 'Hoàn tiền thủ công chờ checker kiểm tra',
+    targetType: 'tenant_disputes', targetIdKey: null,
+    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+  },
+  'manual_refund.destination_requested': {
+    permission: 'tenant.finance.read',
+    title: 'Hoàn tiền thủ công cần thông tin nhận tiền',
+    targetType: 'tenant_disputes', targetIdKey: null,
+    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+  },
+  'manual_refund.destination_ready': {
+    permission: 'tenant.finance.read',
+    title: 'Thông tin nhận tiền hoàn đã sẵn sàng',
+    targetType: 'tenant_disputes', targetIdKey: null,
+    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+  },
+  'manual_refund.customer_details_reminder': {
+    permission: 'tenant.finance.read',
+    title: 'Khách chưa gửi thông tin nhận tiền hoàn',
+    targetType: 'tenant_disputes', targetIdKey: null,
+    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+  },
 };
 
 export const TENANT_NOTIFICATION_EVENTS: readonly string[] = Object.keys(TENANT_NOTIFICATION_PLAN);

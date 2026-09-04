@@ -2032,6 +2032,10 @@ model ManualRefundOperation {
   customerAcknowledgedAt          DateTime?                            @map("customer_acknowledged_at") @db.Timestamptz(6)
   customerAcknowledgementNote     String?                              @map("customer_acknowledgement_note")
   ciphertextPurgedAt              DateTime?                            @map("ciphertext_purged_at") @db.Timestamptz(6)
+  customerDetailReminder24At      DateTime?                            @map("customer_detail_reminder_24_at") @db.Timestamptz(6)
+  customerDetailReminder48At      DateTime?                            @map("customer_detail_reminder_48_at") @db.Timestamptz(6)
+  checkerWaitingAt                DateTime?                            @map("checker_waiting_at") @db.Timestamptz(6)
+  checkerEscalatedAt              DateTime?                            @map("checker_escalated_at") @db.Timestamptz(6)
   breakGlassByUserId              String?                              @map("break_glass_by_user_id") @db.Uuid
   breakGlassReason                String?                              @map("break_glass_reason")
   breakGlassAuthenticatedAt       DateTime?                            @map("break_glass_authenticated_at") @db.Timestamptz(6)

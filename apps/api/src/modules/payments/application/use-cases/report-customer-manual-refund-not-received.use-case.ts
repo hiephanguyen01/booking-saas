@@ -1,5 +1,6 @@
 import type { AcknowledgeManualRefundInput, ManualRefundStatusResponse } from '@booking/contracts';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ManualRefundConcurrentUpdate } from '../../domain/errors/manual-refund-errors';
 import {
@@ -23,6 +24,7 @@ export class ReportCustomerManualRefundNotReceivedUseCase {
     private readonly operations: IManualRefundOperationRepository,
     @Inject(REFUND_BATCH_REPOSITORY) private readonly batches: IRefundBatchRepository,
     private readonly tenantDb: TenantDbService,
+    @Optional() private readonly outbox?: OutboxService,
   ) {}
 
   execute(
@@ -58,6 +60,7 @@ export class ReportCustomerManualRefundNotReceivedUseCase {
         },
       );
       if (!updated) throw new ManualRefundConcurrentUpdate();
+      await this.outbox?.emit(tx, { tenantId, eventType: 'manual_refund.customer_not_received', payload: { operationId, refundBatchId: current.refundBatchId } });
       return toCustomerManualRefundStatusResponse(updated, batch, bookingCode);
     });
   }

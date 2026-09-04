@@ -57,6 +57,10 @@ export interface ManualRefundOperationRecord {
   customerAcknowledgedAt: Date | null;
   customerAcknowledgementNote: string | null;
   ciphertextPurgedAt: Date | null;
+  customerDetailReminder24At?: Date | null;
+  customerDetailReminder48At?: Date | null;
+  checkerWaitingAt?: Date | null;
+  checkerEscalatedAt?: Date | null;
   breakGlassByUserId: string | null;
   breakGlassReason: string | null;
   breakGlassAuthenticatedAt: Date | null;
@@ -88,6 +92,10 @@ export interface ManualRefundOperationViewRecord {
 export interface IManualRefundOperationRepository {
   isWorkflowEnabled(tx: PrismaTx, tenantId: string): Promise<boolean>;
   createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<void>;
+  findCustomerDetailReminderCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string; hours: 24 | 48 }>>;
+  findTransferSlaCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string; slaHours: number }>>;
+  findCheckerEscalationCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string }>>;
+  findCiphertextPurgeCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string }>>;
   findById(tx: PrismaTx, tenantId: string, id: string): Promise<ManualRefundOperationRecord | null>;
   findByBatchId(
     tx: PrismaTx,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   ManualRefundBatchTenantMismatch,
@@ -31,6 +32,7 @@ function toRecord(row: Row): ManualRefundOperationRecord {
 
 @Injectable()
 export class PrismaManualRefundOperationRepository implements IManualRefundOperationRepository {
+  constructor(private readonly prisma: PrismaService) {}
   async isWorkflowEnabled(tx: PrismaTx, tenantId: string): Promise<boolean> {
     const tenant = await tx.tenant.findUnique({
       where: { id: tenantId },
@@ -51,6 +53,56 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
       create: { tenantId, refundBatchId },
       update: {},
     });
+  }
+
+  async findCustomerDetailReminderCandidates(limit: number) {
+    return this.prisma.admin.$queryRaw<Array<{ tenantId: string; operationId: string; hours: 24 | 48 }>>(Prisma.sql`
+      SELECT tenant_id AS "tenantId", id AS "operationId",
+             CASE WHEN customer_detail_reminder_24_at IS NULL THEN 24 ELSE 48 END AS hours
+      FROM manual_refund_operations
+      WHERE status = 'awaiting_details'
+        AND (
+          (customer_detail_reminder_24_at IS NULL AND COALESCE(reopened_at, created_at) <= now() - interval '24 hours')
+          OR (customer_detail_reminder_24_at IS NOT NULL AND customer_detail_reminder_48_at IS NULL AND COALESCE(reopened_at, created_at) <= now() - interval '48 hours')
+        )
+      ORDER BY COALESCE(reopened_at, created_at), id
+      LIMIT ${limit}`);
+  }
+
+  async findTransferSlaCandidates(limit: number) {
+    return this.prisma.admin.$queryRaw<Array<{ tenantId: string; operationId: string; slaHours: number }>>(Prisma.sql`
+      SELECT m.tenant_id AS "tenantId", m.id AS "operationId",
+             COALESCE(MIN(p.manual_refund_sla_hours_snapshot), 72)::int AS "slaHours"
+      FROM manual_refund_operations m
+      JOIN refunds r ON r.refund_batch_id = m.refund_batch_id
+      JOIN payments p ON p.id = r.payment_id
+      WHERE m.status = 'ready_for_transfer' AND m.ready_at IS NOT NULL AND m.transfer_due_at IS NULL
+      GROUP BY m.tenant_id, m.id
+      ORDER BY m.ready_at, m.id
+      LIMIT ${limit}`);
+  }
+
+  async findCheckerEscalationCandidates(limit: number) {
+    return this.prisma.admin.$queryRaw<Array<{ tenantId: string; operationId: string }>>(Prisma.sql`
+      SELECT tenant_id AS "tenantId", id AS "operationId"
+      FROM manual_refund_operations
+      WHERE status = 'transfer_submitted'
+        AND transfer_submitted_at <= now() - interval '24 hours'
+        AND checker_escalated_at IS NULL
+      ORDER BY transfer_submitted_at, id
+      LIMIT ${limit}`);
+  }
+
+  async findCiphertextPurgeCandidates(limit: number) {
+    return this.prisma.admin.$queryRaw<Array<{ tenantId: string; operationId: string }>>(Prisma.sql`
+      SELECT tenant_id AS "tenantId", id AS "operationId"
+      FROM manual_refund_operations
+      WHERE status = 'completed'
+        AND completed_at <= now() - interval '90 days'
+        AND ciphertext_purged_at IS NULL
+        AND destination_account_ciphertext IS NOT NULL
+      ORDER BY completed_at, id
+      LIMIT ${limit}`);
   }
 
   async findById(
