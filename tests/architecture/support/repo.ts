@@ -25,6 +25,7 @@ export const IGNORED_DIRECTORIES = new Set([
   '.git',
   '.react-router',
   '.turbo',
+  '.worktrees',
   'build',
   'coverage',
   'dist',
