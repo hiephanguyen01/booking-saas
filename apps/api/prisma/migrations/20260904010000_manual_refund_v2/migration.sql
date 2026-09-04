@@ -15,6 +15,10 @@ CREATE TYPE "manual_refund_customer_acknowledgement" AS ENUM (
   'not_received'
 );
 
+-- Required by the composite FK below: an operation's tenant must be the batch's tenant.
+CREATE UNIQUE INDEX "refund_batches_tenant_id_id_key"
+  ON "refund_batches"("tenant_id", "id");
+
 CREATE TABLE "manual_refund_operations" (
   "id" UUID NOT NULL,
   "tenant_id" UUID NOT NULL,
@@ -36,6 +40,9 @@ CREATE TABLE "manual_refund_operations" (
   "verified_at" TIMESTAMPTZ(6),
   "maker_user_id" UUID,
   "claimed_at" TIMESTAMPTZ(6),
+  "reassigned_by_user_id" UUID,
+  "reassignment_reason" TEXT,
+  "reassigned_at" TIMESTAMPTZ(6),
   "transfer_reference" TEXT,
   "transfer_reference_normalized" TEXT,
   "evidence_object_key" TEXT,
@@ -48,6 +55,9 @@ CREATE TABLE "manual_refund_operations" (
   "checked_by_user_id" UUID,
   "checked_at" TIMESTAMPTZ(6),
   "rejection_reason" TEXT,
+  "reopened_by_user_id" UUID,
+  "reopen_reason" TEXT,
+  "reopened_at" TIMESTAMPTZ(6),
   "ready_at" TIMESTAMPTZ(6),
   "transfer_due_at" TIMESTAMPTZ(6),
   "completed_at" TIMESTAMPTZ(6),
@@ -57,6 +67,7 @@ CREATE TABLE "manual_refund_operations" (
   "ciphertext_purged_at" TIMESTAMPTZ(6),
   "break_glass_by_user_id" UUID,
   "break_glass_reason" TEXT,
+  "break_glass_authenticated_at" TIMESTAMPTZ(6),
   "break_glass_at" TIMESTAMPTZ(6),
   "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -64,8 +75,9 @@ CREATE TABLE "manual_refund_operations" (
   CONSTRAINT "manual_refund_operations_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "manual_refund_operations_tenant_id_fkey"
     FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT "manual_refund_operations_refund_batch_id_fkey"
-    FOREIGN KEY ("refund_batch_id") REFERENCES "refund_batches"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "manual_refund_operations_tenant_id_refund_batch_id_fkey"
+    FOREIGN KEY ("tenant_id", "refund_batch_id")
+    REFERENCES "refund_batches"("tenant_id", "id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "manual_refund_operations_version_check" CHECK ("version" > 0),
   CONSTRAINT "manual_refund_operations_destination_last4_check"
     CHECK ("destination_account_last4" IS NULL OR "destination_account_last4" ~ '^[0-9]{4}$'),
@@ -117,19 +129,64 @@ CREATE TABLE "manual_refund_operations" (
   CONSTRAINT "manual_refund_operations_acknowledgement_bundle_check" CHECK (
     ("customer_acknowledgement" IS NULL) = ("customer_acknowledged_at" IS NULL)
   ),
+  CONSTRAINT "manual_refund_operations_reassignment_bundle_check" CHECK (
+    ("reassigned_by_user_id" IS NULL
+      AND "reassignment_reason" IS NULL
+      AND "reassigned_at" IS NULL)
+    OR
+    ("reassigned_by_user_id" IS NOT NULL
+      AND length(btrim("reassignment_reason")) >= 3
+      AND "reassigned_at" IS NOT NULL)
+  ),
+  CONSTRAINT "manual_refund_operations_reopen_bundle_check" CHECK (
+    ("reopened_by_user_id" IS NULL
+      AND "reopen_reason" IS NULL
+      AND "reopened_at" IS NULL)
+    OR
+    ("reopened_by_user_id" IS NOT NULL
+      AND length(btrim("reopen_reason")) >= 3
+      AND "reopened_at" IS NOT NULL)
+  ),
+  CONSTRAINT "manual_refund_operations_transfer_state_prerequisites_check" CHECK (
+    "status" NOT IN ('transfer_submitted', 'transfer_rejected', 'completed')
+    OR
+    ("destination_submitted_at" IS NOT NULL
+      AND "maker_user_id" IS NOT NULL
+      AND "transfer_reference" IS NOT NULL
+      AND "evidence_object_key" IS NOT NULL
+      AND "evidence_verified_at" IS NOT NULL
+      AND "transfer_submitted_by_user_id" = "maker_user_id"
+      AND "transfer_submitted_at" IS NOT NULL)
+  ),
+  CONSTRAINT "manual_refund_operations_completion_checker_check" CHECK (
+    "status" <> 'completed'
+    OR
+    (("checked_by_user_id" IS NOT NULL
+        AND "checked_at" IS NOT NULL
+        AND "checked_by_user_id" <> "maker_user_id")
+      OR
+      ("break_glass_by_user_id" IS NOT NULL
+        AND "break_glass_by_user_id" <> "maker_user_id"))
+  ),
   CONSTRAINT "manual_refund_operations_break_glass_bundle_check" CHECK (
     ("break_glass_by_user_id" IS NULL
       AND "break_glass_reason" IS NULL
+      AND "break_glass_authenticated_at" IS NULL
       AND "break_glass_at" IS NULL)
     OR
     ("break_glass_by_user_id" IS NOT NULL
       AND length(btrim("break_glass_reason")) >= 10
-      AND "break_glass_at" IS NOT NULL)
+      AND "break_glass_authenticated_at" IS NOT NULL
+      AND "break_glass_at" IS NOT NULL
+      AND "break_glass_authenticated_at" <= "break_glass_at"
+      AND "break_glass_authenticated_at" >= "break_glass_at" - INTERVAL '5 minutes')
   )
 );
 
 CREATE UNIQUE INDEX "manual_refund_operations_refund_batch_id_key"
   ON "manual_refund_operations"("refund_batch_id");
+CREATE UNIQUE INDEX "manual_refund_operations_tenant_id_refund_batch_id_key"
+  ON "manual_refund_operations"("tenant_id", "refund_batch_id");
 CREATE UNIQUE INDEX "manual_refund_operations_tenant_transfer_reference_key"
   ON "manual_refund_operations"("tenant_id", "transfer_reference_normalized")
   WHERE "transfer_reference_normalized" IS NOT NULL;

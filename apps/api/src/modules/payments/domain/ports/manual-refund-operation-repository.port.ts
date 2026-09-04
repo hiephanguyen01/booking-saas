@@ -30,6 +30,9 @@ export interface ManualRefundOperationRecord {
   verifiedAt: Date | null;
   makerUserId: string | null;
   claimedAt: Date | null;
+  reassignedByUserId: string | null;
+  reassignmentReason: string | null;
+  reassignedAt: Date | null;
   transferReference: string | null;
   transferReferenceNormalized: string | null;
   evidenceObjectKey: string | null;
@@ -42,6 +45,9 @@ export interface ManualRefundOperationRecord {
   checkedByUserId: string | null;
   checkedAt: Date | null;
   rejectionReason: string | null;
+  reopenedByUserId: string | null;
+  reopenReason: string | null;
+  reopenedAt: Date | null;
   readyAt: Date | null;
   transferDueAt: Date | null;
   completedAt: Date | null;
@@ -51,6 +57,7 @@ export interface ManualRefundOperationRecord {
   ciphertextPurgedAt: Date | null;
   breakGlassByUserId: string | null;
   breakGlassReason: string | null;
+  breakGlassAuthenticatedAt: Date | null;
   breakGlassAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -72,10 +79,15 @@ export type ManualRefundOperationPatch = Partial<
 export interface IManualRefundOperationRepository {
   isWorkflowEnabled(tx: PrismaTx, tenantId: string): Promise<boolean>;
   createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<void>;
-  findById(tx: PrismaTx, id: string): Promise<ManualRefundOperationRecord | null>;
-  findByBatchId(tx: PrismaTx, refundBatchId: string): Promise<ManualRefundOperationRecord | null>;
+  findById(tx: PrismaTx, tenantId: string, id: string): Promise<ManualRefundOperationRecord | null>;
+  findByBatchId(
+    tx: PrismaTx,
+    tenantId: string,
+    refundBatchId: string,
+  ): Promise<ManualRefundOperationRecord | null>;
   casUpdate(
     tx: PrismaTx,
+    tenantId: string,
     id: string,
     expectedStatus: ManualRefundOperationStatus,
     expectedVersion: number,

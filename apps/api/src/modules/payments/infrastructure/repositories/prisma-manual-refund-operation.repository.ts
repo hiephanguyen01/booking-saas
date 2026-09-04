@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import { ManualRefundTransferReferenceAlreadyUsed } from '../../domain/errors/manual-refund-errors';
+import {
+  ManualRefundBatchTenantMismatch,
+  ManualRefundTransferReferenceAlreadyUsed,
+} from '../../domain/errors/manual-refund-errors';
 import { normalizeManualRefundTransferReference } from '../../domain/manual-refund-transfer-reference';
 import type {
   IManualRefundOperationRepository,
@@ -34,28 +37,39 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
   }
 
   async createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<void> {
+    const batch = await tx.refundBatch.findFirst({
+      where: { id: refundBatchId, tenantId },
+      select: { id: true },
+    });
+    if (!batch) throw new ManualRefundBatchTenantMismatch();
     await tx.manualRefundOperation.upsert({
-      where: { refundBatchId },
+      where: { refundBatchId, tenantId },
       create: { tenantId, refundBatchId },
       update: {},
     });
   }
 
-  async findById(tx: PrismaTx, id: string): Promise<ManualRefundOperationRecord | null> {
-    const row = await tx.manualRefundOperation.findUnique({ where: { id } });
+  async findById(
+    tx: PrismaTx,
+    tenantId: string,
+    id: string,
+  ): Promise<ManualRefundOperationRecord | null> {
+    const row = await tx.manualRefundOperation.findUnique({ where: { id, tenantId } });
     return row ? toRecord(row) : null;
   }
 
   async findByBatchId(
     tx: PrismaTx,
+    tenantId: string,
     refundBatchId: string,
   ): Promise<ManualRefundOperationRecord | null> {
-    const row = await tx.manualRefundOperation.findUnique({ where: { refundBatchId } });
+    const row = await tx.manualRefundOperation.findUnique({ where: { refundBatchId, tenantId } });
     return row ? toRecord(row) : null;
   }
 
   async casUpdate(
     tx: PrismaTx,
+    tenantId: string,
     id: string,
     expectedStatus: ManualRefundOperationRecord['status'],
     expectedVersion: number,
@@ -74,11 +88,11 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
         version: { increment: 1 as const },
       };
       const changed = await tx.manualRefundOperation.updateMany({
-        where: { id, status: expectedStatus, version: expectedVersion },
+        where: { id, tenantId, status: expectedStatus, version: expectedVersion },
         data,
       });
       if (changed.count !== 1) return null;
-      const row = await tx.manualRefundOperation.findUnique({ where: { id } });
+      const row = await tx.manualRefundOperation.findUnique({ where: { id, tenantId } });
       return row ? toRecord(row) : null;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

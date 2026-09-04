@@ -6,6 +6,16 @@ export class ManualRefundOperationNotFound extends DomainError {
   }
 }
 
+export class ManualRefundBatchTenantMismatch extends DomainError {
+  constructor() {
+    super(
+      'MANUAL_REFUND_BATCH_TENANT_MISMATCH',
+      404,
+      'Refund batch was not found in the current tenant',
+    );
+  }
+}
+
 export class ManualRefundInvalidTransition extends DomainError {
   constructor(status: string, action: string) {
     super(
@@ -81,6 +91,22 @@ export class ManualRefundDestinationLocked extends DomainError {
 export class ManualRefundEvidenceRequired extends DomainError {
   constructor() {
     super('MANUAL_REFUND_EVIDENCE_REQUIRED', 400, 'Verified transfer evidence is required');
+  }
+}
+
+export class ManualRefundDestinationRequired extends DomainError {
+  constructor() {
+    super('MANUAL_REFUND_DESTINATION_REQUIRED', 400, 'A verified receiving destination is required');
+  }
+}
+
+export class ManualRefundActionMetadataRequired extends DomainError {
+  constructor() {
+    super(
+      'MANUAL_REFUND_ACTION_METADATA_REQUIRED',
+      400,
+      'Actor, reason, and occurrence time are required for this manual refund action',
+    );
   }
 }
 

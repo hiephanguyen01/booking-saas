@@ -1978,6 +1978,7 @@ model RefundBatch {
   manualRefundOperation ManualRefundOperation?
 
   @@unique([tenantId, bookingId, reason])
+  @@unique([tenantId, id])
   @@index([tenantId, status, updatedAt])
   @@map("refund_batches")
 }
@@ -2005,6 +2006,9 @@ model ManualRefundOperation {
   verifiedAt                      DateTime?                            @map("verified_at") @db.Timestamptz(6)
   makerUserId                     String?                              @map("maker_user_id") @db.Uuid
   claimedAt                       DateTime?                            @map("claimed_at") @db.Timestamptz(6)
+  reassignedByUserId              String?                              @map("reassigned_by_user_id") @db.Uuid
+  reassignmentReason              String?                              @map("reassignment_reason")
+  reassignedAt                    DateTime?                            @map("reassigned_at") @db.Timestamptz(6)
   transferReference               String?                              @map("transfer_reference")
   transferReferenceNormalized     String?                              @map("transfer_reference_normalized")
   evidenceObjectKey               String?                              @map("evidence_object_key")
@@ -2017,6 +2021,9 @@ model ManualRefundOperation {
   checkedByUserId                 String?                              @map("checked_by_user_id") @db.Uuid
   checkedAt                       DateTime?                            @map("checked_at") @db.Timestamptz(6)
   rejectionReason                 String?                              @map("rejection_reason")
+  reopenedByUserId                String?                              @map("reopened_by_user_id") @db.Uuid
+  reopenReason                    String?                              @map("reopen_reason")
+  reopenedAt                      DateTime?                            @map("reopened_at") @db.Timestamptz(6)
   readyAt                         DateTime?                            @map("ready_at") @db.Timestamptz(6)
   transferDueAt                   DateTime?                            @map("transfer_due_at") @db.Timestamptz(6)
   completedAt                     DateTime?                            @map("completed_at") @db.Timestamptz(6)
@@ -2026,13 +2033,15 @@ model ManualRefundOperation {
   ciphertextPurgedAt              DateTime?                            @map("ciphertext_purged_at") @db.Timestamptz(6)
   breakGlassByUserId              String?                              @map("break_glass_by_user_id") @db.Uuid
   breakGlassReason                String?                              @map("break_glass_reason")
+  breakGlassAuthenticatedAt       DateTime?                            @map("break_glass_authenticated_at") @db.Timestamptz(6)
   breakGlassAt                    DateTime?                            @map("break_glass_at") @db.Timestamptz(6)
   createdAt                       DateTime                             @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                       DateTime                             @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  refundBatch RefundBatch @relation(fields: [refundBatchId], references: [id], onDelete: Cascade)
+  refundBatch RefundBatch @relation(fields: [tenantId, refundBatchId], references: [tenantId, id], onDelete: Cascade)
 
+  @@unique([tenantId, refundBatchId])
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, makerUserId, status])
   @@index([tenantId, transferDueAt])
