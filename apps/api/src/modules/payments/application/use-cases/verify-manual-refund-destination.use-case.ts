@@ -4,7 +4,7 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import { ManualRefundConcurrentUpdate, ManualRefundOperationNotFound } from '../../domain/errors/manual-refund-errors';
 import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
-import { toManualRefundOperation } from '../manual-refund.mapper';
+import { toManualRefundMutationResponse, toManualRefundOperation } from '../manual-refund.mapper';
 
 @Injectable()
 export class VerifyManualRefundDestinationUseCase {
@@ -18,7 +18,7 @@ export class VerifyManualRefundDestinationUseCase {
       const updated = await this.operations.casUpdate(tx, tenantId, operationId, current.status, input.expectedVersion, { status: 'ready_for_transfer', verificationMethod: 'manual', verifiedByUserId: actorUserId, verifiedAt: now, readyAt: now });
       if (!updated) throw new ManualRefundConcurrentUpdate();
       await this.audit.write(tx, { tenantId, actorUserId, action: 'manual_refund.destination_verified', entityType: 'manual_refund_operation', entityId: operationId, data: { note: input.note.trim() } });
-      return updated;
+      return toManualRefundMutationResponse(updated);
     });
   }
 }

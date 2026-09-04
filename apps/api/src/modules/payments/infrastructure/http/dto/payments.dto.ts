@@ -30,6 +30,7 @@ import {
   createManualRefundEvidenceUploadInputSchema,
   manualRefundEvidenceUploadResponseSchema,
   rejectManualRefundInputSchema,
+  reopenManualRefundInputSchema,
   manualRefundPrivateDetailsResponseSchema,
   revealManualRefundPrivateDetailsInputSchema,
   approveManualRefundInputSchema,
@@ -62,6 +63,7 @@ export class CreateManualRefundEvidenceUploadDto extends createZodDto(
   createManualRefundEvidenceUploadInputSchema,
 ) {}
 export class RejectManualRefundDto extends createZodDto(rejectManualRefundInputSchema) {}
+export class ReopenManualRefundDto extends createZodDto(reopenManualRefundInputSchema) {}
 export class RevealManualRefundPrivateDetailsDto extends createZodDto(
   revealManualRefundPrivateDetailsInputSchema,
 ) {}

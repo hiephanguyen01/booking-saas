@@ -33,6 +33,7 @@ import {
   ManualRefundPrivateDetailsResponseDto,
   ReassignManualRefundDto,
   RejectManualRefundDto,
+  ReopenManualRefundDto,
   RevealManualRefundPrivateDetailsDto,
   SubmitManualRefundTransferDto,
   VerifyManualRefundDestinationDto,
@@ -73,6 +74,7 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.prepare')
   @Post(':id/verify')
   @HttpCode(200)
+  @UuidParam()
   async verifyDestination(
     @Param('id') id: string,
     @Body() input: VerifyManualRefundDestinationDto,
@@ -84,6 +86,7 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.prepare')
   @Post(':id/claim')
   @HttpCode(200)
+  @UuidParam()
   async claimRefund(
     @Param('id') id: string,
     @Body() input: ClaimManualRefundDto,
@@ -95,6 +98,7 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.prepare')
   @Post(':id/reassign')
   @HttpCode(200)
+  @UuidParam()
   async reassignRefund(
     @Param('id') id: string,
     @Body() input: ReassignManualRefundDto,
@@ -106,6 +110,7 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.prepare')
   @Post(':id/evidence-upload')
   @HttpCode(200)
+  @UuidParam()
   @ApiOkResponse({ type: ManualRefundEvidenceUploadResponseDto })
   async evidenceUpload(
     @Param('id') id: string,
@@ -118,6 +123,7 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.prepare')
   @Post(':id/transfer')
   @HttpCode(200)
+  @UuidParam()
   async submitTransfer(
     @Param('id') id: string,
     @Body() input: SubmitManualRefundTransferDto,
@@ -129,6 +135,7 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.reveal')
   @Post(':id/reveal')
   @HttpCode(200)
+  @UuidParam()
   @Header('Cache-Control', 'no-store')
   @ApiOkResponse({ type: ManualRefundPrivateDetailsResponseDto })
   async revealPrivateDetails(
@@ -146,6 +153,7 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.approve')
   @Post(':id/approve')
   @HttpCode(200)
+  @UuidParam()
   async approveRefund(
     @Param('id') id: string,
     @Body() input: ApproveManualRefundDto,
@@ -157,6 +165,7 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.approve')
   @Post(':id/reject')
   @HttpCode(200)
+  @UuidParam()
   async rejectRefund(
     @Param('id') id: string,
     @Body() input: RejectManualRefundDto,
@@ -168,9 +177,10 @@ export class TenantManualRefundController {
   @RequirePermissions('tenant.refunds.approve')
   @Post(':id/reopen')
   @HttpCode(200)
+  @UuidParam()
   async reopenRefund(
     @Param('id') id: string,
-    @Body() input: RejectManualRefundDto,
+    @Body() input: ReopenManualRefundDto,
     @CurrentPrincipal() p: SessionPrincipal,
   ) {
     return this.reopen.execute(this.tenantContext.tenantIdOrThrow(), id, input, p.userId);

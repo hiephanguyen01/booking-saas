@@ -130,6 +130,41 @@ export function toManualRefundPrivateDetailsResponse(input: {
   return input;
 }
 
+/** Tenant mutation response; persistence-only account/evidence secrets never cross this boundary. */
+export function toManualRefundMutationResponse(record: ManualRefundOperationRecord) {
+  return {
+    id: record.id,
+    status: record.status,
+    version: record.version,
+    destination: record.destinationBankCode && record.destinationAccountName && record.destinationAccountLast4
+      ? {
+          bankCode: record.destinationBankCode,
+          accountNameMasked: maskAccountName(record.destinationAccountName),
+          accountNumberLast4: record.destinationAccountLast4,
+          isThirdParty: record.destinationIsThirdParty,
+          consentRecordedAt: record.destinationConsentAt?.toISOString() ?? null,
+        }
+      : null,
+    verificationResult: record.verificationResult,
+    makerUserId: record.makerUserId,
+    claimedAt: record.claimedAt?.toISOString() ?? null,
+    transferReference: record.transferReference,
+    transferSubmittedByUserId: record.transferSubmittedByUserId,
+    checkedByUserId: record.checkedByUserId,
+    checkedAt: record.checkedAt?.toISOString() ?? null,
+    rejectionReason: record.rejectionReason,
+    evidence: {
+      present: Boolean(record.evidenceObjectKey),
+      contentType: record.evidenceContentType,
+      sizeBytes: record.evidenceSizeBytes,
+      verifiedAt: record.evidenceVerifiedAt?.toISOString() ?? null,
+    },
+    transferDueAt: record.transferDueAt?.toISOString() ?? null,
+    transferSubmittedAt: record.transferSubmittedAt?.toISOString() ?? null,
+    completedAt: record.completedAt?.toISOString() ?? null,
+  };
+}
+
 function maskAccountName(name: string): string {
   return name
     .trim()

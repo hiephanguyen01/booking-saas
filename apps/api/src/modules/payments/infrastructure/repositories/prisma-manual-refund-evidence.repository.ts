@@ -74,4 +74,23 @@ export class PrismaManualRefundEvidenceRepository implements IManualRefundEviden
     });
     return result.count === 1;
   }
+
+  async invalidateUploads(
+    tx: PrismaTx,
+    tenantId: string,
+    operationId: string,
+    invalidatedAt: Date,
+  ): Promise<string[]> {
+    const rows = await tx.manualRefundEvidenceUpload.findMany({
+      where: { tenantId, operationId, status: { in: ['pending', 'claimed'] } },
+      select: { id: true, objectKey: true },
+    });
+    if (rows.length) {
+      await tx.manualRefundEvidenceUpload.updateMany({
+        where: { tenantId, operationId, status: { in: ['pending', 'claimed'] } },
+        data: { status: 'quarantined', quarantinedAt: invalidatedAt, claimedAt: null },
+      });
+    }
+    return rows.map((row) => row.objectKey);
+  }
 }

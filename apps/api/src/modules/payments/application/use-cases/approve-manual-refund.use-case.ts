@@ -3,9 +3,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { STORAGE_PORT, type StoragePort } from '../../../storage/domain/ports/storage.port';
 import {
   ManualRefundConcurrentUpdate,
   ManualRefundMakerCannotApproveOwnTransfer,
+  ManualRefundEvidenceRequired,
   ManualRefundOperationNotFound,
 } from '../../domain/errors/manual-refund-errors';
 import {
@@ -21,6 +23,7 @@ import {
   REFUND_REPOSITORY,
   type IRefundRepository,
 } from '../../domain/ports/refund-repository.port';
+import { MANUAL_REFUND_EVIDENCE_REPOSITORY, type IManualRefundEvidenceRepository } from '../../domain/ports/manual-refund-evidence-repository.port';
 import { toManualRefundOperation } from '../manual-refund.mapper';
 
 export interface ManualRefundCompletionResult {
@@ -37,6 +40,8 @@ export class ApproveManualRefundUseCase {
     private readonly operations: IManualRefundOperationRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
     @Inject(REFUND_BATCH_REPOSITORY) private readonly batches: IRefundBatchRepository,
+    @Inject(MANUAL_REFUND_EVIDENCE_REPOSITORY) private readonly evidence: IManualRefundEvidenceRepository,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
     private readonly outbox: OutboxService,
     private readonly tenantDb: TenantDbService,
@@ -55,6 +60,7 @@ export class ApproveManualRefundUseCase {
         throw new ManualRefundMakerCannotApproveOwnTransfer();
       }
       if (current.status === 'completed') return toCompletionResult(current);
+      await this.assertEvidence(tx, tenantId, current);
 
       const operation = toManualRefundOperation(current);
       operation.approve(checkerUserId);
@@ -113,6 +119,14 @@ export class ApproveManualRefundUseCase {
       }
       return toCompletionResult(updated);
     });
+  }
+
+  private async assertEvidence(tx: Parameters<IManualRefundEvidenceRepository['findUpload']>[0], tenantId: string, current: ManualRefundOperationRecord): Promise<void> {
+    if (!current.evidenceObjectKey || !current.evidenceSha256 || !current.evidenceContentType || !current.evidenceSizeBytes) throw new ManualRefundEvidenceRequired();
+    const upload = await this.evidence.findUpload(tx, tenantId, current.id, current.evidenceObjectKey);
+    if (!upload || upload.status !== 'claimed' || upload.checksum !== current.evidenceSha256 || upload.contentType !== current.evidenceContentType || upload.sizeBytes !== current.evidenceSizeBytes) throw new ManualRefundEvidenceRequired();
+    const inspection = await this.storage.inspectPrivateFile({ key: upload.objectKey, allowedContentTypes: ['application/pdf', 'image/jpeg', 'image/png'], maxSizeBytes: 10 * 1024 * 1024 });
+    if (!inspection.valid || inspection.checksum !== upload.checksum || inspection.contentType !== upload.contentType || inspection.sizeBytes !== upload.sizeBytes) throw new ManualRefundEvidenceRequired();
   }
 }
 

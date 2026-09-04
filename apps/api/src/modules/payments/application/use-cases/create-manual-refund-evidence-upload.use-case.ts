@@ -3,7 +3,7 @@ import { MAX_MANUAL_REFUND_EVIDENCE_SIZE_BYTES } from '@booking/contracts';
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { STORAGE_PORT, type StoragePort } from '../../../storage/domain/ports/storage.port';
-import { ManualRefundEvidenceUploadInvalid, ManualRefundOperationNotFound } from '../../domain/errors/manual-refund-errors';
+import { ManualRefundConcurrentUpdate, ManualRefundEvidenceUploadInvalid, ManualRefundOperationNotFound } from '../../domain/errors/manual-refund-errors';
 import { MANUAL_REFUND_EVIDENCE_REPOSITORY, type IManualRefundEvidenceRepository } from '../../domain/ports/manual-refund-evidence-repository.port';
 import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import { isManualRefundEvidenceKey, manualRefundEvidenceKeyPrefix } from '../../domain/manual-refund-evidence-key';
@@ -20,7 +20,8 @@ export class CreateManualRefundEvidenceUploadUseCase {
     if (!isManualRefundEvidenceKey(tenantId, operationId, grant.key)) throw new ManualRefundEvidenceUploadInvalid();
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const operation = await this.operations.findById(tx, tenantId, operationId);
-      if (!operation || operation.tenantId !== tenantId || operation.makerUserId !== actorUserId || operation.version !== input.expectedVersion) throw new ManualRefundOperationNotFound();
+      if (!operation || operation.tenantId !== tenantId) throw new ManualRefundOperationNotFound();
+      if (operation.makerUserId !== actorUserId || operation.version !== input.expectedVersion) throw new ManualRefundConcurrentUpdate();
       const now = await this.tenantDb.databaseNow(tx);
       await this.evidence.createUpload(tx, tenantId, { operationId, objectKey: grant.key, checksum: input.checksum, sizeBytes: input.sizeBytes, contentType: input.contentType, expiresAt: new Date(now.getTime() + TTL_MS) });
     });

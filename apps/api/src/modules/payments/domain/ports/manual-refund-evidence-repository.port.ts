@@ -45,4 +45,11 @@ export interface IManualRefundEvidenceRepository {
     id: string,
     quarantinedAt: Date,
   ): Promise<boolean>;
+  /** Atomically invalidates every prior grant before a destination is reopened. */
+  invalidateUploads(
+    tx: PrismaTx,
+    tenantId: string,
+    operationId: string,
+    invalidatedAt: Date,
+  ): Promise<string[]>;
 }

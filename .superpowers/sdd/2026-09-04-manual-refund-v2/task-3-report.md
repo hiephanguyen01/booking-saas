@@ -66,3 +66,29 @@ pnpm turbo lint typecheck build
 ```
 
 No deployment, seed, push, migration execution, shared-environment endpoint call, or real payment data access was performed.
+
+## Review fix round 1
+
+Addressed:
+
+- Tenant mutation use cases now return explicit safe projections; account name, ciphertext, key version, fingerprint, and object keys stay internal.
+- Reopen atomically invalidates all pending/claimed evidence rows, then quarantines their objects after the committed transaction so stale receipts cannot be reused.
+- Invalid receipt inspection commits the DB quarantine state before moving the object, avoiding rollback to a pending row whose object is gone.
+- Private-file inspection enforces the streamed byte limit rather than trusting only `Content-Length`.
+- Approval and break-glass revalidate the claimed evidence row and object checksum, MIME, and size before completion.
+- Added UUID validation to every tenant mutation/reveal `:id` route and corrected reopen to use `ReopenManualRefundDto`.
+- Stale upload grants now throw `ManualRefundConcurrentUpdate` (409).
+
+Review RED/GREEN:
+
+```text
+RED: focused review suites initially failed on missing claimed-evidence revalidation and the new reopen dependency.
+GREEN: 9 files passed, 22 tests passed; after added lifecycle, stale-version, and hard-size tests, 9 files passed, 22 tests passed.
+```
+
+Fresh full verification:
+
+```text
+pnpm test && pnpm turbo lint typecheck build
+24 turbo tasks successful; Vitest and all checks passed.
+```

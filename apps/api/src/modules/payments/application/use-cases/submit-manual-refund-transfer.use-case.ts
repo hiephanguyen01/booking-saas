@@ -8,7 +8,7 @@ import { ManualRefundConcurrentUpdate, ManualRefundEvidenceUploadInvalid, Manual
 import { MANUAL_REFUND_EVIDENCE_REPOSITORY, type IManualRefundEvidenceRepository } from '../../domain/ports/manual-refund-evidence-repository.port';
 import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import { isManualRefundEvidenceKey } from '../../domain/manual-refund-evidence-key';
-import { toManualRefundOperation } from '../manual-refund.mapper';
+import { toManualRefundMutationResponse, toManualRefundOperation } from '../manual-refund.mapper';
 
 const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png'] as const;
 
@@ -16,7 +16,7 @@ const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png'] as const;
 export class SubmitManualRefundTransferUseCase {
   constructor(@Inject(MANUAL_REFUND_OPERATION_REPOSITORY) private readonly operations: IManualRefundOperationRepository, @Inject(MANUAL_REFUND_EVIDENCE_REPOSITORY) private readonly evidence: IManualRefundEvidenceRepository, @Inject(STORAGE_PORT) private readonly storage: StoragePort, @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter, private readonly tenantDb: TenantDbService) {}
   async execute(tenantId: string, operationId: string, input: SubmitManualRefundTransferInput, actorUserId: string) {
-    return this.tenantDb.forTenant(tenantId, async (tx) => {
+    const outcome = await this.tenantDb.forTenant(tenantId, async (tx) => {
       if (!isManualRefundEvidenceKey(tenantId, operationId, input.evidenceObjectKey)) throw new ManualRefundEvidenceUploadInvalid();
       const upload = await this.evidence.findUpload(tx, tenantId, operationId, input.evidenceObjectKey);
       if (!upload || upload.status !== 'pending') throw new ManualRefundEvidenceUploadInvalid();
@@ -24,9 +24,8 @@ export class SubmitManualRefundTransferUseCase {
       if (upload.expiresAt <= now) throw new ManualRefundEvidenceUploadInvalid();
       const inspection = await this.storage.inspectPrivateFile({ key: upload.objectKey, allowedContentTypes: ALLOWED, maxSizeBytes: MAX_MANUAL_REFUND_EVIDENCE_SIZE_BYTES });
       if (!inspection.valid || inspection.contentType !== upload.contentType || inspection.sizeBytes !== upload.sizeBytes || inspection.checksum !== upload.checksum) {
-        await this.storage.quarantinePrivateObject(upload.objectKey);
         await this.evidence.quarantineUpload(tx, tenantId, upload.id, now);
-        throw new ManualRefundEvidenceUploadInvalid();
+        return { invalidEvidenceKey: upload.objectKey } as const;
       }
       const current = await this.operations.findById(tx, tenantId, operationId);
       if (!current) throw new ManualRefundOperationNotFound();
@@ -36,7 +35,12 @@ export class SubmitManualRefundTransferUseCase {
       const updated = await this.operations.casUpdate(tx, tenantId, operationId, current.status, input.expectedVersion, { status: 'transfer_submitted', transferReference: reference, evidenceObjectKey: upload.objectKey, evidenceContentType: upload.contentType, evidenceSizeBytes: upload.sizeBytes, evidenceSha256: upload.checksum, evidenceVerifiedAt: now, transferSubmittedByUserId: actorUserId, transferSubmittedAt: now });
       if (!updated) throw new ManualRefundConcurrentUpdate();
       await this.audit.write(tx, { tenantId, actorUserId, action: 'manual_refund.transfer_submitted', entityType: 'manual_refund_operation', entityId: operationId, data: { evidencePresent: true } });
-      return updated;
+      return { response: toManualRefundMutationResponse(updated) } as const;
     });
+    if ('invalidEvidenceKey' in outcome) {
+      await this.storage.quarantinePrivateObject(outcome.invalidEvidenceKey!);
+      throw new ManualRefundEvidenceUploadInvalid();
+    }
+    return outcome.response;
   }
 }

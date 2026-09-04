@@ -215,6 +215,9 @@ export class S3StorageService implements StoragePort {
       for await (const rawChunk of object.Body as AsyncIterable<Uint8Array>) {
         const chunk = Buffer.from(rawChunk);
         bytes += chunk.byteLength;
+        if (bytes > input.maxSizeBytes) {
+          return { valid: false, reason: 'too_large' as const, checksum: '', sizeBytes: bytes, contentType };
+        }
         hash.update(chunk);
         if (header.byteLength < 12) header = Buffer.concat([header, chunk]).subarray(0, 12);
       }

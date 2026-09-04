@@ -11,13 +11,16 @@ import {
   MANUAL_REFUND_OPERATION_ID,
   MANUAL_REFUND_TENANT_ID,
   manualRefundOperation,
+  manualRefundUpload,
 } from '~testing';
 import type { IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { ManualRefundMakerCannotApproveOwnTransfer } from '../../domain/errors/manual-refund-errors';
+import { ManualRefundEvidenceRequired, ManualRefundMakerCannotApproveOwnTransfer } from '../../domain/errors/manual-refund-errors';
 import type { IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';
 import type { IRefundRepository } from '../../domain/ports/refund-repository.port';
+import type { IManualRefundEvidenceRepository } from '../../domain/ports/manual-refund-evidence-repository.port';
+import type { StoragePort } from '../../../storage/domain/ports/storage.port';
 import { ApproveManualRefundUseCase } from './approve-manual-refund.use-case';
 
 const submitted = () =>
@@ -102,6 +105,8 @@ describe('ApproveManualRefundUseCase', () => {
           });
         },
       }),
+      fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: 'private/receipt.pdf', status: 'claimed', sizeBytes: 12 }) }),
+      fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: true, checksum: 'b'.repeat(64), sizeBytes: 12, contentType: 'application/pdf' }) }),
       fakePort<IAuditWriter>({
         write: (_tx, entry) => {
           expect(JSON.stringify(entry)).not.toContain('secret-ciphertext');
@@ -150,6 +155,8 @@ describe('ApproveManualRefundUseCase', () => {
       }),
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
+      fakePort<IManualRefundEvidenceRepository>({}),
+      fakePort<StoragePort>({}),
       fakePort<IAuditWriter>({}),
       new OutboxService(),
       fakeTenantDb().service,
@@ -179,6 +186,8 @@ describe('ApproveManualRefundUseCase', () => {
       }),
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
+      fakePort<IManualRefundEvidenceRepository>({}),
+      fakePort<StoragePort>({}),
       fakePort<IAuditWriter>({}),
       new OutboxService(),
       fakeTenantDb().service,
@@ -214,6 +223,8 @@ describe('ApproveManualRefundUseCase', () => {
       }),
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
+      fakePort<IManualRefundEvidenceRepository>({}),
+      fakePort<StoragePort>({}),
       fakePort<IAuditWriter>({}),
       new OutboxService(),
       fakeTenantDb().service,
@@ -227,5 +238,19 @@ describe('ApproveManualRefundUseCase', () => {
         MANUAL_REFUND_MAKER_ID,
       ),
     ).rejects.toBeInstanceOf(ManualRefundMakerCannotApproveOwnTransfer);
+  });
+
+  it('blocks completion when the claimed evidence record is missing', async () => {
+    const useCase = new ApproveManualRefundUseCase(
+      fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(submitted()) }),
+      fakePort<IRefundRepository>({}),
+      fakePort<IRefundBatchRepository>({}),
+      fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve(null) }),
+      fakePort<StoragePort>({}),
+      fakePort<IAuditWriter>({}),
+      new OutboxService(),
+      fakeTenantDb().service,
+    );
+    await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3 }, MANUAL_REFUND_CHECKER_ID)).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
   });
 });

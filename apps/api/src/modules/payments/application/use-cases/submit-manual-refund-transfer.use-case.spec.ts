@@ -17,8 +17,16 @@ describe('SubmitManualRefundTransferUseCase', () => {
   });
 
   it('quarantines bytes whose declared MIME does not match their signature', async () => {
-    const quarantined: string[] = []; const upload = manualRefundUpload();
-    const useCase = new SubmitManualRefundTransferUseCase(fakePort<IManualRefundOperationRepository>({}), fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve(upload), quarantineUpload: () => Promise.resolve(true) }), fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: false, reason: 'invalid_signature', checksum: upload.checksum, sizeBytes: upload.sizeBytes, contentType: upload.contentType }), quarantinePrivateObject: (key) => { quarantined.push(key); return Promise.resolve(); } }), fakePort<IAuditWriter>({}), fakeTenantDb({ now: MANUAL_REFUND_NOW }).service);
+    const quarantined: string[] = []; let dbQuarantined = false; const upload = manualRefundUpload();
+    const useCase = new SubmitManualRefundTransferUseCase(fakePort<IManualRefundOperationRepository>({}), fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve(upload), quarantineUpload: () => { dbQuarantined = true; return Promise.resolve(true); } }), fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: false, reason: 'invalid_signature', checksum: upload.checksum, sizeBytes: upload.sizeBytes, contentType: upload.contentType }), quarantinePrivateObject: (key) => { quarantined.push(key); return Promise.resolve(); } }), fakePort<IAuditWriter>({}), fakeTenantDb({ now: MANUAL_REFUND_NOW }).service);
+    await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3, reference: 'VCB-001', evidenceObjectKey: upload.objectKey }, MANUAL_REFUND_MAKER_ID)).rejects.toBeInstanceOf(ManualRefundEvidenceUploadInvalid);
+    expect(quarantined).toEqual([upload.objectKey]);
+    expect(dbQuarantined).toBe(true);
+  });
+
+  it('quarantines an object whose streamed size exceeds the hard cap', async () => {
+    const upload = manualRefundUpload(); const quarantined: string[] = [];
+    const useCase = new SubmitManualRefundTransferUseCase(fakePort<IManualRefundOperationRepository>({}), fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve(upload), quarantineUpload: () => Promise.resolve(true) }), fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: false, reason: 'too_large', checksum: '', sizeBytes: 10 * 1024 * 1024 + 1, contentType: upload.contentType }), quarantinePrivateObject: (key) => { quarantined.push(key); return Promise.resolve(); } }), fakePort<IAuditWriter>({}), fakeTenantDb({ now: MANUAL_REFUND_NOW }).service);
     await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3, reference: 'VCB-001', evidenceObjectKey: upload.objectKey }, MANUAL_REFUND_MAKER_ID)).rejects.toBeInstanceOf(ManualRefundEvidenceUploadInvalid);
     expect(quarantined).toEqual([upload.objectKey]);
   });

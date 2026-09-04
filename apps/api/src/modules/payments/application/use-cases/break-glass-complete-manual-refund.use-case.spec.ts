@@ -11,17 +11,21 @@ import {
   MANUAL_REFUND_OPERATION_ID,
   MANUAL_REFUND_TENANT_ID,
   manualRefundOperation,
+  manualRefundUpload,
 } from '~testing';
 import type { IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import type { ISessionStore } from '../../../identity-access/domain/ports/session-store.port';
 import {
   ManualRefundFreshAuthenticationRequired,
+  ManualRefundEvidenceRequired,
   ManualRefundMakerCannotApproveOwnTransfer,
 } from '../../domain/errors/manual-refund-errors';
 import type { IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';
 import type { IRefundRepository } from '../../domain/ports/refund-repository.port';
+import type { IManualRefundEvidenceRepository } from '../../domain/ports/manual-refund-evidence-repository.port';
+import type { StoragePort } from '../../../storage/domain/ports/storage.port';
 import { BreakGlassCompleteManualRefundUseCase } from './break-glass-complete-manual-refund.use-case';
 
 const submitted = () =>
@@ -72,6 +76,8 @@ function harness(authenticatedAt: Date | null, current = submitted()) {
           },
         }),
     }),
+    fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: 'private/receipt.pdf', status: 'claimed', sizeBytes: 12 }) }),
+    fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: true, checksum: 'b'.repeat(64), sizeBytes: 12, contentType: 'application/pdf' }) }),
     fakePort<IAuditWriter>({
       write: (_tx, entry) => {
         audits.push(entry);
@@ -243,5 +249,22 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
         { userId: MANUAL_REFUND_MAKER_ID, sessionId: 'session-1', ip: '127.0.0.1' },
       ),
     ).rejects.toBeInstanceOf(ManualRefundMakerCannotApproveOwnTransfer);
+  });
+
+  it('blocks break-glass when the claimed evidence object is unavailable', async () => {
+    const current = submitted();
+    // The harness's claimed row is replaced with a missing row by constructing a focused use case.
+    const missing = new BreakGlassCompleteManualRefundUseCase(
+      fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(current) }),
+      fakePort<IRefundRepository>({}),
+      fakePort<IRefundBatchRepository>({}),
+      fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve(null) }),
+      fakePort<StoragePort>({}),
+      fakePort<IAuditWriter>({}),
+      fakePort<ISessionStore>({ authenticationTime: () => Promise.resolve(new Date('2026-09-04T12:58:00Z')) }),
+      new OutboxService(),
+      fakeTenantDb({ now: MANUAL_REFUND_NOW }).service,
+    );
+    await expect(missing.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3, reason: 'Incident commander approved emergency', confirmation: 'BREAK_GLASS' }, { userId: MANUAL_REFUND_CHECKER_ID, sessionId: 'session-1' })).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
   });
 });
