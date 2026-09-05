@@ -38,6 +38,9 @@ export class DispatchTenantEventUseCase {
     if (!plan) return;
     const subjectId = asUuid(payload[plan.subjectIdKey]);
     const targetId = plan.targetIdKey ? asUuid(payload[plan.targetIdKey]) : null;
+    const dedupePart = plan.dedupePayloadKey
+      ? asDedupePart(payload[plan.dedupePayloadKey])
+      : null;
 
     // ONE transaction for the whole operation: recipients, the single subject
     // lookup, and the insert. Never nest `forTenant`, never call it per query.
@@ -61,7 +64,7 @@ export class DispatchTenantEventUseCase {
         body,
         targetType: plan.targetType,
         targetId,
-        dedupeKey: `${eventType}:${subjectId ?? 'none'}:${r.userId}`,
+        dedupeKey: `${eventType}:${subjectId ?? 'none'}${dedupePart ? `:${dedupePart}` : ''}:${r.userId}`,
       }));
       await this.inbox.insertMany(tx, rows);
     });
@@ -71,4 +74,8 @@ export class DispatchTenantEventUseCase {
 /** Outbox payloads are `unknown` JSON; accept only a string id. */
 function asUuid(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function asDedupePart(value: unknown): string | null {
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : null;
 }

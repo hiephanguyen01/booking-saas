@@ -105,6 +105,34 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
       LIMIT ${limit}`);
   }
 
+  async purgeCiphertext(
+    tx: PrismaTx,
+    tenantId: string,
+    operationId: string,
+    expectedVersion: number,
+    eligibleBefore: Date,
+    purgedAt: Date,
+  ): Promise<boolean> {
+    const changed = await tx.manualRefundOperation.updateMany({
+      where: {
+        id: operationId,
+        tenantId,
+        status: 'completed',
+        version: expectedVersion,
+        completedAt: { lte: eligibleBefore },
+        ciphertextPurgedAt: null,
+        destinationAccountCiphertext: { not: null },
+      },
+      data: {
+        destinationAccountCiphertext: null,
+        destinationEncryptionKeyVersion: null,
+        ciphertextPurgedAt: purgedAt,
+        version: { increment: 1 },
+      },
+    });
+    return changed.count === 1;
+  }
+
   async findById(
     tx: PrismaTx,
     tenantId: string,

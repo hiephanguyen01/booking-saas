@@ -85,6 +85,7 @@ import { ManualRefundSlaWorker } from '../manual-refund-sla.worker';
 import { SendManualRefundCustomerDetailReminderUseCase } from '../../application/use-cases/send-manual-refund-customer-detail-reminder.use-case';
 import { StartManualRefundTransferSlaUseCase } from '../../application/use-cases/start-manual-refund-transfer-sla.use-case';
 import { EscalateManualRefundCheckerWaitingUseCase } from '../../application/use-cases/escalate-manual-refund-checker-waiting.use-case';
+import { PurgeManualRefundCiphertextUseCase } from '../../application/use-cases/purge-manual-refund-ciphertext.use-case';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule, IdentityAccessModule, BookingModule],
@@ -158,6 +159,7 @@ import { EscalateManualRefundCheckerWaitingUseCase } from '../../application/use
     SendManualRefundCustomerDetailReminderUseCase,
     StartManualRefundTransferSlaUseCase,
     EscalateManualRefundCheckerWaitingUseCase,
+    PurgeManualRefundCiphertextUseCase,
     ManualRefundSlaWorker,
   ],
   exports: [ExecuteRefundUseCase],

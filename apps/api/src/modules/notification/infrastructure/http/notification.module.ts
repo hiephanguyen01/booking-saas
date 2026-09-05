@@ -13,6 +13,7 @@ import {
   PARTNER_NOTIFICATION_EVENTS,
   PAYOUT_NOTIFICATION_EVENTS,
   TAX_CERTIFICATE_NOTIFICATION_EVENTS,
+  MANUAL_REFUND_CUSTOMER_NOTIFICATION_EVENTS,
 } from '../../domain/notification-plan';
 import { TENANT_NOTIFICATION_EVENTS } from '../../domain/tenant-notification-plan';
 import { SmtpEmailSender } from '../smtp-email-sender';
@@ -47,6 +48,10 @@ import {
   DispatchTaxCertificateEventUseCase,
   type TaxCertificateNotificationPayload,
 } from '../../application/use-cases/dispatch-tax-certificate-event.use-case';
+import {
+  DispatchManualRefundEventUseCase,
+  type ManualRefundNotificationPayload,
+} from '../../application/use-cases/dispatch-manual-refund-event.use-case';
 
 /**
  * Notifications (TONG-QUAN.md §17). Every notification is produced from a domain
@@ -80,6 +85,7 @@ import {
     DispatchReminderUseCase,
     SendBookingOtpUseCase,
     DispatchTaxCertificateEventUseCase,
+    DispatchManualRefundEventUseCase,
     ReminderWorker,
     NotificationRetentionWorker,
   ],
@@ -99,6 +105,7 @@ export class NotificationModule implements OnModuleInit {
     private readonly dispatchLegalDocumentEvent: DispatchLegalDocumentEventUseCase,
     private readonly dispatchMemberInvitationEvent: DispatchMemberInvitationEventUseCase,
     private readonly dispatchTaxCertificateEvent: DispatchTaxCertificateEventUseCase,
+    private readonly dispatchManualRefundEvent: DispatchManualRefundEventUseCase,
   ) {}
 
   onModuleInit(): void {
@@ -155,6 +162,17 @@ export class NotificationModule implements OnModuleInit {
         );
       });
     }
+    for (const eventType of MANUAL_REFUND_CUSTOMER_NOTIFICATION_EVENTS) {
+      this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
+        return this.dispatchManualRefundEvent.execute(
+          tenantId,
+          event.eventType,
+          manualRefundPayloadOf(event.payload),
+        );
+      });
+    }
     for (const eventType of TENANT_NOTIFICATION_EVENTS) {
       this.registry.register(eventType, (event) => {
         const tenantId = this.requireTenantId(event.eventType, event.tenantId);
@@ -201,6 +219,10 @@ function payoutPayloadOf(payload: unknown): {
   amount: string;
 } {
   return (payload ?? {}) as { payoutId: string; payeeType: string; payeeId: string; amount: string };
+}
+
+function manualRefundPayloadOf(payload: unknown): ManualRefundNotificationPayload {
+  return (payload ?? {}) as ManualRefundNotificationPayload;
 }
 
 function payloadOf(payload: unknown): {

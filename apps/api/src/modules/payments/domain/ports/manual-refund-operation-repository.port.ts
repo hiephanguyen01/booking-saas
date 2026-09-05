@@ -96,6 +96,14 @@ export interface IManualRefundOperationRepository {
   findTransferSlaCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string; slaHours: number }>>;
   findCheckerEscalationCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string }>>;
   findCiphertextPurgeCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string }>>;
+  purgeCiphertext(
+    tx: PrismaTx,
+    tenantId: string,
+    operationId: string,
+    expectedVersion: number,
+    eligibleBefore: Date,
+    purgedAt: Date,
+  ): Promise<boolean>;
   findById(tx: PrismaTx, tenantId: string, id: string): Promise<ManualRefundOperationRecord | null>;
   findByBatchId(
     tx: PrismaTx,

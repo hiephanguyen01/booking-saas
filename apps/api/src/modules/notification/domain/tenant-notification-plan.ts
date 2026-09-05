@@ -6,6 +6,7 @@ export type SubjectKind =
   | 'listing_group_title'
   | 'partner_name'
   | 'booking_code'
+  | 'refund_batch_booking_code'
   | 'affiliate_user_name';
 
 export interface TenantNotificationPlanItem {
@@ -18,6 +19,8 @@ export interface TenantNotificationPlanItem {
   /** Which payload key identifies the subject to look up. */
   subjectIdKey: string;
   subjectKind: SubjectKind;
+  /** Optional non-PII payload discriminator for multiple notifications of one event kind. */
+  dedupePayloadKey?: string;
 }
 
 /**
@@ -94,37 +97,38 @@ export const TENANT_NOTIFICATION_PLAN: Record<string, TenantNotificationPlanItem
     permission: 'tenant.finance.read',
     title: 'Khách báo chưa nhận được tiền hoàn',
     targetType: 'tenant_disputes', targetIdKey: null,
-    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+    subjectIdKey: 'refundBatchId', subjectKind: 'refund_batch_booking_code',
   },
   'manual_refund.checker_escalated': {
     permission: 'tenant.finance.read',
     title: 'Hoàn tiền thủ công chờ checker xử lý',
     targetType: 'tenant_disputes', targetIdKey: null,
-    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+    subjectIdKey: 'refundBatchId', subjectKind: 'refund_batch_booking_code',
   },
   'manual_refund.transfer_submitted': {
     permission: 'tenant.finance.read',
     title: 'Hoàn tiền thủ công chờ checker kiểm tra',
     targetType: 'tenant_disputes', targetIdKey: null,
-    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+    subjectIdKey: 'refundBatchId', subjectKind: 'refund_batch_booking_code',
   },
   'manual_refund.destination_requested': {
     permission: 'tenant.finance.read',
     title: 'Hoàn tiền thủ công cần thông tin nhận tiền',
     targetType: 'tenant_disputes', targetIdKey: null,
-    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+    subjectIdKey: 'refundBatchId', subjectKind: 'refund_batch_booking_code',
   },
   'manual_refund.destination_ready': {
     permission: 'tenant.finance.read',
     title: 'Thông tin nhận tiền hoàn đã sẵn sàng',
     targetType: 'tenant_disputes', targetIdKey: null,
-    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+    subjectIdKey: 'refundBatchId', subjectKind: 'refund_batch_booking_code',
   },
   'manual_refund.customer_details_reminder': {
     permission: 'tenant.finance.read',
     title: 'Khách chưa gửi thông tin nhận tiền hoàn',
     targetType: 'tenant_disputes', targetIdKey: null,
-    subjectIdKey: 'refundBatchId', subjectKind: 'booking_code',
+    subjectIdKey: 'refundBatchId', subjectKind: 'refund_batch_booking_code',
+    dedupePayloadKey: 'hours',
   },
 };
 

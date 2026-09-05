@@ -23,6 +23,13 @@ export type NotificationTemplateId =
   | 'booking_rejected_customer'
   | 'booking_reminder_customer'
   | 'booking_otp_customer'
+  | 'manual_refund_destination_requested_customer'
+  | 'manual_refund_details_reminder_24_customer'
+  | 'manual_refund_details_reminder_48_customer'
+  | 'manual_refund_destination_ready_customer'
+  | 'manual_refund_transfer_submitted_customer'
+  | 'manual_refund_not_received_customer'
+  | 'manual_refund_completed_customer'
   | 'listing_published_partner'
   | 'listing_hidden_partner'
   | 'listing_change_approved_partner'
@@ -77,6 +84,16 @@ export const PAYOUT_NOTIFICATION_EVENTS: readonly string[] = ['payout.paid'];
 export const TAX_CERTIFICATE_NOTIFICATION_EVENTS: readonly string[] = [
   'tax.certificate_issued',
   'tax.certificate_voided',
+];
+
+/** Manual-refund states that need a customer email in addition to tenant bell rows. */
+export const MANUAL_REFUND_CUSTOMER_NOTIFICATION_EVENTS: readonly string[] = [
+  'manual_refund.destination_requested',
+  'manual_refund.customer_details_reminder',
+  'manual_refund.destination_ready',
+  'manual_refund.transfer_submitted',
+  'manual_refund.customer_not_received',
+  'refund.completed',
 ];
 
 /**

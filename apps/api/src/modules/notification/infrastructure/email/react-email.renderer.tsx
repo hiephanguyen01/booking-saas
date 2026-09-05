@@ -133,6 +133,34 @@ const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
     vi: { subject: 'Mã xác thực đơn {bookingCode}', title: 'Mã xác minh email của bạn', intro: 'Dùng mã này để xác minh và truy cập đơn {bookingCode} trên {tenantName}.' },
     en: { subject: 'Verification code for booking {bookingCode}', title: 'Your email verification code', intro: 'Use this code to verify and access booking {bookingCode} on {tenantName}.' },
   },
+  manual_refund_destination_requested_customer: {
+    vi: { subject: 'Bổ sung tài khoản nhận hoàn - {bookingCode}', title: 'Cần thông tin nhận tiền hoàn', intro: 'Vui lòng cung cấp tài khoản ngân hàng nhận khoản hoàn {refundAmount} cho đơn {bookingCode}.', cta: 'Cung cấp thông tin' },
+    en: { subject: 'Refund destination needed - {bookingCode}', title: 'Refund destination needed', intro: 'Please provide a bank account for the {refundAmount} refund for booking {bookingCode}.', cta: 'Provide details' },
+  },
+  manual_refund_details_reminder_24_customer: {
+    vi: { subject: 'Nhắc cung cấp tài khoản nhận hoàn - {bookingCode}', title: 'Thông tin nhận tiền hoàn đang chờ', intro: 'Chúng tôi vẫn cần tài khoản ngân hàng để hoàn {refundAmount} cho đơn {bookingCode}.', cta: 'Cung cấp thông tin' },
+    en: { subject: 'Reminder: refund destination needed - {bookingCode}', title: 'Your refund details are pending', intro: 'We still need a bank account for the {refundAmount} refund for booking {bookingCode}.', cta: 'Provide details' },
+  },
+  manual_refund_details_reminder_48_customer: {
+    vi: { subject: 'Nhắc lần hai về tài khoản nhận hoàn - {bookingCode}', title: 'Vui lòng bổ sung thông tin nhận tiền', intro: 'Khoản hoàn {refundAmount} cho đơn {bookingCode} chưa thể xử lý vì chưa có tài khoản nhận tiền.', cta: 'Cung cấp thông tin' },
+    en: { subject: 'Second reminder: refund destination needed - {bookingCode}', title: 'Please provide your refund details', intro: 'The {refundAmount} refund for booking {bookingCode} cannot be processed until a destination account is provided.', cta: 'Provide details' },
+  },
+  manual_refund_destination_ready_customer: {
+    vi: { subject: 'Đã nhận thông tin hoàn tiền - {bookingCode}', title: 'Thông tin nhận tiền đã sẵn sàng', intro: 'Chúng tôi đã xác minh thông tin để xử lý khoản hoàn {refundAmount} cho đơn {bookingCode}.', cta: 'Theo dõi hoàn tiền' },
+    en: { subject: 'Refund details received - {bookingCode}', title: 'Your refund details are ready', intro: 'We verified the details needed to process the {refundAmount} refund for booking {bookingCode}.', cta: 'Track refund' },
+  },
+  manual_refund_transfer_submitted_customer: {
+    vi: { subject: 'Khoản hoàn đang được xác nhận - {bookingCode}', title: 'Đã gửi giao dịch hoàn tiền', intro: 'Giao dịch hoàn {refundAmount} cho đơn {bookingCode} đã được gửi và đang chờ kiểm tra độc lập.', cta: 'Theo dõi hoàn tiền' },
+    en: { subject: 'Refund transfer is being verified - {bookingCode}', title: 'Refund transfer submitted', intro: 'The {refundAmount} refund transfer for booking {bookingCode} was submitted and is awaiting independent verification.', cta: 'Track refund' },
+  },
+  manual_refund_not_received_customer: {
+    vi: { subject: 'Đã tiếp nhận báo cáo chưa nhận tiền - {bookingCode}', title: 'Chúng tôi đang kiểm tra khoản hoàn', intro: 'Đã ghi nhận việc quý khách chưa nhận khoản hoàn {refundAmount} cho đơn {bookingCode}. Trạng thái giao dịch sẽ được kiểm tra lại.', cta: 'Theo dõi hoàn tiền' },
+    en: { subject: 'Refund not received report accepted - {bookingCode}', title: 'We are checking your refund', intro: 'We recorded that the {refundAmount} refund for booking {bookingCode} has not arrived and will investigate the transfer status.', cta: 'Track refund' },
+  },
+  manual_refund_completed_customer: {
+    vi: { subject: 'Đã hoàn tiền - {bookingCode}', title: 'Khoản hoàn tiền đã hoàn tất', intro: 'Khoản hoàn {refundAmount} liên quan đến đơn {bookingCode} đã được chuyển thành công.', cta: 'Xem chi tiết' },
+    en: { subject: 'Refund completed - {bookingCode}', title: 'Your refund is complete', intro: 'The {refundAmount} refund related to booking {bookingCode} was transferred successfully.', cta: 'View details' },
+  },
   listing_published_partner: {
     vi: { subject: 'Tin “{listingTitle}” đã được duyệt', title: 'Tin của bạn đã được duyệt', intro: 'Tin “{listingTitle}” đã được hiển thị công khai.', cta: 'Xem tin' },
     en: { subject: 'Listing “{listingTitle}” is live', title: 'Your listing is live', intro: '“{listingTitle}” has been approved and is now public.', cta: 'View listing' },

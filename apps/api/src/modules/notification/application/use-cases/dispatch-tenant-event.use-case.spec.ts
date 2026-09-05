@@ -127,4 +127,30 @@ describe('DispatchTenantEventUseCase', () => {
 
     expect(tenantDb.openedFor).toEqual([TENANT_ID]);
   });
+
+  it('keeps the 24h and 48h manual-refund reminders distinct and batch-scoped', async () => {
+    const { useCase, inserts, subjectLookups } = harness({ subject: 'BK-REFUND-01' });
+    const refundBatchId = '33333333-3333-4333-8333-333333333333';
+
+    await useCase.execute(TENANT_ID, 'manual_refund.customer_details_reminder', {
+      refundBatchId,
+      hours: 24,
+      destinationAccountCiphertext: 'secret-ciphertext',
+    });
+    await useCase.execute(TENANT_ID, 'manual_refund.customer_details_reminder', {
+      refundBatchId,
+      hours: 48,
+      destinationAccountCiphertext: 'secret-ciphertext',
+    });
+
+    expect(subjectLookups).toEqual([
+      { kind: 'refund_batch_booking_code', id: refundBatchId },
+      { kind: 'refund_batch_booking_code', id: refundBatchId },
+    ]);
+    expect(inserts.map((rows) => (rows[0] as { dedupeKey: string }).dedupeKey)).toEqual([
+      `manual_refund.customer_details_reminder:${refundBatchId}:24:user-1`,
+      `manual_refund.customer_details_reminder:${refundBatchId}:48:user-1`,
+    ]);
+    expect(JSON.stringify(inserts)).not.toContain('secret-ciphertext');
+  });
 });

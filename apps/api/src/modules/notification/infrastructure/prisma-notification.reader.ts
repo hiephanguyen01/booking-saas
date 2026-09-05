@@ -193,6 +193,21 @@ export class PrismaNotificationReader implements INotificationReader {
     };
   }
 
+  async loadManualRefundBookingContext(
+    tx: PrismaTx,
+    refundBatchId: string,
+  ): Promise<BookingNotificationContext | null> {
+    const rows = await tx.$queryRaw<Array<{ booking_id: string }>>(Prisma.sql`
+      SELECT rb.booking_id
+      FROM refund_batches rb
+      JOIN manual_refund_operations m
+        ON m.refund_batch_id = rb.id AND m.tenant_id = rb.tenant_id
+      WHERE rb.id = ${refundBatchId}::uuid
+      LIMIT 1`);
+    const bookingId = rows[0]?.booking_id;
+    return bookingId ? this.loadBookingContext(tx, bookingId) : null;
+  }
+
   async loadListingContext(tx: PrismaTx, listingId: string): Promise<ListingNotificationContext | null> {
     const rows = await tx.$queryRaw<Array<{ listing_title: string; tenant_name: string; partner_id: string; theme_config: unknown; primary_hostname: string | null; admin_hostname: string | null }>>(Prisma.sql`
       SELECT l.title AS listing_title, t.name AS tenant_name, l.partner_id, t.theme_config,
@@ -308,6 +323,11 @@ export class PrismaNotificationReader implements INotificationReader {
       listing_group_title: Prisma.sql`SELECT title AS s FROM listing_groups WHERE id = ${subjectId}::uuid`,
       partner_name: Prisma.sql`SELECT name AS s FROM partners WHERE id = ${subjectId}::uuid`,
       booking_code: Prisma.sql`SELECT code AS s FROM bookings WHERE id = ${subjectId}::uuid`,
+      refund_batch_booking_code: Prisma.sql`
+        SELECT b.code AS s
+        FROM refund_batches rb
+        JOIN bookings b ON b.id = rb.booking_id AND b.tenant_id = rb.tenant_id
+        WHERE rb.id = ${subjectId}::uuid`,
       affiliate_user_name: Prisma.sql`
         SELECT u.full_name AS s FROM affiliates a
         JOIN users u ON u.id = a.user_id WHERE a.id = ${subjectId}::uuid`,

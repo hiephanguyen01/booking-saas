@@ -6,6 +6,7 @@ import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationReposito
 import { EscalateManualRefundCheckerWaitingUseCase } from '../application/use-cases/escalate-manual-refund-checker-waiting.use-case';
 import { SendManualRefundCustomerDetailReminderUseCase } from '../application/use-cases/send-manual-refund-customer-detail-reminder.use-case';
 import { StartManualRefundTransferSlaUseCase } from '../application/use-cases/start-manual-refund-transfer-sla.use-case';
+import { PurgeManualRefundCiphertextUseCase } from '../application/use-cases/purge-manual-refund-ciphertext.use-case';
 
 export const MANUAL_REFUND_SLA_QUEUE = 'manual-refund-sla';
 const POLL_EVERY_MS = 5 * 60_000;
@@ -23,6 +24,7 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
     private readonly detailReminder: SendManualRefundCustomerDetailReminderUseCase,
     private readonly transferSla: StartManualRefundTransferSlaUseCase,
     private readonly checkerEscalation: EscalateManualRefundCheckerWaitingUseCase,
+    private readonly purgeCiphertext: PurgeManualRefundCiphertextUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -54,6 +56,11 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
     for (const candidate of checker) {
       try { if (await this.checkerEscalation.execute(candidate.tenantId, candidate.operationId)) processed++; }
       catch (error) { this.logger.debug(`manual refund checker escalation failed: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    const purge = await this.operations.findCiphertextPurgeCandidates(BATCH_SIZE);
+    for (const candidate of purge) {
+      try { if (await this.purgeCiphertext.execute(candidate.tenantId, candidate.operationId)) processed++; }
+      catch (error) { this.logger.debug(`manual refund ciphertext purge failed: ${error instanceof Error ? error.message : String(error)}`); }
     }
     return processed;
   }
