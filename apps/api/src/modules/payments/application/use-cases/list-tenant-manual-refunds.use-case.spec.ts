@@ -8,6 +8,10 @@ describe('ListTenantManualRefundsUseCase', () => {
     const tenantDb = fakeTenantDb({ now: new Date('2026-09-04T13:00:00Z') });
     const useCase = new ListTenantManualRefundsUseCase(
       fakePort<IManualRefundOperationRepository>({
+        isWorkflowEnabled: (_tx, tenantId) => {
+          expect(tenantId).toBe(MANUAL_REFUND_TENANT_ID);
+          return Promise.resolve(true);
+        },
         listViews: (_tx, tenantId, query, overdueBefore) => {
           expect({ tenantId, query, overdueBefore }).toEqual({
             tenantId: MANUAL_REFUND_TENANT_ID,
@@ -25,6 +29,7 @@ describe('ListTenantManualRefundsUseCase', () => {
       overdue: true,
     });
     expect(tenantDb.openedFor).toEqual([MANUAL_REFUND_TENANT_ID]);
+    expect(result.workflowEnabled).toBe(true);
     expect(result.items[0]).toMatchObject({ bookingCode: 'BK-0001', amount: '1250000' });
     expect(JSON.stringify(result)).not.toContain('secret-ciphertext');
     expect(JSON.stringify(result)).not.toContain('manual-refund-evidence/');

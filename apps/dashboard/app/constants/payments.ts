@@ -1,4 +1,8 @@
-import type { PaymentHistoryItem, RefundHistoryItem } from '@booking/contracts';
+import type {
+  ManualRefundOperationStatus,
+  PaymentHistoryItem,
+  RefundHistoryItem,
+} from '@booking/contracts';
 
 export const PAYMENT_STATUS_LABEL: Record<PaymentHistoryItem['status'], string> = {
   pending: 'Chờ thanh toán',
@@ -36,4 +40,14 @@ export const REFUND_STATUS_LABEL: Record<RefundHistoryItem['status'], string> = 
   manual_required: 'Cần chuyển thủ công',
   succeeded: 'Đã hoàn',
   failed: 'Thất bại',
+};
+
+export const MANUAL_REFUND_STATUS_LABEL: Record<ManualRefundOperationStatus, string> = {
+  awaiting_details: 'Chờ khách cung cấp',
+  verification_required: 'Cần xác minh',
+  correction_required: 'Cần khách chỉnh sửa',
+  ready_for_transfer: 'Sẵn sàng chuyển',
+  transfer_submitted: 'Chờ duyệt độc lập',
+  transfer_rejected: 'Biên lai bị từ chối',
+  completed: 'Đã hoàn tất',
 };

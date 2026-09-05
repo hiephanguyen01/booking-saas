@@ -25,6 +25,12 @@ export class CreateManualRefundEvidenceUploadUseCase {
       const now = await this.tenantDb.databaseNow(tx);
       await this.evidence.createUpload(tx, tenantId, { operationId, objectKey: grant.key, checksum: input.checksum, sizeBytes: input.sizeBytes, contentType: input.contentType, expiresAt: new Date(now.getTime() + TTL_MS) });
     });
-    return grant;
+    return {
+      ...grant,
+      requiredHeaders: {
+        'content-type': input.contentType,
+        'if-none-match': '*' as const,
+      },
+    };
   }
 }

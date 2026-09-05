@@ -61,6 +61,8 @@ export const dashboardPaths = {
     contentReports: tenantPath('/content-reports'),
     contentReport: (reportId: string) => tenantPath(`/content-reports/${segment(reportId)}`),
     transactions: tenantPath('/finance/transactions'),
+    manualRefundEvidencePresign: (operationId: string, version: number) =>
+      `${tenantPath(`/finance/manual-refunds/${segment(operationId)}/evidence-presign`)}?version=${version}`,
     promotions: tenantPath('/promotions'),
     promotionNew: tenantPath('/promotions/new'),
     promotion: (promotionId: string) => tenantPath(`/promotions/${segment(promotionId)}`),

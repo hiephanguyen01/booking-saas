@@ -504,6 +504,12 @@ export const manualRefundEvidenceUploadResponseSchema = z
     uploadUrl: z.string().url(),
     key: z.string().trim().min(1).max(500),
     expiresInSec: z.number().int().positive(),
+    requiredHeaders: z
+      .object({
+        'content-type': manualRefundEvidenceContentTypeSchema,
+        'if-none-match': z.literal('*'),
+      })
+      .strict(),
   })
   .strict();
 export type ManualRefundEvidenceUploadResponse = z.infer<
@@ -614,7 +620,9 @@ export const manualRefundListItemSchema = manualRefundStatusResponseSchema
   })
   .strict();
 export type ManualRefundListItem = z.infer<typeof manualRefundListItemSchema>;
-export const manualRefundListResponseSchema = paginatedSchema(manualRefundListItemSchema);
+export const manualRefundListResponseSchema = paginatedSchema(manualRefundListItemSchema)
+  .extend({ workflowEnabled: z.boolean() })
+  .strict();
 export type ManualRefundListResponse = z.infer<typeof manualRefundListResponseSchema>;
 
 export const manualRefundEvidenceResponseSchema = z
