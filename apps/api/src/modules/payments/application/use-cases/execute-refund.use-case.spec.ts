@@ -151,7 +151,7 @@ function harness(options: Options = {}): Harness {
     isWorkflowEnabled: () => Promise.resolve(options.manualRefundV2Enabled ?? false),
     createForBatch: (_tx, tenantId, refundBatchId) => {
       initializedOperations.push(`${tenantId}:${refundBatchId}`);
-      return Promise.resolve();
+      return Promise.resolve(true);
     },
   });
   const payments = fakePort<IPaymentRepository>({
@@ -241,7 +241,7 @@ describe('ExecuteRefundUseCase', () => {
       refunds,
       fakePort<IManualRefundOperationRepository>({
         isWorkflowEnabled: () => Promise.resolve(false),
-        createForBatch: () => Promise.resolve(),
+        createForBatch: () => Promise.resolve(true),
       }),
       registryFor({}, resolvedPayments),
       tenantDb.service,

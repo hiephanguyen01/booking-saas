@@ -111,6 +111,7 @@ describe('GetCustomerManualRefundStatusUseCase', () => {
       amount: '1250000',
       status: 'ready_for_transfer',
       version: 3,
+      destinationLocked: false,
       destination: {
         bankCode: 'VCB',
         accountNameMasked: 'N••••• V•• A•',
@@ -120,6 +121,7 @@ describe('GetCustomerManualRefundStatusUseCase', () => {
       },
       verificationResult: 'matched',
       transferDueAt: null,
+      customerDetailsDueAt: null,
       transferSubmittedAt: null,
       completedAt: null,
       customerAcknowledgement: null,

@@ -603,6 +603,16 @@ export type ManualRefundStatusResponse = z.infer<typeof manualRefundStatusRespon
 export const manualRefundBookingResponseSchema = z.array(manualRefundStatusResponseSchema);
 export type ManualRefundBookingResponse = z.infer<typeof manualRefundBookingResponseSchema>;
 
+export const manualRefundWorkflowEnableResponseSchema = z
+  .object({
+    enabled: z.literal(true),
+    createdOperations: z.number().int().nonnegative(),
+  })
+  .strict();
+export type ManualRefundWorkflowEnableResponse = z.infer<
+  typeof manualRefundWorkflowEnableResponseSchema
+>;
+
 export const manualRefundListQuerySchema = paginationQuerySchema.extend({
   status: manualRefundOperationStatusSchema.optional(),
   search: z.string().trim().max(100).optional(),

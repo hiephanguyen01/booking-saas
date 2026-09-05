@@ -42,17 +42,42 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
     return (tenant.settings as Record<string, unknown>).manual_refund_v2 === true;
   }
 
-  async createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<void> {
+  async enableWorkflow(tx: PrismaTx, tenantId: string): Promise<void> {
+    const tenant = await tx.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    if (!tenant) throw new ManualRefundBatchTenantMismatch();
+    const settings =
+      tenant.settings && typeof tenant.settings === 'object' && !Array.isArray(tenant.settings)
+        ? (tenant.settings as Prisma.JsonObject)
+        : {};
+    await tx.tenant.update({
+      where: { id: tenantId },
+      data: { settings: { ...settings, manual_refund_v2: true } },
+    });
+  }
+
+  async findManualRequiredBatchesWithoutOperation(tx: PrismaTx, tenantId: string) {
+    const batches = await tx.refundBatch.findMany({
+      where: { tenantId, status: 'manual_required', manualRefundOperation: null },
+      select: { id: true, bookingId: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return batches.map((batch) => ({ refundBatchId: batch.id, bookingId: batch.bookingId }));
+  }
+
+  async createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<boolean> {
     const batch = await tx.refundBatch.findFirst({
       where: { id: refundBatchId, tenantId },
       select: { id: true },
     });
     if (!batch) throw new ManualRefundBatchTenantMismatch();
-    await tx.manualRefundOperation.upsert({
-      where: { refundBatchId, tenantId },
-      create: { tenantId, refundBatchId },
-      update: {},
+    const result = await tx.manualRefundOperation.createMany({
+      data: [{ tenantId, refundBatchId }],
+      skipDuplicates: true,
     });
+    return result.count === 1;
   }
 
   async findCustomerDetailReminderCandidates(limit: number) {

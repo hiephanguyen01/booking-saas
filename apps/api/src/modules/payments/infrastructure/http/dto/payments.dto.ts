@@ -35,6 +35,7 @@ import {
   revealManualRefundPrivateDetailsInputSchema,
   approveManualRefundInputSchema,
   manualRefundBreakGlassInputSchema,
+  manualRefundWorkflowEnableResponseSchema,
 } from '@booking/contracts';
 
 // Request bodies
@@ -88,6 +89,9 @@ export class ManualRefundEvidenceUploadResponseDto extends createZodDto(
 ) {}
 export class ManualRefundPrivateDetailsResponseDto extends createZodDto(
   manualRefundPrivateDetailsResponseSchema,
+) {}
+export class ManualRefundWorkflowEnableResponseDto extends createZodDto(
+  manualRefundWorkflowEnableResponseSchema,
 ) {}
 
 export class GenericWebhookAcknowledgementResponseDto extends createZodDto(

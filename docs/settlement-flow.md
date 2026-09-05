@@ -212,8 +212,16 @@ transaction rollback với `PAYOUT_ALLOCATION_MISMATCH` thay vì tạo một l�
   hiện tại.
 - Refund được idempotent theo `(booking_id, reason)`: `booking_cancellation`, `security_deposit` hoặc
   `dispute_refund` có lifecycle độc lập.
-- SePay không có refund API trong adapter hiện tại: refund vào `manual_required`. Tenant chuyển khoản
-  ngoài hệ thống rồi xác nhận reference/evidence tại màn Giao dịch.
+- SePay `BANK_TRANSFER` không cung cấp tài khoản người chuyển và adapter không có automatic refund:
+  batch vào `manual_required`. Với `manual_refund_v2`, Customer khai báo tài khoản nhận bằng session
+  hoặc booking email-OTP; Finance maker chuyển tiền ngoài hệ thống; checker khác maker duyệt biên lai
+  private. Không suy đoán tài khoản nhận từ IPN.
+- Một `ManualRefundOperation` áp dụng cho toàn bộ `RefundBatch`, kể cả nhiều child refund/payment.
+  Destination bị khóa bằng CAS khi maker claim. Reopen của checker vô hiệu hóa transfer draft và
+  evidence cũ. Reference đã normalize là unique theo Tenant.
+- Checker approval là transaction duy nhất cập nhật child refunds, batch, operation, audit và emit
+  đúng một `refund.completed`. Platform break-glass chỉ dùng khi fresh-auth còn hiệu lực, có lý do và
+  audit cảnh báo mức cao.
 - Chỉ `refund.completed` (gateway support hoặc manual confirmation) mới đổi booking/settlement sang
   trạng thái hoàn tiền. `refund.requested` không được coi là tiền đã về Customer.
 - Với `no_show`, phần tiền dịch vụ online không tự hoàn; nó chờ dispute/release. Riêng cọc bảo đảm
@@ -273,7 +281,9 @@ House partner được bỏ qua vì không có partner payable.
 | Tenant | `GET /tenant/finance/settlements/:bookingId` | chi tiết booking |
 | Tenant | `GET/POST /tenant/finance/disputes` | danh sách và xử lý tranh chấp |
 | Tenant | `GET /tenant/payments/refunds` | lịch sử refund/manual-required |
-| Tenant | `POST /tenant/payments/refunds/:id/confirm` | xác nhận đã chuyển hoàn thủ công |
+| Tenant | `POST /tenant/payments/refunds/:id/confirm` | legacy confirm; v2 tenant nhận 409 |
+| Tenant | `GET /tenant/refunds` | queue batch-level, filter status/SLA |
+| Tenant | `/tenant/refunds/:id/*` | verify, claim/reassign, reveal, evidence, submit, approve/reject/reopen |
 | Partner | `GET /partner/finance/settlements/:bookingId` | chi tiết booking |
 | Partner | `GET /partner/finance/settlements` | đối soát toàn bộ booking của Partner |
 | Partner | `GET /partner/finance/settlement-summary` | tổng hợp toàn bộ settlement, không phụ thuộc page hiện tại |
@@ -282,6 +292,8 @@ House partner được bỏ qua vì không có partner payable.
 | Partner | `POST /partner/bookings/:bookingId/complete` | dialog Hoàn thành dịch vụ |
 | Customer | `GET /customer/finance/settlements/:bookingId` | trạng thái giữ tiền an toàn theo ownership |
 | Customer | `POST /customer/finance/disputes` | mở dispute trước deadline |
+| Customer | `GET /public/bookings/:code/manual-refunds` | danh sách trạng thái masked theo session/OTP grant |
+| Customer | `/public/bookings/:code/manual-refunds/:id/*` | gửi destination và received/not-received |
 | Platform | `GET /platform/finance/settlements` | sổ đối soát toàn nền tảng |
 
 Danh sách Tenant lọc được theo status và Partner. Amount truyền qua HTTP luôn là digit string VND để
@@ -294,6 +306,10 @@ Migrations:
 - `20260719000000_booking_settlements`: custody table ban đầu;
 - `20260719110000_settlement_refund_pending_enum`: commit enum riêng theo yêu cầu PostgreSQL;
 - `20260719120000_finance_lifecycle_hardening`: dispute/refund/allocation/maturity và corrective backfill.
+- `20260904010000_manual_refund_v2`: operation, destination, constraints/RLS và backfill tenant opt-in;
+- `20260904020000_manual_refund_evidence_uploads`: receipt staging private;
+- `20260904030000_manual_refund_sla_markers`: reminder/escalation idempotency markers;
+- `20260904040000_manual_refund_ciphertext_purge`: cho phép purge ciphertext sau 90 ngày.
 
 `booking_settlements`, `settlement_disputes` và `payout_allocations` đều có `tenant_id NOT NULL`, FORCE
 RLS, policy `tenant_isolation`. Settlement unique theo `booking_id` và `payment_id`; dispute unique
@@ -333,6 +349,11 @@ Không dùng `prisma migrate dev`; migration được hand-write theo ADR 0004.
 - `tenant.settings.payout.cycle`: `weekly | monthly`.
 - `SETTLEMENT_RELEASE_DISABLED=true`: tắt riêng settlement release worker.
 - `OUTBOX_RELAY_DISABLED=true`: tắt outbox và các worker phụ thuộc trong môi trường maintenance.
+- `tenant.settings.manual_refund_v2=true`: bật workflow batch-level; mặc định tắt.
+- Platform Admin bật canary bằng `POST /platform/tenants/:tenantId/refunds/enable-workflow`; transaction
+  đồng thời backfill batch `manual_required` cũ, emit destination request và audit. Gọi lặp là an toàn.
+- `MANUAL_REFUND_PII_KEYRING`, `MANUAL_REFUND_PII_ACTIVE_KEY_VERSION` và
+  `MANUAL_REFUND_PII_FINGERPRINT_KEY`: bắt buộc trước khi opt-in; cùng keyring trên mọi API replica.
 
 Checklist khi một settlement bị kẹt:
 

@@ -91,7 +91,12 @@ export interface ManualRefundOperationViewRecord {
 
 export interface IManualRefundOperationRepository {
   isWorkflowEnabled(tx: PrismaTx, tenantId: string): Promise<boolean>;
-  createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<void>;
+  enableWorkflow(tx: PrismaTx, tenantId: string): Promise<void>;
+  findManualRequiredBatchesWithoutOperation(
+    tx: PrismaTx,
+    tenantId: string,
+  ): Promise<Array<{ refundBatchId: string; bookingId: string }>>;
+  createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<boolean>;
   findCustomerDetailReminderCandidates(
     limit: number,
   ): Promise<Array<{ tenantId: string; operationId: string; hours: 24 | 48 }>>;

@@ -141,12 +141,14 @@ export class ExecuteRefundUseCase {
         refreshed?.batch.status === 'manual_required' &&
         (await this.manualRefundOperations.isWorkflowEnabled(tx, tenantId))
       ) {
-        await this.manualRefundOperations.createForBatch(tx, tenantId, batch.id);
-        await this.outbox.emit(tx, {
-          tenantId,
-          eventType: 'manual_refund.destination_requested',
-          payload: { refundBatchId: batch.id, bookingId },
-        });
+        const created = await this.manualRefundOperations.createForBatch(tx, tenantId, batch.id);
+        if (created) {
+          await this.outbox.emit(tx, {
+            tenantId,
+            eventType: 'manual_refund.destination_requested',
+            payload: { refundBatchId: batch.id, bookingId },
+          });
+        }
       }
     });
   }
