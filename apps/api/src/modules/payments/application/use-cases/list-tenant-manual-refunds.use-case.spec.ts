@@ -1,3 +1,4 @@
+import { manualRefundListResponseSchema } from '@booking/contracts';
 import { describe, expect, it } from 'vitest';
 import { fakePort, fakeTenantDb, MANUAL_REFUND_TENANT_ID, manualRefundView } from '~testing';
 import type { IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
@@ -31,6 +32,7 @@ describe('ListTenantManualRefundsUseCase', () => {
     expect(tenantDb.openedFor).toEqual([MANUAL_REFUND_TENANT_ID]);
     expect(result.workflowEnabled).toBe(true);
     expect(result.items[0]).toMatchObject({ bookingCode: 'BK-0001', amount: '1250000' });
+    expect(manualRefundListResponseSchema.safeParse(result).success).toBe(true);
     expect(JSON.stringify(result)).not.toContain('secret-ciphertext');
     expect(JSON.stringify(result)).not.toContain('manual-refund-evidence/');
   });
