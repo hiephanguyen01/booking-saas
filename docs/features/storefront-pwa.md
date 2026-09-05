@@ -52,14 +52,15 @@ The client registers `/sw.js?v=<build-id>`. The worker derives
 `bookingos-storefront-<build-id>` from its own URL and only deletes older caches beginning with
 `bookingos-storefront-`. Caches owned by another application or tool are untouched.
 
-The worker intercepts only same-origin `GET` requests:
+The worker intercepts GET requests:
 
 | Request | Behaviour |
 | --- | --- |
 | navigation | network only; on failure return the worker's self-contained offline response; never cache either HTML response |
 | `/assets/*`, `/pwa/*` | current-cache-first, then network and awaited `cache.put` for complete basic 200 responses |
+| images (covers, media, icons, avatars) | stale-while-revalidate into bounded LRU image cache (`bookingos-storefront-images-v1`, max 80 entries); instant 0ms render on repeat views |
 | React Router data, auth, uploads, manifest and all other paths | browser handles the request; no Cache Storage write |
-| cross-origin assets and non-GET requests | not intercepted |
+| non-GET requests | not intercepted |
 
 Development registration actively unregisters service workers and removes only BookingOS storefront
 caches, which prevents a production build checked on localhost from contaminating the next dev run.
