@@ -975,9 +975,25 @@ refund = paid_amount × refundPercent(policy_snapshot, hoursBefore(timeslot.star
 ```
 
 - Gateway supports a refund API → call `refund()`, track the status.
-- Not supported (most VN gateways) → refund goes `manual_required`: creates a task in the tenant dashboard, marked once transferred + with evidence.
+- Not supported (including SePay `BANK_TRANSFER`) → refund batch goes `manual_required`. With
+  `tenant.settings.manual_refund_v2=true`, one `ManualRefundOperation` is created for the whole
+  `RefundBatch`: Customer supplies a receiving account through their session or the booking email-OTP
+  grant; a finance maker claims the immutable destination snapshot and records one external transfer;
+  a different checker approves its private receipt. Only checker approval atomically succeeds all
+  child refunds, completes the batch/operation and emits one `refund.completed`.
 - A refund on cancellation **before** `completed`: there's no commission journal yet to reverse — only the payment/refund is adjusted; the retained portion (if policy < 100%) is recorded as a `cancellation_fee` journal split per commission_snapshot. A refund **after** `completed` (dispute): recorded as a reversing `clawback` journal.
-- Guest checkout has no payout info on file: send the customer a secure link (email OTP) to enter a receiving bank account; a `manual_required` refund has an **SLA + a reminder job** for the tenant, with evidence attached to the refund record.
+- Guest checkout has no payout info on file: send the customer a secure booking link protected by
+  email OTP. Full account numbers are encrypted with a dedicated versioned AES-256-GCM keyring and
+  tenant/operation AAD; list/status responses expose only bank, masked name and last four digits.
+  Finance reveal is separately authorized and audited with `Cache-Control: no-store`. Full account
+  ciphertext is purged 90 days after completion while fingerprint, last4, consent, transfer reference
+  and audit remain.
+- Customer-details reminders run at 24/48 hours. The transfer SLA (payment snapshot, default 72 hours)
+  starts only when the destination becomes `ready_for_transfer`; checker waiting is escalated
+  separately. Customer “received/not received” feedback is follow-up evidence and never rewinds the
+  completed money state.
+- The legacy child-level confirmation endpoint remains available only while the feature flag is off.
+  For opted-in tenants it fails closed with `409 MANUAL_REFUND_BATCH_WORKFLOW_REQUIRED`.
 
 ---
 

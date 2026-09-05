@@ -15,6 +15,8 @@ import {
 import { apiGet, apiPost } from '~/lib/server/api.server';
 import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { checkoutBooking, fetchPaymentOptions } from '~/features/booking/server/booking.server';
+import { fetchBookingManualRefunds } from '~/features/booking/server/booking.server';
+import { handleBookingManualRefundAction } from '~/features/booking/server/booking-detail.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
@@ -71,10 +73,13 @@ export async function loadAccountBookingDetailRoute(
   );
   if (response.ok) settlement = response.data;
 
+  const manualRefunds = await fetchBookingManualRefunds(request, booking.code);
+
   return {
     locale,
     booking,
     settlement,
+    manualRefunds,
     defaultCancelOpen: url.searchParams.get('cancel') === '1',
   };
 }
@@ -85,6 +90,9 @@ export async function handleAccountBookingDetailAction(
   locale: 'vi' | 'en',
 ) {
   const normalizedCode = code.trim().toUpperCase();
+  if ((request.headers.get('content-type') ?? '').includes('application/json')) {
+    return handleBookingManualRefundAction(request, normalizedCode);
+  }
   const body = await readFormRequestBody(request);
   if (!body.ok) {
     return data(

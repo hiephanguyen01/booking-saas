@@ -1,5 +1,6 @@
 import type {
   BookingStatus,
+  ManualRefundStatusResponse,
   PaymentStatusResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -12,6 +13,10 @@ import type { BookingDetailViewModel } from '~/features/booking/lib/booking-deta
 import type { DiscoveryListingCardData } from '~/features/catalog/lib/listing-card.types';
 import { BookingOutcomeLayout } from './booking-outcome-layout';
 import { BookingSuccessView } from './booking-success-view';
+import {
+  ManualRefundCustomerPanel,
+  type CustomerRefundActionData,
+} from './manual-refund-customer-panel';
 
 interface BookingPaymentViewProps {
   code: string;
@@ -32,6 +37,8 @@ interface BookingPaymentViewProps {
   booking: BookingDetailViewModel | null;
   recommendations: DiscoveryListingCardData[];
   showDetail: boolean;
+  manualRefunds: ManualRefundStatusResponse[];
+  manualRefundAction?: CustomerRefundActionData;
 }
 
 export function BookingPaymentView({
@@ -53,24 +60,33 @@ export function BookingPaymentView({
   booking,
   recommendations,
   showDetail,
+  manualRefunds,
+  manualRefundAction,
 }: BookingPaymentViewProps) {
   const { t } = useTranslation([NsI18n.Booking, NsI18n.Error]);
 
   if (isSuccess) {
     return (
-      <BookingSuccessView
-        code={code}
-        locale={locale}
-        maskedEmail={maskedEmail}
-        signedIn={signedIn}
-        bookingStatus={bookingStatus}
-        paidAmount={status.paidAmount}
-        booking={booking}
-        recommendations={recommendations}
-        showDetail={showDetail}
-        submitting={submitting}
-        isBalancePayment={isBalancePayment}
-      />
+      <>
+        <BookingSuccessView
+          code={code}
+          locale={locale}
+          maskedEmail={maskedEmail}
+          signedIn={signedIn}
+          bookingStatus={bookingStatus}
+          paidAmount={status.paidAmount}
+          booking={booking}
+          recommendations={recommendations}
+          showDetail={showDetail}
+          submitting={submitting}
+          isBalancePayment={isBalancePayment}
+        />
+        <ManualRefundCustomerPanel
+          refunds={manualRefunds}
+          locale={locale}
+          actionData={manualRefundAction}
+        />
+      </>
     );
   }
 

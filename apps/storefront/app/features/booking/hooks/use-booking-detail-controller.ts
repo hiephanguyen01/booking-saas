@@ -52,7 +52,12 @@ export function useBookingDetailController({
 
   const handoffDestination =
     actionData && 'handoff' in actionData && actionData.handoff ? actionData.handoff : null;
-  const rawActionError = actionData && !actionData.ok ? actionData.error : null;
+  const manualRefundAction =
+    actionData && 'operationId' in actionData && typeof actionData.operationId === 'string'
+      ? { ok: actionData.ok, error: actionData.error, operationId: actionData.operationId }
+      : undefined;
+  const rawActionError =
+    actionData && !manualRefundAction && !actionData.ok ? actionData.error : null;
   const actionError =
     rawActionError === 'PAYMENT_METHOD_SELECTION_REQUIRED' ||
     rawActionError === 'PAYMENT_METHOD_UNAVAILABLE'
@@ -80,6 +85,8 @@ export function useBookingDetailController({
       actionError,
       recommendations: loaderData.recommendations,
       showDetail: searchParams.get('view') === 'detail',
+      manualRefunds: loaderData.manualRefunds,
+      manualRefundAction,
     },
   };
 }

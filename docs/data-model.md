@@ -1,7 +1,7 @@
 # Data model
 
 The schema is the source of truth: **[`../apps/api/prisma/schema.prisma`](../apps/api/prisma/schema.prisma)**
-(51 models, 48 enums). This page documents the **invariants and units** that Prisma can't express —
+(76 models, 69 enums). This page documents the **invariants and units** that Prisma can't express —
 read it before touching money, migrations, or tenant tables. Domain term definitions are in
 [`glossary.md`](./glossary.md).
 
@@ -17,9 +17,10 @@ read it before touching money, migrations, or tenant tables. Domain term definit
 - **Scheduling & booking** — availability rules/exceptions, `Booking`, `BookingHold` (audit mirror of a
   Redis hold), status history, inventory.
 - **Payments & finance** — `Payment` (provider-neutral order/transaction references), encrypted
-  tenant gateway configs, `Refund`, `BookingSettlement` (held/dispute/refund/release custody
-  lifecycle), `SettlementDispute`; `CommissionRule`, the double-entry ledger (`LedgerEntry`),
-  `Payout`, `PayoutAllocation`.
+  tenant gateway configs, `Refund`, `RefundBatch`, `ManualRefundOperation` (one batch-level
+  maker/checker workflow), `ManualRefundEvidenceUpload` (private receipt staging),
+  `BookingSettlement` (held/dispute/refund/release custody lifecycle), `SettlementDispute`;
+  `CommissionRule`, the double-entry ledger (`LedgerEntry`), `Payout`, `PayoutAllocation`.
 - **Promotions & affiliate** — promo codes, partner promotions, campaigns; `ReferralLink`,
   `ReferralClick`, `AffiliateCommission`.
 - **Reviews, trust & engagement** — `Review`, `ReviewReply` (one partner reply per review), `Favorite`
@@ -81,6 +82,12 @@ coverage guard in `pnpm test` guards the RLS parts in CI.
    A plain `(created_at)` index serves the 90-day retention sweep.
 7. **Other SQL-only bits:** extensions `btree_gist`, `citext`, `pgcrypto`; `NULLS NOT DISTINCT` unique
    indexes; the `app_user` / `app_admin` / migrate roles.
+8. **One manual operation and one transfer reference.** `manual_refund_operations.refund_batch_id` is
+   unique. A partial unique index on `(tenant_id, transfer_reference_normalized)` prevents reuse of a
+   non-null bank reference inside a tenant. Status/version CAS guards every claim and transition;
+   database checks require a complete destination/evidence/approval bundle for later states and prevent
+   maker self-approval. Both manual-refund tables are tenant-scoped, FORCE-RLS protected, and evidence
+   object keys are unique per tenant.
 
 ## Units & types (hard rules)
 
@@ -142,6 +149,14 @@ rewrite history.
 - `Refund.affectsBookingStatus` stores whether confirmation terminates the booking. It is `false` for
   security-deposit and partial-dispute refunds, so manual confirmation/recovery cannot turn a
   completed booking into a misleading full-refund state.
+- `ManualRefundOperation` belongs to one `RefundBatch`, not one child `Refund`. One normalized
+  transfer reference and one verified receipt therefore complete a multi-payment batch atomically.
+  The destination stores bank code, normalized account name, encrypted account number + key version,
+  an HMAC fingerprint and last4. Raw lookup responses are not persisted. Reopening invalidates the
+  maker snapshot, transfer draft and prior evidence before the customer can edit again.
+- Manual refund completion updates every incomplete manual child, the batch and operation, audit and
+  outbox in one transaction. Any failure rolls back the whole approval; consumers then project the
+  existing `refund.completed` event to booking and settlement.
 - `SettlementDispute.settlementId` is unique: one customer claim per settlement. Partial dispute
   refunds are cumulative and capped by the service amount still held.
 - A Partner payout is valid only when FIFO `PayoutAllocation` rows cover its exact amount; otherwise

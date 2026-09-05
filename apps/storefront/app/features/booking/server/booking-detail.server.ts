@@ -1,15 +1,24 @@
-import { customerPaymentMethodSchema } from '@booking/contracts';
+import {
+  acknowledgeManualRefundInputSchema,
+  customerPaymentMethodSchema,
+  submitManualRefundDestinationInputSchema,
+  uuidSchema,
+  type ManualRefundBookingResponse,
+} from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import { getOptionalAuth } from '~/lib/server/auth.server';
 import {
   cancelBooking,
+  acknowledgeBookingManualRefund,
   checkoutBooking,
+  fetchBookingManualRefunds,
   fetchBookingByCode,
   fetchPaymentOptions,
   fetchPaymentStatus,
   mockPay,
   mockPaymentsEnabled,
+  submitBookingManualRefundDestination,
   verifyBookingAccess,
 } from '~/features/booking/server/booking.server';
 import {
@@ -17,6 +26,7 @@ import {
   maskCheckoutEmail,
 } from '~/features/checkout/server/checkout-flow.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
+import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
 import { rethrowCriticalDataError } from '~/lib/server/optional-data.server';
@@ -27,10 +37,7 @@ import {
   allowedPaymentRedirect,
   isMockPaymentRedirect,
 } from '~/features/checkout/server/payment-redirect.server';
-import {
-  fetchDiscoveryListings,
-  fetchListing,
-} from '~/features/catalog/server/catalog.server';
+import { fetchDiscoveryListings, fetchListing } from '~/features/catalog/server/catalog.server';
 
 const BOOKING_DETAIL_MAX_FORM_BYTES = 16 * 1024;
 
@@ -79,6 +86,15 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
   }
 
   let recommendations: DiscoveryListingCardData[] = [];
+  let manualRefunds: ManualRefundBookingResponse = [];
+  try {
+    manualRefunds = await fetchBookingManualRefunds(request, code, {
+      accessGrant: flow?.accessGrant,
+      otp: flow?.legacyOtp,
+    });
+  } catch (error) {
+    rethrowCriticalDataError(error);
+  }
   const bookingSucceeded =
     status.paymentStatus === 'succeeded' ||
     booking?.status === 'confirmed' ||
@@ -114,6 +130,7 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
     listingSlug: flow?.record?.listingSlug ?? null,
     maskedEmail: flow?.record?.maskedEmail ?? null,
     recommendations,
+    manualRefunds,
   };
   // A signed-in customer no longer needs the checkout access grant. Guests do:
   // the success CTA opens the same protected booking at `?view=detail`, so its
@@ -127,6 +144,9 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
 }
 
 export async function handleBookingDetailAction(request: Request, code: string, locale: Locale) {
+  if ((request.headers.get('content-type') ?? '').includes('application/json')) {
+    return handleBookingManualRefundAction(request, code);
+  }
   const formBody = await readFormRequestBody(request, BOOKING_DETAIL_MAX_FORM_BYTES);
   if (!formBody.ok) {
     return data(
@@ -169,6 +189,67 @@ export async function handleBookingDetailAction(request: Request, code: string, 
     );
     return data(
       { ok: result.ok, error: result.error ?? null },
+      { status: result.ok ? 200 : errorStatus(result.status) },
+    );
+  }
+  return data({ ok: false, error: 'UNKNOWN_INTENT' }, { status: 400 });
+}
+
+export async function handleBookingManualRefundAction(request: Request, code: string) {
+  const body = await readJsonRequestBody(request, BOOKING_DETAIL_MAX_FORM_BYTES);
+  if (!body.ok || !body.value || typeof body.value !== 'object') {
+    return data({ ok: false, error: body.ok ? 'INVALID_JSON' : body.code }, { status: 400 });
+  }
+  const raw = body.value as Record<string, unknown>;
+  const operationId = uuidSchema.safeParse(raw.operationId);
+  const intent = typeof raw.intent === 'string' ? raw.intent : '';
+  if (!operationId.success)
+    return data({ ok: false, error: 'INVALID_REFUND_OPERATION' }, { status: 400 });
+  const flow = await getCheckoutFlowService().readForCode(request, code);
+  const access = { accessGrant: flow?.accessGrant, otp: flow?.legacyOtp };
+  const input = { ...raw };
+  delete input.intent;
+  delete input.operationId;
+
+  if (intent === 'submit-refund-destination') {
+    const parsed = submitManualRefundDestinationInputSchema.safeParse(input);
+    if (!parsed.success) {
+      return data(
+        {
+          ok: false,
+          error: 'INVALID_REFUND_DESTINATION',
+          fieldErrors: parsed.error.flatten().fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+    const result = await submitBookingManualRefundDestination(
+      request,
+      code,
+      operationId.data,
+      parsed.data,
+      access,
+    );
+    return data(
+      { ok: result.ok, error: result.error ?? result.code ?? null, operationId: operationId.data },
+      { status: result.ok ? 200 : errorStatus(result.status) },
+    );
+  }
+
+  if (intent === 'acknowledge-refund') {
+    const parsed = acknowledgeManualRefundInputSchema.safeParse(input);
+    if (!parsed.success) {
+      return data({ ok: false, error: 'INVALID_REFUND_ACKNOWLEDGEMENT' }, { status: 400 });
+    }
+    const result = await acknowledgeBookingManualRefund(
+      request,
+      code,
+      operationId.data,
+      parsed.data,
+      access,
+    );
+    return data(
+      { ok: result.ok, error: result.error ?? result.code ?? null, operationId: operationId.data },
       { status: result.ok ? 200 : errorStatus(result.status) },
     );
   }

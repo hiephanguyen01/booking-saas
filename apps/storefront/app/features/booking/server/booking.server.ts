@@ -10,6 +10,10 @@ import type {
   CreateBookingInput,
   CreateBookingResponse,
   CustomerPaymentMethod,
+  ManualRefundBookingResponse,
+  ManualRefundStatusResponse,
+  SubmitManualRefundDestinationInput,
+  AcknowledgeManualRefundInput,
   PaymentStatusResponse,
   PublicPaymentOptions,
   StorefrontPromotionsInput,
@@ -25,6 +29,8 @@ import {
   checkoutResponseSchema,
   createBookingResponseSchema,
   paymentStatusResponseSchema,
+  manualRefundBookingResponseSchema,
+  manualRefundStatusResponseSchema,
   publicPaymentOptionsSchema,
   storefrontPromotionsResponseSchema,
   validatePromoResponseSchema,
@@ -200,6 +206,47 @@ export function fetchPaymentStatus(
     schema: paymentStatusResponseSchema,
     allowNotFound: true,
   });
+}
+
+export function fetchBookingManualRefunds(
+  request: Request,
+  code: string,
+  access: BookingAccessHeaders = {},
+): Promise<ManualRefundBookingResponse> {
+  return publicGetData(request, apiPaths.public.bookingManualRefunds(code), {
+    headers: accessHeaders(access),
+    schema: manualRefundBookingResponseSchema,
+  });
+}
+
+export function submitBookingManualRefundDestination(
+  request: Request,
+  code: string,
+  operationId: string,
+  input: SubmitManualRefundDestinationInput,
+  access: BookingAccessHeaders = {},
+): Promise<ApiResult<ManualRefundStatusResponse>> {
+  return optionalAuthPost(
+    request,
+    apiPaths.public.bookingManualRefundDestination(code, operationId),
+    input,
+    { headers: accessHeaders(access), schema: manualRefundStatusResponseSchema },
+  );
+}
+
+export function acknowledgeBookingManualRefund(
+  request: Request,
+  code: string,
+  operationId: string,
+  input: AcknowledgeManualRefundInput,
+  access: BookingAccessHeaders = {},
+): Promise<ApiResult<ManualRefundStatusResponse>> {
+  return optionalAuthPost(
+    request,
+    apiPaths.public.bookingManualRefundAcknowledgement(code, operationId),
+    input,
+    { headers: accessHeaders(access), schema: manualRefundStatusResponseSchema },
+  );
 }
 
 /** Dev-only mock payment (gated behind `ALLOW_MOCK_PAYMENTS` on the API). */

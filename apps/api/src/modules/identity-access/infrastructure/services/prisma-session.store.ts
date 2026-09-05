@@ -42,6 +42,14 @@ function toSession(row: PrismaSession): Session {
 export class PrismaSessionStore implements ISessionStore {
   constructor(private readonly prisma: PrismaService) {}
 
+  async authenticationTime(sessionId: string, userId: string): Promise<Date | null> {
+    const session = await this.prisma.admin.session.findFirst({
+      where: { id: sessionId, userId, revokedAt: null },
+      select: { createdAt: true },
+    });
+    return session?.createdAt ?? null;
+  }
+
   async create(userId: string, meta: { ip?: string; userAgent?: string }): Promise<SessionTokens> {
     const accessToken = newToken();
     const refreshToken = newToken();

@@ -23,6 +23,8 @@ export interface ISessionStore {
   create(userId: string, meta: { ip?: string; userAgent?: string }): Promise<SessionTokens>;
   /** Returns the principal when the access token is valid and not expired/revoked. */
   findByAccessToken(accessToken: string): Promise<SessionPrincipal | null>;
+  /** Login time for the active session; refresh rotation is deliberately not re-authentication. */
+  authenticationTime(sessionId: string, userId: string): Promise<Date | null>;
   /** Rotates both tokens; returns null when the refresh token is invalid. */
   rotate(refreshToken: string): Promise<SessionTokens | null>;
   revoke(sessionId: string): Promise<void>;

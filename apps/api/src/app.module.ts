@@ -47,6 +47,8 @@ const prettyLogs =
           'req.headers.cookie',
           'req.headers.authorization',
           'req.headers["x-bookingos-client-ip"]',
+          'req.headers["x-booking-access-grant"]',
+          'req.headers["x-booking-otp"]',
         ],
         customSuccessMessage: (req, res, responseTime) =>
           `${req.method} ${req.url} → ${res.statusCode} (${responseTime}ms)`,

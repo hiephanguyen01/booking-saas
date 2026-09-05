@@ -4,6 +4,7 @@ import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { BookingModule } from '../../../booking/infrastructure/http/booking.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
+import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
 import { CheckoutUseCase } from '../../application/use-cases/checkout.use-case';
 import { ConfirmManualRefundUseCase } from '../../application/use-cases/confirm-manual-refund.use-case';
 import { ConfirmPayosWebhookUseCase } from '../../application/use-cases/confirm-payos-webhook.use-case';
@@ -33,7 +34,11 @@ import { PAYMENT_REPOSITORY } from '../../domain/ports/payment-repository.port';
 import { REFUND_BATCH_REPOSITORY } from '../../domain/ports/refund-batch-repository.port';
 import { REFUND_POLICY_REPOSITORY } from '../../domain/ports/refund-policy-repository.port';
 import { REFUND_REPOSITORY } from '../../domain/ports/refund-repository.port';
+import { ACCOUNT_NAME_LOOKUP } from '../../domain/ports/account-name-lookup.port';
+import { MANUAL_REFUND_OPERATION_REPOSITORY } from '../../domain/ports/manual-refund-operation-repository.port';
+import { MANUAL_REFUND_PII_CRYPTO } from '../../domain/ports/manual-refund-pii-crypto.port';
 import { AesGcmCryptoService } from '../aes-gcm-crypto.service';
+import { AesGcmManualRefundPiiCryptoAdapter } from '../aes-gcm-manual-refund-pii-crypto.adapter';
 import { GatewayRegistry } from '../gateway-registry';
 import { MockGatewayAdapter } from '../gateways/mock-gateway.adapter';
 import { PayosWebhookConfigurator } from '../gateways/payos-webhook.configurator';
@@ -46,25 +51,61 @@ import { PrismaPaymentRepository } from '../repositories/prisma-payment.reposito
 import { PrismaRefundBatchRepository } from '../repositories/prisma-refund-batch.repository';
 import { PrismaRefundPolicyRepository } from '../repositories/prisma-refund-policy.repository';
 import { PrismaRefundRepository } from '../repositories/prisma-refund.repository';
+import { PrismaManualRefundOperationRepository } from '../repositories/prisma-manual-refund-operation.repository';
+import { UnsupportedAccountNameLookupAdapter } from '../unsupported-account-name-lookup.adapter';
+import { ProtectManualRefundDestinationUseCase } from '../../application/use-cases/protect-manual-refund-destination.use-case';
+import { GetCustomerManualRefundStatusUseCase } from '../../application/use-cases/get-customer-manual-refund-status.use-case';
+import { SubmitCustomerManualRefundDestinationUseCase } from '../../application/use-cases/submit-customer-manual-refund-destination.use-case';
+import { AcknowledgeCustomerManualRefundReceivedUseCase } from '../../application/use-cases/acknowledge-customer-manual-refund-received.use-case';
+import { ReportCustomerManualRefundNotReceivedUseCase } from '../../application/use-cases/report-customer-manual-refund-not-received.use-case';
 import { PlatformPaymentController } from './platform-payment.controller';
+import { PublicManualRefundController } from './public-manual-refund.controller';
 import { PublicPaymentController } from './public-payment.controller';
 import { TenantGatewayController } from './tenant-gateway.controller';
 import { TenantPaymentConfigurationController } from './tenant-payment-configuration.controller';
 import { TenantPaymentController } from './tenant-payment.controller';
 import { WebhookController } from './webhook.controller';
+import { TenantManualRefundController } from './tenant-manual-refund.controller';
+import { MANUAL_REFUND_EVIDENCE_REPOSITORY } from '../../domain/ports/manual-refund-evidence-repository.port';
+import { PrismaManualRefundEvidenceRepository } from '../repositories/prisma-manual-refund-evidence.repository';
+import { ListTenantManualRefundsUseCase } from '../../application/use-cases/list-tenant-manual-refunds.use-case';
+import { GetTenantManualRefundUseCase } from '../../application/use-cases/get-tenant-manual-refund.use-case';
+import { VerifyManualRefundDestinationUseCase } from '../../application/use-cases/verify-manual-refund-destination.use-case';
+import { ClaimManualRefundUseCase } from '../../application/use-cases/claim-manual-refund.use-case';
+import { ReassignManualRefundUseCase } from '../../application/use-cases/reassign-manual-refund.use-case';
+import { CreateManualRefundEvidenceUploadUseCase } from '../../application/use-cases/create-manual-refund-evidence-upload.use-case';
+import { SubmitManualRefundTransferUseCase } from '../../application/use-cases/submit-manual-refund-transfer.use-case';
+import { RejectManualRefundUseCase } from '../../application/use-cases/reject-manual-refund.use-case';
+import { ReopenManualRefundDestinationUseCase } from '../../application/use-cases/reopen-manual-refund-destination.use-case';
+import { RevealManualRefundPrivateDetailsUseCase } from '../../application/use-cases/reveal-manual-refund-private-details.use-case';
+import { ApproveManualRefundUseCase } from '../../application/use-cases/approve-manual-refund.use-case';
+import { BreakGlassCompleteManualRefundUseCase } from '../../application/use-cases/break-glass-complete-manual-refund.use-case';
+import { PlatformManualRefundController } from './platform-manual-refund.controller';
+import { ManualRefundSlaWorker } from '../manual-refund-sla.worker';
+import { SendManualRefundCustomerDetailReminderUseCase } from '../../application/use-cases/send-manual-refund-customer-detail-reminder.use-case';
+import { StartManualRefundTransferSlaUseCase } from '../../application/use-cases/start-manual-refund-transfer-sla.use-case';
+import { EscalateManualRefundCheckerWaitingUseCase } from '../../application/use-cases/escalate-manual-refund-checker-waiting.use-case';
+import { PurgeManualRefundCiphertextUseCase } from '../../application/use-cases/purge-manual-refund-ciphertext.use-case';
+import { ListCustomerManualRefundsUseCase } from '../../application/use-cases/list-customer-manual-refunds.use-case';
+import { EnableManualRefundWorkflowUseCase } from '../../application/use-cases/enable-manual-refund-workflow.use-case';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule, BookingModule],
+  imports: [PrismaModule, TenantContextModule, TenancyModule, IdentityAccessModule, BookingModule],
   controllers: [
     PublicPaymentController,
+    PublicManualRefundController,
     WebhookController,
     TenantGatewayController,
     TenantPaymentConfigurationController,
     TenantPaymentController,
+    TenantManualRefundController,
+    PlatformManualRefundController,
     PlatformPaymentController,
   ],
   providers: [
     { provide: CRYPTO, useClass: AesGcmCryptoService },
+    { provide: MANUAL_REFUND_PII_CRYPTO, useClass: AesGcmManualRefundPiiCryptoAdapter },
+    { provide: ACCOUNT_NAME_LOOKUP, useClass: UnsupportedAccountNameLookupAdapter },
     { provide: PAYMENT_CONFIGURATION_LOCK, useClass: PostgresPaymentConfigurationLock },
     { provide: PAYMENT_REPOSITORY, useClass: PrismaPaymentRepository },
     { provide: PAYMENT_BOOKING_READER, useClass: PrismaPaymentBookingReader },
@@ -72,6 +113,11 @@ import { WebhookController } from './webhook.controller';
     { provide: REFUND_BATCH_REPOSITORY, useClass: PrismaRefundBatchRepository },
     { provide: REFUND_POLICY_REPOSITORY, useClass: PrismaRefundPolicyRepository },
     { provide: REFUND_REPOSITORY, useClass: PrismaRefundRepository },
+    {
+      provide: MANUAL_REFUND_OPERATION_REPOSITORY,
+      useClass: PrismaManualRefundOperationRepository,
+    },
+    { provide: MANUAL_REFUND_EVIDENCE_REPOSITORY, useClass: PrismaManualRefundEvidenceRepository },
     { provide: GATEWAY_CONFIG_REPOSITORY, useClass: PrismaGatewayConfigRepository },
     { provide: PAYOS_WEBHOOK_CONFIGURATOR, useClass: PayosWebhookConfigurator },
     MockGatewayAdapter,
@@ -95,6 +141,30 @@ import { WebhookController } from './webhook.controller';
     ListTenantRefundsUseCase,
     GetPublicPaymentOptionsUseCase,
     ExecuteAutomaticRefundUseCase,
+    ProtectManualRefundDestinationUseCase,
+    GetCustomerManualRefundStatusUseCase,
+    ListCustomerManualRefundsUseCase,
+    EnableManualRefundWorkflowUseCase,
+    SubmitCustomerManualRefundDestinationUseCase,
+    AcknowledgeCustomerManualRefundReceivedUseCase,
+    ReportCustomerManualRefundNotReceivedUseCase,
+    ListTenantManualRefundsUseCase,
+    GetTenantManualRefundUseCase,
+    VerifyManualRefundDestinationUseCase,
+    ClaimManualRefundUseCase,
+    ReassignManualRefundUseCase,
+    CreateManualRefundEvidenceUploadUseCase,
+    SubmitManualRefundTransferUseCase,
+    RejectManualRefundUseCase,
+    ReopenManualRefundDestinationUseCase,
+    RevealManualRefundPrivateDetailsUseCase,
+    ApproveManualRefundUseCase,
+    BreakGlassCompleteManualRefundUseCase,
+    SendManualRefundCustomerDetailReminderUseCase,
+    StartManualRefundTransferSlaUseCase,
+    EscalateManualRefundCheckerWaitingUseCase,
+    PurgeManualRefundCiphertextUseCase,
+    ManualRefundSlaWorker,
   ],
   exports: [ExecuteRefundUseCase],
 })

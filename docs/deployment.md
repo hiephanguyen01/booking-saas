@@ -118,6 +118,27 @@ Redis identifier. Existing login-abuse history then becomes unreachable until it
 so rotation temporarily resets the active abuse windows. Coordinate rotation across all API replicas
 at once; running mixed old/new keys fragments the limiter state and weakens enforcement.
 
+### Manual-refund receiving-account keys
+
+Before any tenant enables `manual_refund_v2`, configure three API variables backed by two independent
+secrets:
+
+```bash
+openssl rand -base64 32 # encryption key for v1
+openssl rand -base64 32 # stable HMAC fingerprint key
+```
+
+Set `MANUAL_REFUND_PII_ACTIVE_KEY_VERSION=v1`, put the first value in
+`MANUAL_REFUND_PII_KEYRING={"v1":"..."}`, and put the second in
+`MANUAL_REFUND_PII_FINGERPRINT_KEY`. Every value must decode to exactly 32 bytes. Use the same keyring
+and fingerprint key on all API replicas in one environment; never reuse the session, gateway or login
+rate-limit keys.
+
+To rotate encryption, add `v2` while retaining `v1`, deploy the expanded keyring to every replica, then
+switch the active version to `v2`. Do not remove `v1` until no row references it; completed account
+ciphertext is purged after 90 days. The fingerprint key is deliberately stable and is not rotated with
+the encryption key. Losing an old key makes still-retained destinations unrevealable.
+
 ### TLS — Caddy on-demand, one certificate per hostname
 
 **Caddy owns public 80/443** — the `caddy` service in `docker-compose.deploy.yml`, the only service
@@ -215,7 +236,8 @@ docker compose --env-file .env.stg \
 
 Compose **fails fast** on a missing secret (`${VAR:?...}`) rather than starting with a dev default.
 That matters because the API itself has no env validation at boot: `PAYMENTS_ENC_KEY` silently falls
-back to a value published in this repo, so the compose file is what enforces it.
+back to a value published in this repo, while manual-refund PII protection resolves its keyring lazily.
+The compose file therefore requires all four payment/PII secrets before the API can start.
 
 Then seed the tenants (settings only — no demo partners/listings):
 
@@ -251,8 +273,8 @@ docker compose --env-file .env.stg \
 ```
 
 For Cloudflare R2, create both `S3_BUCKET` and `S3_PRIVATE_BUCKET` first. Connect the public custom
-domain only to `S3_BUCKET`; the private bucket stores tax evidence/certificates and must remain
-private. The bootstrap script detects the R2 endpoint and skips `PutBucketPolicy` (which R2 does not
+domain only to `S3_BUCKET`; the private bucket stores tax evidence/certificates and manual-refund
+receipts and must remain private. The bootstrap script detects the R2 endpoint and skips `PutBucketPolicy` (which R2 does not
 implement), then uploads the default assets. Other S3-compatible development stores still receive
 the public-read policy on `S3_BUCKET` only.
 
@@ -338,6 +360,19 @@ The workflow calls `docker compose run --rm migrate` rather than relying on the 
 service_completed_successfully` edge. Compose treats an **already-exited** migrate container as
 "completed" and skips it, which would start a new API against an un-migrated schema.
 
+For the manual-refund release, run migrations before enabling any tenant. Confirm the four
+`2026090401..04` migrations applied, run the permission seed, and verify the private bucket/CORS plus
+PII keyring on staging. `manual_refund_v2` remains false by default. A Platform Admin with
+`platform.tenants.write` opts a tenant in through
+`POST /platform/tenants/:tenantId/refunds/enable-workflow`; that transaction merges the flag, creates
+missing operations for every legacy `manual_required` batch, emits one destination request per newly
+created operation and writes an audit record. The call is idempotent and may be repeated for recovery.
+
+Canary one tenant first; observe queue age, SLA overdue, verification fallback/mismatch, duplicate
+references, destination reveals and break-glass audit. Existing automatic refunds are unaffected.
+Application rollback may turn the flag off through a controlled tenant-settings change, but does not
+delete operations, receipts or audit, and never rolls migrations back.
+
 ### Required setup (once)
 
 Repository secrets:
@@ -354,7 +389,7 @@ deploy into an approval gate; the workflow's `environment:` key wires it up. `st
 through.
 
 On the box: the env files live there and are **never** uploaded by CI, so runtime secrets
-(`PAYMENTS_ENC_KEY`, DB passwords) never pass through Actions.
+(`PAYMENTS_ENC_KEY`, manual-refund PII keyring/fingerprint, DB passwords) never pass through Actions.
 
 ### Rollback
 
@@ -439,3 +474,6 @@ shares one Redis.
 - **Gateway credentials** — SePay / MoMo / ZaloPay keys are **tenant-owned** and entered in
   Dashboard → Settings, encrypted at rest with `PAYMENTS_ENC_KEY`. They are never process env vars,
   because one process serves many tenants each with a different merchant account.
+- **Receiving-account destinations** — they are customer PII, not gateway credentials. They use the
+  separate versioned `MANUAL_REFUND_PII_KEYRING` with tenant/operation AAD and are purged on the
+  90-day schedule; do not copy them into logs, tickets, analytics or deployment artifacts.

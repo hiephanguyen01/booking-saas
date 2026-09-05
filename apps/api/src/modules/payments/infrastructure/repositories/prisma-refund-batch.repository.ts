@@ -29,6 +29,11 @@ function toRecord(row: Row): RefundBatchRecord {
 export class PrismaRefundBatchRepository implements IRefundBatchRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findById(tx: PrismaTx, tenantId: string, id: string): Promise<RefundBatchRecord | null> {
+    const row = await tx.refundBatch.findUnique({ where: { id, tenantId } });
+    return row ? toRecord(row) : null;
+  }
+
   async findByBookingReason(
     tx: PrismaTx,
     bookingId: string,
@@ -55,10 +60,7 @@ export class PrismaRefundBatchRepository implements IRefundBatchRepository {
     );
   }
 
-  async refreshStatus(
-    tx: PrismaTx,
-    batchId: string,
-  ): Promise<RefreshRefundBatchResult | null> {
+  async refreshStatus(tx: PrismaTx, batchId: string): Promise<RefreshRefundBatchResult | null> {
     const batch = await tx.refundBatch.findUnique({ where: { id: batchId } });
     if (!batch) return null;
     const children = await tx.refund.findMany({

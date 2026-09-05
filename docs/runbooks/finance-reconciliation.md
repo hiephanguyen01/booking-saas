@@ -13,7 +13,7 @@ status bằng SQL trong production.
 | Đã hết thời gian khiếu nại chưa? | DB `now()` so với `dispute_until` |
 | Tenant/Partner được hưởng bao nhiêu? | commission snapshot + immutable release journal |
 | Booking nào nằm trong payout? | `payout_allocations` |
-| Refund đã thực sự hoàn chưa? | `refunds.status=succeeded` + provider/manual evidence |
+| Refund đã thực sự hoàn chưa? | `refunds.status=succeeded` + provider result hoặc checker-approved manual operation |
 
 `payment.succeeded` không đồng nghĩa `settlement.released`. Payment chỉ xác nhận tiền vào merchant
 Tenant; release mới ghi earnings/payables.
@@ -145,10 +145,48 @@ WHERE r.status = 'succeeded'
        OR bs.refund_id IS DISTINCT FROM r.id);
 ```
 
-Refund `manual_required` là công việc Tenant chưa hoàn tất, không phải mismatch. Chỉ xác nhận sau khi
-có reference ngân hàng; endpoint confirmation giữ advisory lock theo booking và không tạo hai refund.
-Với partial refund, xác nhận manual phải giữ `affects_booking_status=false`; nếu booking bị đổi thành
-`refunded`, dừng recovery và kiểm tra version của API worker trước khi sửa projection.
+Refund `manual_required` là công việc Tenant chưa hoàn tất, không phải mismatch. Tenant bật
+`manual_refund_v2` phải xử lý ở batch queue; endpoint confirm child cũ trả
+`409 MANUAL_REFUND_BATCH_WORKFLOW_REQUIRED`.
+
+Triage operation chỉ đọc, tuyệt đối không chọn ciphertext hoặc ghi raw account vào incident:
+
+```sql
+SELECT m.id AS operation_id, m.refund_batch_id, rb.booking_id, rb.requested_amount,
+       rb.status AS batch_status, m.status AS operation_status, m.version,
+       m.destination_bank_code, m.destination_account_last4,
+       m.verification_result, m.maker_user_id, m.claimed_at,
+       m.transfer_reference, m.transfer_submitted_at,
+       m.checked_by_user_id, m.checked_at, m.transfer_due_at,
+       m.customer_acknowledgement, m.completed_at, m.ciphertext_purged_at
+FROM manual_refund_operations m
+JOIN refund_batches rb ON rb.id = m.refund_batch_id AND rb.tenant_id = m.tenant_id
+WHERE m.tenant_id = '<tenant-uuid>'::uuid
+  AND rb.booking_id = '<booking-uuid>'::uuid;
+```
+
+Invariant vận hành:
+
+- một operation/batch và một normalized transfer reference/Tenant;
+- `maker_user_id <> checked_by_user_id`; maker không được tự duyệt;
+- chỉ reveal khi có `tenant.refunds.reveal`; mỗi lần xem có audit và response `no-store`;
+- receipt phải ở private bucket, PDF/JPEG/PNG, tối đa 10 MB, đã MIME-sniff + checksum verify;
+- chỉ `operation=completed`, `batch=completed` và toàn bộ child manual refund `succeeded` mới là hoàn
+  tất; một reference/receipt bao phủ cả batch;
+- Customer báo `not_received` mở cảnh báo điều tra nhưng không đảo trạng thái tiền. Đối chiếu sao kê,
+  reference và người nhận trước khi quyết định corrective action; không tạo transfer thứ hai;
+- full account ciphertext được purge sau 90 ngày. Fingerprint/last4/reference/audit còn lại để đối soát.
+
+Nếu destination sai sau maker claim, checker dùng reopen; thao tác này vô hiệu transfer draft/evidence
+cũ rồi Customer mới được sửa. Không sửa destination bằng SQL. Nếu biên lai bị reject/quarantine, maker
+phải upload object mới và reference hợp lệ. Với partial refund, child vẫn giữ
+`affects_booking_status=false`; nếu booking bị đổi thành `refunded`, dừng recovery và kiểm tra version
+của API worker trước khi sửa projection.
+
+Nếu một tenant vừa opt-in nhưng batch `manual_required` cũ chưa có operation, dừng xử lý trên UI và
+gọi lại `POST /platform/tenants/:tenantId/refunds/enable-workflow`. Use case idempotent sẽ tạo phần còn
+thiếu và emit destination request trong cùng transaction; không dùng endpoint legacy hoặc SQL để đi
+vòng feature gate.
 
 ### Settlement quá hạn nhưng chưa released
 
@@ -200,6 +238,8 @@ hai operator.
 5. Chạy `pnpm test`.
 6. Deploy tất cả API worker cùng version, bật lại release worker.
 7. Theo dõi outbox error, reconciliation count, số `refund_pending`, settlement quá hạn và payout mở.
+8. Với tenant canary, theo dõi queue age, transfer SLA overdue, lookup fallback/mismatch, duplicate
+   reference, reveal và break-glass; tắt flag nếu cần rollback ứng dụng nhưng giữ operation/audit.
 
 `refund_pending` nằm trong migration enum riêng vì PostgreSQL không cho sử dụng enum label mới trong
 cùng transaction đã thêm label đó. Không gộp hai migration này khi squash thủ công.

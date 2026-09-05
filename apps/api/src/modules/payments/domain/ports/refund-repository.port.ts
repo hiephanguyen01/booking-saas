@@ -90,6 +90,13 @@ export interface IRefundRepository {
     id: string,
     evidence: ConfirmManualRefundInput,
   ): Promise<RefundRecord | null>;
+  completeManualBatch(
+    tx: PrismaTx,
+    tenantId: string,
+    refundBatchId: string,
+    completedAt: Date,
+    reference: string,
+  ): Promise<number>;
   /** Take the per-booking advisory xact lock that serialises concurrent refund handlers. */
   lockForBooking(tx: PrismaTx, bookingId: string): Promise<void>;
   list(

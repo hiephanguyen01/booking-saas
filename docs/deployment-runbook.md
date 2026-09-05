@@ -616,7 +616,7 @@ cho API và thêm một điểm hỏng, mà không làm hệ thống an toàn h�
 R2* để đưa vào CSP `connect-src` của storefront.
 
 `S3_ENDPOINT` là nơi browser PUT bằng presigned URL. `S3_PUBLIC_URL` là nơi browser đọc object
-trong bucket media công khai. `S3_PRIVATE_BUCKET` chứa chứng từ thuế và không được nối custom
+trong bucket media công khai. `S3_PRIVATE_BUCKET` chứa chứng từ thuế, biên lai hoàn tiền và không được nối custom
 domain/public access:
 
 ```text
@@ -664,18 +664,26 @@ Trên EC2:
 openssl rand -hex 32
 openssl rand -base64 48
 openssl rand -base64 48
+openssl rand -base64 32
+openssl rand -base64 32
 ```
 
-Theo thứ tự, lưu ba giá trị vào password manager với tên:
+Theo thứ tự, lưu năm giá trị vào password manager với tên:
 
 ```text
 STG_POSTGRES_PASSWORD
 STG_SESSION_SECRET_CURRENT
 STG_PAYMENTS_ENC_KEY
+STG_MANUAL_REFUND_PII_V1
+STG_MANUAL_REFUND_PII_FINGERPRINT_KEY
 ```
 
 `PAYMENTS_ENC_KEY` phải được giữ nguyên qua mọi release. Mất hoặc thay key sẽ làm toàn bộ payment
 gateway credentials đã mã hóa không thể giải mã.
+
+Hai key manual-refund phải độc lập với nhau và với mọi secret ở trên. `V1` mã hóa số tài khoản;
+fingerprint key tạo HMAC phục vụ đối soát không lộ PII. Escrow cả hai trong password manager, cấp cùng
+keyring cho mọi API replica và không in ra log/shell history.
 
 ### 10.2. Điền env file
 
@@ -719,6 +727,9 @@ REDIS_MAXMEMORY=256mb
 SESSION_SECRET_CURRENT=REPLACE_WITH_STG_SESSION_SECRET_CURRENT
 SESSION_SECRET_PREVIOUS=
 PAYMENTS_ENC_KEY=REPLACE_WITH_STG_PAYMENTS_ENC_KEY
+MANUAL_REFUND_PII_ACTIVE_KEY_VERSION=v1
+MANUAL_REFUND_PII_KEYRING={"v1":"REPLACE_WITH_STG_MANUAL_REFUND_PII_V1"}
+MANUAL_REFUND_PII_FINGERPRINT_KEY=REPLACE_WITH_STG_MANUAL_REFUND_PII_FINGERPRINT_KEY
 SESSION_COOKIE_SECURE=true
 
 ALLOW_MOCK_PAYMENTS=false
@@ -1128,6 +1139,10 @@ trang không tìm thấy tenant.
 - [ ] Resend gửi email thật.
 - [ ] `ALLOW_MOCK_PAYMENTS=false`.
 - [ ] `PAYMENTS_ENC_KEY` đã escrow ngoài EC2.
+- [ ] Manual-refund PII keyring/fingerprint đã escrow, khác mọi key khác và giống nhau trên mọi API replica.
+- [ ] `S3_PRIVATE_BUCKET` không public; receipt manual-refund chỉ nhận PDF/JPEG/PNG ≤ 10 MB.
+- [ ] `manual_refund_v2` mặc định tắt; canary opt-in chỉ sau security/privacy review và seed permission.
+- [ ] Platform Admin opt-in bằng endpoint `enable-workflow`; số operation backfill khớp batch manual cũ.
 - [ ] Database dump đã được copy ra ngoài EC2.
 - [ ] EventBridge Scheduler start staging 10:00 và stop 22:00 theo `Asia/Ho_Chi_Minh`.
 - [ ] Biết release, xem log và rollback image.
