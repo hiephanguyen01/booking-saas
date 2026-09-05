@@ -56,7 +56,9 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
   }
 
   async findCustomerDetailReminderCandidates(limit: number) {
-    return this.prisma.admin.$queryRaw<Array<{ tenantId: string; operationId: string; hours: 24 | 48 }>>(Prisma.sql`
+    return this.prisma.admin.$queryRaw<
+      Array<{ tenantId: string; operationId: string; hours: 24 | 48 }>
+    >(Prisma.sql`
       SELECT tenant_id AS "tenantId", id AS "operationId",
              CASE WHEN customer_detail_reminder_24_at IS NULL THEN 24 ELSE 48 END AS hours
       FROM manual_refund_operations
@@ -70,7 +72,9 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
   }
 
   async findTransferSlaCandidates(limit: number) {
-    return this.prisma.admin.$queryRaw<Array<{ tenantId: string; operationId: string; slaHours: number }>>(Prisma.sql`
+    return this.prisma.admin.$queryRaw<
+      Array<{ tenantId: string; operationId: string; slaHours: number }>
+    >(Prisma.sql`
       SELECT m.tenant_id AS "tenantId", m.id AS "operationId",
              COALESCE(MIN(p.manual_refund_sla_hours_snapshot), 72)::int AS "slaHours"
       FROM manual_refund_operations m
@@ -203,6 +207,24 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
       })),
       total,
     };
+  }
+
+  async listViewsForBooking(
+    tx: PrismaTx,
+    tenantId: string,
+    bookingId: string,
+  ): Promise<ManualRefundOperationViewRecord[]> {
+    const rows = await tx.manualRefundOperation.findMany({
+      where: { tenantId, refundBatch: { bookingId } },
+      include: { refundBatch: { include: { booking: { select: { id: true, code: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map((row) => ({
+      operation: toRecord(row),
+      bookingId: row.refundBatch.booking.id,
+      bookingCode: row.refundBatch.booking.code,
+      requestedAmount: row.refundBatch.requestedAmount,
+    }));
   }
 
   async casUpdate(

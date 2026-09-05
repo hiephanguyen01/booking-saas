@@ -60,6 +60,7 @@ export function toCustomerManualRefundStatusResponse(
     amount: batch.requestedAmount.toString(),
     status: operation.status,
     version: operation.version,
+    destinationLocked: Boolean(operation.makerUserId),
     destination: destinationComplete
       ? {
           bankCode: operation.destinationBankCode as string,
@@ -71,6 +72,15 @@ export function toCustomerManualRefundStatusResponse(
       : null,
     verificationResult: operation.verificationResult,
     transferDueAt: operation.transferDueAt?.toISOString() ?? null,
+    customerDetailsDueAt: [
+      'awaiting_details',
+      'verification_required',
+      'correction_required',
+    ].includes(operation.status)
+      ? new Date(
+          (operation.reopenedAt ?? operation.createdAt).getTime() + 48 * 60 * 60 * 1000,
+        ).toISOString()
+      : null,
     transferSubmittedAt: operation.transferSubmittedAt?.toISOString() ?? null,
     completedAt: operation.completedAt?.toISOString() ?? null,
     customerAcknowledgement: operation.customerAcknowledgement,
@@ -78,10 +88,38 @@ export function toCustomerManualRefundStatusResponse(
   };
 }
 
-export function toManualRefundListItem(view: import('../domain/ports/manual-refund-operation-repository.port').ManualRefundOperationViewRecord): ManualRefundListItem {
+export function toManualRefundListItem(
+  view: import('../domain/ports/manual-refund-operation-repository.port').ManualRefundOperationViewRecord,
+): ManualRefundListItem {
   const operation = view.operation;
   return {
-    ...toCustomerManualRefundStatusResponse(operation, {
+    ...toCustomerManualRefundStatusResponse(
+      operation,
+      {
+        id: operation.refundBatchId,
+        tenantId: operation.tenantId,
+        bookingId: view.bookingId,
+        requestedAmount: view.requestedAmount,
+        reason: '',
+        affectsBookingStatus: true,
+        status: operation.status === 'completed' ? 'completed' : 'manual_required',
+        completedAt: operation.completedAt,
+      },
+      view.bookingCode,
+    ),
+    makerUserId: operation.makerUserId,
+    claimedAt: operation.claimedAt?.toISOString() ?? null,
+    updatedAt: operation.updatedAt.toISOString(),
+  };
+}
+
+export function toCustomerManualRefundStatusFromView(
+  view: import('../domain/ports/manual-refund-operation-repository.port').ManualRefundOperationViewRecord,
+): ManualRefundStatusResponse {
+  const operation = view.operation;
+  return toCustomerManualRefundStatusResponse(
+    operation,
+    {
       id: operation.refundBatchId,
       tenantId: operation.tenantId,
       bookingId: view.bookingId,
@@ -90,14 +128,14 @@ export function toManualRefundListItem(view: import('../domain/ports/manual-refu
       affectsBookingStatus: true,
       status: operation.status === 'completed' ? 'completed' : 'manual_required',
       completedAt: operation.completedAt,
-    }, view.bookingCode),
-    makerUserId: operation.makerUserId,
-    claimedAt: operation.claimedAt?.toISOString() ?? null,
-    updatedAt: operation.updatedAt.toISOString(),
-  };
+    },
+    view.bookingCode,
+  );
 }
 
-export function toManualRefundDetailResponse(view: import('../domain/ports/manual-refund-operation-repository.port').ManualRefundOperationViewRecord): ManualRefundDetailResponse {
+export function toManualRefundDetailResponse(
+  view: import('../domain/ports/manual-refund-operation-repository.port').ManualRefundOperationViewRecord,
+): ManualRefundDetailResponse {
   const operation = view.operation;
   const base = toManualRefundListItem(view);
   return {
@@ -111,7 +149,8 @@ export function toManualRefundDetailResponse(view: import('../domain/ports/manua
     rejectionReason: operation.rejectionReason,
     evidence: {
       present: Boolean(operation.evidenceObjectKey),
-      contentType: operation.evidenceContentType as 'application/pdf' | 'image/jpeg' | 'image/png' | null,
+      contentType: operation.evidenceContentType as
+        'application/pdf' | 'image/jpeg' | 'image/png' | null,
       sizeBytes: operation.evidenceSizeBytes,
       verifiedAt: operation.evidenceVerifiedAt?.toISOString() ?? null,
     },
@@ -136,15 +175,16 @@ export function toManualRefundMutationResponse(record: ManualRefundOperationReco
     id: record.id,
     status: record.status,
     version: record.version,
-    destination: record.destinationBankCode && record.destinationAccountName && record.destinationAccountLast4
-      ? {
-          bankCode: record.destinationBankCode,
-          accountNameMasked: maskAccountName(record.destinationAccountName),
-          accountNumberLast4: record.destinationAccountLast4,
-          isThirdParty: record.destinationIsThirdParty,
-          consentRecordedAt: record.destinationConsentAt?.toISOString() ?? null,
-        }
-      : null,
+    destination:
+      record.destinationBankCode && record.destinationAccountName && record.destinationAccountLast4
+        ? {
+            bankCode: record.destinationBankCode,
+            accountNameMasked: maskAccountName(record.destinationAccountName),
+            accountNumberLast4: record.destinationAccountLast4,
+            isThirdParty: record.destinationIsThirdParty,
+            consentRecordedAt: record.destinationConsentAt?.toISOString() ?? null,
+          }
+        : null,
     verificationResult: record.verificationResult,
     makerUserId: record.makerUserId,
     claimedAt: record.claimedAt?.toISOString() ?? null,

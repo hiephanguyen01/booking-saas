@@ -92,6 +92,13 @@ export const apiPaths = {
     bookingPaymentStatus: (code: string) => publicPath(`/bookings/${segment(code)}/payment-status`),
     bookingRequestOtp: (code: string) => publicPath(`/bookings/${segment(code)}/request-otp`),
     bookingVerifyAccess: (code: string) => publicPath(`/bookings/${segment(code)}/verify-access`),
+    bookingManualRefunds: (code: string) => publicPath(`/bookings/${segment(code)}/manual-refunds`),
+    bookingManualRefundDestination: (code: string, operationId: string) =>
+      publicPath(`/bookings/${segment(code)}/manual-refunds/${segment(operationId)}/destination`),
+    bookingManualRefundAcknowledgement: (code: string, operationId: string) =>
+      publicPath(
+        `/bookings/${segment(code)}/manual-refunds/${segment(operationId)}/acknowledgement`,
+      ),
     myBookings: publicPath('/my-bookings'),
 
     checkoutPromotions: publicPath('/checkout/promotions'),

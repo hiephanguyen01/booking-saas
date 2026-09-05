@@ -1,4 +1,8 @@
-import { uuidSchema, type ManualRefundStatusResponse } from '@booking/contracts';
+import {
+  uuidSchema,
+  type ManualRefundBookingResponse,
+  type ManualRefundStatusResponse,
+} from '@booking/contracts';
 import { Body, Controller, Get, Headers, HttpCode, Param, Post, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -16,6 +20,7 @@ import { AcknowledgeCustomerManualRefundReceivedUseCase } from '../../applicatio
 import { GetCustomerManualRefundStatusUseCase } from '../../application/use-cases/get-customer-manual-refund-status.use-case';
 import { ReportCustomerManualRefundNotReceivedUseCase } from '../../application/use-cases/report-customer-manual-refund-not-received.use-case';
 import { SubmitCustomerManualRefundDestinationUseCase } from '../../application/use-cases/submit-customer-manual-refund-destination.use-case';
+import { ListCustomerManualRefundsUseCase } from '../../application/use-cases/list-customer-manual-refunds.use-case';
 import {
   AcknowledgeManualRefundDto,
   ManualRefundStatusResponseDto,
@@ -30,9 +35,25 @@ export class PublicManualRefundController {
     private readonly submitDestination: SubmitCustomerManualRefundDestinationUseCase,
     private readonly acknowledgeReceived: AcknowledgeCustomerManualRefundReceivedUseCase,
     private readonly reportNotReceived: ReportCustomerManualRefundNotReceivedUseCase,
+    private readonly listByBooking: ListCustomerManualRefundsUseCase,
     private readonly resolveBookingAccess: ResolveBookingAccessUseCase,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
   ) {}
+
+  @Public()
+  @Get()
+  @ApiOperation({ summary: 'List masked manual refund operations for an authorized booking' })
+  @ApiParam({ name: 'code', type: 'string' })
+  @ApiOkResponse({ type: [ManualRefundStatusResponseDto] })
+  async list(
+    @Param('code') code: string,
+    @Req() req: Request,
+    @OptionalPrincipal() principal?: SessionPrincipal,
+    @Headers('x-booking-access-grant') accessGrant?: string,
+  ): Promise<ManualRefundBookingResponse> {
+    const access = await this.authorize(req, code, principal, accessGrant);
+    return this.listByBooking.execute(access.tenantId, access.bookingId);
+  }
 
   @Public()
   @Get(':operationId')

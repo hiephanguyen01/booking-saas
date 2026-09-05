@@ -588,9 +588,11 @@ export const manualRefundStatusResponseSchema = z
     amount: z.string().regex(/^\d+$/),
     status: manualRefundOperationStatusSchema,
     version: z.number().int().positive(),
+    destinationLocked: z.boolean(),
     destination: maskedManualRefundDestinationSchema.nullable(),
     verificationResult: manualRefundAccountVerificationResultSchema.nullable(),
     transferDueAt: z.string().datetime().nullable(),
+    customerDetailsDueAt: z.string().datetime().nullable(),
     transferSubmittedAt: z.string().datetime().nullable(),
     completedAt: z.string().datetime().nullable(),
     customerAcknowledgement: manualRefundCustomerAcknowledgementSchema.nullable(),
@@ -598,6 +600,8 @@ export const manualRefundStatusResponseSchema = z
   })
   .strict();
 export type ManualRefundStatusResponse = z.infer<typeof manualRefundStatusResponseSchema>;
+export const manualRefundBookingResponseSchema = z.array(manualRefundStatusResponseSchema);
+export type ManualRefundBookingResponse = z.infer<typeof manualRefundBookingResponseSchema>;
 
 export const manualRefundListQuerySchema = paginationQuerySchema.extend({
   status: manualRefundOperationStatusSchema.optional(),

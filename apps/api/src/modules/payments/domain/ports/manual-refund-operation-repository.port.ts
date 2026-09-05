@@ -92,10 +92,18 @@ export interface ManualRefundOperationViewRecord {
 export interface IManualRefundOperationRepository {
   isWorkflowEnabled(tx: PrismaTx, tenantId: string): Promise<boolean>;
   createForBatch(tx: PrismaTx, tenantId: string, refundBatchId: string): Promise<void>;
-  findCustomerDetailReminderCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string; hours: 24 | 48 }>>;
-  findTransferSlaCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string; slaHours: number }>>;
-  findCheckerEscalationCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string }>>;
-  findCiphertextPurgeCandidates(limit: number): Promise<Array<{ tenantId: string; operationId: string }>>;
+  findCustomerDetailReminderCandidates(
+    limit: number,
+  ): Promise<Array<{ tenantId: string; operationId: string; hours: 24 | 48 }>>;
+  findTransferSlaCandidates(
+    limit: number,
+  ): Promise<Array<{ tenantId: string; operationId: string; slaHours: number }>>;
+  findCheckerEscalationCandidates(
+    limit: number,
+  ): Promise<Array<{ tenantId: string; operationId: string }>>;
+  findCiphertextPurgeCandidates(
+    limit: number,
+  ): Promise<Array<{ tenantId: string; operationId: string }>>;
   purgeCiphertext(
     tx: PrismaTx,
     tenantId: string,
@@ -115,6 +123,11 @@ export interface IManualRefundOperationRepository {
     tenantId: string,
     id: string,
   ): Promise<ManualRefundOperationViewRecord | null>;
+  listViewsForBooking(
+    tx: PrismaTx,
+    tenantId: string,
+    bookingId: string,
+  ): Promise<ManualRefundOperationViewRecord[]>;
   listViews(
     tx: PrismaTx,
     tenantId: string,
