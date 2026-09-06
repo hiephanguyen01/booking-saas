@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router';
 import { CalendarClock, ExternalLink, ListChecks, Users } from 'lucide-react';
 import {
   currentSubscriptionResponseSchema,
+  MANUAL_REFUND_V2_TENANT_FLAG,
   updateTenantInputSchema,
   type CommissionRuleResponse,
   type DomainResponse,
@@ -35,6 +36,7 @@ import { TenantConfigSection } from '~/features/admin/components/tenant-config-s
 import { TenantDangerSection } from '~/features/admin/components/tenant-danger-section';
 import { TenantDomainsCard } from '~/features/admin/components/tenant-domains-card';
 import { TenantPlatformRateCard } from '~/features/admin/components/tenant-platform-rate-card';
+import { TenantManualRefundWorkflowCard } from '~/features/admin/components/tenant-manual-refund-workflow-card';
 import { TenantSubscriptionSection } from '~/features/admin/components/tenant-subscription-section';
 import { useBusy } from '~/hooks/use-busy';
 import { VERTICAL_LABELS } from '~/constants/tenancy';
@@ -56,7 +58,7 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const id = params.id;
-  const { auth } = await requirePlatform(request, 'platform.tenants.read');
+  const { auth, can } = await requirePlatform(request, 'platform.tenants.read');
   const subscriptionDates = getSubscriptionDateDefaults();
   // The subscription-history table is server-paginated with its OWN namespaced params
   // (subPage/subPageSize) so it never collides with anything else on this detail page.
@@ -101,6 +103,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       (rulesRes.ok ? rulesRes.data : null)?.find((r) => r.appliesTo === 'tenant_default')
         ?.platformRate ?? null,
     subscriptionDates,
+    canEnableManualRefundWorkflow: can('platform.tenants.write'),
   };
 }
 
@@ -126,6 +129,7 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
     plans,
     platformRate,
     subscriptionDates,
+    canEnableManualRefundWorkflow,
   } = loaderData;
   const busy = useBusy();
   const [searchParams] = useSearchParams();
@@ -275,6 +279,13 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
         platformRate={platformRate}
         busy={busy}
         error={scopedError('platform-rate')}
+      />
+
+      <TenantManualRefundWorkflowCard
+        enabled={tenant.settings[MANUAL_REFUND_V2_TENANT_FLAG] === true}
+        canEnable={canEnableManualRefundWorkflow}
+        busy={busy}
+        error={scopedError('manual-refund')}
       />
 
       <TenantConfigSection tenant={tenant} />
