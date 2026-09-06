@@ -81,6 +81,8 @@ export const apiPaths = {
     health: '/platform/health',
     financeSettlements: '/platform/finance/settlements',
     payments: '/platform/payments',
+    manualRefundWorkflowEnable: (tenantId: string) =>
+      `/platform/tenants/${segment(tenantId)}/refunds/enable-workflow`,
     manualRefundBreakGlass: (tenantId: string, operationId: string) =>
       `/platform/tenants/${segment(tenantId)}/refunds/${segment(operationId)}/break-glass`,
     reviews: '/platform/reviews',

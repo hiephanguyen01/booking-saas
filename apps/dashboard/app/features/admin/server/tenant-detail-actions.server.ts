@@ -8,6 +8,7 @@ import {
   type DomainDnsCheckResponse,
   type DomainResponse,
   type DomainVerificationResult,
+  type ManualRefundWorkflowEnableResponse,
   type SubscriptionResponse,
   type TenantDetailResponse,
 } from '@booking/contracts';
@@ -19,7 +20,8 @@ import { apiPaths } from '~/constants/api-paths';
 import { actionMessages } from '~/constants/messages';
 
 /** Which form/card an action result belongs to, so an error stays in its own card. */
-export type ActionScope = 'tenant' | 'domain' | 'subscription' | 'status' | 'platform-rate';
+export type ActionScope =
+  'tenant' | 'domain' | 'subscription' | 'status' | 'platform-rate' | 'manual-refund';
 
 export interface ActionResult {
   scope: ActionScope;
@@ -94,6 +96,28 @@ export async function handleTenantDetailJsonAction(request: Request, id: string)
 export async function handleTenantDetailFormAction(request: Request, id: string) {
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
+
+  if (intent === 'enable-manual-refund-v2') {
+    const { auth } = await requirePlatform(request, 'platform.tenants.write');
+    const res = await apiPost<ManualRefundWorkflowEnableResponse>(
+      apiPaths.platform.manualRefundWorkflowEnable(id),
+      {},
+      auth,
+    );
+    if (!res.ok || !res.data) {
+      return data<ActionResult>(
+        { scope: 'manual-refund', error: res.error ?? 'Không bật được Manual Refund V2.' },
+        { status: res.status || 400 },
+      );
+    }
+    const created = res.data.createdOperations;
+    return data<ActionResult>({
+      scope: 'manual-refund',
+      ok: true,
+      message: `Đã bật Manual Refund V2. Số hồ sơ được tạo: ${created.toLocaleString('vi-VN')}.`,
+    });
+  }
+
   const permission =
     intent === 'assign-subscription'
       ? 'platform.subscriptions.manage'
