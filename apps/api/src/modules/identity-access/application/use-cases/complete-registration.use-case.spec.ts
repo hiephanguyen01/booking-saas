@@ -13,6 +13,7 @@ import type {
   IRegistrationCompletionRepository,
   RegistrationCompletionInput,
   RegistrationConsentEventInput,
+  RegistrationGuestUpgradeInput,
 } from '../../domain/ports/registration-completion-repository.port';
 import type { IUserRepository, UserRecord } from '../../domain/ports/user-repository.port';
 import { CompleteRegistrationUseCase } from './complete-registration.use-case';
@@ -27,15 +28,76 @@ const payload = (overrides: Partial<AuthChallengePayload> = {}): AuthChallengePa
 
 interface Options {
   payload?: AuthChallengePayload | null;
-  emailTaken?: boolean;
+  existing?: 'registered' | 'guest';
   mismatchedPassword?: boolean;
+  upgradeConflict?: boolean;
+}
+
+function existingAccount(options: Options): UserAccount | null {
+  if (!options.existing) return null;
+  return UserAccount.rehydrate({
+    id: options.existing === 'guest' ? 'user-guest' : 'user-0',
+    email: 'khach@studiohub.vn',
+    emailVerifiedAt: options.existing === 'guest' ? null : new Date(),
+    passwordHash:
+      options.existing === 'guest'
+        ? null
+        : options.mismatchedPassword
+          ? 'hashed:other-password'
+          : 'hashed:demo-password',
+    fullName: 'Khách Cũ',
+    phone: null,
+    avatarUrl: null,
+    locale: 'vi',
+    status: 'active',
+    failedLoginCount: 0,
+    lockedUntil: null,
+  });
 }
 
 function harness(options: Options = {}) {
   const consumed: Array<{ token: string; purpose: AuthChallengePurpose }> = [];
   const created: RegistrationCompletionInput[] = [];
   const emittedConsents: RegistrationConsentEventInput[] = [];
+  const upgraded: RegistrationGuestUpgradeInput[] = [];
   const currentPayload = options.payload === undefined ? payload() : options.payload;
+
+  const registrationCompletion = fakePort<IRegistrationCompletionRepository>({
+    create: (input) => {
+      created.push(input);
+      return Promise.resolve({
+        status: 'created',
+        user: { id: 'user-1', ...input.user } as unknown as UserRecord,
+      });
+    },
+    emitConsent: (consent) => {
+      emittedConsents.push(consent);
+      return Promise.resolve();
+    },
+    upgradeGuest: (upgrade) => {
+      upgraded.push(upgrade);
+      return Promise.resolve(
+        options.upgradeConflict
+          ? { status: 'conflict' }
+          : {
+              status: 'upgraded',
+              user: {
+                id: 'user-guest',
+                email: 'khach@studiohub.vn',
+                passwordHash: upgrade.passwordHash,
+                fullName: 'Khách Cũ',
+                phone: null,
+                avatarUrl: null,
+                locale: 'vi',
+                status: 'active',
+                failedLoginCount: 0,
+                lockedUntil: null,
+                emailVerifiedAt: upgrade.emailVerifiedAt,
+              },
+            },
+      );
+    },
+  });
 
   return {
     useCase: new CompleteRegistrationUseCase(
@@ -47,41 +109,18 @@ function harness(options: Options = {}) {
         },
       }),
       fakePort<IUserRepository>({
-        findByEmail: () =>
-          Promise.resolve(
-            options.emailTaken
-              ? UserAccount.rehydrate({
-                  id: 'user-0',
-                  email: 'khach@studiohub.vn',
-                  emailVerifiedAt: new Date(),
-                  passwordHash: options.mismatchedPassword
-                    ? 'hashed:other-password'
-                    : 'hashed:demo-password',
-                } as never)
-              : null,
-          ),
+        findByEmail: () => Promise.resolve(existingAccount(options)),
       }),
       fakePort<IPasswordHasher>({
         hash: (plain) => Promise.resolve(`hashed:${plain}`),
         verify: (hash, plain) => Promise.resolve(hash === `hashed:${plain}`),
       }),
-      fakePort<IRegistrationCompletionRepository>({
-        create: (input) => {
-          created.push(input);
-          return Promise.resolve({
-            status: 'created',
-            user: { id: 'user-1', ...input.user } as unknown as UserRecord,
-          });
-        },
-        emitConsent: (consent) => {
-          emittedConsents.push(consent);
-          return Promise.resolve();
-        },
-      }),
+      registrationCompletion,
     ),
     consumed,
     created,
     emittedConsents,
+    upgraded,
   };
 }
 
@@ -113,20 +152,68 @@ describe('CompleteRegistrationUseCase', () => {
   });
 
   it('refuses when the address was claimed while the OTP was in flight with different password', async () => {
-    const { useCase, created } = harness({ emailTaken: true, mismatchedPassword: true });
+    const { useCase, created } = harness({ existing: 'registered', mismatchedPassword: true });
 
     await expect(useCase.execute(input)).rejects.toBeInstanceOf(EmailTaken);
     expect(created).toEqual([]);
   });
 
   it('reconciles with existing account when password matches', async () => {
-    const { useCase, created, consumed } = harness({ emailTaken: true });
+    const { useCase, created, consumed } = harness({ existing: 'registered' });
 
     const result = await useCase.execute(input);
 
     expect(result).toEqual({ success: true });
     expect(created).toEqual([]);
     expect(consumed).toEqual([{ token: 'completion-1', purpose: 'registration' }]);
+  });
+
+  it('atomically upgrades the OTP-bound guest instead of rejecting the existing email', async () => {
+    const { useCase, created, upgraded, consumed } = harness({
+      existing: 'guest',
+      payload: payload({
+        userId: 'user-guest',
+        tenantId: 'tenant-1',
+        acceptedVersionIds: ['doc-v1'],
+        acceptedLocale: 'vi',
+      }),
+    });
+
+    await expect(useCase.execute(input, { ip: '203.0.113.9' })).resolves.toEqual({ success: true });
+    expect(created).toEqual([]);
+    expect(upgraded).toHaveLength(1);
+    expect(upgraded[0]).toMatchObject({
+      userId: 'user-guest',
+      email: 'khach@studiohub.vn',
+      passwordHash: 'hashed:demo-password',
+      consent: {
+        tenantId: 'tenant-1',
+        acceptedVersionIds: ['doc-v1'],
+        acceptedLocale: 'vi',
+        ip: '203.0.113.9',
+      },
+    });
+    expect(upgraded[0]?.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(consumed).toEqual([{ token: 'completion-1', purpose: 'registration' }]);
+  });
+
+  it('does not upgrade a guest that was not bound to the verified challenge', async () => {
+    const { useCase, upgraded, consumed } = harness({ existing: 'guest' });
+
+    await expect(useCase.execute(input)).rejects.toBeInstanceOf(EmailTaken);
+    expect(upgraded).toEqual([]);
+    expect(consumed).toEqual([]);
+  });
+
+  it('does not consume the completion token when the guest password CAS loses a race', async () => {
+    const { useCase, consumed } = harness({
+      existing: 'guest',
+      payload: payload({ userId: 'user-guest' }),
+      upgradeConflict: true,
+    });
+
+    await expect(useCase.execute(input)).rejects.toBeInstanceOf(EmailTaken);
+    expect(consumed).toEqual([]);
   });
 
   it('MARKS the email verified — the OTP is what proved it', async () => {

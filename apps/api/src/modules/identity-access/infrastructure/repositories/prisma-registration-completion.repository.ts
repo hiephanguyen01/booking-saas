@@ -7,6 +7,8 @@ import type {
   RegistrationCompletionCreateResult,
   RegistrationCompletionInput,
   RegistrationConsentEventInput,
+  RegistrationGuestUpgradeInput,
+  RegistrationGuestUpgradeResult,
 } from '../../domain/ports/registration-completion-repository.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';
 
@@ -79,6 +81,34 @@ export class PrismaRegistrationCompletionRepository
       if (isUserEmailConflict(error)) return { status: 'email_conflict' };
       throw error;
     }
+  }
+
+  async upgradeGuest(
+    input: RegistrationGuestUpgradeInput,
+  ): Promise<RegistrationGuestUpgradeResult> {
+    return this.prisma.admin.$transaction(async (tx) => {
+      const updated = await tx.user.updateMany({
+        where: {
+          id: input.userId,
+          email: input.email,
+          passwordHash: null,
+        },
+        data: {
+          passwordHash: input.passwordHash,
+          emailVerifiedAt: input.emailVerifiedAt,
+        },
+      });
+      if (updated.count !== 1) return { status: 'conflict' } as const;
+
+      const user = toUserRecord(await tx.user.findUniqueOrThrow({ where: { id: input.userId } }));
+      if (input.consent) {
+        await this.emitConsentInTx(tx, {
+          ...input.consent,
+          userId: user.id,
+        });
+      }
+      return { status: 'upgraded', user } as const;
+    });
   }
 
   async emitConsent(input: RegistrationConsentEventInput): Promise<void> {
