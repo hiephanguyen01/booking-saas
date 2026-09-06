@@ -200,15 +200,14 @@ export class PublicAuthController {
   }
 
   /**
-   * Guest upgrade-to-account (§8.6): a passwordless guest sets a password and is
-   * signed in. Public (the guest isn't logged in) and throttled like login;
-   * refuses an email that already owns a password account.
+   * Guest upgrade-to-account (§8.6): a passwordless guest uses the completion
+   * token from the registration email-OTP flow to set a password and sign in.
    */
   @Public()
   @Throttle(THROTTLE_AUTH_ATTEMPT)
   @Post('upgrade-guest')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Set a password on a guest account and sign in' })
+  @ApiOperation({ summary: 'OTP-verified guest account upgrade and sign-in' })
   @ApiOkResponse({ type: AuthSessionResponseDto })
   async upgradeGuest(
     @Body() input: UpgradeGuestDto,

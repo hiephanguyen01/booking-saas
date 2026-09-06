@@ -75,7 +75,21 @@ export class CompleteRegistrationUseCase {
     const consent = this.consentFromPayload(payload, meta.ip ?? null);
 
     const existing = await this.users.findByEmail(payload.email);
+    if (payload.userId && existing?.id !== payload.userId) expired();
     if (existing) {
+      if (payload.userId === existing.id && existing.passwordHash === null) {
+        const passwordHash = await this.hasher.hash(input.password);
+        const upgraded = await this.registrationCompletion.upgradeGuest({
+          userId: existing.id,
+          email: payload.email,
+          passwordHash,
+          emailVerifiedAt: new Date(),
+          ...(consent ? { consent } : {}),
+        });
+        if (upgraded.status === 'conflict') UserAccount.assertEmailAvailable(existing);
+        await this.cleanupCompletion(input.completionToken);
+        return { success: true };
+      }
       const reconciled = await this.reconcileExisting(existing, input.password, consent);
       if (!reconciled) UserAccount.assertEmailAvailable(existing);
       await this.cleanupCompletion(input.completionToken);

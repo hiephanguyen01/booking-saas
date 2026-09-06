@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { cancellationTierSchema, localeSchema, paginationQuerySchema, uuidSchema } from './common';
-import { passwordSchema } from './auth';
+import { authPasswordCompleteInputSchema } from './auth';
 import { attributeFieldSchema } from './listing-type';
 
 /** Booking state machine (§8). Terminal-ish branches: completed/no_show/rejected/expired/refunded. */
@@ -81,14 +81,11 @@ export const reasonInputSchema = z.object({ reason: z.string().max(500).optional
 export type ReasonInput = z.infer<typeof reasonInputSchema>;
 
 /**
- * Guest upgrade-to-account (§8.6): a passwordless guest-checkout user sets a
- * password to become a full account. Refused server-side if the email already
- * has a password account.
+ * Guest upgrade-to-account (§8.6): the caller must first complete the regular
+ * registration email-OTP challenge for the guest identity. The opaque token,
+ * rather than a caller-supplied email, binds the password change to that proof.
  */
-export const upgradeGuestInputSchema = z.object({
-  email: z.string().email().toLowerCase(),
-  password: passwordSchema,
-});
+export const upgradeGuestInputSchema = authPasswordCompleteInputSchema;
 export type UpgradeGuestInput = z.infer<typeof upgradeGuestInputSchema>;
 
 /** Partner marks an inventory rental returned + inspected (§9.4). */
