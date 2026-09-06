@@ -75,6 +75,7 @@ export class CompleteRegistrationUseCase {
     const consent = this.consentFromPayload(payload, meta.ip ?? null);
 
     const existing = await this.users.findByEmail(payload.email);
+    if (payload.userId && existing?.id !== payload.userId) expired();
     if (existing) {
       if (payload.userId === existing.id && existing.passwordHash === null) {
         const passwordHash = await this.hasher.hash(input.password);

@@ -51,11 +51,21 @@ export class UpgradeGuestUseCase {
     const guest = UserAccount.requireGuestForUpgrade(existing);
     const passwordHash = await this.hasher.hash(input.password);
     const passwordIntent = guest.changePasswordHash(passwordHash);
+    const consent =
+      payload.tenantId && payload.acceptedVersionIds?.length
+        ? {
+            tenantId: payload.tenantId,
+            acceptedVersionIds: payload.acceptedVersionIds,
+            acceptedLocale: payload.acceptedLocale ?? 'vi',
+            ip: meta.ip ?? null,
+          }
+        : undefined;
     const result = await this.registrationCompletion.upgradeGuest({
       userId: guest.id,
       email: payload.email,
       passwordHash: passwordIntent.passwordHash,
       emailVerifiedAt: new Date(),
+      ...(consent ? { consent } : {}),
     });
     if (result.status === 'conflict') throw new EmailRegisteredForGuestUpgrade();
     await this.challenges.consumeCompletion(input.completionToken, 'registration');

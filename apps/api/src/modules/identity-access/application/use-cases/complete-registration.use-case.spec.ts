@@ -205,6 +205,27 @@ describe('CompleteRegistrationUseCase', () => {
     expect(consumed).toEqual([]);
   });
 
+  it('fails closed when the guest bound to the challenge no longer exists', async () => {
+    const { useCase, created, consumed } = harness({
+      payload: payload({ userId: 'user-guest' }),
+    });
+
+    await expect(useCase.execute(input)).rejects.toBeInstanceOf(ChallengeExpired);
+    expect(created).toEqual([]);
+    expect(consumed).toEqual([]);
+  });
+
+  it('fails closed when the challenge user id differs from the current email owner', async () => {
+    const { useCase, created, consumed } = harness({
+      existing: 'registered',
+      payload: payload({ userId: 'user-guest' }),
+    });
+
+    await expect(useCase.execute(input)).rejects.toBeInstanceOf(ChallengeExpired);
+    expect(created).toEqual([]);
+    expect(consumed).toEqual([]);
+  });
+
   it('does not consume the completion token when the guest password CAS loses a race', async () => {
     const { useCase, consumed } = harness({
       existing: 'guest',

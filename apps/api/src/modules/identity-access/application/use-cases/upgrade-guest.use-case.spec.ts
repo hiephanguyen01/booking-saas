@@ -169,7 +169,13 @@ describe('UpgradeGuestUseCase', () => {
   });
 
   it('uses the verified challenge identity, upgrades by CAS, consumes the token, and signs in', async () => {
-    const { useCase, upgraded, consumed, sessions } = harness();
+    const { useCase, upgraded, consumed, sessions } = harness({
+      payload: challenge({
+        tenantId: 'tenant-1',
+        acceptedVersionIds: ['doc-v1'],
+        acceptedLocale: 'en',
+      }),
+    });
 
     const result = await useCase.execute(input, META);
 
@@ -178,6 +184,12 @@ describe('UpgradeGuestUseCase', () => {
       userId: 'user-guest',
       email: 'khach@studiohub.vn',
       passwordHash: 'hashed:demo-password',
+      consent: {
+        tenantId: 'tenant-1',
+        acceptedVersionIds: ['doc-v1'],
+        acceptedLocale: 'en',
+        ip: '203.0.113.9',
+      },
     });
     expect(upgraded[0]?.emailVerifiedAt).toBeInstanceOf(Date);
     expect(consumed).toEqual([
