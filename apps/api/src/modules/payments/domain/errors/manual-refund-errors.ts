@@ -155,3 +155,13 @@ export class ManualRefundEvidenceUploadInvalid extends DomainError {
     super('MANUAL_REFUND_EVIDENCE_UPLOAD_INVALID', 400, 'Transfer evidence upload is invalid');
   }
 }
+
+export class ManualRefundWorkflowDisabled extends DomainError {
+  constructor() {
+    super(
+      'MANUAL_REFUND_WORKFLOW_DISABLED',
+      409,
+      'Manual refund workflow must be enabled before it can be paused or resumed',
+    );
+  }
+}

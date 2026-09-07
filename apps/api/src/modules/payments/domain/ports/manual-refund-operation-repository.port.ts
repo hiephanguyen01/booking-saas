@@ -92,6 +92,8 @@ export interface ManualRefundOperationViewRecord {
 export interface IManualRefundOperationRepository {
   isWorkflowEnabled(tx: PrismaTx, tenantId: string): Promise<boolean>;
   enableWorkflow(tx: PrismaTx, tenantId: string): Promise<void>;
+  getWorkflowState(tx: PrismaTx, tenantId: string): Promise<{ enabled: boolean; paused: boolean }>;
+  setWorkflowPaused(tx: PrismaTx, tenantId: string, paused: boolean): Promise<void>;
   findManualRequiredBatchesWithoutOperation(
     tx: PrismaTx,
     tenantId: string,

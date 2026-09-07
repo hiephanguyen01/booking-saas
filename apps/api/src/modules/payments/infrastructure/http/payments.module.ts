@@ -88,6 +88,8 @@ import { EscalateManualRefundCheckerWaitingUseCase } from '../../application/use
 import { PurgeManualRefundCiphertextUseCase } from '../../application/use-cases/purge-manual-refund-ciphertext.use-case';
 import { ListCustomerManualRefundsUseCase } from '../../application/use-cases/list-customer-manual-refunds.use-case';
 import { EnableManualRefundWorkflowUseCase } from '../../application/use-cases/enable-manual-refund-workflow.use-case';
+import { PauseManualRefundWorkflowUseCase } from '../../application/use-cases/pause-manual-refund-workflow.use-case';
+import { ResumeManualRefundWorkflowUseCase } from '../../application/use-cases/resume-manual-refund-workflow.use-case';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule, IdentityAccessModule, BookingModule],
@@ -145,6 +147,8 @@ import { EnableManualRefundWorkflowUseCase } from '../../application/use-cases/e
     GetCustomerManualRefundStatusUseCase,
     ListCustomerManualRefundsUseCase,
     EnableManualRefundWorkflowUseCase,
+    PauseManualRefundWorkflowUseCase,
+    ResumeManualRefundWorkflowUseCase,
     SubmitCustomerManualRefundDestinationUseCase,
     AcknowledgeCustomerManualRefundReceivedUseCase,
     ReportCustomerManualRefundNotReceivedUseCase,

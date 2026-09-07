@@ -36,6 +36,8 @@ import {
   approveManualRefundInputSchema,
   manualRefundBreakGlassInputSchema,
   manualRefundWorkflowEnableResponseSchema,
+  manualRefundWorkflowControlInputSchema,
+  manualRefundWorkflowStateSchema,
 } from '@booking/contracts';
 
 // Request bodies
@@ -70,6 +72,9 @@ export class RevealManualRefundPrivateDetailsDto extends createZodDto(
 ) {}
 export class ApproveManualRefundDto extends createZodDto(approveManualRefundInputSchema) {}
 export class ManualRefundBreakGlassDto extends createZodDto(manualRefundBreakGlassInputSchema) {}
+export class ManualRefundWorkflowControlDto extends createZodDto(
+  manualRefundWorkflowControlInputSchema,
+) {}
 
 // Responses
 export class CheckoutResponseDto extends createZodDto(checkoutResponseSchema) {}
@@ -93,6 +98,7 @@ export class ManualRefundPrivateDetailsResponseDto extends createZodDto(
 export class ManualRefundWorkflowEnableResponseDto extends createZodDto(
   manualRefundWorkflowEnableResponseSchema,
 ) {}
+export class ManualRefundWorkflowStateDto extends createZodDto(manualRefundWorkflowStateSchema) {}
 
 export class GenericWebhookAcknowledgementResponseDto extends createZodDto(
   genericWebhookAcknowledgementResponseSchema,

@@ -1,15 +1,23 @@
 import { Body, Controller, HttpCode, Ip, Param, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { ManualRefundWorkflowEnableResponse } from '@booking/contracts';
+import type {
+  ManualRefundWorkflowControlInput,
+  ManualRefundWorkflowEnableResponse,
+  ManualRefundWorkflowState,
+} from '@booking/contracts';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { BreakGlassCompleteManualRefundUseCase } from '../../application/use-cases/break-glass-complete-manual-refund.use-case';
 import { EnableManualRefundWorkflowUseCase } from '../../application/use-cases/enable-manual-refund-workflow.use-case';
+import { PauseManualRefundWorkflowUseCase } from '../../application/use-cases/pause-manual-refund-workflow.use-case';
+import { ResumeManualRefundWorkflowUseCase } from '../../application/use-cases/resume-manual-refund-workflow.use-case';
 import {
   ManualRefundBreakGlassDto,
+  ManualRefundWorkflowControlDto,
   ManualRefundWorkflowEnableResponseDto,
+  ManualRefundWorkflowStateDto,
 } from './dto/payments.dto';
 
 @ApiTags('platform-manual-refunds')
@@ -18,6 +26,8 @@ export class PlatformManualRefundController {
   constructor(
     private readonly breakGlass: BreakGlassCompleteManualRefundUseCase,
     private readonly enableWorkflow: EnableManualRefundWorkflowUseCase,
+    private readonly pauseWorkflow: PauseManualRefundWorkflowUseCase,
+    private readonly resumeWorkflow: ResumeManualRefundWorkflowUseCase,
   ) {}
 
   @RequirePermissions('platform.tenants.write')
@@ -31,6 +41,34 @@ export class PlatformManualRefundController {
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<ManualRefundWorkflowEnableResponse> {
     return this.enableWorkflow.execute(tenantId, principal.userId);
+  }
+
+  @RequirePermissions('platform.tenants.write')
+  @Post('pause-workflow')
+  @HttpCode(200)
+  @UuidParam('tenantId')
+  @ApiOperation({ summary: 'Pause manual refund V2 without altering pending operations' })
+  @ApiOkResponse({ type: ManualRefundWorkflowStateDto })
+  async pause(
+    @Param('tenantId') tenantId: string,
+    @Body() input: ManualRefundWorkflowControlDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<ManualRefundWorkflowState> {
+    return this.pauseWorkflow.execute(tenantId, input as ManualRefundWorkflowControlInput, principal.userId);
+  }
+
+  @RequirePermissions('platform.tenants.write')
+  @Post('resume-workflow')
+  @HttpCode(200)
+  @UuidParam('tenantId')
+  @ApiOperation({ summary: 'Resume a paused manual refund V2 workflow' })
+  @ApiOkResponse({ type: ManualRefundWorkflowStateDto })
+  async resume(
+    @Param('tenantId') tenantId: string,
+    @Body() input: ManualRefundWorkflowControlDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<ManualRefundWorkflowState> {
+    return this.resumeWorkflow.execute(tenantId, input as ManualRefundWorkflowControlInput, principal.userId);
   }
 
   @RequirePermissions('platform.refunds.break_glass')

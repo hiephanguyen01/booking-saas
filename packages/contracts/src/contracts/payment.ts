@@ -613,6 +613,19 @@ export type ManualRefundWorkflowEnableResponse = z.infer<
   typeof manualRefundWorkflowEnableResponseSchema
 >;
 
+export const manualRefundWorkflowStateSchema = z.object({
+  enabled: z.boolean(),
+  paused: z.boolean(),
+});
+export type ManualRefundWorkflowState = z.infer<typeof manualRefundWorkflowStateSchema>;
+
+export const manualRefundWorkflowControlInputSchema = z.object({
+  reason: z.string().trim().min(10).max(500),
+});
+export type ManualRefundWorkflowControlInput = z.infer<
+  typeof manualRefundWorkflowControlInputSchema
+>;
+
 export const manualRefundListQuerySchema = paginationQuerySchema.extend({
   status: manualRefundOperationStatusSchema.optional(),
   search: z.string().trim().max(100).optional(),

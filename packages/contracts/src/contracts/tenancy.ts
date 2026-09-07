@@ -86,6 +86,8 @@ export type PartnerPromotionsToggle = z.infer<typeof partnerPromotionsToggleSche
 
 /** Stable tenant.settings key for the opt-in batch-level manual refund workflow. */
 export const MANUAL_REFUND_V2_TENANT_FLAG = 'manual_refund_v2' as const;
+/** Stable tenant.settings key for the reversible manual refund workflow emergency stop. */
+export const MANUAL_REFUND_V2_PAUSED_TENANT_FLAG = 'manual_refund_v2_paused' as const;
 export const manualRefundV2ToggleSchema = z.object({ manualRefundV2: z.boolean() });
 export type ManualRefundV2Toggle = z.infer<typeof manualRefundV2ToggleSchema>;
 

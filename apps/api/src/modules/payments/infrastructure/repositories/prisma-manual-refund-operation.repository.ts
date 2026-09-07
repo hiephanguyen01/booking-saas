@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  MANUAL_REFUND_V2_PAUSED_TENANT_FLAG,
+  MANUAL_REFUND_V2_TENANT_FLAG,
+} from '@booking/contracts';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import {
@@ -34,12 +38,7 @@ function toRecord(row: Row): ManualRefundOperationRecord {
 export class PrismaManualRefundOperationRepository implements IManualRefundOperationRepository {
   constructor(private readonly prisma: PrismaService) {}
   async isWorkflowEnabled(tx: PrismaTx, tenantId: string): Promise<boolean> {
-    const tenant = await tx.tenant.findUnique({
-      where: { id: tenantId },
-      select: { settings: true },
-    });
-    if (!tenant || !tenant.settings || typeof tenant.settings !== 'object') return false;
-    return (tenant.settings as Record<string, unknown>).manual_refund_v2 === true;
+    return (await this.getWorkflowState(tx, tenantId)).enabled;
   }
 
   async enableWorkflow(tx: PrismaTx, tenantId: string): Promise<void> {
@@ -54,7 +53,38 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
         : {};
     await tx.tenant.update({
       where: { id: tenantId },
-      data: { settings: { ...settings, manual_refund_v2: true } },
+      data: { settings: { ...settings, [MANUAL_REFUND_V2_TENANT_FLAG]: true } },
+    });
+  }
+
+  async getWorkflowState(tx: PrismaTx, tenantId: string): Promise<{ enabled: boolean; paused: boolean }> {
+    const tenant = await tx.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    if (!tenant || !tenant.settings || typeof tenant.settings !== 'object' || Array.isArray(tenant.settings)) {
+      return { enabled: false, paused: false };
+    }
+    const settings = tenant.settings as Record<string, unknown>;
+    return {
+      enabled: settings[MANUAL_REFUND_V2_TENANT_FLAG] === true,
+      paused: settings[MANUAL_REFUND_V2_PAUSED_TENANT_FLAG] === true,
+    };
+  }
+
+  async setWorkflowPaused(tx: PrismaTx, tenantId: string, paused: boolean): Promise<void> {
+    const tenant = await tx.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    if (!tenant) throw new ManualRefundBatchTenantMismatch();
+    const settings =
+      tenant.settings && typeof tenant.settings === 'object' && !Array.isArray(tenant.settings)
+        ? (tenant.settings as Prisma.JsonObject)
+        : {};
+    await tx.tenant.update({
+      where: { id: tenantId },
+      data: { settings: { ...settings, [MANUAL_REFUND_V2_PAUSED_TENANT_FLAG]: paused } },
     });
   }
 
