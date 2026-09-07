@@ -8,6 +8,7 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import {
   ManualRefundConcurrentUpdate,
   ManualRefundThirdPartyConsentRequired,
+  ManualRefundWorkflowPaused,
 } from '../../domain/errors/manual-refund-errors';
 import {
   MANUAL_REFUND_OPERATION_REPOSITORY,
@@ -49,7 +50,11 @@ export class SubmitCustomerManualRefundDestinationUseCase {
     proof: { thirdPartyOtpConsentVerified: boolean },
   ): Promise<ManualRefundStatusResponse> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
+      const workflow = await this.operations.getWorkflowState(tx, tenantId);
+      if (workflow.paused) throw new ManualRefundWorkflowPaused();
+
       const { operation: current, batch } = await loadCustomerManualRefund(
+
         tx,
         this.operations,
         this.batches,

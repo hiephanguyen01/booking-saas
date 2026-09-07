@@ -5,7 +5,12 @@ import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import { STORAGE_PORT, type StoragePort } from '../../../storage/domain/ports/storage.port';
-import { ManualRefundConcurrentUpdate, ManualRefundEvidenceUploadInvalid, ManualRefundOperationNotFound } from '../../domain/errors/manual-refund-errors';
+import {
+  ManualRefundConcurrentUpdate,
+  ManualRefundEvidenceUploadInvalid,
+  ManualRefundOperationNotFound,
+  ManualRefundWorkflowPaused,
+} from '../../domain/errors/manual-refund-errors';
 import { MANUAL_REFUND_EVIDENCE_REPOSITORY, type IManualRefundEvidenceRepository } from '../../domain/ports/manual-refund-evidence-repository.port';
 import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import { isManualRefundEvidenceKey } from '../../domain/manual-refund-evidence-key';
@@ -18,7 +23,10 @@ export class SubmitManualRefundTransferUseCase {
   constructor(@Inject(MANUAL_REFUND_OPERATION_REPOSITORY) private readonly operations: IManualRefundOperationRepository, @Inject(MANUAL_REFUND_EVIDENCE_REPOSITORY) private readonly evidence: IManualRefundEvidenceRepository, @Inject(STORAGE_PORT) private readonly storage: StoragePort, @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter, private readonly tenantDb: TenantDbService, @Optional() private readonly outbox?: OutboxService) {}
   async execute(tenantId: string, operationId: string, input: SubmitManualRefundTransferInput, actorUserId: string) {
     const outcome = await this.tenantDb.forTenant(tenantId, async (tx) => {
+      const workflow = await this.operations.getWorkflowState(tx, tenantId);
+      if (workflow.paused) throw new ManualRefundWorkflowPaused();
       if (!isManualRefundEvidenceKey(tenantId, operationId, input.evidenceObjectKey)) throw new ManualRefundEvidenceUploadInvalid();
+
       const upload = await this.evidence.findUpload(tx, tenantId, operationId, input.evidenceObjectKey);
       if (!upload || upload.status !== 'pending') throw new ManualRefundEvidenceUploadInvalid();
       const now = await this.tenantDb.databaseNow(tx);

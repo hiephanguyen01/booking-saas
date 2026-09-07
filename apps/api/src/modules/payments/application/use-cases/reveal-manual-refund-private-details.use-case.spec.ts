@@ -27,6 +27,7 @@ describe('RevealManualRefundPrivateDetailsUseCase', () => {
     });
     const useCase = new RevealManualRefundPrivateDetailsUseCase(
       fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
         findById: (_tx, tenantId, operationId) => {
           expect({ tenantId, operationId }).toEqual({
             tenantId: MANUAL_REFUND_TENANT_ID,
@@ -98,6 +99,7 @@ describe('RevealManualRefundPrivateDetailsUseCase', () => {
     let decrypted = false;
     const useCase = new RevealManualRefundPrivateDetailsUseCase(
       fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
         findById: () => Promise.resolve(null),
       }),
       fakePort<ManualRefundPiiCryptoPort>({
@@ -121,4 +123,44 @@ describe('RevealManualRefundPrivateDetailsUseCase', () => {
     ).rejects.toBeInstanceOf(ManualRefundOperationNotFound);
     expect(decrypted).toBe(false);
   });
+
+  it('rejects with MANUAL_REFUND_WORKFLOW_PAUSED when workflow is paused without decrypting or auditing', async () => {
+    let decrypted = false;
+    const audits: unknown[] = [];
+    const tenantDb = fakeTenantDb();
+    const useCase = new RevealManualRefundPrivateDetailsUseCase(
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: true }),
+      }),
+      fakePort<ManualRefundPiiCryptoPort>({
+        decryptAccountNumber: () => {
+          decrypted = true;
+          return '01234567';
+        },
+      }),
+      fakePort<StoragePort>({}),
+      fakePort<IAuditWriter>({
+        write: (_tx, entry) => {
+          audits.push(entry);
+          return Promise.resolve();
+        },
+      }),
+      tenantDb.service,
+    );
+
+    await expect(
+      useCase.execute(
+        MANUAL_REFUND_TENANT_ID,
+        MANUAL_REFUND_OPERATION_ID,
+        { reason: 'Prepare bank transfer' },
+        { userId: 'actor-1', ip: '127.0.0.1' },
+      ),
+    ).rejects.toMatchObject({
+      code: 'MANUAL_REFUND_WORKFLOW_PAUSED',
+      status: 409,
+    });
+    expect(decrypted).toBe(false);
+    expect(audits).toHaveLength(0);
+  });
 });
+

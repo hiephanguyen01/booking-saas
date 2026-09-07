@@ -165,3 +165,15 @@ export class ManualRefundWorkflowDisabled extends DomainError {
     );
   }
 }
+
+export class ManualRefundWorkflowPaused extends DomainError {
+  constructor() {
+    super('MANUAL_REFUND_WORKFLOW_PAUSED', 409, 'Manual refund workflow is paused');
+  }
+
+  get status(): number {
+    return this.httpStatus;
+  }
+}
+
+

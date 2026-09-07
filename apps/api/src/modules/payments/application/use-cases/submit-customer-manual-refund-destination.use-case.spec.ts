@@ -134,6 +134,7 @@ function harness(options: HarnessOptions = {}) {
     }),
   );
   const operations = fakePort<IManualRefundOperationRepository>({
+    getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
     findById: () => Promise.resolve(current),
     casUpdate: (_tx, _tenantId, _id, _status, _version, patch) => {
       patches.push(patch);
@@ -365,4 +366,46 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
       }),
     ).rejects.toBeInstanceOf(ManualRefundConcurrentUpdate);
   });
+
+  it('rejects with MANUAL_REFUND_WORKFLOW_PAUSED when workflow is paused without lookup or crypto', async () => {
+    const cryptoInputs: unknown[] = [];
+    const lookupInputs: unknown[] = [];
+    const tenantDb = fakeTenantDb({ now: NOW });
+    const operations = fakePort<IManualRefundOperationRepository>({
+      getWorkflowState: () => Promise.resolve({ enabled: true, paused: true }),
+    });
+    const crypto = new ProtectManualRefundDestinationUseCase(
+      fakePort<ManualRefundPiiCryptoPort>({
+        protectAccountNumber: (value) => {
+          cryptoInputs.push(value);
+          return { ciphertext: '', keyVersion: '', fingerprint: '', last4: '' };
+        },
+      }),
+    );
+    const accountNameLookup = fakePort<AccountNameLookupPort>({
+      lookup: (value) => {
+        lookupInputs.push(value);
+        return Promise.resolve({ status: 'unsupported' });
+      },
+    });
+    const useCase = new SubmitCustomerManualRefundDestinationUseCase(
+      operations,
+      fakePort<IRefundBatchRepository>({}),
+      accountNameLookup,
+      crypto,
+      tenantDb.service,
+    );
+
+    await expect(
+      useCase.execute(TENANT_ID, BOOKING_ID, 'BK-0001', OPERATION_ID, input, {
+        thirdPartyOtpConsentVerified: false,
+      }),
+    ).rejects.toMatchObject({
+      code: 'MANUAL_REFUND_WORKFLOW_PAUSED',
+      status: 409,
+    });
+    expect(cryptoInputs).toHaveLength(0);
+    expect(lookupInputs).toHaveLength(0);
+  });
 });
+

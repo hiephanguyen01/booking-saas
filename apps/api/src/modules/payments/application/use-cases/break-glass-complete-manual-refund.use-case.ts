@@ -14,6 +14,7 @@ import {
   ManualRefundMakerCannotApproveOwnTransfer,
   ManualRefundEvidenceRequired,
   ManualRefundOperationNotFound,
+  ManualRefundWorkflowPaused,
 } from '../../domain/errors/manual-refund-errors';
 import {
   MANUAL_REFUND_OPERATION_REPOSITORY,
@@ -67,13 +68,17 @@ export class BreakGlassCompleteManualRefundUseCase {
     input: ManualRefundBreakGlassInput,
     actor: BreakGlassActor,
   ): Promise<ManualRefundCompletionResult> {
-    const authenticatedAt = await this.sessions.authenticationTime(actor.sessionId, actor.userId);
-    if (!isFreshAuthentication(authenticatedAt, new Date())) {
-      throw new ManualRefundFreshAuthenticationRequired();
-    }
-
     const outcome = await this.tenantDb.forTenant(tenantId, async (tx) => {
+      const workflow = await this.operations.getWorkflowState(tx, tenantId);
+      if (workflow.paused) throw new ManualRefundWorkflowPaused();
+
+      const authenticatedAt = await this.sessions.authenticationTime(actor.sessionId, actor.userId);
+      if (!isFreshAuthentication(authenticatedAt, new Date())) {
+        throw new ManualRefundFreshAuthenticationRequired();
+      }
+
       const current = await this.operations.findById(tx, tenantId, operationId);
+
       if (!current) throw new ManualRefundOperationNotFound();
       if (current.makerUserId === actor.userId) {
         throw new ManualRefundMakerCannotApproveOwnTransfer();

@@ -101,4 +101,31 @@ describe('AcknowledgeCustomerManualRefundReceivedUseCase', () => {
       }),
     ).rejects.toBeInstanceOf(ManualRefundInvalidTransition);
   });
+
+  it('allows customer acknowledgement even when manual refund workflow is paused', async () => {
+    const patches: unknown[] = [];
+    const tenantDb = fakeTenantDb({ now: NOW });
+    const current = record('completed');
+    const useCase = new AcknowledgeCustomerManualRefundReceivedUseCase(
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: true }),
+        findById: () => Promise.resolve(current),
+        casUpdate: (_tx, _tenantId, _id, _status, _version, patch) => {
+          patches.push(patch);
+          return Promise.resolve({ ...current, ...patch, version: 6 });
+        },
+      }),
+      fakePort<IRefundBatchRepository>({ findById: () => Promise.resolve(batch) }),
+      tenantDb.service,
+    );
+
+    const result = await useCase.execute(TENANT_ID, BOOKING_ID, 'BK-0001', OPERATION_ID, {
+      acknowledgement: 'received',
+      note: 'Funds arrived',
+      expectedVersion: 5,
+    });
+
+    expect(result).toMatchObject({ customerAcknowledgement: 'received', version: 6 });
+  });
 });
+

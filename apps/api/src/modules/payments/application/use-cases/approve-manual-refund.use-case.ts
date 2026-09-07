@@ -9,6 +9,7 @@ import {
   ManualRefundMakerCannotApproveOwnTransfer,
   ManualRefundEvidenceRequired,
   ManualRefundOperationNotFound,
+  ManualRefundWorkflowPaused,
 } from '../../domain/errors/manual-refund-errors';
 import {
   MANUAL_REFUND_OPERATION_REPOSITORY,
@@ -54,7 +55,10 @@ export class ApproveManualRefundUseCase {
     checkerUserId: string,
   ): Promise<ManualRefundCompletionResult> {
     const outcome = await this.tenantDb.forTenant(tenantId, async (tx) => {
+      const workflow = await this.operations.getWorkflowState(tx, tenantId);
+      if (workflow.paused) throw new ManualRefundWorkflowPaused();
       const current = await this.operations.findById(tx, tenantId, operationId);
+
       if (!current) throw new ManualRefundOperationNotFound();
       if (current.makerUserId === checkerUserId) {
         throw new ManualRefundMakerCannotApproveOwnTransfer();

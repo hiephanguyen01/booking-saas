@@ -100,4 +100,34 @@ describe('ReportCustomerManualRefundNotReceivedUseCase', () => {
       }),
     ).rejects.toBeInstanceOf(ManualRefundConcurrentUpdate);
   });
+
+  it('allows reporting not-received even when manual refund workflow is paused', async () => {
+    const patches: unknown[] = [];
+    const tenantDb = fakeTenantDb({ now: NOW });
+    const useCase = new ReportCustomerManualRefundNotReceivedUseCase(
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: true }),
+        findById: () => Promise.resolve(current),
+        casUpdate: (_tx, _tenantId, _id, _status, _version, patch) => {
+          patches.push(patch);
+          return Promise.resolve({ ...current, ...patch, version: 8 });
+        },
+      }),
+      fakePort<IRefundBatchRepository>({ findById: () => Promise.resolve(batch) }),
+      tenantDb.service,
+    );
+
+    const result = await useCase.execute(TENANT_ID, BOOKING_ID, 'BK-0001', OPERATION_ID, {
+      acknowledgement: 'not_received',
+      note: 'Checked account at noon',
+      expectedVersion: 7,
+    });
+
+    expect(result).toMatchObject({
+      status: 'completed',
+      customerAcknowledgement: 'not_received',
+      version: 8,
+    });
+  });
 });
+

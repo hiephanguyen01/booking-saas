@@ -52,6 +52,7 @@ describe('ApproveManualRefundUseCase', () => {
     const current = submitted();
     const useCase = new ApproveManualRefundUseCase(
       fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
         findById: () => Promise.resolve(current),
         casUpdate: (_tx, tenantId, id, status, version, patch) => {
           expect({ tenantId, id, status, version, patch }).toEqual({
@@ -151,6 +152,7 @@ describe('ApproveManualRefundUseCase', () => {
   it('rejects maker self-approval before any completion write', async () => {
     const useCase = new ApproveManualRefundUseCase(
       fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
         findById: () => Promise.resolve(submitted()),
       }),
       fakePort<IRefundRepository>({}),
@@ -182,6 +184,7 @@ describe('ApproveManualRefundUseCase', () => {
     });
     const useCase = new ApproveManualRefundUseCase(
       fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
         findById: () => Promise.resolve(current),
       }),
       fakePort<IRefundRepository>({}),
@@ -219,6 +222,7 @@ describe('ApproveManualRefundUseCase', () => {
     });
     const useCase = new ApproveManualRefundUseCase(
       fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
         findById: () => Promise.resolve(current),
       }),
       fakePort<IRefundRepository>({}),
@@ -242,7 +246,10 @@ describe('ApproveManualRefundUseCase', () => {
 
   it('blocks completion when the claimed evidence record is missing', async () => {
     const useCase = new ApproveManualRefundUseCase(
-      fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(submitted()) }),
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
+        findById: () => Promise.resolve(submitted()),
+      }),
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
       fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve(null) }),
@@ -259,7 +266,10 @@ describe('ApproveManualRefundUseCase', () => {
     const quarantined: string[] = [];
     const current = submitted();
     const useCase = new ApproveManualRefundUseCase(
-      fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(current) }),
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
+        findById: () => Promise.resolve(current),
+      }),
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
       fakePort<IManualRefundEvidenceRepository>({
@@ -275,4 +285,33 @@ describe('ApproveManualRefundUseCase', () => {
     expect(retired).toBe(true);
     expect(quarantined).toEqual([current.evidenceObjectKey]);
   });
+
+  it('rejects with MANUAL_REFUND_WORKFLOW_PAUSED when workflow is paused', async () => {
+    const tenantDb = fakeTenantDb();
+    const useCase = new ApproveManualRefundUseCase(
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: true }),
+      }),
+      fakePort<IRefundRepository>({}),
+      fakePort<IRefundBatchRepository>({}),
+      fakePort<IManualRefundEvidenceRepository>({}),
+      fakePort<StoragePort>({}),
+      fakePort<IAuditWriter>({}),
+      new OutboxService(),
+      tenantDb.service,
+    );
+
+    await expect(
+      useCase.execute(
+        MANUAL_REFUND_TENANT_ID,
+        MANUAL_REFUND_OPERATION_ID,
+        { expectedVersion: 3 },
+        MANUAL_REFUND_CHECKER_ID,
+      ),
+    ).rejects.toMatchObject({
+      code: 'MANUAL_REFUND_WORKFLOW_PAUSED',
+      status: 409,
+    });
+  });
+
 });

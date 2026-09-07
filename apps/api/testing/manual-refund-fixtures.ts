@@ -105,3 +105,14 @@ export function manualRefundUpload(
     ...overrides,
   };
 }
+
+export function fakeManualRefundWorkflowState(
+  overrides: Partial<{ enabled: boolean; paused: boolean }> = {},
+): { enabled: boolean; paused: boolean } {
+  return {
+    enabled: true,
+    paused: false,
+    ...overrides,
+  };
+}
+

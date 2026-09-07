@@ -10,7 +10,7 @@ describe('CreateManualRefundEvidenceUploadUseCase', () => {
   it('registers a private write-once receipt grant scoped to the claimed operation', async () => {
     const grants: unknown[] = []; const records: unknown[] = [];
     const grant = { uploadUrl: 'https://private.example/put', key: `manual-refund-evidence/${MANUAL_REFUND_TENANT_ID}/${MANUAL_REFUND_OPERATION_ID}/receipt.pdf`, expiresInSec: 300 };
-    const useCase = new CreateManualRefundEvidenceUploadUseCase(fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(manualRefundOperation()) }), fakePort<IManualRefundEvidenceRepository>({ createUpload: (_tx, _tenant, data) => { records.push(data); return Promise.resolve({} as never); } }), fakePort<StoragePort>({ createPrivatePresignedUpload: (input) => { grants.push(input); return Promise.resolve(grant); } }), fakeTenantDb({ now: new Date('2026-09-04T13:00:00Z') }).service);
+    const useCase = new CreateManualRefundEvidenceUploadUseCase(fakePort<IManualRefundOperationRepository>({ getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }), findById: () => Promise.resolve(manualRefundOperation()) }), fakePort<IManualRefundEvidenceRepository>({ createUpload: (_tx, _tenant, data) => { records.push(data); return Promise.resolve({} as never); } }), fakePort<StoragePort>({ createPrivatePresignedUpload: (input) => { grants.push(input); return Promise.resolve(grant); } }), fakeTenantDb({ now: new Date('2026-09-04T13:00:00Z') }).service);
     await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3, contentType: 'application/pdf', sizeBytes: 12_345, checksum: 'b'.repeat(64) }, MANUAL_REFUND_MAKER_ID)).resolves.toEqual({
       ...grant,
       requiredHeaders: {
@@ -24,11 +24,36 @@ describe('CreateManualRefundEvidenceUploadUseCase', () => {
 
   it('rejects a stale operation version with a named concurrency conflict', async () => {
     const useCase = new CreateManualRefundEvidenceUploadUseCase(
-      fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(manualRefundOperation({ version: 4 })) }),
+      fakePort<IManualRefundOperationRepository>({ getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }), findById: () => Promise.resolve(manualRefundOperation({ version: 4 })) }),
       fakePort<IManualRefundEvidenceRepository>({}),
       fakePort<StoragePort>({ createPrivatePresignedUpload: () => Promise.resolve({ uploadUrl: 'https://private.example/put', key: `manual-refund-evidence/${MANUAL_REFUND_TENANT_ID}/${MANUAL_REFUND_OPERATION_ID}/receipt.pdf`, expiresInSec: 300 }) }),
       fakeTenantDb().service,
     );
     await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3, contentType: 'application/pdf', sizeBytes: 12, checksum: 'b'.repeat(64) }, MANUAL_REFUND_MAKER_ID)).rejects.toBeInstanceOf(ManualRefundConcurrentUpdate);
   });
+
+  it('rejects with MANUAL_REFUND_WORKFLOW_PAUSED when workflow is paused', async () => {
+    const tenantDb = fakeTenantDb();
+    const useCase = new CreateManualRefundEvidenceUploadUseCase(
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: true }),
+      }),
+      fakePort<IManualRefundEvidenceRepository>({}),
+      fakePort<StoragePort>({}),
+      tenantDb.service,
+    );
+
+    await expect(
+      useCase.execute(
+        MANUAL_REFUND_TENANT_ID,
+        MANUAL_REFUND_OPERATION_ID,
+        { expectedVersion: 3, contentType: 'application/pdf', sizeBytes: 12_345, checksum: 'b'.repeat(64) },
+        MANUAL_REFUND_MAKER_ID,
+      ),
+    ).rejects.toMatchObject({
+      code: 'MANUAL_REFUND_WORKFLOW_PAUSED',
+      status: 409,
+    });
+  });
 });
+

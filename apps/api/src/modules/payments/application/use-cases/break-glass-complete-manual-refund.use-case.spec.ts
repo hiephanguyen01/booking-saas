@@ -55,6 +55,7 @@ function harness(authenticatedAt: Date | null, current = submitted()) {
   const tenantDb = fakeTenantDb({ tx, now: MANUAL_REFUND_NOW });
   const useCase = new BreakGlassCompleteManualRefundUseCase(
     fakePort<IManualRefundOperationRepository>({
+      getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
       findById: () => Promise.resolve(current),
       casUpdate: (_tx, _tenant, _id, _status, _version, patch) =>
         Promise.resolve({ ...current, ...patch, status: 'completed', version: 4 }),
@@ -99,7 +100,7 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('requires authentication within five minutes before opening the tenant transaction', async () => {
+  it('requires authentication within five minutes before proceeding with completion', async () => {
     const { useCase, tenantDb } = harness(new Date('2026-09-04T12:50:00Z'));
     await expect(
       useCase.execute(
@@ -117,8 +118,9 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
         },
       ),
     ).rejects.toBeInstanceOf(ManualRefundFreshAuthenticationRequired);
-    expect(tenantDb.openedFor).toEqual([]);
+    expect(tenantDb.openedFor).toEqual([MANUAL_REFUND_TENANT_ID]);
   });
+
 
   it('completes atomically and writes a high-severity audit with one batch event', async () => {
     const { useCase, audits, events } = harness(new Date('2026-09-04T12:58:00Z'));
@@ -255,7 +257,10 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
     const current = submitted();
     // The harness's claimed row is replaced with a missing row by constructing a focused use case.
     const missing = new BreakGlassCompleteManualRefundUseCase(
-      fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(current) }),
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
+        findById: () => Promise.resolve(current),
+      }),
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
       fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve(null) }),
@@ -272,7 +277,10 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
     let retired = false;
     const current = submitted();
     const useCase = new BreakGlassCompleteManualRefundUseCase(
-      fakePort<IManualRefundOperationRepository>({ findById: () => Promise.resolve(current) }),
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
+        findById: () => Promise.resolve(current),
+      }),
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
       fakePort<IManualRefundEvidenceRepository>({
@@ -288,4 +296,51 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
     await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3, reason: 'Incident commander approved emergency', confirmation: 'BREAK_GLASS' }, { userId: MANUAL_REFUND_CHECKER_ID, sessionId: 'session-1' })).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
     expect(retired).toBe(true);
   });
+
+  it('rejects with MANUAL_REFUND_WORKFLOW_PAUSED when workflow is paused before validating authentication freshness', async () => {
+    let authChecked = false;
+    const current = submitted();
+    const tenantDb = fakeTenantDb({ now: MANUAL_REFUND_NOW });
+    const useCase = new BreakGlassCompleteManualRefundUseCase(
+      fakePort<IManualRefundOperationRepository>({
+        getWorkflowState: () => Promise.resolve({ enabled: true, paused: true }),
+        findById: () => Promise.resolve(current),
+      }),
+      fakePort<IRefundRepository>({}),
+      fakePort<IRefundBatchRepository>({}),
+      fakePort<IManualRefundEvidenceRepository>({}),
+      fakePort<StoragePort>({}),
+      fakePort<IAuditWriter>({}),
+      fakePort<ISessionStore>({
+        authenticationTime: () => {
+          authChecked = true;
+          return Promise.resolve(new Date('2026-09-04T12:58:00Z'));
+        },
+      }),
+      new OutboxService(),
+      tenantDb.service,
+    );
+
+    await expect(
+      useCase.execute(
+        MANUAL_REFUND_TENANT_ID,
+        MANUAL_REFUND_OPERATION_ID,
+        {
+          expectedVersion: 3,
+          reason: 'Incident commander approved emergency',
+          confirmation: 'BREAK_GLASS',
+        },
+        {
+          userId: MANUAL_REFUND_CHECKER_ID,
+          sessionId: 'session-1',
+          ip: '127.0.0.1',
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'MANUAL_REFUND_WORKFLOW_PAUSED',
+      status: 409,
+    });
+    expect(authChecked).toBe(false);
+  });
 });
+

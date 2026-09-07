@@ -3,7 +3,11 @@ import { Inject, Injectable, Optional } from '@nestjs/common';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
-import { ManualRefundConcurrentUpdate, ManualRefundOperationNotFound } from '../../domain/errors/manual-refund-errors';
+import {
+  ManualRefundConcurrentUpdate,
+  ManualRefundOperationNotFound,
+  ManualRefundWorkflowPaused,
+} from '../../domain/errors/manual-refund-errors';
 import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import { toManualRefundMutationResponse, toManualRefundOperation } from '../manual-refund.mapper';
 
@@ -12,6 +16,8 @@ export class VerifyManualRefundDestinationUseCase {
   constructor(@Inject(MANUAL_REFUND_OPERATION_REPOSITORY) private readonly operations: IManualRefundOperationRepository, @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter, private readonly tenantDb: TenantDbService, @Optional() private readonly outbox?: OutboxService) {}
   async execute(tenantId: string, operationId: string, input: VerifyManualRefundDestinationInput, actorUserId: string) {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
+      const workflow = await this.operations.getWorkflowState(tx, tenantId);
+      if (workflow.paused) throw new ManualRefundWorkflowPaused();
       const current = await this.operations.findById(tx, tenantId, operationId);
       if (!current) throw new ManualRefundOperationNotFound();
       const entity = toManualRefundOperation(current); entity.verifyManually();
@@ -24,3 +30,4 @@ export class VerifyManualRefundDestinationUseCase {
     });
   }
 }
+
