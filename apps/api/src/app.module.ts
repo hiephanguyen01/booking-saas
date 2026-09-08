@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -42,6 +43,13 @@ const prettyLogs =
     ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
     LoggerModule.forRoot({
       pinoHttp: {
+        genReqId: (req, res) => {
+          const raw = req.headers['x-request-id'];
+          const existing = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : undefined;
+          const id = existing && existing.length > 0 ? existing : randomUUID();
+          res.setHeader('x-request-id', id);
+          return id;
+        },
         level: process.env.LOG_LEVEL ?? 'info',
         redact: [
           'req.headers.cookie',

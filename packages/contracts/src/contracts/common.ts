@@ -169,6 +169,7 @@ export const apiErrorSchema = z.object({
   statusCode: z.number(),
   code: z.string(),
   message: z.string(),
+  requestId: z.string().optional(),
   details: z.unknown().optional(),
 });
 export type ApiError = z.infer<typeof apiErrorSchema>;

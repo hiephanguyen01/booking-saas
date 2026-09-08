@@ -145,7 +145,8 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
       const lastError = error instanceof Error ? error.message : String(error);
       if (attempts >= MAX_ATTEMPTS) {
         this.logger.error(
-          `outbox event ${event.id} (${event.eventType}) dead-lettered after ${attempts} attempts`,
+          `outbox event ${event.id} (${event.eventType}) dead-lettered after ${attempts} attempts: ${lastError}`,
+          error instanceof Error ? error.stack : undefined,
         );
         // A dead-lettered row is terminal — nothing will ever claim or retry
         // it again — so a listed event's payload is redacted here too, the
@@ -172,7 +173,9 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
         `);
         return;
       }
-      this.logger.warn(`outbox event ${event.id} (${event.eventType}) failed attempt ${attempts}`);
+      this.logger.warn(
+        `outbox event ${event.id} (${event.eventType}) failed attempt ${attempts}: ${lastError}`,
+      );
       await this.prisma.admin.$executeRaw`
         UPDATE outbox_events
         SET attempts = ${attempts},

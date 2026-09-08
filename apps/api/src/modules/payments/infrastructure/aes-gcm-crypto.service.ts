@@ -2,16 +2,35 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import { Injectable } from '@nestjs/common';
 import type { CryptoPort } from '../domain/ports/crypto.port';
 
+const DEV_PAYMENTS_ENC_KEY = 'dev-payments-encryption-key-change-me';
+
+function resolvePaymentsKey(): string {
+  const key = process.env.PAYMENTS_ENC_KEY?.trim();
+  if (process.env.NODE_ENV === 'production') {
+    if (!key || key === DEV_PAYMENTS_ENC_KEY || key.length < 32) {
+      throw new Error(
+        'PAYMENTS_ENC_KEY must be configured with a secure secret of at least 32 characters in production',
+      );
+    }
+    return key;
+  }
+  return key || DEV_PAYMENTS_ENC_KEY;
+}
+
 /**
  * AES-256-GCM for gateway credentials at rest (§11.1). The 32-byte key is
  * derived from `PAYMENTS_ENC_KEY` (env/KMS). Format: `iv.tag.ciphertext` (base64).
  */
 @Injectable()
 export class AesGcmCryptoService implements CryptoPort {
+  private readonly cachedKey: Buffer;
+
+  constructor() {
+    this.cachedKey = createHash('sha256').update(resolvePaymentsKey()).digest();
+  }
+
   private key(): Buffer {
-    return createHash('sha256')
-      .update(process.env.PAYMENTS_ENC_KEY ?? 'dev-payments-encryption-key-change-me')
-      .digest();
+    return this.cachedKey;
   }
 
   encrypt(plaintext: string): string {

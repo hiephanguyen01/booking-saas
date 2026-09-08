@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import type Redis from 'ioredis';
 import type { Prisma } from '@prisma/client';
+import { REDIS } from '../../../../shared/redis/redis.module';
 import type {
   AttributeField,
   BookingMode,
@@ -140,6 +142,10 @@ function toWhere(filter: ListingFilter): Prisma.ListingWhereInput {
 
 @Injectable()
 export class PrismaListingRepository implements IListingRepository {
+  private readonly logger = new Logger(PrismaListingRepository.name);
+
+  constructor(@Optional() @Inject(REDIS) private readonly redis?: Redis) {}
+
   async create(tx: PrismaTx, tenantId: string, data: NewListing): Promise<ListingRecord> {
     return toRecord(
       await tx.listing.create({
@@ -222,20 +228,60 @@ export class PrismaListingRepository implements IListingRepository {
       },
     });
     if (!l) return null;
-    const completedBookings = await tx.booking.count({
-      where: { listingId: l.id, status: 'completed' },
-    });
-    // Avg partner approval response time (§16.1): the gap between a request-to-book
-    // booking's creation and its pending_approval → pending_payment transition.
-    const approval = await tx.$queryRaw<{ avg_seconds: number | null }[]>`
-      SELECT AVG(EXTRACT(EPOCH FROM (h.created_at - b.created_at))) AS avg_seconds
-      FROM booking_status_history h
-      JOIN bookings b ON b.id = h.booking_id
-      WHERE b.listing_id = ${l.id}::uuid
-        AND h.from_status = 'pending_approval'
-        AND h.to_status = 'pending_payment'
-    `;
-    const avgSeconds = approval[0]?.avg_seconds;
+
+    let completedBookings: number;
+    let avgSeconds: number | null | undefined;
+
+    const cacheKey = `listing-trust:${l.id}`;
+    let cachedTrust: { completedBookings: number; avgSeconds: number | null } | null = null;
+
+    if (this.redis) {
+      try {
+        const raw = await this.redis.get(cacheKey);
+        if (raw) {
+          cachedTrust = JSON.parse(raw) as { completedBookings: number; avgSeconds: number | null };
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to read trust metrics cache for listing ${l.id}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    if (cachedTrust) {
+      completedBookings = cachedTrust.completedBookings;
+      avgSeconds = cachedTrust.avgSeconds;
+    } else {
+      completedBookings = await tx.booking.count({
+        where: { listingId: l.id, status: 'completed' },
+      });
+      // Avg partner approval response time (§16.1): the gap between a request-to-book
+      // booking's creation and its pending_approval → pending_payment transition.
+      const approval = await tx.$queryRaw<{ avg_seconds: number | null }[]>`
+        SELECT AVG(EXTRACT(EPOCH FROM (h.created_at - b.created_at))) AS avg_seconds
+        FROM booking_status_history h
+        JOIN bookings b ON b.id = h.booking_id
+        WHERE b.listing_id = ${l.id}::uuid
+          AND h.from_status = 'pending_approval'
+          AND h.to_status = 'pending_payment'
+      `;
+      avgSeconds = approval[0]?.avg_seconds;
+
+      if (this.redis) {
+        try {
+          await this.redis.set(
+            cacheKey,
+            JSON.stringify({ completedBookings, avgSeconds: avgSeconds ?? null }),
+            'EX',
+            300,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `Failed to set trust metrics cache for listing ${l.id}: ${(err as Error).message}`,
+          );
+        }
+      }
+    }
     return {
       ...toRecord(l),
       resourceTimezone: l.resource.timezone,

@@ -27,6 +27,10 @@ export class PermissionResolverService implements IPermissionResolver {
     return `perms:${userId}:${scope.tenantId ?? '-'}:${scope.partnerId ?? '-'}`;
   }
 
+  private indexKey(userId: string): string {
+    return `perms-index:${userId}`;
+  }
+
   async resolve(userId: string, scope: PermissionScope): Promise<Set<string>> {
     const key = this.cacheKey(userId, scope);
     const cached = await this.redis.get(key);
@@ -47,15 +51,23 @@ export class PermissionResolverService implements IPermissionResolver {
         keys.add(rp.permissionKey);
       }
     }
-    await this.redis.set(key, [...keys].join(','), 'EX', CACHE_TTL_SECONDS);
+    const index = this.indexKey(userId);
+    await this.redis
+      .multi()
+      .set(key, [...keys].join(','), 'EX', CACHE_TTL_SECONDS)
+      .sadd(index, key)
+      .expire(index, CACHE_TTL_SECONDS + 30)
+      .exec();
     return keys;
   }
 
   async invalidate(userId: string): Promise<void> {
-    const pattern = `perms:${userId}:*`;
-    const found = await this.redis.keys(pattern);
-    if (found.length > 0) {
-      await this.redis.del(...found);
+    const index = this.indexKey(userId);
+    const keys = await this.redis.smembers(index);
+    if (keys.length > 0) {
+      await this.redis.del(index, ...keys);
+    } else {
+      await this.redis.del(index);
     }
   }
 }

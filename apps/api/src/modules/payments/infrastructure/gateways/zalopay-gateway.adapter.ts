@@ -1,4 +1,4 @@
-import { createHash, createHmac } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { CustomerPaymentMethod } from '@booking/contracts';
 import type {
   CreatePaymentInput,
@@ -27,6 +27,13 @@ function vnDatePrefix(daysAgo = 0): string {
 
 function shortHash(value: string, length: number): string {
   return createHash('sha256').update(value).digest('hex').slice(0, length);
+}
+
+function sameMac(expected: string, actual: string | undefined): boolean {
+  if (!expected || !actual) return false;
+  const left = Buffer.from(expected, 'utf8');
+  const right = Buffer.from(actual, 'utf8');
+  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -115,7 +122,8 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
   verifyWebhook(rawBody: Buffer): WebhookVerification {
     const body = JSON.parse(rawBody.toString('utf8')) as { data?: string; mac?: string };
     const dataStr = body.data ?? '';
-    const valid = dataStr.length > 0 && this.mac(this.creds.key2, dataStr) === body.mac;
+    const expectedMac = this.mac(this.creds.key2, dataStr);
+    const valid = dataStr.length > 0 && sameMac(expectedMac, body.mac);
     const data = valid
       ? (JSON.parse(dataStr) as { app_trans_id?: string; zp_trans_id?: number; amount?: number })
       : {};
