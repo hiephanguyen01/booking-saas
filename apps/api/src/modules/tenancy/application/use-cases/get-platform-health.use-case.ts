@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import {
   BILLABLE_SUBSCRIPTION_STATUSES,
   evaluateSubscription,
@@ -11,6 +11,7 @@ import {
   PLATFORM_HEALTH_READER,
   type IPlatformHealthReader,
 } from '../../domain/ports/platform-health-reader.port';
+
 
 /**
  * Platform-admin health board (Task 1.12 / §13.3). A cross-tenant read that
@@ -40,6 +41,9 @@ export interface TenantHealthRow {
   publishedListings: number;
   webhookFailures: number;
   overduePayouts: number;
+  manualRefundOpen: number;
+  manualRefundOverdue: number;
+  manualRefundOldestMinutes: number;
   subscription: { status: string; expiresAt: Date; planName: string } | null;
 }
 
@@ -50,6 +54,17 @@ export interface ExpiringSubscriptionRow {
   status: string;
   expiresAt: Date;
   daysLeft: number;
+}
+
+export interface ManualRefundHealthThresholds {
+  warningOldestMinutes: number;
+}
+
+export function defaultManualRefundHealthThresholds(): ManualRefundHealthThresholds {
+  const envVal = Number(process.env.MANUAL_REFUND_HEALTH_WARNING_MINUTES);
+  return {
+    warningOldestMinutes: !isNaN(envVal) && envVal > 0 ? envVal : 60,
+  };
 }
 
 export interface PlatformHealth {
@@ -66,10 +81,23 @@ export interface PlatformHealth {
     webhookFailures: number;
     overduePayouts: number;
   };
+  manualRefunds: {
+    enabledTenants: number;
+    pausedTenants: number;
+    openOperations: number;
+    overdueOperations: number;
+    awaitingApproval: number;
+    oldestOpenMinutes: number;
+    customerNotReceived: number;
+    reveals24h: number;
+    breakGlass30d: number;
+    severity: 'healthy' | 'warning' | 'critical';
+  };
   gmvTrend: Array<{ date: string; gmv: bigint }>;
   tenants: TenantHealthRow[];
   expiring: ExpiringSubscriptionRow[];
 }
+
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 const MS_PER_DAY = MS_PER_HOUR * 24;
@@ -81,6 +109,8 @@ export class GetPlatformHealthUseCase {
     private readonly healthReader: IPlatformHealthReader,
     @Inject(CURRENT_SUBSCRIPTION_READER)
     private readonly currentSubscriptions: ICurrentSubscriptionReader,
+    @Optional()
+    private readonly thresholds: ManualRefundHealthThresholds = defaultManualRefundHealthThresholds(),
   ) {}
 
   async execute(): Promise<PlatformHealth> {
@@ -113,6 +143,9 @@ export class GetPlatformHealthUseCase {
         publishedListings: t.publishedListings,
         webhookFailures: webhookByTenant.get(t.id) ?? 0,
         overduePayouts: payoutByTenant.get(t.id) ?? 0,
+        manualRefundOpen: t.manualRefundOpen,
+        manualRefundOverdue: t.manualRefundOverdue,
+        manualRefundOldestMinutes: t.manualRefundOldestMinutes,
         subscription: sub
           ? {
               status: sub.subscription.status,
@@ -154,6 +187,14 @@ export class GetPlatformHealthUseCase {
       }))
       .sort((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime());
 
+    const mr = facts.manualRefunds;
+    const severity: 'healthy' | 'warning' | 'critical' =
+      mr.breakGlass30d > 0 || mr.customerNotReceived > 0 || mr.overdueOperations > 0
+        ? 'critical'
+        : mr.oldestOpenMinutes >= this.thresholds.warningOldestMinutes
+          ? 'warning'
+          : 'healthy';
+
     return {
       kpis: {
         tenantCount: tenants.length,
@@ -166,9 +207,14 @@ export class GetPlatformHealthUseCase {
         webhookFailures: facts.webhookFailureTotal,
         overduePayouts: facts.overduePayouts.reduce((acc, r) => acc + r.count, 0),
       },
+      manualRefunds: {
+        ...mr,
+        severity,
+      },
       gmvTrend: facts.gmvTrend,
       tenants,
       expiring,
     };
   }
 }
+

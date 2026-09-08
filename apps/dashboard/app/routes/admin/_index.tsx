@@ -7,6 +7,7 @@ import { apiGet } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
 import { ExpiringSubscriptionsCard } from '~/features/admin/components/expiring-subscriptions-card';
 import { GmvTrendCard } from '~/features/admin/components/gmv-chart';
+import { ManualRefundHealthCard } from '~/features/admin/components/manual-refund-health-card';
 import { PlatformKpiCards } from '~/features/admin/components/platform-kpi-cards';
 import { TenantHealthTable } from '~/features/admin/components/tenant-health-table';
 import { dashboardPaths } from '~/constants/paths';
@@ -46,14 +47,19 @@ export default function AdminOverview({ loaderData }: Route.ComponentProps) {
         error={error ? `Không tải được dữ liệu sức khoẻ nền tảng: ${error}` : null}
       />
 
-      <PlatformKpiCards kpis={health?.kpis} />
+      <PlatformKpiCards kpis={health?.kpis} manualRefunds={health?.manualRefunds} />
 
       <section className="grid gap-6 lg:grid-cols-3">
         <GmvTrendCard trend={health?.gmvTrend ?? []} />
         <ExpiringSubscriptionsCard expiring={health?.expiring ?? []} />
       </section>
 
+      {health?.manualRefunds && (
+        <ManualRefundHealthCard manualRefunds={health.manualRefunds} />
+      )}
+
       <TenantHealthTable tenants={health?.tenants ?? []} error={error ?? null} />
     </div>
   );
 }
+

@@ -44,24 +44,61 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
     let processed = 0;
     const reminders = await this.operations.findCustomerDetailReminderCandidates(BATCH_SIZE);
     for (const candidate of reminders) {
-      try { if (await this.detailReminder.execute(candidate.tenantId, candidate.operationId, candidate.hours)) processed++; }
-      catch (error) { this.logger.debug(`manual refund reminder failed: ${error instanceof Error ? error.message : String(error)}`); }
+      try {
+        if (await this.detailReminder.execute(candidate.tenantId, candidate.operationId, candidate.hours)) processed++;
+      } catch (error) {
+        this.logger.warn({
+          event: 'manual_refund_worker_item_failed',
+          phase: 'customer_detail_reminder',
+          tenantId: candidate.tenantId,
+          operationId: candidate.operationId,
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+        });
+      }
     }
     const transfer = await this.operations.findTransferSlaCandidates(BATCH_SIZE);
     for (const candidate of transfer) {
-      try { if (await this.transferSla.execute(candidate.tenantId, candidate.operationId, candidate.slaHours)) processed++; }
-      catch (error) { this.logger.debug(`manual refund transfer SLA failed: ${error instanceof Error ? error.message : String(error)}`); }
+      try {
+        if (await this.transferSla.execute(candidate.tenantId, candidate.operationId, candidate.slaHours)) processed++;
+      } catch (error) {
+        this.logger.warn({
+          event: 'manual_refund_worker_item_failed',
+          phase: 'transfer_sla',
+          tenantId: candidate.tenantId,
+          operationId: candidate.operationId,
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+        });
+      }
     }
     const checker = await this.operations.findCheckerEscalationCandidates(BATCH_SIZE);
     for (const candidate of checker) {
-      try { if (await this.checkerEscalation.execute(candidate.tenantId, candidate.operationId)) processed++; }
-      catch (error) { this.logger.debug(`manual refund checker escalation failed: ${error instanceof Error ? error.message : String(error)}`); }
+      try {
+        if (await this.checkerEscalation.execute(candidate.tenantId, candidate.operationId)) processed++;
+      } catch (error) {
+        this.logger.warn({
+          event: 'manual_refund_worker_item_failed',
+          phase: 'checker_escalation',
+          tenantId: candidate.tenantId,
+          operationId: candidate.operationId,
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+        });
+      }
     }
     const purge = await this.operations.findCiphertextPurgeCandidates(BATCH_SIZE);
     for (const candidate of purge) {
-      try { if (await this.purgeCiphertext.execute(candidate.tenantId, candidate.operationId)) processed++; }
-      catch (error) { this.logger.debug(`manual refund ciphertext purge failed: ${error instanceof Error ? error.message : String(error)}`); }
+      try {
+        if (await this.purgeCiphertext.execute(candidate.tenantId, candidate.operationId)) processed++;
+      } catch (error) {
+        this.logger.warn({
+          event: 'manual_refund_worker_item_failed',
+          phase: 'ciphertext_purge',
+          tenantId: candidate.tenantId,
+          operationId: candidate.operationId,
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+        });
+      }
     }
+
     return processed;
   }
 }
