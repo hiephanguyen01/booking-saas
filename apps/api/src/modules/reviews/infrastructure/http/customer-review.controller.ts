@@ -4,7 +4,12 @@ import type {
   ReviewResponse,
 } from '@booking/contracts';
 import { Body, Controller, Get, Headers, Post, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  THROTTLE_PROFILE_WRITE,
+  THROTTLE_UPLOAD,
+} from '../../../../shared/http/throttle-limits';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -47,6 +52,7 @@ export class CustomerReviewController {
   }
 
   @AuthenticatedOnly()
+  @Throttle(THROTTLE_UPLOAD)
   @Post('media/presign')
   @ApiOperation({ summary: 'Mint a booking-scoped review image or video upload URL' })
   @ApiOkResponse({ type: PresignUploadResponseDto })
@@ -64,6 +70,7 @@ export class CustomerReviewController {
   }
 
   @AuthenticatedOnly()
+  @Throttle(THROTTLE_PROFILE_WRITE)
   @Post()
   @ApiOperation({ summary: 'Create one review for an owned completed booking' })
   @ApiCreatedResponse({ type: ReviewResponseDto })

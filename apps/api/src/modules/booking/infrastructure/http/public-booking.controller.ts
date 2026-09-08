@@ -17,6 +17,11 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import {
+  THROTTLE_AUTH_ATTEMPT,
+  THROTTLE_AUTH_RESEND,
+} from '../../../../shared/http/throttle-limits';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -120,6 +125,7 @@ export class PublicBookingController {
   }
 
   @Public()
+  @Throttle(THROTTLE_AUTH_RESEND)
   @Post('bookings/:code/request-otp')
   @HttpCode(200)
   @ApiOperation({ summary: 'Request an email OTP to access a booking by code' })
@@ -131,6 +137,7 @@ export class PublicBookingController {
   }
 
   @Public()
+  @Throttle(THROTTLE_AUTH_ATTEMPT)
   @Post('bookings/:code/verify-access')
   @HttpCode(200)
   @ApiOperation({ summary: 'Exchange a valid booking OTP for a short-lived access grant' })

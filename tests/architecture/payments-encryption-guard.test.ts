@@ -92,4 +92,19 @@ describe('payments encryption & permission resolution security guards', () => {
       );
     }
   });
+
+  it('ensures health readiness probe measures latency and sensitive routes are throttled', () => {
+    const healthSource = readSource(repoPath('apps/api/src/shared/health/health.controller.ts'));
+    const bookingCtrl = readSource(
+      repoPath('apps/api/src/modules/booking/infrastructure/http/public-booking.controller.ts'),
+    );
+
+    // Health readiness measures latency
+    expect(healthSource).toContain('dbLatencyMs');
+    expect(healthSource).toContain('redisLatencyMs');
+
+    // Public booking OTP routes must be rate-limited
+    expect(bookingCtrl).toContain('@Throttle(THROTTLE_AUTH_RESEND)');
+    expect(bookingCtrl).toContain('@Throttle(THROTTLE_AUTH_ATTEMPT)');
+  });
 });

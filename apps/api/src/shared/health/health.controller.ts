@@ -23,25 +23,39 @@ export class HealthController {
 
   @Public()
   @Get('ready')
-  @ApiOperation({ summary: 'Readiness probe (DB + Redis)' })
+  @ApiOperation({ summary: 'Readiness probe (DB + Redis with latency measurement)' })
   @ApiOkResponse({
     schema: {
       properties: {
         status: { type: 'string', example: 'ok' },
         db: { type: 'string', example: 'up' },
         redis: { type: 'string', example: 'up' },
+        dbLatencyMs: { type: 'number', example: 2 },
+        redisLatencyMs: { type: 'number', example: 1 },
       },
     },
   })
   @ApiServiceUnavailableResponse({ description: 'DB or Redis is down' })
   async readiness() {
-    const [db, redis] = await Promise.allSettled([
-      this.prisma.admin.$queryRaw`SELECT 1`,
-      this.redis.ping(),
-    ]);
+    let dbLatencyMs: number | undefined;
+    let redisLatencyMs: number | undefined;
+
+    const startDb = Date.now();
+    const dbPromise = this.prisma.admin.$queryRaw`SELECT 1`.then(() => {
+      dbLatencyMs = Date.now() - startDb;
+    });
+
+    const startRedis = Date.now();
+    const redisPromise = this.redis.ping().then(() => {
+      redisLatencyMs = Date.now() - startRedis;
+    });
+
+    const [db, redis] = await Promise.allSettled([dbPromise, redisPromise]);
     const result = {
       db: db.status === 'fulfilled' ? 'up' : 'down',
       redis: redis.status === 'fulfilled' ? 'up' : 'down',
+      ...(dbLatencyMs !== undefined ? { dbLatencyMs } : {}),
+      ...(redisLatencyMs !== undefined ? { redisLatencyMs } : {}),
     };
     if (result.db === 'down' || result.redis === 'down') {
       throw new ServiceUnavailableException(result);
