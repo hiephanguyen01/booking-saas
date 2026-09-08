@@ -15,6 +15,8 @@ import {
 } from '../../domain/ports/refund-repository.port';
 import { Refund } from '../../domain/entities/refund.entity';
 import { RefundNotFound, RefundReferenceAlreadyUsed } from '../../domain/errors/refund-errors';
+import { ManualRefundBatchWorkflowRequired } from '../../domain/errors/manual-refund-errors';
+import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 
 /** Tenant confirms the external bank transfer required by SePay/manual gateways. */
 @Injectable()
@@ -25,6 +27,8 @@ export class ConfirmManualRefundUseCase {
     @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
+    @Inject(MANUAL_REFUND_OPERATION_REPOSITORY)
+    private readonly manualRefundOperations: IManualRefundOperationRepository,
   ) {}
 
   execute(
@@ -34,6 +38,9 @@ export class ConfirmManualRefundUseCase {
     actorUserId: string,
   ): Promise<RefundRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
+      if (await this.manualRefundOperations.isWorkflowEnabled(tx, tenantId)) {
+        throw new ManualRefundBatchWorkflowRequired();
+      }
       let found = await this.refunds.findById(tx, refundId);
       if (!found) throw new RefundNotFound();
       await this.refunds.lockForBooking(tx, found.bookingId);

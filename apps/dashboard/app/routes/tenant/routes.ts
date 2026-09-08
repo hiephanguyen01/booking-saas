@@ -33,6 +33,10 @@ export const tenantChildren: RouteConfigEntry[] = [
   route('finance/settlements', 'routes/tenant/finance/settlements.tsx'),
   route('finance/disputes', 'routes/tenant/finance/disputes.tsx'),
   route('finance/transactions', 'routes/tenant/finance/transactions.tsx'),
+  route(
+    'finance/manual-refunds/:operationId/evidence-presign',
+    'routes/tenant/finance/manual-refund-evidence.presign.tsx',
+  ),
   route('promotions', 'routes/tenant/promotions/_index.tsx'),
   route('promotions/new', 'routes/tenant/promotions/new.tsx'),
   route('promotions/:promotionId', 'routes/tenant/promotions/detail.tsx'),

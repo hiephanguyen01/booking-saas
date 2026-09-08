@@ -194,6 +194,7 @@ export function toPlatformHealthResponse(h: PlatformHealth): PlatformHealthRespo
       webhookFailures: h.kpis.webhookFailures,
       overduePayouts: h.kpis.overduePayouts,
     },
+    manualRefunds: h.manualRefunds,
     gmvTrend: h.gmvTrend.map((p) => ({ date: p.date, gmv: p.gmv.toString() })),
     tenants: h.tenants.map((t) => ({
       tenantId: t.tenantId,
@@ -209,6 +210,9 @@ export function toPlatformHealthResponse(h: PlatformHealth): PlatformHealthRespo
       publishedListings: t.publishedListings,
       webhookFailures: t.webhookFailures,
       overduePayouts: t.overduePayouts,
+      manualRefundOpen: t.manualRefundOpen,
+      manualRefundOverdue: t.manualRefundOverdue,
+      manualRefundOldestMinutes: t.manualRefundOldestMinutes,
       subscription: t.subscription
         ? {
             status: t.subscription.status,

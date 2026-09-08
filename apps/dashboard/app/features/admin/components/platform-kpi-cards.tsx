@@ -22,13 +22,21 @@ const EMPTY_KPIS: PlatformHealthResponse['kpis'] = {
   overduePayouts: 0,
 };
 
-/** The five platform KPI stat cards. `kpis` may be null (health fetch failed) → zeros. */
 export function PlatformKpiCards({
   kpis,
+  manualRefunds,
 }: {
   kpis: PlatformHealthResponse['kpis'] | null | undefined;
+  manualRefunds?: PlatformHealthResponse['manualRefunds'] | null;
 }) {
   const k = kpis ?? EMPTY_KPIS;
+  const overdueRefunds = manualRefunds?.overdueOperations ?? 0;
+  const warningsTotal = k.webhookFailures + k.overduePayouts + overdueRefunds;
+  const warningHints = [
+    `${formatNumber(k.webhookFailures)} webhook`,
+    `${formatNumber(k.overduePayouts)} payout trễ`,
+    ...(overdueRefunds > 0 ? [`${formatNumber(overdueRefunds)} hoàn tiền trễ`] : []),
+  ].join(' · ');
 
   return (
     <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -71,11 +79,12 @@ export function PlatformKpiCards({
       />
       <StatCard
         label="Cảnh báo vận hành"
-        value={formatNumber(k.webhookFailures + k.overduePayouts)}
-        hint={`${formatNumber(k.webhookFailures)} webhook · ${formatNumber(k.overduePayouts)} payout trễ`}
+        value={formatNumber(warningsTotal)}
+        hint={warningHints}
         icon={<AlertTriangle className="size-4" />}
-        tone={k.webhookFailures + k.overduePayouts > 0 ? 'critical' : 'default'}
+        tone={warningsTotal > 0 ? 'critical' : 'default'}
       />
     </section>
   );
 }
+

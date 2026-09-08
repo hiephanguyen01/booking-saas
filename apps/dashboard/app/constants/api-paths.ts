@@ -81,6 +81,17 @@ export const apiPaths = {
     health: '/platform/health',
     financeSettlements: '/platform/finance/settlements',
     payments: '/platform/payments',
+    manualRefundWorkflowReadiness: (tenantId: string) =>
+      `/platform/tenants/${segment(tenantId)}/refunds/readiness`,
+    manualRefundWorkflowEnable: (tenantId: string) =>
+      `/platform/tenants/${segment(tenantId)}/refunds/enable-workflow`,
+    manualRefundWorkflowPause: (tenantId: string) =>
+      `/platform/tenants/${segment(tenantId)}/refunds/pause-workflow`,
+    manualRefundWorkflowResume: (tenantId: string) =>
+      `/platform/tenants/${segment(tenantId)}/refunds/resume-workflow`,
+
+    manualRefundBreakGlass: (tenantId: string, operationId: string) =>
+      `/platform/tenants/${segment(tenantId)}/refunds/${segment(operationId)}/break-glass`,
     reviews: '/platform/reviews',
     financeDisputes: '/platform/finance/disputes',
     /** A tenant's commission rules, read by the platform admin. */
@@ -200,6 +211,12 @@ export const apiPaths = {
 
     payments: tenantPath('/payments'),
     paymentRefunds: tenantPath('/payments/refunds'),
+    paymentRefundConfirm: (refundId: string) =>
+      tenantPath(`/payments/refunds/${segment(refundId)}/confirm`),
+    manualRefunds: tenantPath('/refunds'),
+    manualRefund: (operationId: string) => tenantPath(`/refunds/${segment(operationId)}`),
+    manualRefundAction: (operationId: string, action: string) =>
+      tenantPath(`/refunds/${segment(operationId)}/${segment(action)}`),
 
     promotions: tenantPath('/promotions'),
     promotion: (promotionId: string) => tenantPath(`/promotions/${segment(promotionId)}`),

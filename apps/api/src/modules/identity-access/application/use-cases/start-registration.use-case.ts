@@ -22,12 +22,13 @@ export class StartRegistrationUseCase {
 
   async execute(input: RegistrationStartInput): Promise<AuthChallengeResponse> {
     const existing = await this.users.findByEmail(input.email);
-    UserAccount.assertEmailAvailable(existing);
+    if (existing && existing.passwordHash !== null) UserAccount.assertEmailAvailable(existing);
     const challenge = await this.challenges.issue({
       purpose: 'registration',
       email: input.email,
       fullName: input.fullName,
       locale: input.locale,
+      ...(existing ? { userId: existing.id } : {}),
       ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       ...(input.acceptedVersionIds?.length
         ? { acceptedVersionIds: input.acceptedVersionIds }

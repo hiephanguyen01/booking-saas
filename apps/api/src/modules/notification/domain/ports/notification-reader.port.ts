@@ -70,6 +70,10 @@ export interface PartnerNotificationContext {
 export interface INotificationReader {
   loadBrand(tenantId?: string): Promise<EmailBrand>;
   loadBookingContext(tx: PrismaTx, bookingId: string): Promise<BookingNotificationContext | null>;
+  loadManualRefundBookingContext(
+    tx: PrismaTx,
+    refundBatchId: string,
+  ): Promise<BookingNotificationContext | null>;
   loadListingContext(tx: PrismaTx, listingId: string): Promise<ListingNotificationContext | null>;
   loadPartnerContext(tx: PrismaTx, partnerId: string): Promise<PartnerNotificationContext | null>;
   /**

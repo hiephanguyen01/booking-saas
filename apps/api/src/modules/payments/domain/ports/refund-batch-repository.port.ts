@@ -20,6 +20,7 @@ export interface RefreshRefundBatchResult {
 }
 
 export interface IRefundBatchRepository {
+  findById(tx: PrismaTx, tenantId: string, id: string): Promise<RefundBatchRecord | null>;
   findByBookingReason(
     tx: PrismaTx,
     bookingId: string,

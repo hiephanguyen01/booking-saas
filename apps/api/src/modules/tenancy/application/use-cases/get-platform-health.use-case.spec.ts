@@ -23,6 +23,9 @@ const tenantFacts = (overrides: Partial<TenantHealthFactsRow> = {}): TenantHealt
   bookings30d: 5,
   firstBookingAt: null,
   publishedListings: 10,
+  manualRefundOpen: 0,
+  manualRefundOverdue: 0,
+  manualRefundOldestMinutes: 0,
   ...overrides,
 });
 
@@ -32,8 +35,20 @@ const facts = (overrides: Partial<PlatformHealthFacts> = {}): PlatformHealthFact
   overduePayouts: [],
   gmvTrend: [{ date: '2026-08-18', gmv: 50_000n }],
   webhookFailureTotal: 0,
+  manualRefunds: {
+    enabledTenants: 0,
+    pausedTenants: 0,
+    openOperations: 0,
+    overdueOperations: 0,
+    awaitingApproval: 0,
+    oldestOpenMinutes: 0,
+    customerNotReceived: 0,
+    reveals24h: 0,
+    breakGlass30d: 0,
+  },
   ...overrides,
 });
+
 
 interface Sub {
   tenantId: string;
@@ -339,4 +354,92 @@ describe('GetPlatformHealthUseCase', () => {
 
     expect(result.kpis).toMatchObject({ publishedListings: 17, bookings30d: 7 });
   });
+
+  it('computes manual refund platform aggregates, per-tenant metrics, and operational severity', async () => {
+    const useCase = harness({
+      facts: facts({
+        tenants: [
+          tenantFacts({
+            id: 'tenant-1',
+            manualRefundOpen: 4,
+            manualRefundOverdue: 2,
+            manualRefundOldestMinutes: 190,
+          }),
+        ],
+        manualRefunds: {
+          enabledTenants: 3,
+          pausedTenants: 1,
+          openOperations: 7,
+          overdueOperations: 2,
+          awaitingApproval: 1,
+          oldestOpenMinutes: 190,
+          customerNotReceived: 1,
+          reveals24h: 4,
+          breakGlass30d: 0,
+        },
+      }),
+    });
+
+    const result = await useCase.execute();
+
+    expect(result.manualRefunds).toEqual({
+      enabledTenants: 3,
+      pausedTenants: 1,
+      openOperations: 7,
+      overdueOperations: 2,
+      awaitingApproval: 1,
+      oldestOpenMinutes: 190,
+      customerNotReceived: 1,
+      reveals24h: 4,
+      breakGlass30d: 0,
+      severity: 'critical',
+    });
+
+    expect(result.tenants[0]?.manualRefundOpen).toBe(4);
+    expect(result.tenants[0]?.manualRefundOverdue).toBe(2);
+    expect(result.tenants[0]?.manualRefundOldestMinutes).toBe(190);
+  });
+
+  it('computes warning severity when oldest open minutes exceeds threshold', async () => {
+    const useCase = harness({
+      facts: facts({
+        manualRefunds: {
+          enabledTenants: 1,
+          pausedTenants: 0,
+          openOperations: 1,
+          overdueOperations: 0,
+          awaitingApproval: 0,
+          oldestOpenMinutes: 65,
+          customerNotReceived: 0,
+          reveals24h: 0,
+          breakGlass30d: 0,
+        },
+      }),
+    });
+
+    const result = await useCase.execute();
+    expect(result.manualRefunds.severity).toBe('warning');
+  });
+
+  it('computes healthy severity when within thresholds', async () => {
+    const useCase = harness({
+      facts: facts({
+        manualRefunds: {
+          enabledTenants: 1,
+          pausedTenants: 0,
+          openOperations: 1,
+          overdueOperations: 0,
+          awaitingApproval: 0,
+          oldestOpenMinutes: 30,
+          customerNotReceived: 0,
+          reveals24h: 0,
+          breakGlass30d: 0,
+        },
+      }),
+    });
+
+    const result = await useCase.execute();
+    expect(result.manualRefunds.severity).toBe('healthy');
+  });
 });
+

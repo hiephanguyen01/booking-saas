@@ -154,6 +154,29 @@ export class PrismaRefundRepository implements IRefundRepository {
     return this.findById(tx, id);
   }
 
+  async completeManualBatch(
+    tx: PrismaTx,
+    tenantId: string,
+    refundBatchId: string,
+    completedAt: Date,
+    reference: string,
+  ): Promise<number> {
+    const changed = await tx.refund.updateMany({
+      where: {
+        tenantId,
+        refundBatchId,
+        executionMode: 'manual',
+        status: { in: ['pending', 'manual_required'] },
+      },
+      data: {
+        status: 'succeeded',
+        completedAt,
+        evidence: { reference },
+      },
+    });
+    return changed.count;
+  }
+
   async lockForBooking(tx: PrismaTx, bookingId: string): Promise<void> {
     await tx.$executeRaw(
       Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('refund:' || ${bookingId}))`,

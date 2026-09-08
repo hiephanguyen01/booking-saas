@@ -12,6 +12,9 @@ export interface TenantHealthFactsRow {
   bookings30d: number;
   firstBookingAt: Date | null;
   publishedListings: number;
+  manualRefundOpen: number;
+  manualRefundOverdue: number;
+  manualRefundOldestMinutes: number;
 }
 
 export interface TenantCountRow {
@@ -24,14 +27,28 @@ export interface GmvTrendRow {
   gmv: bigint;
 }
 
+export interface ManualRefundPlatformAggregate {
+  enabledTenants: number;
+  pausedTenants: number;
+  openOperations: number;
+  overdueOperations: number;
+  awaitingApproval: number;
+  oldestOpenMinutes: number;
+  customerNotReceived: number;
+  reveals24h: number;
+  breakGlass30d: number;
+}
+
 export interface PlatformHealthFacts {
   tenants: TenantHealthFactsRow[];
   webhookFailures: TenantCountRow[];
   overduePayouts: TenantCountRow[];
   gmvTrend: GmvTrendRow[];
   webhookFailureTotal: number;
+  manualRefunds: ManualRefundPlatformAggregate;
 }
 
 export interface IPlatformHealthReader {
   read(): Promise<PlatformHealthFacts>;
 }
+

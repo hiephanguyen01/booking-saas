@@ -17,7 +17,30 @@ import {
   tenantRefundPolicySchema,
   updateTenantRefundPolicyInputSchema,
   zaloPayWebhookAcknowledgementResponseSchema,
+  submitManualRefundDestinationInputSchema,
+  acknowledgeManualRefundInputSchema,
+  manualRefundStatusResponseSchema,
+  manualRefundListQuerySchema,
+  manualRefundListResponseSchema,
+  manualRefundDetailResponseSchema,
+  verifyManualRefundDestinationInputSchema,
+  claimManualRefundInputSchema,
+  reassignManualRefundInputSchema,
+  submitManualRefundTransferInputSchema,
+  createManualRefundEvidenceUploadInputSchema,
+  manualRefundEvidenceUploadResponseSchema,
+  rejectManualRefundInputSchema,
+  reopenManualRefundInputSchema,
+  manualRefundPrivateDetailsResponseSchema,
+  revealManualRefundPrivateDetailsInputSchema,
+  approveManualRefundInputSchema,
+  manualRefundBreakGlassInputSchema,
+  manualRefundWorkflowEnableResponseSchema,
+  manualRefundWorkflowControlInputSchema,
+  manualRefundWorkflowStateSchema,
+  manualRefundReadinessResponseSchema,
 } from '@booking/contracts';
+
 
 // Request bodies
 export class PaymentHistoryQueryDto extends createZodDto(paymentHistoryQuerySchema) {}
@@ -25,7 +48,35 @@ export class ConfirmManualRefundDto extends createZodDto(confirmManualRefundInpu
 export class RefundHistoryQueryDto extends createZodDto(refundHistoryQuerySchema) {}
 export class StartCheckoutDto extends createZodDto(startCheckoutInputSchema) {}
 export class PaymentRoutingInputDto extends createZodDto(paymentRoutingInputSchema) {}
-export class UpdateTenantRefundPolicyDto extends createZodDto(updateTenantRefundPolicyInputSchema) {}
+export class UpdateTenantRefundPolicyDto extends createZodDto(
+  updateTenantRefundPolicyInputSchema,
+) {}
+export class SubmitManualRefundDestinationDto extends createZodDto(
+  submitManualRefundDestinationInputSchema,
+) {}
+export class AcknowledgeManualRefundDto extends createZodDto(acknowledgeManualRefundInputSchema) {}
+export class ManualRefundListQueryDto extends createZodDto(manualRefundListQuerySchema) {}
+export class VerifyManualRefundDestinationDto extends createZodDto(
+  verifyManualRefundDestinationInputSchema,
+) {}
+export class ClaimManualRefundDto extends createZodDto(claimManualRefundInputSchema) {}
+export class ReassignManualRefundDto extends createZodDto(reassignManualRefundInputSchema) {}
+export class SubmitManualRefundTransferDto extends createZodDto(
+  submitManualRefundTransferInputSchema,
+) {}
+export class CreateManualRefundEvidenceUploadDto extends createZodDto(
+  createManualRefundEvidenceUploadInputSchema,
+) {}
+export class RejectManualRefundDto extends createZodDto(rejectManualRefundInputSchema) {}
+export class ReopenManualRefundDto extends createZodDto(reopenManualRefundInputSchema) {}
+export class RevealManualRefundPrivateDetailsDto extends createZodDto(
+  revealManualRefundPrivateDetailsInputSchema,
+) {}
+export class ApproveManualRefundDto extends createZodDto(approveManualRefundInputSchema) {}
+export class ManualRefundBreakGlassDto extends createZodDto(manualRefundBreakGlassInputSchema) {}
+export class ManualRefundWorkflowControlDto extends createZodDto(
+  manualRefundWorkflowControlInputSchema,
+) {}
 
 // Responses
 export class CheckoutResponseDto extends createZodDto(checkoutResponseSchema) {}
@@ -37,6 +88,22 @@ export class RefundHistoryItemDto extends createZodDto(refundHistoryItemSchema) 
 export class PublicPaymentOptionsDto extends createZodDto(publicPaymentOptionsSchema) {}
 export class PaymentRoutingResponseDto extends createZodDto(paymentRoutingResponseSchema) {}
 export class TenantRefundPolicyDto extends createZodDto(tenantRefundPolicySchema) {}
+export class ManualRefundStatusResponseDto extends createZodDto(manualRefundStatusResponseSchema) {}
+export class ManualRefundListResponseDto extends createZodDto(manualRefundListResponseSchema) {}
+export class ManualRefundDetailResponseDto extends createZodDto(manualRefundDetailResponseSchema) {}
+export class ManualRefundEvidenceUploadResponseDto extends createZodDto(
+  manualRefundEvidenceUploadResponseSchema,
+) {}
+export class ManualRefundPrivateDetailsResponseDto extends createZodDto(
+  manualRefundPrivateDetailsResponseSchema,
+) {}
+export class ManualRefundWorkflowEnableResponseDto extends createZodDto(
+  manualRefundWorkflowEnableResponseSchema,
+) {}
+export class ManualRefundWorkflowStateDto extends createZodDto(manualRefundWorkflowStateSchema) {}
+export class ManualRefundReadinessResponseDto extends createZodDto(
+  manualRefundReadinessResponseSchema,
+) {}
 
 export class GenericWebhookAcknowledgementResponseDto extends createZodDto(
   genericWebhookAcknowledgementResponseSchema,

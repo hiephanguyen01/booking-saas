@@ -81,6 +81,23 @@ const columns: DataTableColumn<PlatformHealthTenant>[] = [
     ),
   },
   {
+    header: 'Hoàn tiền mở',
+    headClassName: 'text-right',
+    className: 'text-right tabular-nums',
+    cell: (t) => formatNumber(t.manualRefundOpen),
+  },
+  {
+    header: 'Hoàn tiền trễ',
+    headClassName: 'text-right',
+    className: 'text-right',
+    cell: (t) => (
+      <div className="flex justify-end">
+        <CountSignal count={t.manualRefundOverdue} />
+      </div>
+    ),
+  },
+
+  {
     header: 'Gói',
     cell: (t) =>
       t.subscription ? (

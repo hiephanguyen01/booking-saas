@@ -70,6 +70,10 @@ services:
       # this in the API — omit it and every stored secret is encrypted with the
       # key published in the repo.
       PAYMENTS_ENC_KEY: ${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY is required}
+      # Dedicated versioned protection for customer receiving-account PII.
+      MANUAL_REFUND_PII_ACTIVE_KEY_VERSION: ${MANUAL_REFUND_PII_ACTIVE_KEY_VERSION:?MANUAL_REFUND_PII_ACTIVE_KEY_VERSION is required}
+      MANUAL_REFUND_PII_KEYRING: ${MANUAL_REFUND_PII_KEYRING:?MANUAL_REFUND_PII_KEYRING is required}
+      MANUAL_REFUND_PII_FINGERPRINT_KEY: ${MANUAL_REFUND_PII_FINGERPRINT_KEY:?MANUAL_REFUND_PII_FINGERPRINT_KEY is required}
       PAYMENT_STALE_SEC: ${PAYMENT_STALE_SEC:-600}
       ALLOW_MOCK_PAYMENTS: ${ALLOW_MOCK_PAYMENTS:-false}
       S3_ENDPOINT: ${S3_ENDPOINT:?S3_ENDPOINT is required}

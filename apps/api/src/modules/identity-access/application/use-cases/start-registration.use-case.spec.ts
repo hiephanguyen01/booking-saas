@@ -18,16 +18,30 @@ const CHALLENGE = {
   resendAfterSec: 60,
 };
 
-function harness(options: { emailTaken?: boolean } = {}) {
+function existingAccount(kind: 'registered' | 'guest'): UserAccount {
+  return UserAccount.rehydrate({
+    id: `user-${kind}`,
+    email: 'khach@studiohub.vn',
+    passwordHash: kind === 'registered' ? 'hashed:demo-password' : null,
+    fullName: 'Khách Cũ',
+    phone: null,
+    avatarUrl: null,
+    locale: 'vi',
+    status: 'active',
+    failedLoginCount: 0,
+    lockedUntil: null,
+    emailVerifiedAt: null,
+  });
+}
+
+function harness(options: { existing?: 'registered' | 'guest' } = {}) {
   const issued: AuthChallengePayload[] = [];
   const sent: Array<Record<string, unknown>> = [];
   return {
     useCase: new StartRegistrationUseCase(
       fakePort<IUserRepository>({
         findByEmail: () =>
-          Promise.resolve(
-            options.emailTaken ? UserAccount.rehydrate({ id: 'user-0' } as never) : null,
-          ),
+          Promise.resolve(options.existing ? existingAccount(options.existing) : null),
       }),
       fakePort<IAuthChallengeStore>({
         issue: (payload) => {
@@ -57,10 +71,29 @@ const input = (overrides: Partial<RegistrationStartInput> = {}) =>
 
 describe('StartRegistrationUseCase', () => {
   it('refuses an email that already has an account, sending no code', async () => {
-    const { useCase, sent } = harness({ emailTaken: true });
+    const { useCase, sent } = harness({ existing: 'registered' });
 
     await expect(useCase.execute(input())).rejects.toBeInstanceOf(EmailTaken);
     expect(sent).toEqual([]);
+  });
+
+  it('lets a passwordless guest prove email ownership and binds the challenge to that guest', async () => {
+    const { useCase, issued, sent } = harness({ existing: 'guest' });
+
+    await expect(useCase.execute(input())).resolves.toMatchObject({
+      challengeId: 'challenge-1',
+      maskedDestination: 'kh***@studiohub.vn',
+    });
+    expect(issued).toEqual([
+      {
+        purpose: 'registration',
+        email: 'khach@studiohub.vn',
+        fullName: 'Khách Mới',
+        locale: 'vi',
+        userId: 'user-guest',
+      },
+    ]);
+    expect(sent).toHaveLength(1);
   });
 
   it('MASKS the destination in the response', async () => {

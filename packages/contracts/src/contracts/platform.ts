@@ -23,11 +23,30 @@ export const platformHealthTenantSchema = z.object({
   publishedListings: z.number(),
   webhookFailures: z.number(),
   overduePayouts: z.number(),
+  manualRefundOpen: z.number(),
+  manualRefundOverdue: z.number(),
+  manualRefundOldestMinutes: z.number(),
   subscription: z
     .object({ status: z.string(), expiresAt: z.string(), planName: z.string() })
     .nullable(),
 });
 export type PlatformHealthTenant = z.infer<typeof platformHealthTenantSchema>;
+
+export const platformHealthManualRefundsSchema = z.object({
+  enabledTenants: z.number(),
+  pausedTenants: z.number(),
+  openOperations: z.number(),
+  overdueOperations: z.number(),
+  awaitingApproval: z.number(),
+  oldestOpenMinutes: z.number(),
+  customerNotReceived: z.number(),
+  reveals24h: z.number(),
+  breakGlass30d: z.number(),
+  severity: z.enum(['healthy', 'warning', 'critical']),
+});
+export type PlatformHealthManualRefunds = z.infer<
+  typeof platformHealthManualRefundsSchema
+>;
 
 export const platformHealthExpiringSchema = z.object({
   tenantId: z.string(),
@@ -60,8 +79,10 @@ export const platformHealthResponseSchema = z.object({
     webhookFailures: z.number(),
     overduePayouts: z.number(),
   }),
+  manualRefunds: platformHealthManualRefundsSchema,
   gmvTrend: z.array(z.object({ date: z.string(), gmv: z.string() })),
   tenants: z.array(platformHealthTenantSchema),
   expiring: z.array(platformHealthExpiringSchema),
 });
 export type PlatformHealthResponse = z.infer<typeof platformHealthResponseSchema>;
+

@@ -39,6 +39,14 @@ export interface PrivatePdfInspection {
   contentType: string;
 }
 
+export interface PrivateFileInspection {
+  valid: boolean;
+  reason?: 'not_found' | 'wrong_content_type' | 'too_large' | 'invalid_signature';
+  checksum: string;
+  sizeBytes: number;
+  contentType: string;
+}
+
 /**
  * Object storage abstraction (hexagonal port). The dev adapter targets MinIO;
  * prod swaps in S3/R2 with the same interface. Browsers upload directly via a
@@ -52,6 +60,13 @@ export interface StoragePort {
     fileName?: string;
   }): Promise<PrivatePresignedDownload>;
   inspectPrivatePdf(input: { key: string; maxSizeBytes: number }): Promise<PrivatePdfInspection>;
+  inspectPrivateFile(input: {
+    key: string;
+    allowedContentTypes: readonly string[];
+    maxSizeBytes: number;
+  }): Promise<PrivateFileInspection>;
+  /** Move an invalid private upload out of its claimable prefix. */
+  quarantinePrivateObject(key: string): Promise<void>;
   deletePrivateObject(key: string): Promise<void>;
   /** Resolve a validated object key to the public CDN/MinIO URL persisted by domain records. */
   publicUrlForKey(key: string): string;

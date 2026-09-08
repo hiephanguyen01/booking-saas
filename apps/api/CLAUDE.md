@@ -109,7 +109,7 @@ Deny-by-default: a route must be `@Public()`, `@AuthenticatedOnly()`, or carry
 The client names its scope with `x-tenant-id` / `x-partner-id` headers; the guard verifies the user
 actually holds a role assignment there (never trusting the header for data access), then seeds the
 tenant context for RLS. Permission keys + system roles are a fixed catalog in
-`src/modules/identity-access/domain/permission-catalog.ts` (52 keys, 7 roles), seeded from code —
+`src/modules/identity-access/domain/permission-catalog.ts` (56 keys, 7 roles), seeded from code —
 never created via UI. After any role-assignment change call `PermissionResolverService.invalidate(userId)`
 (one arg) to clear the Redis cache. **Adding a key to the catalog needs a seed run to reach the
 database**, and seeding does not invalidate that cache — until it expires, holders keep getting 403.

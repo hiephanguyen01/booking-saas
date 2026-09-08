@@ -84,6 +84,13 @@ export type SlugCheckQuery = z.infer<typeof slugCheckQuerySchema>;
 export const partnerPromotionsToggleSchema = z.object({ partnerPromotionsEnabled: z.boolean() });
 export type PartnerPromotionsToggle = z.infer<typeof partnerPromotionsToggleSchema>;
 
+/** Stable tenant.settings key for the opt-in batch-level manual refund workflow. */
+export const MANUAL_REFUND_V2_TENANT_FLAG = 'manual_refund_v2' as const;
+/** Stable tenant.settings key for the reversible manual refund workflow emergency stop. */
+export const MANUAL_REFUND_V2_PAUSED_TENANT_FLAG = 'manual_refund_v2_paused' as const;
+export const manualRefundV2ToggleSchema = z.object({ manualRefundV2: z.boolean() });
+export type ManualRefundV2Toggle = z.infer<typeof manualRefundV2ToggleSchema>;
+
 export const createPlanInputSchema = z.object({
   name: z.string().min(1).max(120),
   /** VND đồng as a digit string (money never travels as a JS number). */

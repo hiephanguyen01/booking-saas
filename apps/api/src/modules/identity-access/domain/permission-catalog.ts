@@ -22,6 +22,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   /// Set a tenant's platform fee %. Deliberately NOT granted to Support — changing
   /// a commercial term is not a support action.
   { key: 'platform.finance.manage', scopeLevel: 'platform' },
+  { key: 'platform.refunds.break_glass', scopeLevel: 'platform' },
   { key: 'platform.users.manage', scopeLevel: 'platform' },
   { key: 'platform.roles.manage', scopeLevel: 'platform' },
   { key: 'platform.reviews.read', scopeLevel: 'platform' },
@@ -69,6 +70,9 @@ export const SYSTEM_ROLES: ReadonlyArray<{
     permissions: [
       'tenant.finance.read',
       'tenant.payouts.manage',
+      'tenant.refunds.prepare',
+      'tenant.refunds.approve',
+      'tenant.refunds.reveal',
       'tenant.reports.read',
       'tenant.disputes.read',
       'tenant.disputes.resolve',
