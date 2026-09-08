@@ -1143,6 +1143,8 @@ trang không tìm thấy tenant.
 - [ ] `S3_PRIVATE_BUCKET` không public; receipt manual-refund chỉ nhận PDF/JPEG/PNG ≤ 10 MB.
 - [ ] `manual_refund_v2` mặc định tắt; canary opt-in chỉ sau security/privacy review và seed permission.
 - [ ] Platform Admin opt-in bằng endpoint `enable-workflow`; số operation backfill khớp batch manual cũ.
+- [ ] Manual Refund V2 preflight (`GET /platform/tenants/:tenantId/refunds/readiness`) trả `readiness.ready=true` cho tenant canary.
+- [ ] Tuân thủ quy trình kiểm soát [Manual Refund V2 Production Gate](./runbooks/manual-refund-v2-production-gate.md): pause workflow ngay sau opt-in, Maker/Checker độc lập, probe private storage, kiểm tra baseline không có `severity=critical`, và dừng khẩn cấp khi gặp stop conditions.
 - [ ] Database dump đã được copy ra ngoài EC2.
 - [ ] EventBridge Scheduler start staging 10:00 và stop 22:00 theo `Asia/Ho_Chi_Minh`.
 - [ ] Biết release, xem log và rollback image.

@@ -477,3 +477,20 @@ shares one Redis.
 - **Receiving-account destinations** — they are customer PII, not gateway credentials. They use the
   separate versioned `MANUAL_REFUND_PII_KEYRING` with tenant/operation AAD and are purged on the
   90-day schedule; do not copy them into logs, tickets, analytics or deployment artifacts.
+
+## Manual Refund V2 production gate
+
+Manual Refund V2 is controlled per tenant via `settings.manual_refund_v2` and monitored through
+platform health and preflight checks. It is **never enabled globally** at deployment time.
+
+For full go/no-go procedure, stop conditions and canary rules, consult
+[`docs/runbooks/manual-refund-v2-production-gate.md`](./runbooks/manual-refund-v2-production-gate.md).
+
+Canary alert thresholds documented for operator monitoring:
+- `MANUAL_REFUND_ALERT_OLDEST_OPEN_MINUTES=60`: Warning threshold for the oldest open manual refund operation.
+- `MANUAL_REFUND_ALERT_OVERDUE_COUNT=1`: Critical threshold for SLA overdue operations.
+- `MANUAL_REFUND_ALERT_NOT_RECEIVED_COUNT=1`: Critical threshold for customer reports of funds not received.
+- `MANUAL_REFUND_ALERT_BREAK_GLASS_COUNT=1`: Critical threshold for emergency break-glass approvals.
+
+Production remains NO-GO if preflight fails (`readiness.ready=false`), platform health severity is
+`critical`, or alert channel ownership is not established.

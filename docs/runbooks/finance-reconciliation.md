@@ -239,7 +239,11 @@ hai operator.
 6. Deploy tất cả API worker cùng version, bật lại release worker.
 7. Theo dõi outbox error, reconciliation count, số `refund_pending`, settlement quá hạn và payout mở.
 8. Với tenant canary, theo dõi queue age, transfer SLA overdue, lookup fallback/mismatch, duplicate
-   reference, reveal và break-glass; tắt flag nếu cần rollback ứng dụng nhưng giữ operation/audit.
+   reference, reveal và break-glass; kích hoạt dừng khẩn cấp bằng `pause-workflow` khi gặp bất kỳ điều
+   kiện dừng nào (stop conditions: `readiness.ready=false`, `manualRefunds.severity=critical`, duplicate debit,
+   amount mismatch, unverified webhook, `customer_not_received`, break-glass không kiểm soát) theo hướng dẫn tại
+   [`docs/runbooks/manual-refund-v2-production-gate.md`](./manual-refund-v2-production-gate.md). Tắt flag nếu cần
+   rollback ứng dụng nhưng luôn bảo toàn operation và audit logs.
 
 `refund_pending` nằm trong migration enum riêng vì PostgreSQL không cho sử dụng enum label mới trong
 cùng transaction đã thêm label đó. Không gộp hai migration này khi squash thủ công.
