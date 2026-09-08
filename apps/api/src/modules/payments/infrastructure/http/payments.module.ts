@@ -88,8 +88,12 @@ import { EscalateManualRefundCheckerWaitingUseCase } from '../../application/use
 import { PurgeManualRefundCiphertextUseCase } from '../../application/use-cases/purge-manual-refund-ciphertext.use-case';
 import { ListCustomerManualRefundsUseCase } from '../../application/use-cases/list-customer-manual-refunds.use-case';
 import { EnableManualRefundWorkflowUseCase } from '../../application/use-cases/enable-manual-refund-workflow.use-case';
+import { GetManualRefundReadinessUseCase } from '../../application/use-cases/get-manual-refund-readiness.use-case';
 import { PauseManualRefundWorkflowUseCase } from '../../application/use-cases/pause-manual-refund-workflow.use-case';
 import { ResumeManualRefundWorkflowUseCase } from '../../application/use-cases/resume-manual-refund-workflow.use-case';
+import { MANUAL_REFUND_READINESS_PORT } from '../../domain/ports/manual-refund-readiness.port';
+import { ManualRefundReadinessAdapter } from '../manual-refund-readiness.adapter';
+
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule, IdentityAccessModule, BookingModule],
@@ -120,7 +124,12 @@ import { ResumeManualRefundWorkflowUseCase } from '../../application/use-cases/r
       useClass: PrismaManualRefundOperationRepository,
     },
     { provide: MANUAL_REFUND_EVIDENCE_REPOSITORY, useClass: PrismaManualRefundEvidenceRepository },
+    {
+      provide: MANUAL_REFUND_READINESS_PORT,
+      useClass: ManualRefundReadinessAdapter,
+    },
     { provide: GATEWAY_CONFIG_REPOSITORY, useClass: PrismaGatewayConfigRepository },
+
     { provide: PAYOS_WEBHOOK_CONFIGURATOR, useClass: PayosWebhookConfigurator },
     MockGatewayAdapter,
     { provide: GATEWAY_REGISTRY, useClass: GatewayRegistry },
@@ -147,7 +156,9 @@ import { ResumeManualRefundWorkflowUseCase } from '../../application/use-cases/r
     GetCustomerManualRefundStatusUseCase,
     ListCustomerManualRefundsUseCase,
     EnableManualRefundWorkflowUseCase,
+    GetManualRefundReadinessUseCase,
     PauseManualRefundWorkflowUseCase,
+
     ResumeManualRefundWorkflowUseCase,
     SubmitCustomerManualRefundDestinationUseCase,
     AcknowledgeCustomerManualRefundReceivedUseCase,

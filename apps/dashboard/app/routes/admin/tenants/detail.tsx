@@ -6,7 +6,9 @@ import {
   updateTenantInputSchema,
   type CommissionRuleResponse,
   type DomainResponse,
+  type ManualRefundReadinessResponse,
   type Paginated,
+
   type PlanResponse,
   type SubscriptionHistoryItem,
   type TenancyConfigResponse,
@@ -66,23 +68,38 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     pageKey: 'subPage',
     pageSizeKey: 'subPageSize',
   });
-  const [tenantRes, subRes, historyRes, domainsRes, tenancyConfigRes, plansRes, rulesRes] =
-    await Promise.all([
-      apiGet<TenantDetailResponse>(apiPaths.admin.tenant(id), auth),
-      apiGet(apiPaths.admin.tenantSubscription(id), auth, {
-        schema: currentSubscriptionResponseSchema.nullable(),
-      }),
-      apiGet<Paginated<SubscriptionHistoryItem>>(apiPaths.admin.tenantSubscriptions(id), auth, {
-        query: toApiQuery(),
-      }),
-      apiGet<DomainResponse[]>(apiPaths.admin.tenantDomains(id), auth),
-      apiGet<TenancyConfigResponse>(apiPaths.admin.tenancyConfig, auth),
-      apiGet<PlanResponse[]>(apiPaths.admin.plans, auth),
-      // Read from finance, not the tenant-detail response: `finance` already
-      // imports `TenancyModule`, so having tenancy read commission rules back
-      // would close a module cycle the API's module-cycle guard rejects.
-      apiGet<CommissionRuleResponse[]>(apiPaths.platform.tenantCommissionRules(id), auth),
-    ]);
+  const canManageRefunds = can('platform.tenants.write');
+  const [
+    tenantRes,
+    subRes,
+    historyRes,
+    domainsRes,
+    tenancyConfigRes,
+    plansRes,
+    rulesRes,
+    readinessRes,
+  ] = await Promise.all([
+    apiGet<TenantDetailResponse>(apiPaths.admin.tenant(id), auth),
+    apiGet(apiPaths.admin.tenantSubscription(id), auth, {
+      schema: currentSubscriptionResponseSchema.nullable(),
+    }),
+    apiGet<Paginated<SubscriptionHistoryItem>>(apiPaths.admin.tenantSubscriptions(id), auth, {
+      query: toApiQuery(),
+    }),
+    apiGet<DomainResponse[]>(apiPaths.admin.tenantDomains(id), auth),
+    apiGet<TenancyConfigResponse>(apiPaths.admin.tenancyConfig, auth),
+    apiGet<PlanResponse[]>(apiPaths.admin.plans, auth),
+    // Read from finance, not the tenant-detail response: `finance` already
+    // imports `TenancyModule`, so having tenancy read commission rules back
+    // would close a module cycle the API's module-cycle guard rejects.
+    apiGet<CommissionRuleResponse[]>(apiPaths.platform.tenantCommissionRules(id), auth),
+    canManageRefunds
+      ? apiGet<ManualRefundReadinessResponse>(
+          apiPaths.platform.manualRefundWorkflowReadiness(id),
+          auth,
+        )
+      : Promise.resolve({ ok: false as const, status: 403 }),
+  ]);
   if (!tenantRes.ok || !tenantRes.data) {
     throw new Response('Không tìm thấy tenant', { status: tenantRes.status || 404 });
   }
@@ -103,8 +120,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       (rulesRes.ok ? rulesRes.data : null)?.find((r) => r.appliesTo === 'tenant_default')
         ?.platformRate ?? null,
     subscriptionDates,
-    canEnableManualRefundWorkflow: can('platform.tenants.write'),
+    canEnableManualRefundWorkflow: canManageRefunds,
+    manualRefundReadiness: readinessRes.ok && readinessRes.data ? readinessRes.data : null,
   };
+
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -130,7 +149,9 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
     platformRate,
     subscriptionDates,
     canEnableManualRefundWorkflow,
+    manualRefundReadiness,
   } = loaderData;
+
   const busy = useBusy();
   const [searchParams] = useSearchParams();
   const {
@@ -283,10 +304,12 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
 
       <TenantManualRefundWorkflowCard
         enabled={tenant.settings[MANUAL_REFUND_V2_TENANT_FLAG] === true}
+        readiness={manualRefundReadiness}
         canEnable={canEnableManualRefundWorkflow}
         busy={busy}
         error={scopedError('manual-refund')}
       />
+
 
       <TenantConfigSection tenant={tenant} />
 

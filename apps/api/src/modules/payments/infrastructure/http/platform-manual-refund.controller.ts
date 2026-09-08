@@ -1,6 +1,7 @@
-import { Body, Controller, HttpCode, Ip, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, Ip, Param, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type {
+  ManualRefundReadinessResponse,
   ManualRefundWorkflowControlInput,
   ManualRefundWorkflowEnableResponse,
   ManualRefundWorkflowState,
@@ -11,10 +12,12 @@ import { RequirePermissions } from '../../../identity-access/infrastructure/http
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { BreakGlassCompleteManualRefundUseCase } from '../../application/use-cases/break-glass-complete-manual-refund.use-case';
 import { EnableManualRefundWorkflowUseCase } from '../../application/use-cases/enable-manual-refund-workflow.use-case';
+import { GetManualRefundReadinessUseCase } from '../../application/use-cases/get-manual-refund-readiness.use-case';
 import { PauseManualRefundWorkflowUseCase } from '../../application/use-cases/pause-manual-refund-workflow.use-case';
 import { ResumeManualRefundWorkflowUseCase } from '../../application/use-cases/resume-manual-refund-workflow.use-case';
 import {
   ManualRefundBreakGlassDto,
+  ManualRefundReadinessResponseDto,
   ManualRefundWorkflowControlDto,
   ManualRefundWorkflowEnableResponseDto,
   ManualRefundWorkflowStateDto,
@@ -26,9 +29,20 @@ export class PlatformManualRefundController {
   constructor(
     private readonly breakGlass: BreakGlassCompleteManualRefundUseCase,
     private readonly enableWorkflow: EnableManualRefundWorkflowUseCase,
+    private readonly getReadiness: GetManualRefundReadinessUseCase,
     private readonly pauseWorkflow: PauseManualRefundWorkflowUseCase,
     private readonly resumeWorkflow: ResumeManualRefundWorkflowUseCase,
   ) {}
+
+  @RequirePermissions('platform.tenants.write')
+  @Get('readiness')
+  @Header('Cache-Control', 'no-store')
+  @UuidParam('tenantId')
+  @ApiOperation({ summary: 'Inspect readiness for manual refund V2 rollout' })
+  @ApiOkResponse({ type: ManualRefundReadinessResponseDto })
+  async readiness(@Param('tenantId') tenantId: string): Promise<ManualRefundReadinessResponse> {
+    return this.getReadiness.execute(tenantId);
+  }
 
   @RequirePermissions('platform.tenants.write')
   @Post('enable-workflow')
@@ -42,6 +56,7 @@ export class PlatformManualRefundController {
   ): Promise<ManualRefundWorkflowEnableResponse> {
     return this.enableWorkflow.execute(tenantId, principal.userId);
   }
+
 
   @RequirePermissions('platform.tenants.write')
   @Post('pause-workflow')

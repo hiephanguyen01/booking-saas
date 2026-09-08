@@ -626,6 +626,42 @@ export type ManualRefundWorkflowControlInput = z.infer<
   typeof manualRefundWorkflowControlInputSchema
 >;
 
+export const manualRefundReadinessCheckKeySchema = z.enum([
+  'pii_keyring',
+  'pii_active_key',
+  'pii_fingerprint_key',
+  'private_storage',
+  'schema',
+  'system_role_permissions',
+  'worker_enabled',
+]);
+export type ManualRefundReadinessCheckKey = z.infer<
+  typeof manualRefundReadinessCheckKeySchema
+>;
+
+export const manualRefundReadinessCheckSchema = z
+  .object({
+    key: manualRefundReadinessCheckKeySchema,
+    ok: z.boolean(),
+    reason: z.string().optional(),
+  })
+  .strict();
+export type ManualRefundReadinessCheck = z.infer<
+  typeof manualRefundReadinessCheckSchema
+>;
+
+export const manualRefundReadinessResponseSchema = z
+  .object({
+    ready: z.boolean(),
+    workflow: manualRefundWorkflowStateSchema,
+    checks: z.array(manualRefundReadinessCheckSchema),
+  })
+  .strict();
+export type ManualRefundReadinessResponse = z.infer<
+  typeof manualRefundReadinessResponseSchema
+>;
+
+
 export const manualRefundListQuerySchema = paginationQuerySchema.extend({
   status: manualRefundOperationStatusSchema.optional(),
   search: z.string().trim().max(100).optional(),

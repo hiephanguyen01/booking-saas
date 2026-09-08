@@ -9,7 +9,9 @@ import {
   type DomainResponse,
   type DomainVerificationResult,
   type ManualRefundWorkflowEnableResponse,
+  type ManualRefundWorkflowState,
   type SubscriptionResponse,
+
   type TenantDetailResponse,
 } from '@booking/contracts';
 import { apiDelete, apiPatch, apiPost } from '~/lib/api.server';
@@ -118,7 +120,50 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
     });
   }
 
+  if (intent === 'pause-manual-refund-v2') {
+    const { auth } = await requirePlatform(request, 'platform.tenants.write');
+    const reason = String(form.get('reason') ?? '').trim();
+    const res = await apiPost<ManualRefundWorkflowState>(
+      apiPaths.platform.manualRefundWorkflowPause(id),
+      { reason },
+      auth,
+    );
+    if (!res.ok || !res.data) {
+      return data<ActionResult>(
+        { scope: 'manual-refund', error: res.error ?? 'Không tạm dừng được workflow.' },
+        { status: res.status || 400 },
+      );
+    }
+    return data<ActionResult>({
+      scope: 'manual-refund',
+      ok: true,
+      message: 'Đã tạm dừng Manual Refund V2 cho tenant.',
+    });
+  }
+
+  if (intent === 'resume-manual-refund-v2') {
+    const { auth } = await requirePlatform(request, 'platform.tenants.write');
+    const reason = String(form.get('reason') ?? '').trim();
+    const res = await apiPost<ManualRefundWorkflowState>(
+      apiPaths.platform.manualRefundWorkflowResume(id),
+      { reason },
+      auth,
+    );
+    if (!res.ok || !res.data) {
+      return data<ActionResult>(
+        { scope: 'manual-refund', error: res.error ?? 'Không tiếp tục được workflow.' },
+        { status: res.status || 400 },
+      );
+    }
+    return data<ActionResult>({
+      scope: 'manual-refund',
+      ok: true,
+      message: 'Đã tiếp tục Manual Refund V2 cho tenant.',
+    });
+  }
+
   const permission =
+
     intent === 'assign-subscription'
       ? 'platform.subscriptions.manage'
       : intent === 'set-platform-rate'

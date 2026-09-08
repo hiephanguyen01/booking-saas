@@ -38,7 +38,9 @@ import {
   manualRefundWorkflowEnableResponseSchema,
   manualRefundWorkflowControlInputSchema,
   manualRefundWorkflowStateSchema,
+  manualRefundReadinessResponseSchema,
 } from '@booking/contracts';
+
 
 // Request bodies
 export class PaymentHistoryQueryDto extends createZodDto(paymentHistoryQuerySchema) {}
@@ -99,6 +101,9 @@ export class ManualRefundWorkflowEnableResponseDto extends createZodDto(
   manualRefundWorkflowEnableResponseSchema,
 ) {}
 export class ManualRefundWorkflowStateDto extends createZodDto(manualRefundWorkflowStateSchema) {}
+export class ManualRefundReadinessResponseDto extends createZodDto(
+  manualRefundReadinessResponseSchema,
+) {}
 
 export class GenericWebhookAcknowledgementResponseDto extends createZodDto(
   genericWebhookAcknowledgementResponseSchema,
