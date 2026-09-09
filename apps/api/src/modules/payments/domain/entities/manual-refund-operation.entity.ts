@@ -7,7 +7,6 @@ import {
   ManualRefundEvidenceRequired,
   ManualRefundFreshAuthenticationRequired,
   ManualRefundInvalidTransition,
-  ManualRefundMakerCannotApproveOwnTransfer,
   ManualRefundMakerRequired,
 } from '../errors/manual-refund-errors';
 

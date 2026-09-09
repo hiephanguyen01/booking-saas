@@ -15,7 +15,7 @@ import {
 } from '~testing';
 import type { IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { ManualRefundEvidenceRequired, ManualRefundMakerCannotApproveOwnTransfer } from '../../domain/errors/manual-refund-errors';
+import { ManualRefundEvidenceRequired } from '../../domain/errors/manual-refund-errors';
 import type { IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';
 import type { IRefundRepository } from '../../domain/ports/refund-repository.port';

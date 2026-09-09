@@ -19,7 +19,6 @@ import type { ISessionStore } from '../../../identity-access/domain/ports/sessio
 import {
   ManualRefundFreshAuthenticationRequired,
   ManualRefundEvidenceRequired,
-  ManualRefundMakerCannotApproveOwnTransfer,
 } from '../../domain/errors/manual-refund-errors';
 import type { IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
 import type { IRefundBatchRepository } from '../../domain/ports/refund-batch-repository.port';

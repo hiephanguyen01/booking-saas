@@ -6,7 +6,6 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import { STORAGE_PORT, type StoragePort } from '../../../storage/domain/ports/storage.port';
 import {
   ManualRefundConcurrentUpdate,
-  ManualRefundMakerCannotApproveOwnTransfer,
   ManualRefundEvidenceRequired,
   ManualRefundOperationNotFound,
   ManualRefundWorkflowPaused,

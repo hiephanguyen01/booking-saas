@@ -11,7 +11,6 @@ import {
 import {
   ManualRefundConcurrentUpdate,
   ManualRefundFreshAuthenticationRequired,
-  ManualRefundMakerCannotApproveOwnTransfer,
   ManualRefundEvidenceRequired,
   ManualRefundOperationNotFound,
   ManualRefundWorkflowPaused,

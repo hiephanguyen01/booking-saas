@@ -7,7 +7,6 @@ import {
   ManualRefundEvidenceRequired,
   ManualRefundFreshAuthenticationRequired,
   ManualRefundInvalidTransition,
-  ManualRefundMakerCannotApproveOwnTransfer,
 } from '../../domain/errors/manual-refund-errors';
 import type { ManualRefundPiiCryptoPort } from '../../domain/ports/manual-refund-pii-crypto.port';
 import { ProtectManualRefundDestinationUseCase } from './protect-manual-refund-destination.use-case';
