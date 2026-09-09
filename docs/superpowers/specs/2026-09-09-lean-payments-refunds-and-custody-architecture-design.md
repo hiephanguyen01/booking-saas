@@ -1,7 +1,7 @@
 # Thiết kế Kiến trúc Cải tiến: Thanh toán, Hoàn tiền Tinh gọn, Tạm giữ & Sổ cái Kép (BookingOS)
 
 - **Tài liệu:** `docs/superpowers/specs/2026-09-09-lean-payments-refunds-and-custody-architecture-design.md`
-- **Ngày lập:** 2026-09-09 (Cập nhật: Tinh giản theo phản biện - Bỏ hoàn toàn 4 mắt và Bỏ Rolling Reserve)
+- **Ngày lập:** 2026-09-09 (Cập nhật: Tinh giản tối đa theo nguyên tắc YAGNI - Bỏ 4 mắt, Bỏ Rolling Reserve, Bỏ Nhắc nhở 3m/Voucher)
 - **Tác giả:** Antigravity & CyberBear Core Team
 - **Trạng thái:** Chờ phê duyệt (Pending User Review)
 
@@ -9,18 +9,16 @@
 
 ## 1. Bối cảnh & Vấn đề Cần Giải quyết
 
-Qua quá trình rà soát mã nguồn thực tế của hệ thống BookingOS tại các module `booking`, `payments` và `finance`, hệ thống đã làm rõ **3 điểm bất cập và hướng cải tiến trọng yếu**:
+Qua quá trình rà soát mã nguồn thực tế của hệ thống BookingOS tại các module `booking`, `payments` và `finance`, hệ thống tập trung giải quyết triệt để **2 bài toán cốt lõi**:
 
 1. **Quy trình Hoàn tiền SePay 4 mắt (Maker-Checker 7 trạng thái) bị Rườm rà (Over-Engineered):**
    - Bắt buộc phải có 2 nhân sự riêng biệt (Maker lập lệnh + Checker duyệt) là không khả thi với các đối tác vừa và nhỏ (SME Studio, Sân thể thao chỉ có 1-2 người).
-   - Tồn tại trạng thái xác minh số tài khoản thủ công (`verification_required`) làm chậm trễ tiến độ hoàn tiền và gây khó chịu cho khách hàng.
+   - Tồn tại trạng thái xác minh số tài khoản thủ công (`verification_required`) làm chậm trễ tiến độ hoàn tiền.
 2. **Lỗ hổng Thâm hụt Hoa hồng do Tiền cọc thấp hơn Hoa hồng (`max0` Clamping Deficit):**
    - Tại `settlement.entity.ts`, hệ thống dùng hàm `max0(partnerShare - onsiteCollectedAmount)` để tính số tiền trả cho đối tác.
    - Khi đối tác cấu hình tiền cọc thấp (ví dụ 10%), nhưng hoa hồng nền tảng là 15-20%, đối tác thu 90% tiền mặt tại chỗ. Khoản hoa hồng còn thiếu bị hệ thống kẹp về 0 thay vì ghi nợ, gây **thất thoát doanh thu hoa hồng âm thầm** cho nền tảng.
-3. **Trải nghiệm Khách hàng Kém khi Webhook Đến Trễ bị Đè Slot (Late Webhook Slot Conflict):**
-   - Khi khách thanh toán sát nút (quá 15 phút giữ chỗ), nếu slot bị người khác đặt, hệ thống kích hoạt `autoRefundSlotTaken` hủy đơn và hoàn tiền nhưng không cảnh báo trước và không có giải pháp hỗ trợ chọn lại giờ thuận tiện.
 
-*(Lưu ý: Không triển khai Quỹ Dự phòng gối đầu Rolling Reserve 14 ngày vì hệ thống đã có Cửa sổ Khóa Payout 72h giữ 100% tiền trước khi giải ngân, việc giam thêm 7% là thừa thãi và gây ức chế dòng tiền cho đối tác).*
+*(Lưu ý về phạm vi tinh giản: Không triển khai Quỹ Dự phòng Rolling Reserve vì đã có Cửa sổ 72h giữ 100% tiền; Không triển khai tính năng nhắc nhở 3 phút hay Voucher ưu tiên đổi giờ để giữ hệ thống đơn giản, tập trung vào tính đúng đắn của dòng tiền).*
 
 ---
 
@@ -85,6 +83,8 @@ export type ManualRefundOperationStatus = z.infer<typeof manualRefundOperationSt
   - Bất kỳ nhân sự nào có quyền quản trị (Chủ cơ sở, Quản lý hoặc Kế toán) quét mã chuyển khoản, tải ảnh biên lai và bấm **"Xác nhận đã chuyển tiền"**.
   - Hệ thống ghi nhận trạng thái `completed` ngay lập tức. **Không cần người thứ hai (Checker) duyệt.**
 
+*Áp dụng đồng bộ cho cả trường hợp Webhook đến trễ bị đè slot (`SlotTakenError` trong `confirm-booking.use-case.ts`): Hệ thống tự động kích hoạt lệnh hoàn tiền 100% qua bộ máy tinh gọn này.*
+
 ---
 
 ### Cấu phần 2: Bảo vệ Thâm hụt Hoa hồng & Sổ cái Kép Minh bạch
@@ -127,20 +127,7 @@ Bút toán Sổ cái kép khi `partnerReceivable > 0n`:
    - Khách có quyền mở khiếu nại (Open Dispute) bất kỳ lúc nào trong 72h này nếu dịch vụ không đúng cam kết.
 2. **Giải ngân Trọn vẹn (100% Fast Release):**
    - Hết thời hạn 72h mà không phát sinh khiếu nại: Settlement tự động chuyển sang `released`.
-   - Đối tác nhận trọn vẹn $100\%$ doanh thu thuần của mình vào ví và được quyền tạo lệnh rút tiền (Payout) ngay lập tức, không bị giữ lại bất kỳ khoản dự phòng gối đầu nào.
-
----
-
-### Cấu phần 4: Xử lý Tranh chấp Slot khi Webhook Đến Trễ & Trải nghiệm Người dùng
-
-1. **Cảnh báo Sắp Hết hạn Giữ chỗ (T-3 Minutes Countdown Reminder):**
-   - Lên lịch notification job tại phút thứ 12 của chu kỳ 15 phút `pending_payment`.
-   - Gửi cảnh báo: *"Chỉ còn 3 phút để hoàn tất thanh toán giữ chỗ"*.
-2. **Khắc phục `SlotTakenError` trong `confirm-booking.use-case.ts`:**
-   - Khi webhook đến trễ và slot đã bị chiếm:
-     - Kích hoạt hoàn tiền $100\%$ tự động qua Luồng A (VietQR Payout trong 30 giây).
-     - Phát sự kiện Outbox `booking.slot_conflict_compensated`.
-     - Tạo **Priority Rebooking Token** (Mã ưu tiên đổi giờ) kèm voucher giảm $5\% - 10\%$ gửi cho khách qua SMS/Email/In-app, cho phép khách 1-click chọn lại khung giờ mới mà không mất công nhập lại toàn bộ thông tin.
+   - Đối tác nhận trọn vẹn $100\%$ doanh thu thuần của mình vào ví và được quyền tạo lệnh rút tiền (Payout) ngay lập tức.
 
 ---
 
@@ -150,7 +137,7 @@ Bút toán Sổ cái kép khi `partnerReceivable > 0n`:
 | :--- | :--- | :--- |
 | **Giai đoạn 1** | Tinh gọn Contract & Xóa bỏ 4 Mắt | `packages/contracts/src/contracts/payment.ts`, `apps/api/src/modules/payments/` |
 | **Giai đoạn 2** | Sửa lỗi `max0` & Bổ sung Invariant Cọc tối thiểu | `apps/api/src/modules/finance/domain/entities/settlement.entity.ts`, `catalog` |
-| **Giai đoạn 3** | Tối ưu Cửa sổ 72h & Xử lý Tranh chấp Slot | `confirm-booking.use-case.ts`, `notification` module |
+| **Giai đoạn 3** | Đồng bộ Luồng Hoàn tiền Late Webhook (`SlotTakenError`) | `confirm-booking.use-case.ts` |
 
 ---
 
