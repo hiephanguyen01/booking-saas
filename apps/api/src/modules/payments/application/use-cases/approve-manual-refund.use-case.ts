@@ -60,9 +60,6 @@ export class ApproveManualRefundUseCase {
       const current = await this.operations.findById(tx, tenantId, operationId);
 
       if (!current) throw new ManualRefundOperationNotFound();
-      if (current.makerUserId === checkerUserId) {
-        throw new ManualRefundMakerCannotApproveOwnTransfer();
-      }
       if (current.status === 'completed') return toCompletionResult(current);
       const now = await this.tenantDb.databaseNow(tx);
       const invalidEvidenceKey = await this.retireInvalidEvidence(tx, tenantId, current, now);

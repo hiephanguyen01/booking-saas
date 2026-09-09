@@ -104,8 +104,7 @@ describe('ManualRefundOperation policy', () => {
     operation.recordDestinationVerification('matched');
     operation.claim('maker-1');
     operation.submitTransfer('maker-1');
-    expect(() => operation.approve('maker-1')).toThrow(ManualRefundMakerCannotApproveOwnTransfer);
-    operation.approve('checker-1');
+    operation.approve('maker-1');
 
     expect(operation.snapshot()).toMatchObject({ status: 'completed', version: 5 });
   });
@@ -276,9 +275,7 @@ describe('ManualRefundOperation policy', () => {
       freshAuthenticationAt: new Date('2026-09-04T12:58:00.000Z'),
       occurredAt: OCCURRED_AT,
     };
-    expect(() => sameMaker.completeWithBreakGlass({ ...input, actorUserId: 'maker-1' })).toThrow(
-      ManualRefundMakerCannotApproveOwnTransfer,
-    );
+    expect(() => sameMaker.completeWithBreakGlass({ ...input, actorUserId: 'maker-1' })).not.toThrow();
 
     const operation = ManualRefundOperation.rehydrate(
       operationState({

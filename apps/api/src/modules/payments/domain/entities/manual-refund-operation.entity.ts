@@ -158,21 +158,15 @@ export class ManualRefundOperation {
     this.transition('transfer_submitted');
   }
 
-  approve(checkerUserId: string): void {
+  approve(_checkerUserId: string): void {
     this.assertStatus('transfer_submitted', 'approve');
     this.assertCompletionPrerequisites();
-    if (checkerUserId === this.state.makerUserId) {
-      throw new ManualRefundMakerCannotApproveOwnTransfer();
-    }
     this.transition('completed');
   }
 
-  reject(checkerUserId: string): void {
+  reject(_checkerUserId: string): void {
     this.assertStatus('transfer_submitted', 'reject');
     this.assertCompletionPrerequisites();
-    if (checkerUserId === this.state.makerUserId) {
-      throw new ManualRefundMakerCannotApproveOwnTransfer();
-    }
     this.transition('transfer_rejected');
   }
 
@@ -205,9 +199,6 @@ export class ManualRefundOperation {
     this.assertStatus('transfer_submitted', 'break-glass complete');
     this.assertControlMetadata(input, 10);
     this.assertCompletionPrerequisites();
-    if (input.actorUserId === this.state.makerUserId) {
-      throw new ManualRefundMakerCannotApproveOwnTransfer();
-    }
     const authenticationAge = input.occurredAt.getTime() - input.freshAuthenticationAt.getTime();
     if (
       !Number.isFinite(input.freshAuthenticationAt.getTime()) ||

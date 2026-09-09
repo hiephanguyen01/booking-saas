@@ -172,7 +172,7 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
     });
   });
 
-  it('does not let the transfer maker use break-glass completion', async () => {
+  it('allows the transfer maker to use break-glass completion in streamlined flow', async () => {
     const { useCase } = harness(new Date('2026-09-04T12:58:00Z'));
     await expect(
       useCase.execute(
@@ -185,7 +185,7 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
         },
         { userId: MANUAL_REFUND_MAKER_ID, sessionId: 'session-1', ip: '127.0.0.1' },
       ),
-    ).rejects.toBeInstanceOf(ManualRefundMakerCannotApproveOwnTransfer);
+    ).resolves.toMatchObject({ status: 'completed' });
   });
 
   it('does not duplicate completion side effects when retried after completion', async () => {
@@ -226,7 +226,7 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
     expect(events).toEqual([]);
   });
 
-  it('does not let the maker bypass separation by retrying break-glass after completion', async () => {
+  it('treats completed operation as idempotent for maker retry', async () => {
     const completed = manualRefundOperation({
       ...submitted(),
       status: 'completed',
@@ -250,7 +250,7 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
         },
         { userId: MANUAL_REFUND_MAKER_ID, sessionId: 'session-1', ip: '127.0.0.1' },
       ),
-    ).rejects.toBeInstanceOf(ManualRefundMakerCannotApproveOwnTransfer);
+    ).resolves.toMatchObject({ status: 'completed' });
   });
 
   it('blocks break-glass when the claimed evidence object is unavailable', async () => {

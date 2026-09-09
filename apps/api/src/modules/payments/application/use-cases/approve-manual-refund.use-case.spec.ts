@@ -149,28 +149,46 @@ describe('ApproveManualRefundUseCase', () => {
     });
   });
 
-  it('rejects maker self-approval before any completion write', async () => {
+  it('permits maker self-approval in streamlined 1-step flow', async () => {
+    const current = submitted();
     const useCase = new ApproveManualRefundUseCase(
       fakePort<IManualRefundOperationRepository>({
         getWorkflowState: () => Promise.resolve({ enabled: true, paused: false }),
-        findById: () => Promise.resolve(submitted()),
+        findById: () => Promise.resolve(current),
+        casUpdate: () => Promise.resolve({ ...current, status: 'completed', version: 4 }),
       }),
-      fakePort<IRefundRepository>({}),
-      fakePort<IRefundBatchRepository>({}),
-      fakePort<IManualRefundEvidenceRepository>({}),
-      fakePort<StoragePort>({}),
-      fakePort<IAuditWriter>({}),
+      fakePort<IRefundRepository>({ completeManualBatch: () => Promise.resolve(1) }),
+      fakePort<IRefundBatchRepository>({
+        refreshStatus: () => Promise.resolve({
+          transitionedToCompleted: true,
+          batch: {
+            id: MANUAL_REFUND_BATCH_ID,
+            tenantId: MANUAL_REFUND_TENANT_ID,
+            bookingId: MANUAL_REFUND_BOOKING_ID,
+            requestedAmount: 1_250_000n,
+            reason: 'booking_cancellation',
+            affectsBookingStatus: true,
+            status: 'completed',
+            completedAt: MANUAL_REFUND_NOW,
+          },
+        }),
+      }),
+      fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: 'private/receipt.pdf', status: 'claimed', sizeBytes: 12 }) }),
+      fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: true, checksum: 'b'.repeat(64), sizeBytes: 12, contentType: 'application/pdf' }) }),
+      fakePort<IAuditWriter>({ write: () => Promise.resolve() }),
       new OutboxService(),
-      fakeTenantDb().service,
+      fakeTenantDb({
+        tx: fakeTx({ outboxEvent: { create: () => Promise.resolve({}) } }),
+        now: MANUAL_REFUND_NOW,
+      }).service,
     );
-    await expect(
-      useCase.execute(
-        MANUAL_REFUND_TENANT_ID,
-        MANUAL_REFUND_OPERATION_ID,
-        { expectedVersion: 3 },
-        MANUAL_REFUND_MAKER_ID,
-      ),
-    ).rejects.toBeInstanceOf(ManualRefundMakerCannotApproveOwnTransfer);
+    const result = await useCase.execute(
+      MANUAL_REFUND_TENANT_ID,
+      MANUAL_REFUND_OPERATION_ID,
+      { expectedVersion: 3 },
+      MANUAL_REFUND_MAKER_ID,
+    );
+    expect(result.status).toBe('completed');
   });
 
   it('treats a repeated approval of a completed operation as idempotent', async () => {
@@ -241,7 +259,7 @@ describe('ApproveManualRefundUseCase', () => {
         { expectedVersion: 4 },
         MANUAL_REFUND_MAKER_ID,
       ),
-    ).rejects.toBeInstanceOf(ManualRefundMakerCannotApproveOwnTransfer);
+    ).resolves.toMatchObject({ status: 'completed' });
   });
 
   it('blocks completion when the claimed evidence record is missing', async () => {
