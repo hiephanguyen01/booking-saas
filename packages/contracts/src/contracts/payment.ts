@@ -718,3 +718,19 @@ export const manualRefundDetailResponseSchema = manualRefundStatusResponseSchema
   })
   .strict();
 export type ManualRefundDetailResponse = z.infer<typeof manualRefundDetailResponseSchema>;
+
+export const lookupBankAccountInputSchema = z
+  .object({
+    bankBin: z.string().trim().min(3).max(10),
+    accountNumber: z.string().trim().min(4).max(34),
+  })
+  .strict();
+export type LookupBankAccountInput = z.infer<typeof lookupBankAccountInputSchema>;
+
+export const lookupBankAccountResponseSchema = z
+  .object({
+    accountName: z.string(),
+    isValid: z.boolean(),
+  })
+  .strict();
+export type LookupBankAccountResponse = z.infer<typeof lookupBankAccountResponseSchema>;
