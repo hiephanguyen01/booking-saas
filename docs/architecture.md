@@ -50,8 +50,11 @@ Browser ──▶ RR8 loader/action (server)
 Global `SessionAuthGuard` → `PermissionsGuard`, **deny-by-default**: a route must be `@Public()`,
 `@AuthenticatedOnly()`, or `@RequirePermissions('scope.resource.action')`. The client names its scope
 with `x-tenant-id` / `x-partner-id` headers; the guard verifies the user holds a role assignment there
-(never trusting the header for data), then seeds the tenant context for RLS. Permissions resolve
-`role_assignments → roles → role_permissions → permissions`, cached in Redis. The permission catalog
+(never trusting the header for data), then seeds the tenant context for RLS. Sessions are backed by an
+**L1 Redis cache** (`sess:${sha256(token)}`) with full revocation/rotation eviction (see
+[ADR 0010](./decisions/0010-redis-caching-and-security-hardening.md)). Permissions resolve
+`role_assignments → roles → role_permissions → permissions`, cached in Redis and invalidated atomically
+using user index sets (`perms-index:${userId}`) to eliminate blocking scans. The permission catalog
 (39 keys) and 7 system roles are fixed in code (`identity-access/domain/permission-catalog.ts`) and
 seeded — 3 tiers: **platform / tenant / partner**.
 
