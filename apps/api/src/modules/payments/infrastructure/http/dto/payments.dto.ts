@@ -39,6 +39,8 @@ import {
   manualRefundWorkflowControlInputSchema,
   manualRefundWorkflowStateSchema,
   manualRefundReadinessResponseSchema,
+  lookupBankAccountInputSchema,
+  lookupBankAccountResponseSchema,
 } from '@booking/contracts';
 
 
@@ -110,4 +112,8 @@ export class GenericWebhookAcknowledgementResponseDto extends createZodDto(
 ) {}
 export class ZaloPayWebhookAcknowledgementResponseDto extends createZodDto(
   zaloPayWebhookAcknowledgementResponseSchema,
+) {}
+export class LookupBankAccountDto extends createZodDto(lookupBankAccountInputSchema) {}
+export class LookupBankAccountResponseDto extends createZodDto(
+  lookupBankAccountResponseSchema,
 ) {}

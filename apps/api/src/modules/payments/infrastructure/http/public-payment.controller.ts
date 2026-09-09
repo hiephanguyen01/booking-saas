@@ -25,8 +25,11 @@ import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cas
 import { CheckoutUseCase } from '../../application/use-cases/checkout.use-case';
 import { GetPaymentStatusUseCase } from '../../application/use-cases/get-payment-status.use-case';
 import { GetPublicPaymentOptionsUseCase } from '../../application/use-cases/get-public-payment-options.use-case';
+import { LookupBankAccountUseCase } from '../../application/use-cases/lookup-bank-account.use-case';
 import {
   CheckoutResponseDto,
+  LookupBankAccountDto,
+  LookupBankAccountResponseDto,
   PaymentStatusResponseDto,
   PublicPaymentOptionsDto,
   StartCheckoutDto,
@@ -40,9 +43,20 @@ export class PublicPaymentController {
     private readonly checkout: CheckoutUseCase,
     private readonly paymentStatus: GetPaymentStatusUseCase,
     private readonly paymentOptions: GetPublicPaymentOptionsUseCase,
+    private readonly lookupBankAccountUseCase: LookupBankAccountUseCase,
     private readonly resolveBookingAccess: ResolveBookingAccessUseCase,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
   ) {}
+
+  @Public()
+  @Post('payments/lookup-bank-account')
+  @ApiOperation({ summary: 'Lookup registered bank account holder name via Napas' })
+  @ApiOkResponse({ type: LookupBankAccountResponseDto })
+  async lookupAccount(
+    @Body() input: LookupBankAccountDto,
+  ) {
+    return this.lookupBankAccountUseCase.execute(input);
+  }
 
   @Public()
   @Get('payment-options')

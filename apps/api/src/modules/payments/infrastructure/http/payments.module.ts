@@ -23,6 +23,7 @@ import { ListTenantRefundsUseCase } from '../../application/use-cases/list-tenan
 import { UpdatePaymentRoutingUseCase } from '../../application/use-cases/update-payment-routing.use-case';
 import { UpdateRefundPolicyUseCase } from '../../application/use-cases/update-refund-policy.use-case';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
+import { LookupBankAccountUseCase } from '../../application/use-cases/lookup-bank-account.use-case';
 import { CRYPTO } from '../../domain/ports/crypto.port';
 import { GATEWAY_CONFIG_REPOSITORY } from '../../domain/ports/gateway-config-repository.port';
 import { GATEWAY_REGISTRY } from '../../domain/ports/gateway-registry.port';
@@ -179,9 +180,10 @@ import { ManualRefundReadinessAdapter } from '../manual-refund-readiness.adapter
     StartManualRefundTransferSlaUseCase,
     EscalateManualRefundCheckerWaitingUseCase,
     PurgeManualRefundCiphertextUseCase,
+    LookupBankAccountUseCase,
     ManualRefundSlaWorker,
   ],
-  exports: [ExecuteRefundUseCase],
+  exports: [ExecuteRefundUseCase, LookupBankAccountUseCase],
 })
 export class PaymentsModule implements OnModuleInit {
   private readonly logger = new Logger(PaymentsModule.name);
