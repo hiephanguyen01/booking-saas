@@ -1,8 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
-  LookupBankAccountInput,
-  LookupBankAccountResponse,
-} from '@booking/contracts';
+import type { LookupBankAccountInput, LookupBankAccountResponse } from '@booking/contracts';
 import {
   ACCOUNT_NAME_LOOKUP,
   type AccountNameLookupPort,

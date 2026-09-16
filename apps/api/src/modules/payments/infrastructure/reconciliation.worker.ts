@@ -19,7 +19,8 @@ import { REFUND_REPOSITORY, type IRefundRepository } from '../domain/ports/refun
 
 export const RECONCILIATION_QUEUE = 'payment-reconciliation';
 const POLL_EVERY_MS = 30_000;
-const staleSec = (): number => Number(process.env.PAYMENT_STALE_SEC ?? '600');
+const staleSec = (): number =>
+  Number(process.env.PAYMENT_STALE_SEC ?? (process.env.NODE_ENV === 'production' ? '600' : '3'));
 
 @Injectable()
 export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown {

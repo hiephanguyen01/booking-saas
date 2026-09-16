@@ -2,25 +2,10 @@ import type { GatewayFailureKind } from '../../domain/errors/gateway-operation-e
 import type { PaymentStatusResult } from '../../domain/ports/payment-gateway.port';
 
 const FINAL_PAYMENT_FAILURE_CODES = new Set([
-  98,
-  99,
-  1001,
-  1002,
-  1003,
-  1004,
-  1006,
-  1007,
-  1017,
-  1026,
-  2019,
-  4001,
-  4002,
-  4100,
+  98, 99, 1001, 1002, 1003, 1004, 1006, 1007, 1017, 1026, 2019, 4001, 4002, 4100,
 ]);
 
-export function mapMomoPaymentResultCode(
-  code: number | undefined,
-): PaymentStatusResult['status'] {
+export function mapMomoPaymentResultCode(code: number | undefined): PaymentStatusResult['status'] {
   if (code === 0 || code === 9000) return 'succeeded';
   if (code === 1005) return 'expired';
   if (code === 1000 || code === 7000 || code === 7002 || code === undefined) return 'pending';

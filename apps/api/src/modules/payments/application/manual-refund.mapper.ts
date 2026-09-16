@@ -36,6 +36,8 @@ export function toManualRefundOperation(
     breakGlassReason: record.breakGlassReason,
     breakGlassAuthenticatedAt: record.breakGlassAuthenticatedAt,
     breakGlassAt: record.breakGlassAt,
+    checkedByUserId: record.checkedByUserId,
+    checkedAt: record.checkedAt,
     customerAcknowledgement: record.customerAcknowledgement,
     customerAcknowledgedAt: record.customerAcknowledgedAt,
     customerAcknowledgementNote: record.customerAcknowledgementNote,

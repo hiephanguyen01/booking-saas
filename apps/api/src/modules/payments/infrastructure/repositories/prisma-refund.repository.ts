@@ -183,10 +183,7 @@ export class PrismaRefundRepository implements IRefundRepository {
     );
   }
 
-  async list(
-    tx: PrismaTx,
-    query: RefundHistoryQuery,
-  ): Promise<RepoPage<RefundHistoryRecord>> {
+  async list(tx: PrismaTx, query: RefundHistoryQuery): Promise<RepoPage<RefundHistoryRecord>> {
     const where: Prisma.RefundWhereInput = { status: query.status };
     const { skip, take } = pageOffset(query);
     const [rows, total] = await Promise.all([

@@ -1,7 +1,4 @@
-import type {
-  ManualRefundReadinessCheck,
-  ManualRefundReadinessCheckKey,
-} from '@booking/contracts';
+import type { ManualRefundReadinessCheck, ManualRefundReadinessCheckKey } from '@booking/contracts';
 
 export type { ManualRefundReadinessCheck, ManualRefundReadinessCheckKey };
 

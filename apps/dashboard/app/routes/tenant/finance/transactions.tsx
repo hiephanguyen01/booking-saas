@@ -1,6 +1,8 @@
 import {
   approveManualRefundInputSchema,
+  autoPayoutManualRefundInputSchema,
   claimManualRefundInputSchema,
+  completeManualRefundTransferInputSchema,
   confirmManualRefundInputSchema,
   manualRefundDetailResponseSchema,
   manualRefundListResponseSchema,
@@ -106,7 +108,10 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     makerOptions: membersResponse?.ok
       ? (membersResponse.data ?? [])
           .filter((member) => member.permissions.includes('tenant.refunds.prepare'))
-          .map((member) => ({ value: member.userId, label: `${member.fullName} · ${member.email}` }))
+          .map((member) => ({
+            value: member.userId,
+            label: `${member.fullName} · ${member.email}`,
+          }))
       : [],
     nowIso: new Date().toISOString(),
   };
@@ -121,20 +126,27 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = typeof body.intent === 'string' ? body.intent : '';
 
   if (intent === 'confirm-refund') {
-    if (!can('tenant.payouts.manage')) return actionError('Bạn không có quyền xác nhận hoàn tiền.', 403);
+    if (!can('tenant.payouts.manage'))
+      return actionError('Bạn không có quyền xác nhận hoàn tiền.', 403);
     const refundId = String(body.refundId ?? '');
     const parsed = confirmManualRefundInputSchema.safeParse({
       reference: body.reference,
       evidenceKey: body.evidenceKey || undefined,
       note: body.note || undefined,
     });
-    if (!parsed.success) return actionError('Cần mã tham chiếu hoàn tiền hợp lệ.', 400, parsed.error.flatten().fieldErrors);
+    if (!parsed.success)
+      return actionError(
+        'Cần mã tham chiếu hoàn tiền hợp lệ.',
+        400,
+        parsed.error.flatten().fieldErrors,
+      );
     const result = await apiPost<RefundResponse>(
       apiPaths.tenant.paymentRefundConfirm(refundId),
       parsed.data,
       auth,
     );
-    if (!result.ok) return actionError(result.error ?? 'Không xác nhận được hoàn tiền.', result.status || 400);
+    if (!result.ok)
+      return actionError(result.error ?? 'Không xác nhận được hoàn tiền.', result.status || 400);
     return routeData<ManualRefundActionData>({ success: 'Đã xác nhận hoàn tiền.' });
   }
 
@@ -142,14 +154,26 @@ export async function action({ request }: Route.ActionArgs) {
   if (!operationId.success) return actionError(actionMessages.invalidIntent, 400);
   const config = manualActionConfig(intent);
   if (!config) return actionError(actionMessages.invalidIntent, 400);
-  if (!can(config.permission)) return actionError('Bạn không có quyền thực hiện thao tác này.', 403);
+  if (!can(config.permission))
+    return actionError('Bạn không có quyền thực hiện thao tác này.', 403);
 
-  const input = { ...body };
+  const input: Record<string, unknown> = { ...body };
   delete input.intent;
   delete input.operationId;
+  if ('expectedVersion' in input && typeof input.expectedVersion === 'string') {
+    const v = Number(input.expectedVersion);
+    if (!Number.isNaN(v)) {
+      input.expectedVersion = v;
+    }
+  }
   const parsed = config.schema.safeParse(input);
   if (!parsed.success) {
-    return actionError('Vui lòng kiểm tra lại thông tin đã nhập.', 400, parsed.error.flatten().fieldErrors, operationId.data);
+    return actionError(
+      'Vui lòng kiểm tra lại thông tin đã nhập.',
+      400,
+      parsed.error.flatten().fieldErrors,
+      operationId.data,
+    );
   }
   const operationPath = apiPaths.tenant.manualRefundAction(operationId.data, config.apiAction);
   if (intent === 'reveal') {
@@ -159,9 +183,19 @@ export async function action({ request }: Route.ActionArgs) {
       auth,
       { signal: request.signal, schema: manualRefundPrivateDetailsResponseSchema },
     );
-    if (!result.ok || !result.data) return actionError(result.error ?? 'Không mở được thông tin tài khoản.', result.status || 400, undefined, operationId.data);
+    if (!result.ok || !result.data)
+      return actionError(
+        result.error ?? 'Không mở được thông tin tài khoản.',
+        result.status || 400,
+        undefined,
+        operationId.data,
+      );
     return routeData<ManualRefundActionData>(
-      { operationId: operationId.data, privateDetails: result.data, success: 'Đã mở thông tin và ghi audit truy cập.' },
+      {
+        operationId: operationId.data,
+        privateDetails: result.data,
+        success: 'Đã mở thông tin và ghi audit truy cập.',
+      },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   }
@@ -169,25 +203,101 @@ export async function action({ request }: Route.ActionArgs) {
   const result = await apiPost<unknown>(operationPath, parsed.data, auth, {
     signal: request.signal,
   });
-  if (!result.ok) return actionError(result.error ?? config.error, result.status || 400, undefined, operationId.data);
-  return routeData<ManualRefundActionData>({ operationId: operationId.data, success: config.success });
+  if (!result.ok)
+    return actionError(
+      result.error ?? config.error,
+      result.status || 400,
+      undefined,
+      operationId.data,
+    );
+  return routeData<ManualRefundActionData>({
+    operationId: operationId.data,
+    success: config.success,
+  });
 }
 
 function manualActionConfig(intent: string) {
   const actions = {
-    verify: { permission: 'tenant.refunds.prepare', schema: verifyManualRefundDestinationInputSchema, apiAction: 'verify', success: 'Tài khoản đã được xác minh và sẵn sàng chuyển.', error: 'Không thể xác minh tài khoản.' },
-    claim: { permission: 'tenant.refunds.prepare', schema: claimManualRefundInputSchema, apiAction: 'claim', success: 'Bạn đã nhận xử lý batch này.', error: 'Không thể nhận xử lý batch.' },
-    reassign: { permission: 'tenant.refunds.prepare', schema: reassignManualRefundInputSchema, apiAction: 'reassign', success: 'Đã bàn giao batch cho người phụ trách mới.', error: 'Không thể bàn giao batch.' },
-    'submit-transfer': { permission: 'tenant.refunds.prepare', schema: submitManualRefundTransferInputSchema, apiAction: 'transfer', success: 'Giao dịch và biên lai đã gửi cho checker.', error: 'Không thể ghi nhận giao dịch chuyển tiền.' },
-    approve: { permission: 'tenant.refunds.approve', schema: approveManualRefundInputSchema, apiAction: 'approve', success: 'Batch hoàn tiền đã được duyệt hoàn tất.', error: 'Không thể duyệt batch hoàn tiền.' },
-    reject: { permission: 'tenant.refunds.approve', schema: rejectManualRefundInputSchema, apiAction: 'reject', success: 'Biên lai đã bị từ chối và trả lại maker.', error: 'Không thể từ chối biên lai.' },
-    reopen: { permission: 'tenant.refunds.approve', schema: rejectManualRefundInputSchema, apiAction: 'reopen', success: 'Đã mở lại thông tin nhận tiền cho khách.', error: 'Không thể mở lại thông tin nhận tiền.' },
-    reveal: { permission: 'tenant.refunds.reveal', schema: revealManualRefundPrivateDetailsInputSchema, apiAction: 'reveal', success: '', error: 'Không mở được thông tin tài khoản.' },
+    verify: {
+      permission: 'tenant.refunds.prepare',
+      schema: verifyManualRefundDestinationInputSchema,
+      apiAction: 'verify',
+      success: 'Tài khoản đã được xác minh và sẵn sàng chuyển.',
+      error: 'Không thể xác minh tài khoản.',
+    },
+    claim: {
+      permission: 'tenant.refunds.prepare',
+      schema: claimManualRefundInputSchema,
+      apiAction: 'claim',
+      success: 'Bạn đã nhận xử lý batch này.',
+      error: 'Không thể nhận xử lý batch.',
+    },
+    reassign: {
+      permission: 'tenant.refunds.prepare',
+      schema: reassignManualRefundInputSchema,
+      apiAction: 'reassign',
+      success: 'Đã bàn giao batch cho người phụ trách mới.',
+      error: 'Không thể bàn giao batch.',
+    },
+    'submit-transfer': {
+      permission: 'tenant.refunds.prepare',
+      schema: submitManualRefundTransferInputSchema,
+      apiAction: 'transfer',
+      success: 'Giao dịch và biên lai đã gửi cho checker.',
+      error: 'Không thể ghi nhận giao dịch chuyển tiền.',
+    },
+    'complete-transfer': {
+      permission: 'tenant.refunds.prepare',
+      schema: completeManualRefundTransferInputSchema,
+      apiAction: 'complete-transfer',
+      success: 'Đã hoàn tất chuyển tiền hoàn cho khách thành công.',
+      error: 'Không thể hoàn tất giao dịch chuyển tiền.',
+    },
+    'auto-payout': {
+      permission: 'tenant.refunds.prepare',
+      schema: autoPayoutManualRefundInputSchema,
+      apiAction: 'auto-payout',
+      success: 'Đã thực hiện chi hộ tự động qua cổng thanh toán thành công!',
+      error: 'Không thể thực hiện chi hộ tự động.',
+    },
+    approve: {
+      permission: 'tenant.refunds.approve',
+      schema: approveManualRefundInputSchema,
+      apiAction: 'approve',
+      success: 'Batch hoàn tiền đã được duyệt hoàn tất.',
+      error: 'Không thể duyệt batch hoàn tiền.',
+    },
+    reject: {
+      permission: 'tenant.refunds.approve',
+      schema: rejectManualRefundInputSchema,
+      apiAction: 'reject',
+      success: 'Biên lai đã bị từ chối và trả lại maker.',
+      error: 'Không thể từ chối biên lai.',
+    },
+    reopen: {
+      permission: 'tenant.refunds.approve',
+      schema: rejectManualRefundInputSchema,
+      apiAction: 'reopen',
+      success: 'Đã mở lại thông tin nhận tiền cho khách.',
+      error: 'Không thể mở lại thông tin nhận tiền.',
+    },
+    reveal: {
+      permission: 'tenant.refunds.reveal',
+      schema: revealManualRefundPrivateDetailsInputSchema,
+      apiAction: 'reveal',
+      success: '',
+      error: 'Không mở được thông tin tài khoản.',
+    },
   } as const;
   return intent in actions ? actions[intent as keyof typeof actions] : null;
 }
 
-function actionError(error: string, status: number, fieldErrors?: Record<string, string[] | undefined>, operationId?: string) {
+function actionError(
+  error: string,
+  status: number,
+  fieldErrors?: Record<string, string[] | undefined>,
+  operationId?: string,
+) {
   return routeData<ManualRefundActionData>({ operationId, error, fieldErrors }, { status });
 }
 

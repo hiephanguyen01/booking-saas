@@ -1,5 +1,9 @@
 import type { RefundExecutionMode, RefundStatus } from '@prisma/client';
-import type { ConfirmManualRefundInput, RefundEvidence, RefundHistoryQuery } from '@booking/contracts';
+import type {
+  ConfirmManualRefundInput,
+  RefundEvidence,
+  RefundHistoryQuery,
+} from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RepoPage } from '../../../../shared/pagination/pagination';
 
@@ -99,10 +103,7 @@ export interface IRefundRepository {
   ): Promise<number>;
   /** Take the per-booking advisory xact lock that serialises concurrent refund handlers. */
   lockForBooking(tx: PrismaTx, bookingId: string): Promise<void>;
-  list(
-    tx: PrismaTx,
-    query: RefundHistoryQuery,
-  ): Promise<RepoPage<RefundHistoryRecord>>;
+  list(tx: PrismaTx, query: RefundHistoryQuery): Promise<RepoPage<RefundHistoryRecord>>;
   findPendingAutomatic(limit: number): Promise<PendingAutomaticRefundRecord[]>;
   /** Legacy non-batched succeeded refunds whose business effects need replay. */
   findSucceededNeedingRecovery(limit: number): Promise<RefundRecoveryRecord[]>;

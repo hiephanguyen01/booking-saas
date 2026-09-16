@@ -130,13 +130,7 @@ export class ManualRefundReadinessAdapter implements ManualRefundReadinessPort {
     const accessKey = process.env.S3_ACCESS_KEY ?? 'minio';
     const secretKey = process.env.S3_SECRET_KEY ?? 'minio12345';
 
-    if (
-      !privateBucket ||
-      privateBucket === bucket ||
-      !endpoint ||
-      !accessKey ||
-      !secretKey
-    ) {
+    if (!privateBucket || privateBucket === bucket || !endpoint || !accessKey || !secretKey) {
       checks.push({ key: 'private_storage', ok: false, reason: 'misconfigured_private_storage' });
     } else {
       checks.push({ key: 'private_storage', ok: true });
@@ -205,7 +199,11 @@ export class ManualRefundReadinessAdapter implements ManualRefundReadinessPort {
       );
 
       const tenantRoles = ['Tenant Owner', 'Manager', 'Finance'];
-      const tenantPerms = ['tenant.refunds.prepare', 'tenant.refunds.approve', 'tenant.refunds.reveal'];
+      const tenantPerms = [
+        'tenant.refunds.prepare',
+        'tenant.refunds.approve',
+        'tenant.refunds.reveal',
+      ];
       const tenantRolesOk = tenantRoles.every((roleName) =>
         tenantPerms.every((perm) =>
           rolePermRows.some(

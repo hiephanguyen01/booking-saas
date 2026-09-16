@@ -68,10 +68,7 @@ describe('GetPublicPaymentOptionsUseCase', () => {
   });
 
   it('removes a method when its selected provider is inactive instead of falling back', async () => {
-    const useCase = harness(
-      [config('sepay'), config('momo'), config('zalopay')],
-      ALL_ROUTES,
-    );
+    const useCase = harness([config('sepay'), config('momo'), config('zalopay')], ALL_ROUTES);
 
     await expect(useCase.execute(HOST)).resolves.toEqual({
       methods: ['international_card', 'momo_wallet', 'zalopay_wallet'],
@@ -86,7 +83,9 @@ describe('GetPublicPaymentOptionsUseCase', () => {
     await expect(harness([config('sepay')], routes).execute(HOST)).rejects.toBeInstanceOf(
       PaymentNotConfigured,
     );
-    await expect(harness([config('sepay'), config('payos')], routes).execute(HOST)).resolves.toEqual({
+    await expect(
+      harness([config('sepay'), config('payos')], routes).execute(HOST),
+    ).resolves.toEqual({
       methods: ['bank_transfer'],
     });
   });
@@ -104,10 +103,7 @@ describe('GetPublicPaymentOptionsUseCase', () => {
     vi.stubEnv('ALLOW_MOCK_PAYMENTS', 'true');
     vi.stubEnv('NODE_ENV', 'development');
 
-    const useCase = harness(
-      [],
-      [{ method: 'bank_transfer', gateway: 'sepay', enabled: false }],
-    );
+    const useCase = harness([], [{ method: 'bank_transfer', gateway: 'sepay', enabled: false }]);
 
     await expect(useCase.execute(HOST)).rejects.toBeInstanceOf(PaymentNotConfigured);
   });

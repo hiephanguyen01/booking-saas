@@ -21,11 +21,10 @@ export class Payment {
     if (booking.status !== 'pending_payment') throw new BookingNotPayable(booking.status);
   }
 
-  static plan(booking: {
-    depositAmount: bigint;
-    securityDeposit: bigint;
-    finalAmount: bigint;
-  }): { amount: bigint; kind: 'full' | 'deposit' } {
+  static plan(booking: { depositAmount: bigint; securityDeposit: bigint; finalAmount: bigint }): {
+    amount: bigint;
+    kind: 'full' | 'deposit';
+  } {
     const amount = booking.depositAmount + booking.securityDeposit;
     const kind = booking.depositAmount >= booking.finalAmount ? 'full' : 'deposit';
     return { amount, kind };

@@ -2,7 +2,10 @@ import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
 import { QUEUE_OPTIONS } from '../../../shared/redis/queue-options';
-import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../domain/ports/manual-refund-operation-repository.port';
+import {
+  MANUAL_REFUND_OPERATION_REPOSITORY,
+  type IManualRefundOperationRepository,
+} from '../domain/ports/manual-refund-operation-repository.port';
 import { EscalateManualRefundCheckerWaitingUseCase } from '../application/use-cases/escalate-manual-refund-checker-waiting.use-case';
 import { SendManualRefundCustomerDetailReminderUseCase } from '../application/use-cases/send-manual-refund-customer-detail-reminder.use-case';
 import { StartManualRefundTransferSlaUseCase } from '../application/use-cases/start-manual-refund-transfer-sla.use-case';
@@ -20,7 +23,8 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
   private worker?: Worker;
 
   constructor(
-    @Inject(MANUAL_REFUND_OPERATION_REPOSITORY) private readonly operations: IManualRefundOperationRepository,
+    @Inject(MANUAL_REFUND_OPERATION_REPOSITORY)
+    private readonly operations: IManualRefundOperationRepository,
     private readonly detailReminder: SendManualRefundCustomerDetailReminderUseCase,
     private readonly transferSla: StartManualRefundTransferSlaUseCase,
     private readonly checkerEscalation: EscalateManualRefundCheckerWaitingUseCase,
@@ -31,7 +35,11 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
     if (process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
     this.queue = new Queue(MANUAL_REFUND_SLA_QUEUE, { connection, ...QUEUE_OPTIONS });
-    await this.queue.upsertJobScheduler('manual-refund-sla-poll', { every: POLL_EVERY_MS }, { name: 'poll' });
+    await this.queue.upsertJobScheduler(
+      'manual-refund-sla-poll',
+      { every: POLL_EVERY_MS },
+      { name: 'poll' },
+    );
     this.worker = new Worker(MANUAL_REFUND_SLA_QUEUE, () => this.sweep(), { connection });
   }
 
@@ -45,7 +53,14 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
     const reminders = await this.operations.findCustomerDetailReminderCandidates(BATCH_SIZE);
     for (const candidate of reminders) {
       try {
-        if (await this.detailReminder.execute(candidate.tenantId, candidate.operationId, candidate.hours)) processed++;
+        if (
+          await this.detailReminder.execute(
+            candidate.tenantId,
+            candidate.operationId,
+            candidate.hours,
+          )
+        )
+          processed++;
       } catch (error) {
         this.logger.warn({
           event: 'manual_refund_worker_item_failed',
@@ -59,7 +74,14 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
     const transfer = await this.operations.findTransferSlaCandidates(BATCH_SIZE);
     for (const candidate of transfer) {
       try {
-        if (await this.transferSla.execute(candidate.tenantId, candidate.operationId, candidate.slaHours)) processed++;
+        if (
+          await this.transferSla.execute(
+            candidate.tenantId,
+            candidate.operationId,
+            candidate.slaHours,
+          )
+        )
+          processed++;
       } catch (error) {
         this.logger.warn({
           event: 'manual_refund_worker_item_failed',
@@ -73,7 +95,8 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
     const checker = await this.operations.findCheckerEscalationCandidates(BATCH_SIZE);
     for (const candidate of checker) {
       try {
-        if (await this.checkerEscalation.execute(candidate.tenantId, candidate.operationId)) processed++;
+        if (await this.checkerEscalation.execute(candidate.tenantId, candidate.operationId))
+          processed++;
       } catch (error) {
         this.logger.warn({
           event: 'manual_refund_worker_item_failed',
@@ -87,7 +110,8 @@ export class ManualRefundSlaWorker implements OnModuleInit, OnApplicationShutdow
     const purge = await this.operations.findCiphertextPurgeCandidates(BATCH_SIZE);
     for (const candidate of purge) {
       try {
-        if (await this.purgeCiphertext.execute(candidate.tenantId, candidate.operationId)) processed++;
+        if (await this.purgeCiphertext.execute(candidate.tenantId, candidate.operationId))
+          processed++;
       } catch (error) {
         this.logger.warn({
           event: 'manual_refund_worker_item_failed',

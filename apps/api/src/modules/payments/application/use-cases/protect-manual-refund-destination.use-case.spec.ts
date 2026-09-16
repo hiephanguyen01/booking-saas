@@ -274,7 +274,9 @@ describe('ManualRefundOperation policy', () => {
       freshAuthenticationAt: new Date('2026-09-04T12:58:00.000Z'),
       occurredAt: OCCURRED_AT,
     };
-    expect(() => sameMaker.completeWithBreakGlass({ ...input, actorUserId: 'maker-1' })).not.toThrow();
+    expect(() =>
+      sameMaker.completeWithBreakGlass({ ...input, actorUserId: 'maker-1' }),
+    ).not.toThrow();
 
     const operation = ManualRefundOperation.rehydrate(
       operationState({

@@ -1,8 +1,4 @@
-import type {
-  CheckoutDestination,
-  PaymentHistoryQuery,
-  RefundStrategy,
-} from '@booking/contracts';
+import type { CheckoutDestination, PaymentHistoryQuery, RefundStrategy } from '@booking/contracts';
 import type { PaymentCheckoutState, PaymentKind, PaymentStatus } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RepoPage } from '../../../../shared/pagination/pagination';

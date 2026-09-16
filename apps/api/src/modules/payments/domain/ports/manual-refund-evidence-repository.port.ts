@@ -1,8 +1,6 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
-export const MANUAL_REFUND_EVIDENCE_REPOSITORY = Symbol(
-  'MANUAL_REFUND_EVIDENCE_REPOSITORY',
-);
+export const MANUAL_REFUND_EVIDENCE_REPOSITORY = Symbol('MANUAL_REFUND_EVIDENCE_REPOSITORY');
 
 export interface ManualRefundEvidenceUploadRecord {
   id: string;

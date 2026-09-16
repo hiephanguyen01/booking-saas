@@ -27,8 +27,5 @@ export interface GatewayRegistryPort {
     tenantId: string,
     method: CustomerPaymentMethod,
   ): Promise<ResolvedGateway>;
-  resolveForPayment(
-    tx: PrismaTx,
-    payment: PaymentGatewayResolutionInput,
-  ): Promise<ResolvedGateway>;
+  resolveForPayment(tx: PrismaTx, payment: PaymentGatewayResolutionInput): Promise<ResolvedGateway>;
 }

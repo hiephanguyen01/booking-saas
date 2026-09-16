@@ -2,25 +2,18 @@ import {
   acknowledgeManualRefundInputSchema,
   submitManualRefundDestinationInputSchema,
   type ManualRefundStatusResponse,
+  VIETNAM_BANKS,
 } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
+import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Banknote, CheckCircle2, CircleAlert, LockKeyhole } from 'lucide-react';
+import { useLocation } from 'react-router';
 import { formatVnd } from '~/lib/ui';
 
-const BANKS = [
-  ['VCB', 'Vietcombank'],
-  ['TCB', 'Techcombank'],
-  ['MB', 'MB Bank'],
-  ['ACB', 'ACB'],
-  ['VPB', 'VPBank'],
-  ['BIDV', 'BIDV'],
-  ['CTG', 'VietinBank'],
-  ['TPB', 'TPBank'],
-  ['STB', 'Sacombank'],
-] as const;
+const BANKS = VIETNAM_BANKS.map((b) => [b.code, `${b.shortName} (${b.code})`] as const);
 
 const COPY = {
   vi: {
@@ -142,6 +135,7 @@ function RefundCard({
   actionData?: CustomerRefundActionData;
 }) {
   const copy = COPY[locale];
+  const location = useLocation();
   const editable =
     !refund.destinationLocked &&
     [
@@ -217,6 +211,7 @@ function RefundCard({
           <GenericForm
             schema={submitManualRefundDestinationInputSchema}
             columns={2}
+            action={location.pathname}
             fields={[
               {
                 name: 'bankCode',
@@ -270,10 +265,40 @@ function RefundCard({
         ) : null}
 
         {refund.status === 'completed' ? (
-          <div className="grid gap-4 border-t pt-5 sm:grid-cols-2">
-            <AcknowledgementForm refund={refund} locale={locale} acknowledgement="received" />
-            <AcknowledgementForm refund={refund} locale={locale} acknowledgement="not_received" />
-          </div>
+          refund.customerAcknowledgement ? (
+            <div className="border-t pt-5">
+              {refund.customerAcknowledgement === 'received' ? (
+                <Alert className="border-success/30 bg-success/10 text-success">
+                  <CheckCircle2 className="size-4 text-success" />
+                  <AlertTitle className="font-semibold text-foreground">
+                    {locale === 'vi' ? 'Đã xác nhận nhận tiền' : 'Refund confirmed'}
+                  </AlertTitle>
+                  <AlertDescription className="text-sm text-muted-foreground">
+                    {locale === 'vi'
+                      ? `Quý khách đã xác nhận nhận đủ tiền hoàn lúc ${formatDeadline(refund.customerAcknowledgedAt, locale)}.`
+                      : `You confirmed receipt of the refund at ${formatDeadline(refund.customerAcknowledgedAt, locale)}.`}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="destructive">
+                  <CircleAlert className="size-4" />
+                  <AlertTitle>
+                    {locale === 'vi' ? 'Đã báo chưa nhận được tiền' : 'Reported not received'}
+                  </AlertTitle>
+                  <AlertDescription className="text-sm">
+                    {locale === 'vi'
+                      ? `Yêu cầu tra soát gửi lúc ${formatDeadline(refund.customerAcknowledgedAt, locale)} đã được chuyển đến bộ phận kế toán để kiểm tra lại giao dịch với ngân hàng.`
+                      : `Your inquiry submitted at ${formatDeadline(refund.customerAcknowledgedAt, locale)} has been forwarded to our finance team to investigate with the bank.`}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 border-t pt-5 sm:grid-cols-2">
+              <AcknowledgementForm refund={refund} locale={locale} acknowledgement="received" />
+              <AcknowledgementForm refund={refund} locale={locale} acknowledgement="not_received" />
+            </div>
+          )
         ) : null}
       </CardContent>
     </Card>
@@ -290,9 +315,11 @@ function AcknowledgementForm({
   acknowledgement: 'received' | 'not_received';
 }) {
   const copy = COPY[locale];
+  const location = useLocation();
   return (
     <GenericForm
       schema={acknowledgeManualRefundInputSchema}
+      action={location.pathname}
       fields={[{ name: 'note', type: 'textarea', rows: 2, label: copy.note }]}
       defaultValues={{ acknowledgement, note: '', expectedVersion: refund.version }}
       transform={(values) => ({ ...values, intent: 'acknowledge-refund', operationId: refund.id })}

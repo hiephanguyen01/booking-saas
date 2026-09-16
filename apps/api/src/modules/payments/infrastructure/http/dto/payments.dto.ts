@@ -34,6 +34,8 @@ import {
   manualRefundPrivateDetailsResponseSchema,
   revealManualRefundPrivateDetailsInputSchema,
   approveManualRefundInputSchema,
+  autoPayoutManualRefundInputSchema,
+  completeManualRefundTransferInputSchema,
   manualRefundBreakGlassInputSchema,
   manualRefundWorkflowEnableResponseSchema,
   manualRefundWorkflowControlInputSchema,
@@ -42,7 +44,6 @@ import {
   lookupBankAccountInputSchema,
   lookupBankAccountResponseSchema,
 } from '@booking/contracts';
-
 
 // Request bodies
 export class PaymentHistoryQueryDto extends createZodDto(paymentHistoryQuerySchema) {}
@@ -75,6 +76,10 @@ export class RevealManualRefundPrivateDetailsDto extends createZodDto(
   revealManualRefundPrivateDetailsInputSchema,
 ) {}
 export class ApproveManualRefundDto extends createZodDto(approveManualRefundInputSchema) {}
+export class AutoPayoutManualRefundDto extends createZodDto(autoPayoutManualRefundInputSchema) {}
+export class CompleteManualRefundTransferDto extends createZodDto(
+  completeManualRefundTransferInputSchema,
+) {}
 export class ManualRefundBreakGlassDto extends createZodDto(manualRefundBreakGlassInputSchema) {}
 export class ManualRefundWorkflowControlDto extends createZodDto(
   manualRefundWorkflowControlInputSchema,
@@ -114,6 +119,4 @@ export class ZaloPayWebhookAcknowledgementResponseDto extends createZodDto(
   zaloPayWebhookAcknowledgementResponseSchema,
 ) {}
 export class LookupBankAccountDto extends createZodDto(lookupBankAccountInputSchema) {}
-export class LookupBankAccountResponseDto extends createZodDto(
-  lookupBankAccountResponseSchema,
-) {}
+export class LookupBankAccountResponseDto extends createZodDto(lookupBankAccountResponseSchema) {}

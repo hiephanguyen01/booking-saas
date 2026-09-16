@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { fakeCollaborator, fakePort, fakeTenantDb } from '~testing';
 import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
+import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import type { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
+import type { GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 import type {
   IPaymentBookingReader,
   PaymentBookingRecord,
@@ -22,20 +24,49 @@ const booking = (overrides: Record<string, unknown> = {}): PaymentBookingRecord 
     ...overrides,
   }) as unknown as PaymentBookingRecord;
 
-function harness(record: PaymentBookingRecord | null, paymentStatus: string | null = 'pending') {
+function harness(
+  record: PaymentBookingRecord | null,
+  paymentStatus: string | null = 'pending',
+  gatewayStatus: string = 'pending',
+) {
   const tenantDb = fakeTenantDb();
   const useCase = new GetPaymentStatusUseCase(
     fakePort<IPaymentBookingReader>({ findByCode: () => Promise.resolve(record) }),
     fakePort<IPaymentRepository>({
       findLatestByBooking: () =>
         Promise.resolve(
-          paymentStatus === null ? null : ({ status: paymentStatus, kind: 'deposit' } as never),
+          paymentStatus === null
+            ? null
+            : ({
+                id: 'payment-1',
+                status: paymentStatus,
+                kind: 'deposit',
+                amount: 500_000n,
+                gatewayOrderRef: 'SEPAY_ORDER_123',
+              } as never),
         ),
+      markSucceeded: () => Promise.resolve(true),
+    }),
+    fakePort<GatewayRegistryPort>({
+      resolveForPayment: () =>
+        Promise.resolve({
+          gateway: {
+            queryPaymentStatus: () =>
+              Promise.resolve({
+                status: gatewayStatus as never,
+                amountVnd: 500_000n,
+                gatewayTxnId: 'TXN_999',
+              }),
+          } as never,
+          settings: {} as never,
+          configRevisionId: 'rev-1',
+        }),
     }),
     fakeCollaborator<ResolveTenantByHostUseCase>({
       execute: () => Promise.resolve({ id: TENANT_ID, live: true }),
     }),
     tenantDb.service,
+    fakePort<OutboxService>({ emit: () => Promise.resolve() } as never),
   );
   return { useCase, tenantDb };
 }
@@ -67,6 +98,17 @@ describe('GetPaymentStatusUseCase', () => {
     await expect(useCase.execute(HOST, CODE)).resolves.toMatchObject({
       paymentStatus: 'none',
       paymentKind: null,
+    });
+  });
+
+  it('auto-reconciles pending payment with gateway and returns confirmed status when gateway captured', async () => {
+    const { useCase } = harness(booking(), 'pending', 'succeeded');
+
+    const result = await useCase.execute(HOST, CODE);
+    expect(result).toMatchObject({
+      bookingCode: CODE,
+      bookingStatus: 'confirmed',
+      paymentStatus: 'succeeded',
     });
   });
 });

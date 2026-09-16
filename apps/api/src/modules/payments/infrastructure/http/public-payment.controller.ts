@@ -13,6 +13,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_AUTH_FLOW } from '../../../../shared/http/throttle-limits';
 import { MissingHost } from '../../../../shared/http/request-boundary-errors';
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
@@ -49,12 +51,11 @@ export class PublicPaymentController {
   ) {}
 
   @Public()
+  @Throttle(THROTTLE_AUTH_FLOW)
   @Post('payments/lookup-bank-account')
   @ApiOperation({ summary: 'Lookup registered bank account holder name via Napas' })
   @ApiOkResponse({ type: LookupBankAccountResponseDto })
-  async lookupAccount(
-    @Body() input: LookupBankAccountDto,
-  ) {
+  async lookupAccount(@Body() input: LookupBankAccountDto) {
     return this.lookupBankAccountUseCase.execute(input);
   }
 

@@ -99,7 +99,9 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
       order_url?: string;
     };
     if (json.return_code !== 1 || !json.order_url) {
-      throw new Error(`ZaloPay create failed (${json.return_code}): ${json.return_message ?? 'unknown'}`);
+      throw new Error(
+        `ZaloPay create failed (${json.return_code}): ${json.return_message ?? 'unknown'}`,
+      );
     }
     return {
       destination: { type: 'redirect', paymentUrl: json.order_url },
@@ -230,11 +232,7 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
       zp_trans_id?: number;
     };
     const status: PaymentStatusResult['status'] =
-      json.return_code === 1
-        ? 'succeeded'
-        : json.return_code === 2
-          ? 'expired'
-          : 'pending';
+      json.return_code === 1 ? 'succeeded' : json.return_code === 2 ? 'expired' : 'pending';
     return {
       status,
       amountVnd: BigInt(json.amount ?? 0),

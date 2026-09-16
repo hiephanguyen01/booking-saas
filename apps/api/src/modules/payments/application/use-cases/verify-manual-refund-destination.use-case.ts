@@ -8,26 +8,64 @@ import {
   ManualRefundOperationNotFound,
   ManualRefundWorkflowPaused,
 } from '../../domain/errors/manual-refund-errors';
-import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
+import {
+  MANUAL_REFUND_OPERATION_REPOSITORY,
+  type IManualRefundOperationRepository,
+} from '../../domain/ports/manual-refund-operation-repository.port';
 import { toManualRefundMutationResponse, toManualRefundOperation } from '../manual-refund.mapper';
 
 @Injectable()
 export class VerifyManualRefundDestinationUseCase {
-  constructor(@Inject(MANUAL_REFUND_OPERATION_REPOSITORY) private readonly operations: IManualRefundOperationRepository, @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter, private readonly tenantDb: TenantDbService, @Optional() private readonly outbox?: OutboxService) {}
-  async execute(tenantId: string, operationId: string, input: VerifyManualRefundDestinationInput, actorUserId: string) {
+  constructor(
+    @Inject(MANUAL_REFUND_OPERATION_REPOSITORY)
+    private readonly operations: IManualRefundOperationRepository,
+    @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
+    private readonly tenantDb: TenantDbService,
+    @Optional() private readonly outbox?: OutboxService,
+  ) {}
+  async execute(
+    tenantId: string,
+    operationId: string,
+    input: VerifyManualRefundDestinationInput,
+    actorUserId: string,
+  ) {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const workflow = await this.operations.getWorkflowState(tx, tenantId);
       if (workflow.paused) throw new ManualRefundWorkflowPaused();
       const current = await this.operations.findById(tx, tenantId, operationId);
       if (!current) throw new ManualRefundOperationNotFound();
-      const entity = toManualRefundOperation(current); entity.verifyManually();
+      const entity = toManualRefundOperation(current);
+      entity.verifyManually();
       const now = await this.tenantDb.databaseNow(tx);
-      const updated = await this.operations.casUpdate(tx, tenantId, operationId, current.status, input.expectedVersion, { status: 'ready_for_transfer', verificationMethod: 'manual', verifiedByUserId: actorUserId, verifiedAt: now, readyAt: now });
+      const updated = await this.operations.casUpdate(
+        tx,
+        tenantId,
+        operationId,
+        current.status,
+        input.expectedVersion,
+        {
+          status: 'ready_for_transfer',
+          verificationMethod: 'manual',
+          verifiedByUserId: actorUserId,
+          verifiedAt: now,
+          readyAt: now,
+        },
+      );
       if (!updated) throw new ManualRefundConcurrentUpdate();
-      await this.outbox?.emit(tx, { tenantId, eventType: 'manual_refund.destination_ready', payload: { operationId, refundBatchId: current.refundBatchId } });
-      await this.audit.write(tx, { tenantId, actorUserId, action: 'manual_refund.destination_verified', entityType: 'manual_refund_operation', entityId: operationId, data: { note: input.note.trim() } });
+      await this.outbox?.emit(tx, {
+        tenantId,
+        eventType: 'manual_refund.destination_ready',
+        payload: { operationId, refundBatchId: current.refundBatchId },
+      });
+      await this.audit.write(tx, {
+        tenantId,
+        actorUserId,
+        action: 'manual_refund.destination_verified',
+        entityType: 'manual_refund_operation',
+        entityId: operationId,
+        data: { note: input.note.trim() },
+      });
       return toManualRefundMutationResponse(updated);
     });
   }
 }
-

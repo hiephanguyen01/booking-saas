@@ -80,6 +80,8 @@ import { RejectManualRefundUseCase } from '../../application/use-cases/reject-ma
 import { ReopenManualRefundDestinationUseCase } from '../../application/use-cases/reopen-manual-refund-destination.use-case';
 import { RevealManualRefundPrivateDetailsUseCase } from '../../application/use-cases/reveal-manual-refund-private-details.use-case';
 import { ApproveManualRefundUseCase } from '../../application/use-cases/approve-manual-refund.use-case';
+import { CompleteManualRefundTransferUseCase } from '../../application/use-cases/complete-manual-refund-transfer.use-case';
+import { ExecuteManualRefundAutoPayoutUseCase } from '../../application/use-cases/execute-manual-refund-auto-payout.use-case';
 import { BreakGlassCompleteManualRefundUseCase } from '../../application/use-cases/break-glass-complete-manual-refund.use-case';
 import { PlatformManualRefundController } from './platform-manual-refund.controller';
 import { ManualRefundSlaWorker } from '../manual-refund-sla.worker';
@@ -94,7 +96,8 @@ import { PauseManualRefundWorkflowUseCase } from '../../application/use-cases/pa
 import { ResumeManualRefundWorkflowUseCase } from '../../application/use-cases/resume-manual-refund-workflow.use-case';
 import { MANUAL_REFUND_READINESS_PORT } from '../../domain/ports/manual-refund-readiness.port';
 import { ManualRefundReadinessAdapter } from '../manual-refund-readiness.adapter';
-
+import { PAYOUT_GATEWAY } from '../../domain/ports/payout-gateway.port';
+import { MockPayoutGatewayAdapter } from '../gateways/mock-payout-gateway.adapter';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule, IdentityAccessModule, BookingModule],
@@ -175,12 +178,15 @@ import { ManualRefundReadinessAdapter } from '../manual-refund-readiness.adapter
     ReopenManualRefundDestinationUseCase,
     RevealManualRefundPrivateDetailsUseCase,
     ApproveManualRefundUseCase,
+    CompleteManualRefundTransferUseCase,
+    ExecuteManualRefundAutoPayoutUseCase,
     BreakGlassCompleteManualRefundUseCase,
     SendManualRefundCustomerDetailReminderUseCase,
     StartManualRefundTransferSlaUseCase,
     EscalateManualRefundCheckerWaitingUseCase,
     PurgeManualRefundCiphertextUseCase,
     LookupBankAccountUseCase,
+    { provide: PAYOUT_GATEWAY, useClass: MockPayoutGatewayAdapter },
     ManualRefundSlaWorker,
   ],
   exports: [ExecuteRefundUseCase, LookupBankAccountUseCase],

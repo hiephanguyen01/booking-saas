@@ -84,11 +84,7 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
     return c ? this.toRecord(c) : null;
   }
 
-  async findById(
-    tx: PrismaTx,
-    tenantId: string,
-    id: string,
-  ): Promise<GatewayConfigRecord | null> {
+  async findById(tx: PrismaTx, tenantId: string, id: string): Promise<GatewayConfigRecord | null> {
     const c = await tx.tenantGatewayConfig.findFirst({ where: { id, tenantId } });
     return c ? this.toRecord(c) : null;
   }

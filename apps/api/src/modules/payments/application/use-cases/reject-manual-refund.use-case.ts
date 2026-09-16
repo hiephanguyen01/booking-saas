@@ -7,25 +7,57 @@ import {
   ManualRefundOperationNotFound,
   ManualRefundWorkflowPaused,
 } from '../../domain/errors/manual-refund-errors';
-import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
+import {
+  MANUAL_REFUND_OPERATION_REPOSITORY,
+  type IManualRefundOperationRepository,
+} from '../../domain/ports/manual-refund-operation-repository.port';
 import { toManualRefundMutationResponse, toManualRefundOperation } from '../manual-refund.mapper';
 
 @Injectable()
 export class RejectManualRefundUseCase {
-  constructor(@Inject(MANUAL_REFUND_OPERATION_REPOSITORY) private readonly operations: IManualRefundOperationRepository, @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter, private readonly tenantDb: TenantDbService) {}
-  async execute(tenantId: string, operationId: string, input: RejectManualRefundInput, actorUserId: string) {
+  constructor(
+    @Inject(MANUAL_REFUND_OPERATION_REPOSITORY)
+    private readonly operations: IManualRefundOperationRepository,
+    @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
+    private readonly tenantDb: TenantDbService,
+  ) {}
+  async execute(
+    tenantId: string,
+    operationId: string,
+    input: RejectManualRefundInput,
+    actorUserId: string,
+  ) {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const workflow = await this.operations.getWorkflowState(tx, tenantId);
       if (workflow.paused) throw new ManualRefundWorkflowPaused();
       const current = await this.operations.findById(tx, tenantId, operationId);
       if (!current) throw new ManualRefundOperationNotFound();
       const now = await this.tenantDb.databaseNow(tx);
-      const entity = toManualRefundOperation(current); entity.reject(actorUserId);
-      const updated = await this.operations.casUpdate(tx, tenantId, operationId, current.status, input.expectedVersion, { status: 'transfer_rejected', checkedByUserId: actorUserId, checkedAt: now, rejectionReason: input.reason.trim() });
+      const entity = toManualRefundOperation(current);
+      entity.reject(actorUserId);
+      const updated = await this.operations.casUpdate(
+        tx,
+        tenantId,
+        operationId,
+        current.status,
+        input.expectedVersion,
+        {
+          status: 'transfer_rejected',
+          checkedByUserId: actorUserId,
+          checkedAt: now,
+          rejectionReason: input.reason.trim(),
+        },
+      );
       if (!updated) throw new ManualRefundConcurrentUpdate();
-      await this.audit.write(tx, { tenantId, actorUserId, action: 'manual_refund.rejected', entityType: 'manual_refund_operation', entityId: operationId, data: { reason: input.reason.trim() } });
+      await this.audit.write(tx, {
+        tenantId,
+        actorUserId,
+        action: 'manual_refund.rejected',
+        entityType: 'manual_refund_operation',
+        entityId: operationId,
+        data: { reason: input.reason.trim() },
+      });
       return toManualRefundMutationResponse(updated);
     });
   }
 }
-

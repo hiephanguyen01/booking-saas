@@ -30,7 +30,11 @@ function harness(activeGateways: Array<'sepay' | 'payos' | 'momo' | 'zalopay' | 
             gateway,
             environment: 'sandbox',
             credentials: {},
-            settings: { enabledMethods: ['bank_transfer'], refundStrategy: 'manual', manualRefundSlaHours: 72 },
+            settings: {
+              enabledMethods: ['bank_transfer'],
+              refundStrategy: 'manual',
+              manualRefundSlaHours: 72,
+            },
           })) as never,
         );
       },
@@ -49,7 +53,12 @@ function harness(activeGateways: Array<'sepay' | 'payos' | 'momo' | 'zalopay' | 
 
 describe('UpdatePaymentRoutingUseCase', () => {
   it('locks, validates active providers and atomically replaces the full route set', async () => {
-    const { useCase, calls, replacements, tenantDb } = harness(['sepay', 'payos', 'momo', 'zalopay']);
+    const { useCase, calls, replacements, tenantDb } = harness([
+      'sepay',
+      'payos',
+      'momo',
+      'zalopay',
+    ]);
     const input: PaymentRoutingInput = {
       routes: [
         { method: 'bank_transfer', gateway: 'payos', enabled: true },

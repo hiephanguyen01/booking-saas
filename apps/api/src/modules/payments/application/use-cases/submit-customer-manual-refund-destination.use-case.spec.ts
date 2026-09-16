@@ -220,14 +220,9 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
       lookupResponse: { status: 'matched', registeredName: 'NGUYEN VAN AN' },
     });
 
-    const result = await useCase.execute(
-      TENANT_ID,
-      BOOKING_ID,
-      'BK-0001',
-      OPERATION_ID,
-      input,
-      { thirdPartyOtpConsentVerified: false },
-    );
+    const result = await useCase.execute(TENANT_ID, BOOKING_ID, 'BK-0001', OPERATION_ID, input, {
+      thirdPartyOtpConsentVerified: false,
+    });
 
     expect(patches).toEqual([
       expect.objectContaining({
@@ -247,14 +242,9 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
       lookupResponse: { status: 'mismatch', registeredName: 'TRAN VAN B' },
     });
 
-    const result = await useCase.execute(
-      TENANT_ID,
-      BOOKING_ID,
-      'BK-0001',
-      OPERATION_ID,
-      input,
-      { thirdPartyOtpConsentVerified: false },
-    );
+    const result = await useCase.execute(TENANT_ID, BOOKING_ID, 'BK-0001', OPERATION_ID, input, {
+      thirdPartyOtpConsentVerified: false,
+    });
 
     expect(patches).toEqual([
       expect.objectContaining({
@@ -274,14 +264,9 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
       lookupResponse: { status: 'error', retryable: true },
     });
 
-    const result = await useCase.execute(
-      TENANT_ID,
-      BOOKING_ID,
-      'BK-0001',
-      OPERATION_ID,
-      input,
-      { thirdPartyOtpConsentVerified: false },
-    );
+    const result = await useCase.execute(TENANT_ID, BOOKING_ID, 'BK-0001', OPERATION_ID, input, {
+      thirdPartyOtpConsentVerified: false,
+    });
 
     expect(patches).toEqual([
       expect.objectContaining({
@@ -408,4 +393,3 @@ describe('SubmitCustomerManualRefundDestinationUseCase', () => {
     expect(lookupInputs).toHaveLength(0);
   });
 });
-

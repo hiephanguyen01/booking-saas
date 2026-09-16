@@ -57,7 +57,6 @@ export class PlatformManualRefundController {
     return this.enableWorkflow.execute(tenantId, principal.userId);
   }
 
-
   @RequirePermissions('platform.tenants.write')
   @Post('pause-workflow')
   @HttpCode(200)
@@ -69,7 +68,11 @@ export class PlatformManualRefundController {
     @Body() input: ManualRefundWorkflowControlDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<ManualRefundWorkflowState> {
-    return this.pauseWorkflow.execute(tenantId, input as ManualRefundWorkflowControlInput, principal.userId);
+    return this.pauseWorkflow.execute(
+      tenantId,
+      input as ManualRefundWorkflowControlInput,
+      principal.userId,
+    );
   }
 
   @RequirePermissions('platform.tenants.write')
@@ -83,7 +86,11 @@ export class PlatformManualRefundController {
     @Body() input: ManualRefundWorkflowControlDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<ManualRefundWorkflowState> {
-    return this.resumeWorkflow.execute(tenantId, input as ManualRefundWorkflowControlInput, principal.userId);
+    return this.resumeWorkflow.execute(
+      tenantId,
+      input as ManualRefundWorkflowControlInput,
+      principal.userId,
+    );
   }
 
   @RequirePermissions('platform.refunds.break_glass')

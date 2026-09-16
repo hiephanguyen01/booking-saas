@@ -128,4 +128,3 @@ describe('AcknowledgeCustomerManualRefundReceivedUseCase', () => {
     expect(result).toMatchObject({ customerAcknowledgement: 'received', version: 6 });
   });
 });
-

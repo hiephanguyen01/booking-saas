@@ -1,8 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  customerPaymentMethodSchema,
-  type PaymentRoutingResponse,
-} from '@booking/contracts';
+import { customerPaymentMethodSchema, type PaymentRoutingResponse } from '@booking/contracts';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
@@ -23,10 +20,14 @@ export class GetPaymentRoutingUseCase {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const routes = await this.routes.list(tx, tenantId);
-      const order = new Map(customerPaymentMethodSchema.options.map((method, index) => [method, index]));
+      const order = new Map(
+        customerPaymentMethodSchema.options.map((method, index) => [method, index]),
+      );
       return {
         routes: [...routes].sort(
-          (a, b) => (order.get(a.method) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.method) ?? Number.MAX_SAFE_INTEGER),
+          (a, b) =>
+            (order.get(a.method) ?? Number.MAX_SAFE_INTEGER) -
+            (order.get(b.method) ?? Number.MAX_SAFE_INTEGER),
         ),
       };
     });

@@ -54,7 +54,6 @@ export class SubmitCustomerManualRefundDestinationUseCase {
       if (workflow.paused) throw new ManualRefundWorkflowPaused();
 
       const { operation: current, batch } = await loadCustomerManualRefund(
-
         tx,
         this.operations,
         this.batches,

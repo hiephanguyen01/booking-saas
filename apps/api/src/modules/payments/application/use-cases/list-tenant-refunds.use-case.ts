@@ -17,9 +17,7 @@ export class ListTenantRefundsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(
-    query: RefundHistoryQuery,
-  ): Promise<RepoPage<RefundHistoryRecord>> {
+  execute(query: RefundHistoryQuery): Promise<RepoPage<RefundHistoryRecord>> {
     return this.tenantDb.forTenant(this.tenantContext.tenantIdOrThrow(), (tx) =>
       this.refunds.list(tx, query),
     );

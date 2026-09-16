@@ -96,81 +96,84 @@ export class CheckoutUseCase {
 
     // Phase A: all local validation/routing plus durable attempt creation in one
     // short tenant transaction. There is deliberately no provider I/O here.
-    const prepared = await this.tenantDb.forTenant(tenant.id, async (tx): Promise<CheckoutPhaseA> => {
-      const booking = await this.bookings.findById(tx, bookingId);
-      if (!booking) throw new BookingNotFound();
+    const prepared = await this.tenantDb.forTenant(
+      tenant.id,
+      async (tx): Promise<CheckoutPhaseA> => {
+        const booking = await this.bookings.findById(tx, bookingId);
+        if (!booking) throw new BookingNotFound();
 
-      const isBalance = booking.status === 'confirmed';
-      if (isBalance) Payment.assertBalancePayable(booking);
-      else Payment.assertPayable(booking);
+        const isBalance = booking.status === 'confirmed';
+        if (isBalance) Payment.assertBalancePayable(booking);
+        else Payment.assertPayable(booking);
 
-      const { amount, kind } = isBalance ? Payment.planBalance(booking) : Payment.plan(booking);
-      const resolved = await this.registry.resolveActiveForMethod(tx, tenant.id, paymentMethod);
-      const gateway = resolved.gateway;
-      const providerPaymentMethod = gateway.providerPaymentMethod(paymentMethod);
-      Payment.assertGatewayAccepts({
-        gatewayKey: gateway.key,
-        amount,
-        isProductionEnv: process.env.NODE_ENV === 'production',
-        allowMockPayments: process.env.ALLOW_MOCK_PAYMENTS === 'true',
-      });
-      const refundPolicy = await this.refundPolicies.get(tx, tenant.id);
+        const { amount, kind } = isBalance ? Payment.planBalance(booking) : Payment.plan(booking);
+        const resolved = await this.registry.resolveActiveForMethod(tx, tenant.id, paymentMethod);
+        const gateway = resolved.gateway;
+        const providerPaymentMethod = gateway.providerPaymentMethod(paymentMethod);
+        Payment.assertGatewayAccepts({
+          gatewayKey: gateway.key,
+          amount,
+          isProductionEnv: process.env.NODE_ENV === 'production',
+          allowMockPayments: process.env.ALLOW_MOCK_PAYMENTS === 'true',
+        });
+        const refundPolicy = await this.refundPolicies.get(tx, tenant.id);
 
-      await this.payments.lockCheckoutAttempt(tx, bookingId, kind, providerPaymentMethod);
-      const reusable = await this.payments.findReusableCheckoutAttempt(
-        tx,
-        bookingId,
-        kind,
-        providerPaymentMethod,
-      );
-      if (reusable) {
-        return {
-          payment: reusable.payment,
-          destination: reusable.destination,
-          bookingCode: booking.code,
-        };
-      }
-
-      // An early provider webhook can win the race and mark the durable attempt
-      // succeeded before Phase C attaches its handoff. If booking projection has
-      // not caught up yet, reuse that same attempt rather than minting a second one.
-      const latest = await this.payments.findLatestByBooking(tx, bookingId);
-      if (
-        latest?.status === 'succeeded' &&
-        latest.kind === kind &&
-        latest.paymentMethod === providerPaymentMethod &&
-        (latest.checkoutState === 'creating' || latest.checkoutState === 'ready')
-      ) {
-        return { payment: latest, destination: null, bookingCode: booking.code };
-      }
-
-      for (let attempt = 0; attempt < LOCAL_REFERENCE_RETRIES; attempt++) {
-        const paymentId = uuidv7();
-        const gatewayOrderRef = gateway.prepareOrderReference(paymentId);
-        try {
-          const payment = await this.payments.createPendingCheckout(tx, tenant.id, {
-            id: paymentId,
-            bookingId,
-            gateway: gateway.key,
-            kind,
-            amount,
-            checkoutState: 'creating',
-            gatewayConfigRevisionId: resolved.configRevisionId,
-            refundStrategySnapshot: refundPolicy.refundStrategy,
-            manualRefundSlaHoursSnapshot: refundPolicy.manualRefundSlaHours,
-            gatewayOrderRef,
-            paymentMethod: providerPaymentMethod,
-            idempotencyKey: `checkout:${paymentId}`,
-          });
-          return { payment, destination: null, bookingCode: booking.code };
-        } catch (error) {
-          if (error instanceof CheckoutOrderReferenceCollision) continue;
-          throw error;
+        await this.payments.lockCheckoutAttempt(tx, bookingId, kind, providerPaymentMethod);
+        const reusable = await this.payments.findReusableCheckoutAttempt(
+          tx,
+          bookingId,
+          kind,
+          providerPaymentMethod,
+        );
+        if (reusable) {
+          return {
+            payment: reusable.payment,
+            destination: reusable.destination,
+            bookingCode: booking.code,
+          };
         }
-      }
 
-      throw new Error('Unable to allocate a unique checkout order reference');
-    });
+        // An early provider webhook can win the race and mark the durable attempt
+        // succeeded before Phase C attaches its handoff. If booking projection has
+        // not caught up yet, reuse that same attempt rather than minting a second one.
+        const latest = await this.payments.findLatestByBooking(tx, bookingId);
+        if (
+          latest?.status === 'succeeded' &&
+          latest.kind === kind &&
+          latest.paymentMethod === providerPaymentMethod &&
+          (latest.checkoutState === 'creating' || latest.checkoutState === 'ready')
+        ) {
+          return { payment: latest, destination: null, bookingCode: booking.code };
+        }
+
+        for (let attempt = 0; attempt < LOCAL_REFERENCE_RETRIES; attempt++) {
+          const paymentId = uuidv7();
+          const gatewayOrderRef = gateway.prepareOrderReference(paymentId);
+          try {
+            const payment = await this.payments.createPendingCheckout(tx, tenant.id, {
+              id: paymentId,
+              bookingId,
+              gateway: gateway.key,
+              kind,
+              amount,
+              checkoutState: 'creating',
+              gatewayConfigRevisionId: resolved.configRevisionId,
+              refundStrategySnapshot: refundPolicy.refundStrategy,
+              manualRefundSlaHoursSnapshot: refundPolicy.manualRefundSlaHours,
+              gatewayOrderRef,
+              paymentMethod: providerPaymentMethod,
+              idempotencyKey: `checkout:${paymentId}`,
+            });
+            return { payment, destination: null, bookingCode: booking.code };
+          } catch (error) {
+            if (error instanceof CheckoutOrderReferenceCollision) continue;
+            throw error;
+          }
+        }
+
+        throw new Error('Unable to allocate a unique checkout order reference');
+      },
+    );
 
     // A previously completed Phase C stays a pure local fast path for providers
     // whose handoff cannot become terminal behind our back. PayOS resources can be

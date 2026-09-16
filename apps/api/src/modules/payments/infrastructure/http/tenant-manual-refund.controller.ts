@@ -23,9 +23,13 @@ import { RejectManualRefundUseCase } from '../../application/use-cases/reject-ma
 import { ReopenManualRefundDestinationUseCase } from '../../application/use-cases/reopen-manual-refund-destination.use-case';
 import { RevealManualRefundPrivateDetailsUseCase } from '../../application/use-cases/reveal-manual-refund-private-details.use-case';
 import { ApproveManualRefundUseCase } from '../../application/use-cases/approve-manual-refund.use-case';
+import { CompleteManualRefundTransferUseCase } from '../../application/use-cases/complete-manual-refund-transfer.use-case';
+import { ExecuteManualRefundAutoPayoutUseCase } from '../../application/use-cases/execute-manual-refund-auto-payout.use-case';
 import {
   ApproveManualRefundDto,
+  AutoPayoutManualRefundDto,
   ClaimManualRefundDto,
+  CompleteManualRefundTransferDto,
   CreateManualRefundEvidenceUploadDto,
   ManualRefundDetailResponseDto,
   ManualRefundEvidenceUploadResponseDto,
@@ -54,6 +58,8 @@ export class TenantManualRefundController {
     private readonly reopen: ReopenManualRefundDestinationUseCase,
     private readonly reveal: RevealManualRefundPrivateDetailsUseCase,
     private readonly approve: ApproveManualRefundUseCase,
+    private readonly completeTransferUseCase: CompleteManualRefundTransferUseCase,
+    private readonly autoPayoutUseCase: ExecuteManualRefundAutoPayoutUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -132,6 +138,23 @@ export class TenantManualRefundController {
     return this.submit.execute(this.tenantContext.tenantIdOrThrow(), id, input, p.userId);
   }
 
+  @RequirePermissions('tenant.refunds.prepare')
+  @Post(':id/complete-transfer')
+  @HttpCode(200)
+  @UuidParam()
+  async completeTransfer(
+    @Param('id') id: string,
+    @Body() input: CompleteManualRefundTransferDto,
+    @CurrentPrincipal() p: SessionPrincipal,
+  ) {
+    return this.completeTransferUseCase.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+      input,
+      p.userId,
+    );
+  }
+
   @RequirePermissions('tenant.refunds.reveal')
   @Post(':id/reveal')
   @HttpCode(200)
@@ -184,5 +207,21 @@ export class TenantManualRefundController {
     @CurrentPrincipal() p: SessionPrincipal,
   ) {
     return this.reopen.execute(this.tenantContext.tenantIdOrThrow(), id, input, p.userId);
+  }
+
+  @RequirePermissions('tenant.payouts.manage')
+  @Post(':id/auto-payout')
+  @HttpCode(200)
+  @UuidParam()
+  async autoPayout(
+    @Param('id') id: string,
+    @Body() _input: AutoPayoutManualRefundDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ) {
+    return this.autoPayoutUseCase.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+      principal.userId,
+    );
   }
 }

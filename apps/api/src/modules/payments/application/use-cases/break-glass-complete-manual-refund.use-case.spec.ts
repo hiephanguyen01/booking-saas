@@ -76,8 +76,24 @@ function harness(authenticatedAt: Date | null, current = submitted()) {
           },
         }),
     }),
-    fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: 'private/receipt.pdf', status: 'claimed', sizeBytes: 12 }) }),
-    fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: true, checksum: 'b'.repeat(64), sizeBytes: 12, contentType: 'application/pdf' }) }),
+    fakePort<IManualRefundEvidenceRepository>({
+      findUpload: () =>
+        Promise.resolve({
+          ...manualRefundUpload(),
+          objectKey: 'private/receipt.pdf',
+          status: 'claimed',
+          sizeBytes: 12,
+        }),
+    }),
+    fakePort<StoragePort>({
+      inspectPrivateFile: () =>
+        Promise.resolve({
+          valid: true,
+          checksum: 'b'.repeat(64),
+          sizeBytes: 12,
+          contentType: 'application/pdf',
+        }),
+    }),
     fakePort<IAuditWriter>({
       write: (_tx, entry) => {
         audits.push(entry);
@@ -119,7 +135,6 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
     ).rejects.toBeInstanceOf(ManualRefundFreshAuthenticationRequired);
     expect(tenantDb.openedFor).toEqual([MANUAL_REFUND_TENANT_ID]);
   });
-
 
   it('completes atomically and writes a high-severity audit with one batch event', async () => {
     const { useCase, audits, events } = harness(new Date('2026-09-04T12:58:00Z'));
@@ -265,11 +280,24 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
       fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve(null) }),
       fakePort<StoragePort>({}),
       fakePort<IAuditWriter>({}),
-      fakePort<ISessionStore>({ authenticationTime: () => Promise.resolve(new Date('2026-09-04T12:58:00Z')) }),
+      fakePort<ISessionStore>({
+        authenticationTime: () => Promise.resolve(new Date('2026-09-04T12:58:00Z')),
+      }),
       new OutboxService(),
       fakeTenantDb({ now: MANUAL_REFUND_NOW }).service,
     );
-    await expect(missing.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3, reason: 'Incident commander approved emergency', confirmation: 'BREAK_GLASS' }, { userId: MANUAL_REFUND_CHECKER_ID, sessionId: 'session-1' })).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
+    await expect(
+      missing.execute(
+        MANUAL_REFUND_TENANT_ID,
+        MANUAL_REFUND_OPERATION_ID,
+        {
+          expectedVersion: 3,
+          reason: 'Incident commander approved emergency',
+          confirmation: 'BREAK_GLASS',
+        },
+        { userId: MANUAL_REFUND_CHECKER_ID, sessionId: 'session-1' },
+      ),
+    ).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
   });
 
   it('retires mutated claimed evidence before returning the validation error', async () => {
@@ -283,16 +311,41 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
       fakePort<IManualRefundEvidenceRepository>({
-        findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: current.evidenceObjectKey as string, status: 'claimed', checksum: 'c'.repeat(64), sizeBytes: 12 }),
-        quarantineUpload: () => { retired = true; return Promise.resolve(true); },
+        findUpload: () =>
+          Promise.resolve({
+            ...manualRefundUpload(),
+            objectKey: current.evidenceObjectKey as string,
+            status: 'claimed',
+            checksum: 'c'.repeat(64),
+            sizeBytes: 12,
+          }),
+        quarantineUpload: () => {
+          retired = true;
+          return Promise.resolve(true);
+        },
       }),
-      fakePort<StoragePort>({ quarantinePrivateObject: () => Promise.reject(new Error('storage unavailable')) }),
+      fakePort<StoragePort>({
+        quarantinePrivateObject: () => Promise.reject(new Error('storage unavailable')),
+      }),
       fakePort<IAuditWriter>({}),
-      fakePort<ISessionStore>({ authenticationTime: () => Promise.resolve(new Date('2026-09-04T12:58:00Z')) }),
+      fakePort<ISessionStore>({
+        authenticationTime: () => Promise.resolve(new Date('2026-09-04T12:58:00Z')),
+      }),
       new OutboxService(),
       fakeTenantDb({ now: MANUAL_REFUND_NOW }).service,
     );
-    await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3, reason: 'Incident commander approved emergency', confirmation: 'BREAK_GLASS' }, { userId: MANUAL_REFUND_CHECKER_ID, sessionId: 'session-1' })).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
+    await expect(
+      useCase.execute(
+        MANUAL_REFUND_TENANT_ID,
+        MANUAL_REFUND_OPERATION_ID,
+        {
+          expectedVersion: 3,
+          reason: 'Incident commander approved emergency',
+          confirmation: 'BREAK_GLASS',
+        },
+        { userId: MANUAL_REFUND_CHECKER_ID, sessionId: 'session-1' },
+      ),
+    ).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
     expect(retired).toBe(true);
   });
 
@@ -342,4 +395,3 @@ describe('BreakGlassCompleteManualRefundUseCase', () => {
     expect(authChecked).toBe(false);
   });
 });
-

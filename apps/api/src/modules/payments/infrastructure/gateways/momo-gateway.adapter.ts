@@ -50,10 +50,7 @@ interface MomoRefundQueryResult {
 }
 
 function momoId(prefix: MomoIdPrefix, value: string): string {
-  return `${prefix}${createHash('sha256')
-    .update(`${prefix}:${value}`)
-    .digest('hex')
-    .slice(0, 32)}`;
+  return `${prefix}${createHash('sha256').update(`${prefix}:${value}`).digest('hex').slice(0, 32)}`;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -298,8 +295,7 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
     const { partnerCode, accessKey } = this.creds;
     const orderId = momoId('RF', input.refundId);
     const requestId = momoId('RQ', input.refundId);
-    const raw =
-      `accessKey=${accessKey}&orderId=${orderId}&partnerCode=${partnerCode}&requestId=${requestId}`;
+    const raw = `accessKey=${accessKey}&orderId=${orderId}&partnerCode=${partnerCode}&requestId=${requestId}`;
 
     const result = await providerJson<MomoRefundQueryResult>({
       url: `${this.base}/v2/gateway/api/refund/query`,
@@ -437,8 +433,7 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
   async queryPaymentStatus(reference: string): Promise<PaymentStatusResult> {
     const { partnerCode, accessKey } = this.creds;
     const requestId = momoId('MQ', reference);
-    const raw =
-      `accessKey=${accessKey}&orderId=${reference}&partnerCode=${partnerCode}&requestId=${requestId}`;
+    const raw = `accessKey=${accessKey}&orderId=${reference}&partnerCode=${partnerCode}&requestId=${requestId}`;
 
     const result = await providerJson({
       url: `${this.base}/v2/gateway/api/query`,
@@ -462,7 +457,9 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
           ? body.refundTrans.flatMap((item): Array<{ amount: bigint; resultCode?: number }> => {
               if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
               const row = item as Record<string, unknown>;
-              return [{ amount: nonNegativeAmount(row.amount), resultCode: integer(row.resultCode) }];
+              return [
+                { amount: nonNegativeAmount(row.amount), resultCode: integer(row.resultCode) },
+              ];
             })
           : [];
         return {
@@ -486,9 +483,7 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
       0n,
     );
     const status: PaymentStatusResult['status'] =
-      completeStatus === 'succeeded' &&
-      result.amountVnd > 0n &&
-      refundedVnd >= result.amountVnd
+      completeStatus === 'succeeded' && result.amountVnd > 0n && refundedVnd >= result.amountVnd
         ? 'refunded'
         : completeStatus;
 

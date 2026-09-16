@@ -130,9 +130,7 @@ function harness(options: Options = {}): Harness {
       gatewayCalls.push(input);
       return Promise.resolve({
         destination: { kind: 'redirect', url: 'https://pay.example/x' },
-        ...(options.gatewayTxnId === null
-          ? {}
-          : { gatewayTxnId: options.gatewayTxnId ?? 'txn-1' }),
+        ...(options.gatewayTxnId === null ? {} : { gatewayTxnId: options.gatewayTxnId ?? 'txn-1' }),
         ...(options.gatewayOrderRef === undefined
           ? {}
           : { gatewayOrderRef: options.gatewayOrderRef }),

@@ -57,12 +57,20 @@ export class PrismaManualRefundOperationRepository implements IManualRefundOpera
     });
   }
 
-  async getWorkflowState(tx: PrismaTx, tenantId: string): Promise<{ enabled: boolean; paused: boolean }> {
+  async getWorkflowState(
+    tx: PrismaTx,
+    tenantId: string,
+  ): Promise<{ enabled: boolean; paused: boolean }> {
     const tenant = await tx.tenant.findUnique({
       where: { id: tenantId },
       select: { settings: true },
     });
-    if (!tenant || !tenant.settings || typeof tenant.settings !== 'object' || Array.isArray(tenant.settings)) {
+    if (
+      !tenant ||
+      !tenant.settings ||
+      typeof tenant.settings !== 'object' ||
+      Array.isArray(tenant.settings)
+    ) {
       return { enabled: false, paused: false };
     }
     const settings = tenant.settings as Record<string, unknown>;

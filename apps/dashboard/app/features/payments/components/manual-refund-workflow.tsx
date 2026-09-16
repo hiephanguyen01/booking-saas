@@ -1,39 +1,46 @@
 import {
-  approveManualRefundInputSchema,
-  claimManualRefundInputSchema,
+  completeManualRefundTransferInputSchema,
   rejectManualRefundInputSchema,
-  reassignManualRefundInputSchema,
   revealManualRefundPrivateDetailsInputSchema,
-  submitManualRefundTransferInputSchema,
   verifyManualRefundDestinationInputSchema,
   type ManualRefundDetailResponse,
   type ManualRefundListItem,
   type ManualRefundListResponse,
   type ManualRefundOperationStatus,
   type ManualRefundPrivateDetailsResponse,
+  generateVietQrPayload,
+  getBankByBinOrCode,
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
+import { Image } from '@booking/ui/components/media/image';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
-import { Separator } from '@booking/ui/components/ui/separator';
+import QRCode from 'qrcode';
+import { useEffect, useState } from 'react';
 import {
   CheckCircle2,
   ChevronRight,
   CircleAlert,
   Clock3,
   Eye,
-  FileCheck2,
   LockKeyhole,
   ShieldCheck,
   UserRoundCheck,
   WalletCards,
+  Zap,
 } from 'lucide-react';
 import { Form, Link, useSearchParams } from 'react-router';
 import { MANUAL_REFUND_STATUS_LABEL } from '~/constants/payments';
 import { dashboardPaths } from '~/constants/paths';
 import { formatDateTime, formatVnd } from '~/lib/format';
-import { ManualRefundEvidenceUpload } from './manual-refund-evidence-upload';
+
+const VERIFICATION_RESULT_LABEL: Record<string, string> = {
+  matched: 'Khớp tài khoản',
+  mismatch: 'Không khớp tên',
+  unsupported: 'Chưa hỗ trợ tra cứu',
+  error: 'Lỗi tra cứu',
+};
 
 export interface ManualRefundActionData {
   operationId?: string;
@@ -81,7 +88,6 @@ function selectedHref(searchParams: URLSearchParams, operationId: string): strin
 }
 
 function queueLabel(item: ManualRefundListItem): string {
-  if (item.status === 'ready_for_transfer' && item.makerUserId) return 'Đang chuyển tiền';
   return MANUAL_REFUND_STATUS_LABEL[item.status];
 }
 
@@ -89,8 +95,8 @@ export function ManualRefundWorkflow({
   queue,
   detail,
   permissions,
-  currentUserId,
-  makerOptions,
+  currentUserId: _currentUserId,
+  makerOptions: _makerOptions,
   actionData,
   error,
   nowIso,
@@ -98,8 +104,8 @@ export function ManualRefundWorkflow({
   queue: ManualRefundListResponse;
   detail: ManualRefundDetailResponse | null;
   permissions: Permissions;
-  currentUserId: string;
-  makerOptions: MakerOption[];
+  currentUserId?: string;
+  makerOptions?: MakerOption[];
   actionData?: ManualRefundActionData;
   error: string | null;
   nowIso: string;
@@ -120,8 +126,8 @@ export function ManualRefundWorkflow({
               <WalletCards className="size-5 text-primary" /> Điều phối hoàn tiền thủ công
             </CardTitle>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Một giao dịch ngân hàng cho toàn bộ batch. Maker chuyển tiền, checker khác người xác
-              nhận biên lai; thông tin tài khoản luôn được che mặc định.
+              Quét mã VietQR chuyển tiền trực tiếp cho khách và xác nhận mã giao dịch 1 bước nhanh
+              chóng. Thông tin tài khoản được mã hoá và bảo vệ an toàn.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm">
@@ -150,7 +156,9 @@ export function ManualRefundWorkflow({
                 name="refundStatus"
                 value={option.value}
                 size="sm"
-                variant={(searchParams.get('refundStatus') ?? '') === option.value ? 'default' : 'outline'}
+                variant={
+                  (searchParams.get('refundStatus') ?? '') === option.value ? 'default' : 'outline'
+                }
               >
                 {option.label}
               </Button>
@@ -174,7 +182,8 @@ export function ManualRefundWorkflow({
                 <CheckCircle2 className="size-8 text-success" />
                 <p className="mt-3 font-medium">Không có batch trong hàng đợi này</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Các khoản cần thao tác sẽ xuất hiện sau khi cổng thanh toán chuyển sang hoàn thủ công.
+                  Các khoản cần thao tác sẽ xuất hiện sau khi cổng thanh toán chuyển sang hoàn thủ
+                  công.
                 </p>
               </div>
             ) : (
@@ -187,8 +196,12 @@ export function ManualRefundWorkflow({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-mono text-sm font-semibold">{item.bookingCode}</span>
-                          <span className="font-semibold tabular-nums">{formatVnd(item.amount)}</span>
+                          <span className="font-mono text-sm font-semibold">
+                            {item.bookingCode}
+                          </span>
+                          <span className="font-semibold tabular-nums">
+                            {formatVnd(item.amount)}
+                          </span>
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className={statusClass(item.status)}>
@@ -219,16 +232,15 @@ export function ManualRefundWorkflow({
               <ManualRefundDetail
                 detail={detail}
                 permissions={permissions}
-                currentUserId={currentUserId}
-                makerOptions={makerOptions}
                 actionData={actionData}
               />
             ) : (
               <div className="flex min-h-72 flex-col items-center justify-center text-center">
                 <ShieldCheck className="size-9 text-muted-foreground" />
-                <p className="mt-3 font-medium">Chọn một batch để xử lý</p>
+                <p className="mt-3 font-medium">Chọn một yêu cầu để xử lý</p>
                 <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                  Thao tác được mở theo đúng trạng thái và quyền maker/checker của bạn.
+                  Chọn một giao dịch hoàn tiền để xem thông tin tài khoản và quét mã VietQR chuyển
+                  trả cho khách.
                 </p>
               </div>
             )}
@@ -242,14 +254,10 @@ export function ManualRefundWorkflow({
 function ManualRefundDetail({
   detail,
   permissions,
-  currentUserId,
-  makerOptions,
   actionData,
 }: {
   detail: ManualRefundDetailResponse;
   permissions: Permissions;
-  currentUserId: string;
-  makerOptions: MakerOption[];
   actionData?: ManualRefundActionData;
 }) {
   const commonTransform = (intent: string) => (values: Record<string, unknown>) => ({
@@ -261,7 +269,6 @@ function ManualRefundDetail({
     !actionData?.operationId || actionData.operationId === detail.id ? actionData : undefined;
   const serverError = scopedActionData?.error ?? null;
   const privateDetails = scopedActionData?.privateDetails;
-  const isMaker = detail.makerUserId === currentUserId;
 
   return (
     <div className="space-y-5">
@@ -281,31 +288,80 @@ function ManualRefundDetail({
       </div>
 
       <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 sm:grid-cols-2">
-        <Fact label="Tài khoản nhận" value={detail.destination ? `${detail.destination.bankCode} · •••• ${detail.destination.accountNumberLast4}` : 'Chưa có'} />
-        <Fact label="Xác minh" value={detail.verificationResult ?? 'Chưa xác minh'} />
-        <Fact label="Maker" value={detail.makerUserId ? (isMaker ? 'Bạn đang xử lý' : 'Đã có người nhận') : 'Chưa có'} />
-        <Fact label="SLA chuyển tiền" value={detail.transferDueAt ? formatDateTime(detail.transferDueAt) : 'Chưa bắt đầu'} />
-        {detail.transferReference ? <Fact label="Mã giao dịch" value={detail.transferReference} /> : null}
+        <Fact
+          label="Tài khoản nhận"
+          value={
+            detail.destination
+              ? `${detail.destination.bankCode} · •••• ${detail.destination.accountNumberLast4}`
+              : 'Chưa có'
+          }
+        />
+        <Fact
+          label="Xác minh"
+          value={
+            detail.verificationResult
+              ? (VERIFICATION_RESULT_LABEL[detail.verificationResult] ?? detail.verificationResult)
+              : 'Chưa xác minh'
+          }
+        />
+        <Fact
+          label="SLA chuyển tiền"
+          value={detail.transferDueAt ? formatDateTime(detail.transferDueAt) : 'Chưa bắt đầu'}
+        />
+        {detail.transferReference ? (
+          <Fact label="Mã giao dịch" value={detail.transferReference} />
+        ) : null}
         <Fact label="Biên lai" value={detail.evidence.present ? 'Đã nộp' : 'Chưa nộp'} />
       </div>
 
       {scopedActionData?.success ? (
-        <p className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 p-3 text-sm text-success" role="status">
+        <p
+          className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 p-3 text-sm text-success"
+          role="status"
+        >
           <CheckCircle2 className="size-4" /> {scopedActionData.success}
         </p>
       ) : null}
 
       {privateDetails ? (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 p-4" role="region" aria-label="Thông tin tài khoản vừa mở">
-          <div className="flex items-center gap-2 font-semibold"><Eye className="size-4" /> Thông tin nhạy cảm · không sao chép vào ghi chú</div>
-          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-            <Fact label="Ngân hàng" value={privateDetails.bankCode} />
-            <Fact label="Chủ tài khoản" value={privateDetails.accountName} />
-            <Fact label="Số tài khoản" value={privateDetails.accountNumber} />
-            {privateDetails.evidenceDownload ? (
-              <div><dt className="text-xs text-muted-foreground">Biên lai</dt><dd><a className="font-medium text-primary hover:underline" href={privateDetails.evidenceDownload.downloadUrl} target="_blank" rel="noreferrer">Mở liên kết ngắn hạn</a></dd></div>
-            ) : null}
-          </dl>
+        <div className="space-y-4">
+          <div
+            className="rounded-lg border border-warning/40 bg-warning/10 p-4"
+            role="region"
+            aria-label="Thông tin tài khoản vừa mở"
+          >
+            <div className="flex items-center gap-2 font-semibold">
+              <Eye className="size-4" /> Thông tin nhạy cảm · không sao chép vào ghi chú
+            </div>
+            <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              <Fact label="Ngân hàng" value={privateDetails.bankCode} />
+              <Fact label="Chủ tài khoản" value={privateDetails.accountName} />
+              <Fact label="Số tài khoản" value={privateDetails.accountNumber} />
+              {privateDetails.evidenceDownload ? (
+                <div>
+                  <dt className="text-xs text-muted-foreground">Biên lai</dt>
+                  <dd>
+                    <a
+                      className="font-medium text-primary hover:underline"
+                      href={privateDetails.evidenceDownload.downloadUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Mở liên kết ngắn hạn
+                    </a>
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+
+          <VietQrCodeView
+            bankCode={privateDetails.bankCode}
+            accountNumber={privateDetails.accountNumber}
+            accountName={privateDetails.accountName}
+            amount={detail.amount}
+            bookingCode={detail.bookingCode}
+          />
         </div>
       ) : null}
 
@@ -313,7 +369,15 @@ function ManualRefundDetail({
         <ActionSection icon={<LockKeyhole className="size-4" />} title="Mở thông tin tài khoản">
           <GenericForm
             schema={revealManualRefundPrivateDetailsInputSchema}
-            fields={[{ name: 'reason', type: 'text', label: 'Lý do truy cập', required: true, description: 'Mỗi lần mở đều được ghi audit.' }]}
+            fields={[
+              {
+                name: 'reason',
+                type: 'text',
+                label: 'Lý do truy cập',
+                required: true,
+                description: 'Mỗi lần mở đều được ghi audit.',
+              },
+            ]}
             defaultValues={{ reason: '' }}
             transform={commonTransform('reveal')}
             submitLabel="Mở trong phiên này"
@@ -327,7 +391,9 @@ function ManualRefundDetail({
         <ActionSection icon={<UserRoundCheck className="size-4" />} title="Xác minh thủ công">
           <GenericForm
             schema={verifyManualRefundDestinationInputSchema}
-            fields={[{ name: 'note', type: 'textarea', rows: 3, label: 'Căn cứ xác minh', required: true }]}
+            fields={[
+              { name: 'note', type: 'textarea', rows: 3, label: 'Căn cứ xác minh', required: true },
+            ]}
             defaultValues={{ expectedVersion: detail.version, outcome: 'matched', note: '' }}
             transform={commonTransform('verify')}
             submitLabel="Xác nhận tài khoản khớp"
@@ -336,92 +402,80 @@ function ManualRefundDetail({
         </ActionSection>
       ) : null}
 
-      {permissions.prepare && detail.status === 'ready_for_transfer' && !detail.makerUserId ? (
-        <ActionSection icon={<WalletCards className="size-4" />} title="Nhận xử lý batch">
-          <p className="mb-3 text-sm text-muted-foreground">Khi nhận, snapshot tài khoản được khóa cho giao dịch này.</p>
-          <GenericForm
-            schema={claimManualRefundInputSchema}
-            fields={[]}
-            defaultValues={{ expectedVersion: detail.version }}
-            transform={commonTransform('claim')}
-            submitLabel="Tôi sẽ chuyển tiền"
-            serverError={serverError}
-          />
+      {permissions.prepare && detail.status === 'ready_for_transfer' ? (
+        <ActionSection
+          icon={<Zap className="size-4 text-primary" />}
+          title="Chi hộ tự động qua API (1 Chạm)"
+        >
+          <p className="mb-3 text-sm text-muted-foreground">
+            Chuyển khoản trực tiếp tới tài khoản khách hàng thông qua cổng kết nối ngân hàng 24/7.
+            Tiền được giải ngân ngay lập tức và đơn tự động hoàn tất mà không cần quét mã QR thủ
+            công.
+          </p>
+          <Form method="post" className="inline-block">
+            <input type="hidden" name="intent" value="auto-payout" />
+            <input type="hidden" name="operationId" value={detail.id} />
+            <input type="hidden" name="expectedVersion" value={detail.version} />
+            <Button type="submit" variant="default" className="font-semibold">
+              <Zap className="size-4 mr-1.5" /> Thực hiện chi hộ tự động ({formatVnd(detail.amount)}
+              )
+            </Button>
+          </Form>
         </ActionSection>
       ) : null}
 
-      {permissions.prepare && detail.status === 'ready_for_transfer' && isMaker ? (
-        <ActionSection icon={<FileCheck2 className="size-4" />} title="Ghi nhận giao dịch đã chuyển">
+      {permissions.prepare &&
+      (detail.status === 'ready_for_transfer' || detail.status === 'transfer_submitted') ? (
+        <ActionSection
+          icon={<CheckCircle2 className="size-4 text-success" />}
+          title="Chuyển khoản thủ công VietQR (Quy trình 1 bước)"
+        >
+          <p className="mb-3 text-sm text-muted-foreground">
+            Sau khi bạn đã quét mã VietQR và chuyển tiền cho khách trên app ngân hàng, hãy nhập mã
+            giao dịch để hoàn tất đơn ngay lập tức (không cần duyệt 4 mắt).
+          </p>
           <GenericForm
-            schema={submitManualRefundTransferInputSchema}
-            fields={[{ name: 'reference', type: 'text', label: 'Mã giao dịch ngân hàng', required: true, autoComplete: 'off' }]}
-            defaultValues={{ expectedVersion: detail.version, reference: '', evidenceObjectKey: '' }}
-            transform={commonTransform('submit-transfer')}
-            submitLabel="Gửi checker xác nhận"
-            submitPendingLabel="Đang khóa bằng chứng…"
-            serverError={serverError}
-            extraFields={(form) => (
-              <ManualRefundEvidenceUpload
-                operationId={detail.id}
-                version={detail.version}
-                value={form.watch('evidenceObjectKey')}
-                onChange={(key) => form.setValue('evidenceObjectKey', key, { shouldValidate: true })}
-              />
-            )}
-          />
-        </ActionSection>
-      ) : null}
-
-      {permissions.prepare && detail.status === 'ready_for_transfer' && detail.makerUserId && makerOptions.length > 0 ? (
-        <ActionSection icon={<UserRoundCheck className="size-4" />} title="Chuyển người phụ trách">
-          <GenericForm
-            schema={reassignManualRefundInputSchema}
+            schema={completeManualRefundTransferInputSchema}
             fields={[
-              { name: 'makerUserId', type: 'select', label: 'Người phụ trách mới', required: true, options: makerOptions },
-              { name: 'reason', type: 'textarea', rows: 2, label: 'Lý do bàn giao', required: true },
+              {
+                name: 'reference',
+                type: 'text',
+                label: 'Mã giao dịch ngân hàng (FT... hoặc mã tham chiếu)',
+                required: true,
+                autoComplete: 'off',
+                placeholder: 'Ví dụ: FT26091512345678',
+              },
+              {
+                name: 'note',
+                type: 'text',
+                label: 'Ghi chú nội bộ (không bắt buộc)',
+                required: false,
+                placeholder: 'Đã chuyển khoản hoàn 100% qua app ngân hàng',
+              },
             ]}
-            defaultValues={{ expectedVersion: detail.version, makerUserId: makerOptions[0]?.value ?? '', reason: '' }}
-            transform={commonTransform('reassign')}
-            submitLabel="Bàn giao batch"
+            defaultValues={{ expectedVersion: detail.version, reference: '', note: '' }}
+            transform={commonTransform('complete-transfer')}
+            submitLabel="Xác nhận đã hoàn tiền cho khách"
+            submitPendingLabel="Đang ghi nhận…"
             serverError={serverError}
           />
         </ActionSection>
       ) : null}
 
-      {permissions.approve && detail.status === 'transfer_submitted' ? (
-        <ActionSection icon={<ShieldCheck className="size-4" />} title="Checker độc lập">
-          {isMaker ? (
-            <p className="text-sm text-destructive">Bạn là maker của giao dịch này nên không thể tự duyệt.</p>
-          ) : (
-            <GenericForm
-              schema={approveManualRefundInputSchema}
-              fields={[{ name: 'note', type: 'textarea', rows: 2, label: 'Ghi chú kiểm tra' }]}
-              defaultValues={{ expectedVersion: detail.version, note: '' }}
-              transform={commonTransform('approve')}
-              submitLabel="Duyệt và hoàn tất batch"
-              submitPendingLabel="Đang hoàn tất…"
-              serverError={serverError}
-            />
-          )}
-          {!isMaker ? <Separator className="my-4" /> : null}
-          {!isMaker ? (
-            <GenericForm
-              schema={rejectManualRefundInputSchema}
-              fields={[{ name: 'reason', type: 'textarea', rows: 2, label: 'Lý do từ chối', required: true }]}
-              defaultValues={{ expectedVersion: detail.version, reason: '' }}
-              transform={commonTransform('reject')}
-              submitLabel="Từ chối biên lai"
-              serverError={serverError}
-            />
-          ) : null}
-        </ActionSection>
-      ) : null}
-
-      {permissions.approve && ['correction_required', 'transfer_rejected'].includes(detail.status) ? (
+      {permissions.approve &&
+      ['correction_required', 'transfer_rejected'].includes(detail.status) ? (
         <ActionSection icon={<CircleAlert className="size-4" />} title="Mở lại thông tin nhận tiền">
           <GenericForm
             schema={rejectManualRefundInputSchema}
-            fields={[{ name: 'reason', type: 'textarea', rows: 2, label: 'Lý do yêu cầu khách khai báo lại', required: true }]}
+            fields={[
+              {
+                name: 'reason',
+                type: 'textarea',
+                rows: 2,
+                label: 'Lý do yêu cầu khách khai báo lại',
+                required: true,
+              },
+            ]}
             defaultValues={{ expectedVersion: detail.version, reason: '' }}
             transform={commonTransform('reopen')}
             submitLabel="Mở lại cho khách"
@@ -431,19 +485,136 @@ function ManualRefundDetail({
       ) : null}
 
       {detail.status === 'awaiting_details' ? (
-        <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Đang chờ khách gửi tài khoản qua liên kết đăng nhập hoặc OTP. Timer 48 giờ chỉ nhắc và escalates, không tự huỷ khoản hoàn.</p>
+        <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+          Đang chờ khách gửi tài khoản qua liên kết đăng nhập hoặc OTP. Timer 48 giờ chỉ nhắc và
+          escalates, không tự huỷ khoản hoàn.
+        </p>
       ) : null}
       {detail.status === 'completed' ? (
-        <p className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 p-4 text-sm text-success"><CheckCircle2 className="size-4" /> Batch đã hoàn tất; booking và settlement sẽ được đồng bộ bởi consumer hiện tại.</p>
+        <p className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 p-4 text-sm text-success">
+          <CheckCircle2 className="size-4" /> Batch đã hoàn tất; booking và settlement sẽ được đồng
+          bộ bởi consumer hiện tại.
+        </p>
       ) : null}
     </div>
   );
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
-  return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 break-words font-medium">{value}</dd></div>;
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 break-words font-medium">{value}</dd>
+    </div>
+  );
 }
 
-function ActionSection({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  return <section className="rounded-lg border p-4"><h3 className="mb-3 flex items-center gap-2 font-semibold">{icon}{title}</h3>{children}</section>;
+function ActionSection({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border p-4">
+      <h3 className="mb-3 flex items-center gap-2 font-semibold">
+        {icon}
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function VietQrCodeView({
+  bankCode,
+  accountNumber,
+  accountName,
+  amount,
+  bookingCode,
+}: {
+  bankCode: string;
+  accountNumber: string;
+  accountName: string;
+  amount: bigint | string;
+  bookingCode: string;
+}) {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    try {
+      const payload = generateVietQrPayload({
+        bankCodeOrBin: bankCode,
+        accountNumber,
+        amountVnd: amount,
+        memo: `HOAN TIEN ${bookingCode}`,
+      });
+
+      QRCode.toDataURL(payload, {
+        errorCorrectionLevel: 'M',
+        margin: 2,
+        width: 280,
+        color: { dark: '#000000', light: '#ffffff' },
+      })
+        .then((url) => {
+          if (active) setQrDataUrl(url);
+        })
+        .catch((err) => {
+          console.error('Failed to generate VietQR:', err);
+        });
+    } catch (err) {
+      console.error('Failed to prepare VietQR payload:', err);
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [bankCode, accountNumber, amount, bookingCode]);
+
+  const bankInfo = getBankByBinOrCode(bankCode);
+
+  return (
+    <div className="flex flex-col items-center justify-center rounded-lg border bg-card p-5 text-center sm:flex-row sm:text-left sm:gap-6">
+      {qrDataUrl ? (
+        <Image
+          src={qrDataUrl}
+          alt="Mã VietQR chuyển tiền hoàn"
+          className="h-44 w-44 rounded-lg border bg-background p-2 shadow-sm object-contain"
+        />
+      ) : (
+        <div className="flex h-44 w-44 items-center justify-center rounded-lg border bg-muted/40 text-xs text-muted-foreground">
+          Đang tạo mã VietQR…
+        </div>
+      )}
+      <div className="mt-3 sm:mt-0">
+        <h4 className="font-semibold text-foreground">Quét mã chuyển tiền qua App Ngân hàng</h4>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Mở app ngân hàng (MB, Vietcombank, Techcombank...) quét mã QR trên để chuyển nhanh{' '}
+          <strong>{formatVnd(amount)}</strong> cho khách.
+        </p>
+        <div className="mt-2 text-xs space-y-1 text-muted-foreground">
+          <div>
+            • Người nhận:{' '}
+            <span className="font-semibold text-foreground uppercase">{accountName}</span>
+          </div>
+          <div>
+            • Số tài khoản:{' '}
+            <span className="font-mono font-semibold text-foreground">{accountNumber}</span> (
+            {bankInfo?.shortName ?? bankCode})
+          </div>
+          <div>
+            • Số tiền: <span className="font-semibold text-primary">{formatVnd(amount)}</span>
+          </div>
+          <div>
+            • Cú pháp CK:{' '}
+            <span className="font-mono font-medium text-foreground">HOAN TIEN {bookingCode}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

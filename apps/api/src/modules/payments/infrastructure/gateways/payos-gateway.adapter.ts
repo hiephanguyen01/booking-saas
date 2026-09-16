@@ -79,7 +79,9 @@ function parseLookupData(value: unknown): PayosPaymentData | null {
   if (value.code === '214' || value.code === '401' || value.code === '403') {
     throw new GatewayRequestError(
       'configuration',
-      typeof value.desc === 'string' ? value.desc : 'payOS channel not available or invalid credentials',
+      typeof value.desc === 'string'
+        ? value.desc
+        : 'payOS channel not available or invalid credentials',
     );
   }
   if (value.code !== '00' || !isRecord(value.data)) {
@@ -109,7 +111,9 @@ function parseCreateData(value: unknown): PayosCreateData {
   if (value.code === '214' || value.code === '401' || value.code === '403') {
     throw new GatewayRequestError(
       'configuration',
-      typeof value.desc === 'string' ? value.desc : 'payOS channel not available or invalid credentials',
+      typeof value.desc === 'string'
+        ? value.desc
+        : 'payOS channel not available or invalid credentials',
     );
   }
   if (value.code !== '00' || !isRecord(value.data)) {
@@ -139,7 +143,9 @@ function safeHexEqual(expectedHex: string, actualHex: unknown): boolean {
   if (!/^[0-9a-fA-F]+$/.test(expectedHex)) return false;
   const expected = Buffer.from(expectedHex, 'hex');
   const actual = Buffer.from(actualHex, 'hex');
-  return expected.length > 0 && expected.length === actual.length && timingSafeEqual(expected, actual);
+  return (
+    expected.length > 0 && expected.length === actual.length && timingSafeEqual(expected, actual)
+  );
 }
 
 function hostedCheckout(paymentLinkId: string): CreatePaymentResult['destination'] {
@@ -178,7 +184,10 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
     }
     const orderCode = Number(reference);
     if (!Number.isSafeInteger(orderCode) || orderCode <= 0) {
-      throw new GatewayRequestError('final', 'payOS checkout order reference is outside the safe integer range');
+      throw new GatewayRequestError(
+        'final',
+        'payOS checkout order reference is outside the safe integer range',
+      );
     }
     return orderCode;
   }

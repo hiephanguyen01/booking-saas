@@ -549,6 +549,24 @@ export const approveManualRefundInputSchema = z
   .strict();
 export type ApproveManualRefundInput = z.infer<typeof approveManualRefundInputSchema>;
 
+export const autoPayoutManualRefundInputSchema = z
+  .object({
+    expectedVersion: z.coerce.number().int().positive(),
+  })
+  .strict();
+export type AutoPayoutManualRefundInput = z.infer<typeof autoPayoutManualRefundInputSchema>;
+
+export const completeManualRefundTransferInputSchema = z
+  .object({
+    expectedVersion: z.coerce.number().int().positive(),
+    reference: z.string().trim().min(1, 'Vui lòng nhập mã giao dịch chuyển tiền').max(100),
+    note: z.string().trim().max(1000).optional(),
+  })
+  .strict();
+export type CompleteManualRefundTransferInput = z.infer<
+  typeof completeManualRefundTransferInputSchema
+>;
+
 export const rejectManualRefundInputSchema = z
   .object({
     expectedVersion: z.number().int().positive(),
@@ -635,9 +653,7 @@ export const manualRefundReadinessCheckKeySchema = z.enum([
   'system_role_permissions',
   'worker_enabled',
 ]);
-export type ManualRefundReadinessCheckKey = z.infer<
-  typeof manualRefundReadinessCheckKeySchema
->;
+export type ManualRefundReadinessCheckKey = z.infer<typeof manualRefundReadinessCheckKeySchema>;
 
 export const manualRefundReadinessCheckSchema = z
   .object({
@@ -646,9 +662,7 @@ export const manualRefundReadinessCheckSchema = z
     reason: z.string().optional(),
   })
   .strict();
-export type ManualRefundReadinessCheck = z.infer<
-  typeof manualRefundReadinessCheckSchema
->;
+export type ManualRefundReadinessCheck = z.infer<typeof manualRefundReadinessCheckSchema>;
 
 export const manualRefundReadinessResponseSchema = z
   .object({
@@ -657,10 +671,7 @@ export const manualRefundReadinessResponseSchema = z
     checks: z.array(manualRefundReadinessCheckSchema),
   })
   .strict();
-export type ManualRefundReadinessResponse = z.infer<
-  typeof manualRefundReadinessResponseSchema
->;
-
+export type ManualRefundReadinessResponse = z.infer<typeof manualRefundReadinessResponseSchema>;
 
 export const manualRefundListQuerySchema = paginationQuerySchema.extend({
   status: manualRefundOperationStatusSchema.optional(),

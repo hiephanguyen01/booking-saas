@@ -65,6 +65,9 @@ export class TenantPaymentConfigurationController {
     @Body() input: UpdateTenantRefundPolicyDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<TenantRefundPolicy> {
-    return this.updateRefundPolicy.execute(input as UpdateTenantRefundPolicyInput, principal.userId);
+    return this.updateRefundPolicy.execute(
+      input as UpdateTenantRefundPolicyInput,
+      principal.userId,
+    );
   }
 }

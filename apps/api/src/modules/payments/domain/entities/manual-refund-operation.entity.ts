@@ -46,6 +46,8 @@ export interface ManualRefundOperationState {
   breakGlassReason: string | null;
   breakGlassAuthenticatedAt: Date | null;
   breakGlassAt: Date | null;
+  checkedByUserId: string | null;
+  checkedAt: Date | null;
   customerAcknowledgement: 'received' | 'not_received' | null;
   customerAcknowledgedAt: Date | null;
   customerAcknowledgementNote: string | null;
@@ -155,6 +157,21 @@ export class ManualRefundOperation {
     }
     this.state.transferSubmittedByUserId = actorUserId;
     this.transition('transfer_submitted');
+  }
+
+  completeDirectTransfer(actorUserId: string, reference: string, occurredAt: Date): void {
+    if (!['ready_for_transfer', 'transfer_submitted'].includes(this.state.status)) {
+      throw new ManualRefundInvalidTransition(this.state.status, 'complete transfer for');
+    }
+    if (!this.state.destinationSubmittedAt) throw new ManualRefundDestinationRequired();
+    if (!reference.trim()) throw new ManualRefundActionMetadataRequired();
+    this.state.makerUserId = this.state.makerUserId ?? actorUserId;
+    this.state.transferSubmittedByUserId = this.state.transferSubmittedByUserId ?? actorUserId;
+    this.state.transferReference = reference.trim();
+    this.state.transferSubmittedAt = this.state.transferSubmittedAt ?? occurredAt;
+    this.state.checkedByUserId = actorUserId;
+    this.state.checkedAt = occurredAt;
+    this.transition('completed');
   }
 
   approve(_checkerUserId: string): void {

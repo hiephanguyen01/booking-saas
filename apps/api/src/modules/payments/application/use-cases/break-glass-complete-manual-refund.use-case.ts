@@ -28,7 +28,10 @@ import {
   REFUND_REPOSITORY,
   type IRefundRepository,
 } from '../../domain/ports/refund-repository.port';
-import { MANUAL_REFUND_EVIDENCE_REPOSITORY, type IManualRefundEvidenceRepository } from '../../domain/ports/manual-refund-evidence-repository.port';
+import {
+  MANUAL_REFUND_EVIDENCE_REPOSITORY,
+  type IManualRefundEvidenceRepository,
+} from '../../domain/ports/manual-refund-evidence-repository.port';
 import { toManualRefundOperation } from '../manual-refund.mapper';
 
 const FRESH_AUTHENTICATION_WINDOW_MS = 5 * 60 * 1000;
@@ -53,7 +56,8 @@ export class BreakGlassCompleteManualRefundUseCase {
     private readonly operations: IManualRefundOperationRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
     @Inject(REFUND_BATCH_REPOSITORY) private readonly batches: IRefundBatchRepository,
-    @Inject(MANUAL_REFUND_EVIDENCE_REPOSITORY) private readonly evidence: IManualRefundEvidenceRepository,
+    @Inject(MANUAL_REFUND_EVIDENCE_REPOSITORY)
+    private readonly evidence: IManualRefundEvidenceRepository,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
     @Inject(SESSION_STORE) private readonly sessions: ISessionStore,
@@ -167,20 +171,46 @@ export class BreakGlassCompleteManualRefundUseCase {
     current: ManualRefundOperationRecord,
     now: Date,
   ): Promise<string | null> {
-    if (!current.evidenceObjectKey || !current.evidenceSha256 || !current.evidenceContentType || !current.evidenceSizeBytes) throw new ManualRefundEvidenceRequired();
-    const upload = await this.evidence.findUpload(tx, tenantId, current.id, current.evidenceObjectKey);
+    if (
+      !current.evidenceObjectKey ||
+      !current.evidenceSha256 ||
+      !current.evidenceContentType ||
+      !current.evidenceSizeBytes
+    )
+      throw new ManualRefundEvidenceRequired();
+    const upload = await this.evidence.findUpload(
+      tx,
+      tenantId,
+      current.id,
+      current.evidenceObjectKey,
+    );
     if (!upload) throw new ManualRefundEvidenceRequired();
-    if (upload.status !== 'claimed' || upload.checksum !== current.evidenceSha256 || upload.contentType !== current.evidenceContentType || upload.sizeBytes !== current.evidenceSizeBytes) {
+    if (
+      upload.status !== 'claimed' ||
+      upload.checksum !== current.evidenceSha256 ||
+      upload.contentType !== current.evidenceContentType ||
+      upload.sizeBytes !== current.evidenceSizeBytes
+    ) {
       await this.evidence.quarantineUpload(tx, tenantId, upload.id, now);
       return upload.objectKey;
     }
     let inspection;
     try {
-      inspection = await this.storage.inspectPrivateFile({ key: upload.objectKey, allowedContentTypes: ['application/pdf', 'image/jpeg', 'image/png'], maxSizeBytes: 10 * 1024 * 1024 });
+      inspection = await this.storage.inspectPrivateFile({
+        key: upload.objectKey,
+        allowedContentTypes: ['application/pdf', 'image/jpeg', 'image/png'],
+        maxSizeBytes: 10 * 1024 * 1024,
+      });
     } catch {
       inspection = null;
     }
-    if (!inspection || !inspection.valid || inspection.checksum !== upload.checksum || inspection.contentType !== upload.contentType || inspection.sizeBytes !== upload.sizeBytes) {
+    if (
+      !inspection ||
+      !inspection.valid ||
+      inspection.checksum !== upload.checksum ||
+      inspection.contentType !== upload.contentType ||
+      inspection.sizeBytes !== upload.sizeBytes
+    ) {
       await this.evidence.quarantineUpload(tx, tenantId, upload.id, now);
       return upload.objectKey;
     }

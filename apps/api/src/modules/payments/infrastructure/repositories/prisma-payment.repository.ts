@@ -52,10 +52,7 @@ function destinationFromPayload(payload: Prisma.JsonValue | null): CheckoutDesti
   const candidate =
     payload && typeof payload === 'object' && !Array.isArray(payload) && 'destination' in payload
       ? payload.destination
-      : payload &&
-          typeof payload === 'object' &&
-          !Array.isArray(payload) &&
-          'paymentUrl' in payload
+      : payload && typeof payload === 'object' && !Array.isArray(payload) && 'paymentUrl' in payload
         ? { type: 'redirect', paymentUrl: payload.paymentUrl }
         : null;
   const parsed = checkoutDestinationSchema.safeParse(candidate);
@@ -245,10 +242,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     return rows.map(toRecord);
   }
 
-  async findSecurityDepositSource(
-    tx: PrismaTx,
-    bookingId: string,
-  ): Promise<PaymentRecord | null> {
+  async findSecurityDepositSource(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {
     const payment = await tx.payment.findFirst({
       where: { bookingId, status: 'succeeded', kind: { in: ['deposit', 'full'] } },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],

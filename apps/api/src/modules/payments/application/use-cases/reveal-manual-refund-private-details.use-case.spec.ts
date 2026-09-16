@@ -163,4 +163,3 @@ describe('RevealManualRefundPrivateDetailsUseCase', () => {
     expect(audits).toHaveLength(0);
   });
 });
-

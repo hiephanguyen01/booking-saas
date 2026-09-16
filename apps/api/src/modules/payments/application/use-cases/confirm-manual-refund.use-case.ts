@@ -16,7 +16,10 @@ import {
 import { Refund } from '../../domain/entities/refund.entity';
 import { RefundNotFound, RefundReferenceAlreadyUsed } from '../../domain/errors/refund-errors';
 import { ManualRefundBatchWorkflowRequired } from '../../domain/errors/manual-refund-errors';
-import { MANUAL_REFUND_OPERATION_REPOSITORY, type IManualRefundOperationRepository } from '../../domain/ports/manual-refund-operation-repository.port';
+import {
+  MANUAL_REFUND_OPERATION_REPOSITORY,
+  type IManualRefundOperationRepository,
+} from '../../domain/ports/manual-refund-operation-repository.port';
 
 /** Tenant confirms the external bank transfer required by SePay/manual gateways. */
 @Injectable()

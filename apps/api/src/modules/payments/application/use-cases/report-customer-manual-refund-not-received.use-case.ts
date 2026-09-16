@@ -60,7 +60,11 @@ export class ReportCustomerManualRefundNotReceivedUseCase {
         },
       );
       if (!updated) throw new ManualRefundConcurrentUpdate();
-      await this.outbox?.emit(tx, { tenantId, eventType: 'manual_refund.customer_not_received', payload: { operationId, refundBatchId: current.refundBatchId } });
+      await this.outbox?.emit(tx, {
+        tenantId,
+        eventType: 'manual_refund.customer_not_received',
+        payload: { operationId, refundBatchId: current.refundBatchId },
+      });
       return toCustomerManualRefundStatusResponse(updated, batch, bookingCode);
     });
   }

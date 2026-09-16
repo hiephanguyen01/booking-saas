@@ -176,4 +176,12 @@ export class ManualRefundWorkflowPaused extends DomainError {
   }
 }
 
-
+export class ManualRefundAutoPayoutFailed extends DomainError {
+  constructor(reason?: string) {
+    super(
+      'MANUAL_REFUND_AUTO_PAYOUT_FAILED',
+      502,
+      reason ?? 'Chi hộ tự động qua cổng thanh toán không thành công',
+    );
+  }
+}

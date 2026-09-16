@@ -17,7 +17,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function resolveWebhookUrl(): string {
   const configured = process.env.PUBLIC_API_URL;
   if (!configured) {
-    throw new GatewayOperationError('configuration', 'PUBLIC_API_URL is required for PayOS webhook setup');
+    throw new GatewayOperationError(
+      'configuration',
+      'PUBLIC_API_URL is required for PayOS webhook setup',
+    );
   }
 
   let url: URL;

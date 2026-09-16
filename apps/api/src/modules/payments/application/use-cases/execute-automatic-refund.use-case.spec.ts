@@ -217,7 +217,10 @@ function harness(options: Options = {}): Harness {
       calls.push('queryRefundStatus');
       refundStatusCalls.push(input);
       return Promise.resolve(
-        options.refundStatusResult ?? { status: 'pending', refundId: input.gatewayRefundId ?? undefined },
+        options.refundStatusResult ?? {
+          status: 'pending',
+          refundId: input.gatewayRefundId ?? undefined,
+        },
       );
     },
     queryPaymentStatus: () => {
@@ -241,13 +244,16 @@ function harness(options: Options = {}): Harness {
 
   const useCase = new ExecuteAutomaticRefundUseCase(
     fakePort<IPaymentRepository>({
-      findById: () => Promise.resolve(options.succeeded === undefined ? payment() : options.succeeded),
+      findById: () =>
+        Promise.resolve(options.succeeded === undefined ? payment() : options.succeeded),
     }),
     refundBatches,
     refunds,
     fakePort<GatewayRegistryPort>({
       resolveForPayment: (_tx, sourcePayment) => {
-        calls.push(`resolve:${sourcePayment.id}:${sourcePayment.gatewayConfigRevisionId ?? 'legacy'}`);
+        calls.push(
+          `resolve:${sourcePayment.id}:${sourcePayment.gatewayConfigRevisionId ?? 'legacy'}`,
+        );
         return Promise.resolve({
           gateway,
           configRevisionId: resolvedConfig?.id ?? sourcePayment.gatewayConfigRevisionId,
@@ -416,7 +422,7 @@ describe('ExecuteAutomaticRefundUseCase', () => {
     expect(events[0]?.eventType).toBe('refund.requested');
   });
 
-  it("takes the manual SLA from the payment gateway, defaulting to 72 hours", async () => {
+  it('takes the manual SLA from the payment gateway, defaulting to 72 hours', async () => {
     const { useCase, dueDates } = harness({
       providerResult: { status: 'unsupported' },
       config: null,

@@ -106,8 +106,24 @@ describe('ApproveManualRefundUseCase', () => {
           });
         },
       }),
-      fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: 'private/receipt.pdf', status: 'claimed', sizeBytes: 12 }) }),
-      fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: true, checksum: 'b'.repeat(64), sizeBytes: 12, contentType: 'application/pdf' }) }),
+      fakePort<IManualRefundEvidenceRepository>({
+        findUpload: () =>
+          Promise.resolve({
+            ...manualRefundUpload(),
+            objectKey: 'private/receipt.pdf',
+            status: 'claimed',
+            sizeBytes: 12,
+          }),
+      }),
+      fakePort<StoragePort>({
+        inspectPrivateFile: () =>
+          Promise.resolve({
+            valid: true,
+            checksum: 'b'.repeat(64),
+            sizeBytes: 12,
+            contentType: 'application/pdf',
+          }),
+      }),
       fakePort<IAuditWriter>({
         write: (_tx, entry) => {
           expect(JSON.stringify(entry)).not.toContain('secret-ciphertext');
@@ -159,22 +175,39 @@ describe('ApproveManualRefundUseCase', () => {
       }),
       fakePort<IRefundRepository>({ completeManualBatch: () => Promise.resolve(1) }),
       fakePort<IRefundBatchRepository>({
-        refreshStatus: () => Promise.resolve({
-          transitionedToCompleted: true,
-          batch: {
-            id: MANUAL_REFUND_BATCH_ID,
-            tenantId: MANUAL_REFUND_TENANT_ID,
-            bookingId: MANUAL_REFUND_BOOKING_ID,
-            requestedAmount: 1_250_000n,
-            reason: 'booking_cancellation',
-            affectsBookingStatus: true,
-            status: 'completed',
-            completedAt: MANUAL_REFUND_NOW,
-          },
-        }),
+        refreshStatus: () =>
+          Promise.resolve({
+            transitionedToCompleted: true,
+            batch: {
+              id: MANUAL_REFUND_BATCH_ID,
+              tenantId: MANUAL_REFUND_TENANT_ID,
+              bookingId: MANUAL_REFUND_BOOKING_ID,
+              requestedAmount: 1_250_000n,
+              reason: 'booking_cancellation',
+              affectsBookingStatus: true,
+              status: 'completed',
+              completedAt: MANUAL_REFUND_NOW,
+            },
+          }),
       }),
-      fakePort<IManualRefundEvidenceRepository>({ findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: 'private/receipt.pdf', status: 'claimed', sizeBytes: 12 }) }),
-      fakePort<StoragePort>({ inspectPrivateFile: () => Promise.resolve({ valid: true, checksum: 'b'.repeat(64), sizeBytes: 12, contentType: 'application/pdf' }) }),
+      fakePort<IManualRefundEvidenceRepository>({
+        findUpload: () =>
+          Promise.resolve({
+            ...manualRefundUpload(),
+            objectKey: 'private/receipt.pdf',
+            status: 'claimed',
+            sizeBytes: 12,
+          }),
+      }),
+      fakePort<StoragePort>({
+        inspectPrivateFile: () =>
+          Promise.resolve({
+            valid: true,
+            checksum: 'b'.repeat(64),
+            sizeBytes: 12,
+            contentType: 'application/pdf',
+          }),
+      }),
       fakePort<IAuditWriter>({ write: () => Promise.resolve() }),
       new OutboxService(),
       fakeTenantDb({
@@ -276,7 +309,14 @@ describe('ApproveManualRefundUseCase', () => {
       new OutboxService(),
       fakeTenantDb().service,
     );
-    await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3 }, MANUAL_REFUND_CHECKER_ID)).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
+    await expect(
+      useCase.execute(
+        MANUAL_REFUND_TENANT_ID,
+        MANUAL_REFUND_OPERATION_ID,
+        { expectedVersion: 3 },
+        MANUAL_REFUND_CHECKER_ID,
+      ),
+    ).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
   });
 
   it('retires mutated claimed evidence before returning the validation error', async () => {
@@ -291,15 +331,37 @@ describe('ApproveManualRefundUseCase', () => {
       fakePort<IRefundRepository>({}),
       fakePort<IRefundBatchRepository>({}),
       fakePort<IManualRefundEvidenceRepository>({
-        findUpload: () => Promise.resolve({ ...manualRefundUpload(), objectKey: current.evidenceObjectKey as string, status: 'claimed', checksum: 'c'.repeat(64), sizeBytes: 12 }),
-        quarantineUpload: () => { retired = true; return Promise.resolve(true); },
+        findUpload: () =>
+          Promise.resolve({
+            ...manualRefundUpload(),
+            objectKey: current.evidenceObjectKey as string,
+            status: 'claimed',
+            checksum: 'c'.repeat(64),
+            sizeBytes: 12,
+          }),
+        quarantineUpload: () => {
+          retired = true;
+          return Promise.resolve(true);
+        },
       }),
-      fakePort<StoragePort>({ quarantinePrivateObject: (key) => { quarantined.push(key); return Promise.reject(new Error('storage unavailable')); } }),
+      fakePort<StoragePort>({
+        quarantinePrivateObject: (key) => {
+          quarantined.push(key);
+          return Promise.reject(new Error('storage unavailable'));
+        },
+      }),
       fakePort<IAuditWriter>({}),
       new OutboxService(),
       fakeTenantDb().service,
     );
-    await expect(useCase.execute(MANUAL_REFUND_TENANT_ID, MANUAL_REFUND_OPERATION_ID, { expectedVersion: 3 }, MANUAL_REFUND_CHECKER_ID)).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
+    await expect(
+      useCase.execute(
+        MANUAL_REFUND_TENANT_ID,
+        MANUAL_REFUND_OPERATION_ID,
+        { expectedVersion: 3 },
+        MANUAL_REFUND_CHECKER_ID,
+      ),
+    ).rejects.toBeInstanceOf(ManualRefundEvidenceRequired);
     expect(retired).toBe(true);
     expect(quarantined).toEqual([current.evidenceObjectKey]);
   });
@@ -331,5 +393,4 @@ describe('ApproveManualRefundUseCase', () => {
       status: 409,
     });
   });
-
 });

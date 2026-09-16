@@ -115,21 +115,20 @@ describe('ConfirmManualRefundUseCase', () => {
   it('blocks the legacy child confirmation endpoint for opted-in tenants', async () => {
     const { useCase, calls } = harness({ workflowEnabled: true });
 
-    await expect(
-      useCase.execute(TENANT_ID, REFUND_ID, input, 'admin-1'),
-    ).rejects.toBeInstanceOf(ManualRefundBatchWorkflowRequired);
+    await expect(useCase.execute(TENANT_ID, REFUND_ID, input, 'admin-1')).rejects.toBeInstanceOf(
+      ManualRefundBatchWorkflowRequired,
+    );
     expect(calls).toEqual([]);
   });
 
   it('blocks legacy child confirmation when manual refund workflow is paused but enabled', async () => {
     const { useCase, calls } = harness({ workflowEnabled: true });
 
-    await expect(
-      useCase.execute(TENANT_ID, REFUND_ID, input, 'admin-1'),
-    ).rejects.toBeInstanceOf(ManualRefundBatchWorkflowRequired);
+    await expect(useCase.execute(TENANT_ID, REFUND_ID, input, 'admin-1')).rejects.toBeInstanceOf(
+      ManualRefundBatchWorkflowRequired,
+    );
     expect(calls).toEqual([]);
   });
-
 
   it('rejects an unknown refund', async () => {
     const { useCase } = harness({ record: null });
